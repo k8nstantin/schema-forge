@@ -7,13 +7,13 @@ name = "schema-forge"
 version = "0.1.0"
 
 [[package]]
-name = "sf-agent"
+name = "schema-forge-agent"
 version = "0.1.0"
 
 [[package]]
-name = "sf-core"
+name = "schema-forge-core"
 version = "0.1.0"
 
 [[package]]
-name = "sf-dialects"
+name = "schema-forge-dialects"
 version = "0.1.0"

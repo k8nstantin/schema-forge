@@ -1,5 +1,5 @@
 [package]
-name = "sf-agent"
+name = "schema-forge-agent"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
