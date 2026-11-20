@@ -219,13 +219,15 @@ fn resolve(cat: &Catalog, chain: &[Scope], links: &[&Link]) -> Effective {
 }
 
 impl Effective {
-    /// The checks that run on the table: those of every rule that reaches it, less those switched off.
+    /// The checks that run on the table: those of every rule that reaches it, less those switched off. An
+    /// exception switches off only what it is part of: a pack linked on its own keeps its checks.
     #[must_use]
     pub fn checks<'a>(&self, cat: &'a Catalog) -> Vec<&'a str> {
         let mut out: Vec<&str> = Vec::new();
         for a in &self.applied {
             for c in cat.checks(&a.rule) {
-                if !out.contains(&c) && !self.excepted.iter().any(|e| cat.contains(&e.rule, c)) {
+                let off = self.excepted.iter().any(|e| cat.contains(&a.rule, &e.rule) && cat.contains(&e.rule, c));
+                if !off && !out.contains(&c) {
                     out.push(c);
                 }
             }
@@ -274,34 +276,27 @@ fn under<'a>(schema: &'a Schema, set: &RuleSet, families: &HashMap<Id, String>, 
 /// # Errors
 /// What is wrong with it, in a sentence.
 pub fn admit(cat: &Catalog, schema: &Schema, global: &[Link], set: &RuleSet, link: &Link) -> Result<(), String> {
-    if link.rule == ALL && !link.off {
-        return Err("every rule can only be switched off, not linked".to_string());
-    }
-    if link.rule != ALL && cat.rule(&link.rule).is_none() {
-        return Err(format!("there is no rule `{}`", link.rule));
-    }
+    well_formed(cat, link)?;
     let families = families(schema);
     if !exists(schema, set, &families, &link.at) {
         return Err(format!("{} is not in this schema", describe(&link.at)));
     }
-    if link.off && link.locked {
-        return Err("an exception cannot be locked".to_string());
-    }
     if set.links.iter().chain(global).any(|l| l.rule == link.rule && l.at == link.at) {
         return Err(format!("`{}` is already linked or switched off at {}", link.rule, describe(&link.at)));
-    }
-    if !link.off {
-        return Ok(());
-    }
-    if link.reason.as_deref().is_none_or(|r| r.trim().is_empty()) {
-        return Err("an exception needs a reason".to_string());
-    }
-    if link.rule == ALL {
-        return Ok(());
     }
     let tables = under(schema, set, &families, &link.at);
     let fam: HashMap<&Id, &str> = families.iter().map(|(k, v)| (k, v.as_str())).collect();
     let all: Vec<&Link> = global.iter().chain(&set.links).collect();
+    if !link.off {
+        if link.locked {
+            locks_no_exception(cat, schema, &fam, set, &all, link, &tables)?;
+        }
+        return Ok(());
+    }
+    if link.rule == ALL {
+        // Rules are optional: a schema or a group may use none, locked or not.
+        return Ok(());
+    }
     for t in &tables {
         let chain = chain(schema, &fam, &set.groups, t);
         let upto: Vec<Scope> =
@@ -374,6 +369,63 @@ pub fn parse_scope(schema: &Schema, set: &RuleSet, text: &str) -> Result<Scope, 
             "`{text}`: write global, schema, namespace:<name>, family:<namespace>/<family>, group:<name> or table:<name>"
         )),
     }
+}
+
+/// What every link must be, whatever schema it is on: a rule that exists, `*` only switched off, an exception
+/// with a reason and never locked.
+///
+/// # Errors
+/// What is wrong with it, in a sentence.
+pub fn well_formed(cat: &Catalog, link: &Link) -> Result<(), String> {
+    if link.rule == ALL && !link.off {
+        return Err("every rule can only be switched off, not linked".to_string());
+    }
+    if link.rule != ALL && cat.rule(&link.rule).is_none() {
+        return Err(format!("there is no rule `{}`", link.rule));
+    }
+    if link.off && link.locked {
+        return Err("an exception cannot be locked".to_string());
+    }
+    if link.off && link.reason.as_deref().is_none_or(|r| r.trim().is_empty()) {
+        return Err("an exception needs a reason".to_string());
+    }
+    Ok(())
+}
+
+/// A locked link may not sit above an exception that switches part of it off: the exception would stop
+/// working while still being stored, so it is removed first.
+fn locks_no_exception(
+    cat: &Catalog,
+    schema: &Schema,
+    fam: &HashMap<&Id, &str>,
+    set: &RuleSet,
+    all: &[&Link],
+    link: &Link,
+    tables: &[&Table],
+) -> Result<(), String> {
+    for t in tables {
+        let chain = chain(schema, fam, &set.groups, t);
+        let below: Vec<&Scope> = chain.iter().skip_while(|s| **s != link.at).collect();
+        let hit =
+            all.iter().find(|e| e.off && e.rule != ALL && below.contains(&&e.at) && cat.contains(&link.rule, &e.rule));
+        if let Some(e) = hit {
+            return Err(format!(
+                "`{}` is switched off at {}: remove that exception before locking `{}` above it",
+                e.rule,
+                describe(&e.at),
+                link.rule
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Whether a goal still has `pack` to link to the whole schema: it is not linked there or to every schema, and
+/// the schema does not switch it off.
+#[must_use]
+pub fn pack_open(global: &[Link], set: &RuleSet, pack: &str) -> bool {
+    !set.links.iter().any(|l| l.rule == pack && l.at == Scope::Schema)
+        && !global.iter().any(|l| l.rule == pack && !l.off)
 }
 
 /// A level in words, for messages: `namespace n_estate`, `group Streamed by CDC`.

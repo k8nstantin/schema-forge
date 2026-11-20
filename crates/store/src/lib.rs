@@ -242,25 +242,7 @@ impl Store {
     /// When there is no such schema, the store fails or a record is not valid.
     pub fn model(&self, name: &str) -> Result<Schema> {
         let txn = self.db.begin_read()?;
-        let info = schema_info(&txn.open_table(SCHEMAS)?, name)?;
-        let objects = txn.open_table(OBJECTS)?;
-        let (lo, hi) = prefix_range(name);
-        let mut records: Vec<Record> = Vec::new();
-        for entry in objects.range(lo.as_str()..hi.as_str())? {
-            let (_, v) = entry?;
-            records.push(serde_json::from_str(v.value())?);
-        }
-        records.sort_by_key(|r| (r.section, r.position));
-        let mut doc = serde_json::Map::new();
-        doc.insert("format".to_string(), Value::from(info.format));
-        doc.insert("target".to_string(), serde_json::to_value(info.target)?);
-        for section in SECTIONS {
-            let items: Vec<Value> = records.iter().filter(|r| r.section == section).map(|r| r.object.clone()).collect();
-            if !items.is_empty() {
-                doc.insert(section.key().to_string(), Value::Array(items));
-            }
-        }
-        Ok(serde_json::from_value(Value::Object(doc))?)
+        read_model(&txn.open_table(SCHEMAS)?, &txn.open_table(OBJECTS)?, name)
     }
 
     /// Replaces the schema's whole model with `model` in one transaction, logs it as one operation of `kind`
@@ -363,35 +345,60 @@ impl Store {
     /// # Errors
     /// When the link does not hold ([`Error::Rule`]), there is no such schema, or the store fails.
     pub fn link_rule(&self, to: Rules<'_>, link: Link, by: &str) -> Result<Operation> {
-        let global = self.global_rules()?;
         match to {
-            Rules::Schema(name) => {
-                if link.at == Scope::Global {
-                    return Err(Error::Rule("a global link goes to every schema, not one".to_string()));
-                }
-                rules::admit(&self.catalog()?, &self.model(name)?, &global, &self.rules(name)?, &link)
-                    .map_err(Error::Rule)?;
+            Rules::Schema(_) if link.at == Scope::Global => {
+                return Err(Error::Rule("a global link goes to every schema, not one".to_string()));
             }
-            Rules::Global => {
-                if link.at != Scope::Global {
-                    return Err(Error::Rule("a link for every schema is at the global level".to_string()));
-                }
-                let cat = self.catalog()?;
-                for info in self.schemas()? {
-                    let set = self.rules(&info.name)?;
-                    rules::admit(&cat, &self.model(&info.name)?, &global, &set, &link)
-                        .map_err(|e| Error::Rule(format!("{}: {e}", info.name)))?;
-                }
-                if cat.rule(&link.rule).is_none() {
-                    return Err(Error::Rule(format!("there is no rule `{}`", link.rule)));
-                }
+            Rules::Global if link.at != Scope::Global => {
+                return Err(Error::Rule("a link for every schema is at the global level".to_string()));
             }
+            _ => {}
         }
         let change = serde_json::to_value(&link)?;
-        self.change_rules(to, "link_rule", by, change, |set| {
+        self.change_rules(to, "link_rule", by, change, |set, look| {
+            look.admit(to, set, &link)?;
             set.links.push(link);
             Ok(())
         })
+    }
+
+    /// Links each of `packs` to the whole schema in one change, all or none, held as `enforce` (each rule's own
+    /// default when `None`). A pack already linked there or to
+    /// every schema is left as it is, and so is one the schema switches off: that was the operator's choice.
+    /// Returns the change, or `None` when every pack was in place.
+    ///
+    /// # Errors
+    /// When a pack does not hold ([`Error::Rule`]), there is no such schema, or the store fails.
+    pub fn link_packs(
+        &self,
+        name: &str,
+        packs: &[&str],
+        enforce: Option<Enforce>,
+        by: &str,
+    ) -> Result<Option<Operation>> {
+        let global = self.global_rules()?;
+        let set = self.rules(name)?;
+        let todo: Vec<&str> = packs.iter().copied().filter(|p| rules::pack_open(&global, &set, p)).collect();
+        if todo.is_empty() {
+            return Ok(None);
+        }
+        let change = serde_json::json!({ "packs": todo });
+        self.change_rules(Rules::Schema(name), "link_packs", by, change, |set, look| {
+            for p in &todo {
+                let link = Link {
+                    rule: (*p).to_string(),
+                    at: Scope::Schema,
+                    off: false,
+                    locked: false,
+                    reason: None,
+                    enforce,
+                };
+                look.admit(Rules::Schema(name), set, &link)?;
+                set.links.push(link);
+            }
+            Ok(())
+        })
+        .map(Some)
     }
 
     /// Takes away the link or exception of `rule` at `at`.
@@ -400,7 +407,7 @@ impl Store {
     /// When there is none, there is no such schema, or the store fails.
     pub fn unlink_rule(&self, to: Rules<'_>, rule: &str, at: &Scope, by: &str) -> Result<Operation> {
         let change = serde_json::json!({ "rule": rule, "at": at });
-        self.change_rules(to, "unlink_rule", by, change, |set| {
+        self.change_rules(to, "unlink_rule", by, change, |set, _| {
             let before = set.links.len();
             set.links.retain(|l| !(l.rule == rule && &l.at == at));
             if set.links.len() == before {
@@ -410,22 +417,38 @@ impl Store {
         })
     }
 
-    /// Makes or replaces a group of tables.
+    /// Makes a group of tables (`new`), or changes the tables of one there is. The exceptions linked to the group
+    /// are checked again against its new tables.
     ///
     /// # Errors
-    /// When a table is not in the schema, there is no such schema, or the store fails.
-    pub fn set_group(&self, name: &str, group: Group, by: &str) -> Result<Operation> {
-        let model = self.model(name)?;
+    /// When a table is not in the schema, a new group's name is taken or a changed one is not there, an
+    /// exception no longer holds, there is no such schema, or the store fails.
+    pub fn set_group(&self, name: &str, group: Group, new: bool, by: &str) -> Result<Operation> {
         if group.name.trim().is_empty() {
             return Err(Error::Rule("a group needs a name".to_string()));
         }
-        if let Some(t) = group.tables.iter().find(|t| !model.tables.iter().any(|m| &m.id == *t)) {
-            return Err(Error::Rule(format!("there is no table `{t}` in `{name}`")));
-        }
         let change = serde_json::to_value(&group)?;
-        self.change_rules(Rules::Schema(name), "set_group", by, change, |set| {
+        self.change_rules(Rules::Schema(name), "set_group", by, change, |set, look| {
+            let model = look.model(name)?;
+            if let Some(t) = group.tables.iter().find(|t| !model.tables.iter().any(|m| &m.id == *t)) {
+                return Err(Error::Rule(format!("there is no table `{t}` in `{name}`")));
+            }
+            let there = set.groups.iter().any(|g| g.name == group.name);
+            if new && there {
+                return Err(Error::Rule(format!("there is a group `{}` already", group.name)));
+            }
+            if !new && !there {
+                return Err(Error::Rule(format!("there is no group `{}`", group.name)));
+            }
+            let at = Scope::Group { group: group.name.clone() };
             set.groups.retain(|g| g.name != group.name);
             set.groups.push(group);
+            let off: Vec<Link> = set.links.iter().filter(|l| l.at == at && l.off).cloned().collect();
+            for l in &off {
+                let mut rest = set.clone();
+                rest.links.retain(|x| !(x.rule == l.rule && x.at == l.at));
+                look.admit(Rules::Schema(name), &rest, l)?;
+            }
             Ok(())
         })
     }
@@ -436,7 +459,7 @@ impl Store {
     /// When rules are linked to it, there is no such group or schema, or the store fails.
     pub fn remove_group(&self, name: &str, group: &str, by: &str) -> Result<Operation> {
         let change = serde_json::json!({ "group": group });
-        self.change_rules(Rules::Schema(name), "remove_group", by, change, |set| {
+        self.change_rules(Rules::Schema(name), "remove_group", by, change, |set, _| {
             let at = Scope::Group { group: group.to_string() };
             if set.links.iter().any(|l| l.at == at) {
                 return Err(Error::Rule(format!("rules are linked to group `{group}`: take them away first")));
@@ -456,7 +479,7 @@ impl Store {
     /// When nothing is linked there, there is no such schema, or the store fails.
     pub fn set_enforce(&self, to: Rules<'_>, rule: &str, at: &Scope, enforce: Enforce, by: &str) -> Result<Operation> {
         let change = serde_json::json!({ "rule": rule, "at": at, "enforce": enforce });
-        self.change_rules(to, "enforce_rule", by, change, |set| {
+        self.change_rules(to, "enforce_rule", by, change, |set, _| {
             let link = set.links.iter_mut().find(|l| l.rule == rule && &l.at == at && !l.off);
             match link {
                 Some(l) => {
@@ -474,13 +497,7 @@ impl Store {
     /// When the store fails or a record is not valid.
     pub fn custom_rules(&self) -> Result<Vec<CustomRule>> {
         let txn = self.db.begin_read()?;
-        let table = txn.open_table(CUSTOM)?;
-        let mut out = Vec::new();
-        for entry in table.iter()? {
-            let (_, v) = entry?;
-            out.push(serde_json::from_str(v.value())?);
-        }
-        Ok(out)
+        read_custom(&txn.open_table(CUSTOM)?)
     }
 
     /// The built-in rules and the workspace's own.
@@ -498,14 +515,34 @@ impl Store {
     pub fn proposals(&self, name: &str) -> Result<Vec<Proposal>> {
         let txn = self.db.begin_read()?;
         schema_info(&txn.open_table(SCHEMAS)?, name)?;
-        let table = txn.open_table(PROPOSALS)?;
-        let (lo, hi) = prefix_range(name);
-        let mut out = Vec::new();
-        for entry in table.range(lo.as_str()..hi.as_str())? {
-            let (_, v) = entry?;
-            out.push(serde_json::from_str(v.value())?);
-        }
-        Ok(out)
+        read_proposals(&txn.open_table(PROPOSALS)?, name)
+    }
+
+    /// The schema's proposals, oldest first, each with its title and, while open, the system's verdict; read in one
+    /// transaction. Decided proposals are not verified again.
+    ///
+    /// # Errors
+    /// When there is no such schema, the store fails or a record is not valid.
+    pub fn reviewed(&self, name: &str) -> Result<(Schema, Vec<Reviewed>)> {
+        let txn = self.db.begin_read()?;
+        let model = read_model(&txn.open_table(SCHEMAS)?, &txn.open_table(OBJECTS)?, name)?;
+        let rules_table = txn.open_table(RULES)?;
+        let global = read_rules(&rules_table, GLOBAL)?.links;
+        let set = read_rules(&rules_table, name)?;
+        let custom = read_custom(&txn.open_table(CUSTOM)?)?;
+        let cat = rules::catalog().with(&custom);
+        let all = read_proposals(&txn.open_table(PROPOSALS)?, name)?;
+        let cx =
+            review::Context { cat: &cat, custom: &custom, schema: &model, global: &global, set: &set, proposals: &all };
+        let out = all
+            .iter()
+            .map(|p| Reviewed {
+                proposal: p.clone(),
+                title: review::title(&cx, p),
+                verdict: (p.status == Status::Proposed).then(|| review::verify(&cx, p)),
+            })
+            .collect();
+        Ok((model, out))
     }
 
     /// Keeps the agent's proposals for review, numbered from the schema's last.
@@ -565,115 +602,122 @@ impl Store {
     /// # Errors
     /// When there is no such proposal, it is decided, or the store fails.
     pub fn set_proposal_enforce(&self, name: &str, id: u64, enforce: Enforce, by: &str) -> Result<Proposal> {
-        self.change_proposal(name, id, "change_proposal", by, |p| {
-            p.enforce = enforce;
-            Ok(None)
-        })
+        self.settle(name, id, Decision::Enforce(enforce), by)
     }
 
-    /// Approves or rejects a proposal. Approving verifies it again: an invalid or duplicate one is refused; a new
-    /// rule is kept in the workspace and linked, a link or an exception is added, all in one transaction.
+    /// Approves or rejects a proposal. Approving verifies it again and writes what it adds, all in one
+    /// transaction with the check: an invalid or duplicate one is refused; a new rule is kept in the workspace under
+    /// the next free id and linked; a link or an exception is added. A proposal that contradicts linked rules
+    /// switches each of them off where it is linked: the link there is taken away, or an exception says it was
+    /// replaced. What was written is logged with the decision.
     ///
     /// # Errors
-    /// When it does not verify, is already decided, there is no such proposal or schema, or the store fails.
+    /// When it does not verify, is already decided, a conflicting rule cannot be switched off (it is locked), there
+    /// is no such proposal or schema, or the store fails.
     pub fn decide(&self, name: &str, id: u64, approve: bool, by: &str) -> Result<Proposal> {
-        let kind = if approve { "approve_rule" } else { "reject_rule" };
-        if !approve {
-            return self.change_proposal(name, id, kind, by, |p| {
-                p.status = Status::Rejected;
-                p.decided_by = Some(by.to_string());
-                Ok(None)
-            });
-        }
-        let model = self.model(name)?;
-        let global = self.global_rules()?;
-        let set = self.rules(name)?;
-        let custom = self.custom_rules()?;
-        let cat = rules::catalog().with(&custom);
-        let all = self.proposals(name)?;
-        let p = all.iter().find(|p| p.id == id).ok_or_else(|| Error::Rule(format!("there is no proposal #{id}")))?;
-        let verdict = review::verify(
-            &review::Context {
-                cat: &cat,
-                custom: &custom,
-                schema: &model,
-                global: &global,
-                set: &set,
-                proposals: &all,
-            },
-            p,
-        );
-        match verdict.state {
-            review::State::Invalid => {
-                return Err(Error::Rule(format!(
-                    "proposal #{id} does not verify: {}",
-                    verdict.notes.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join("; ")
-                )));
-            }
-            review::State::Duplicate => {
-                return Err(Error::Rule(format!("proposal #{id} repeats a rule or a proposal: reject it")));
-            }
-            review::State::Ready | review::State::Conflict => {}
-        }
-        let new_id = format!("custom.{}", custom.len() + 1);
-        let rule = match &p.what {
-            Proposed::New { .. } => new_id.clone(),
-            Proposed::Link { rule } | Proposed::Off { rule, .. } => rule.clone(),
-        };
-        let draft = review::draft(p, &new_id, by, name);
-        let link = review::link_of(p, &rule);
-        self.change_proposal(name, id, kind, by, move |p| {
-            p.status = Status::Approved;
-            p.decided_by = Some(by.to_string());
-            p.rule = Some(rule);
-            Ok(Some((draft, link)))
-        })
+        self.settle(name, id, if approve { Decision::Approve } else { Decision::Reject }, by)
     }
 
-    /// Reads proposal `id`, applies `edit`, and keeps what the edit hands back (a new rule, a link), in one
-    /// transaction with the log.
-    #[allow(clippy::type_complexity)]
-    fn change_proposal(
-        &self,
-        name: &str,
-        id: u64,
-        kind: &str,
-        by: &str,
-        edit: impl FnOnce(&mut Proposal) -> Result<Option<(Option<CustomRule>, Link)>>,
-    ) -> Result<Proposal> {
+    /// Changes, approves or rejects proposal `id` in one transaction with the log.
+    fn settle(&self, name: &str, id: u64, decision: Decision, by: &str) -> Result<Proposal> {
         let txn = self.db.begin_write()?;
         let proposal;
         let operation;
         {
-            schema_info(&txn.open_table(SCHEMAS)?, name)?;
+            let schemas = txn.open_table(SCHEMAS)?;
+            let objects = txn.open_table(OBJECTS)?;
             let mut table = txn.open_table(PROPOSALS)?;
-            let key = proposal_key(name, id);
-            let mut p: Proposal = match table.get(key.as_str())? {
-                Some(v) => serde_json::from_str(v.value())?,
-                None => return Err(Error::Rule(format!("there is no proposal #{id}"))),
-            };
+            let mut custom_table = txn.open_table(CUSTOM)?;
+            let mut rules_table = txn.open_table(RULES)?;
+            let model = read_model(&schemas, &objects, name)?;
+            let all = read_proposals(&table, name)?;
+            let mut p = all
+                .iter()
+                .find(|p| p.id == id)
+                .cloned()
+                .ok_or_else(|| Error::Rule(format!("there is no proposal #{id}")))?;
             if p.status != Status::Proposed {
                 return Err(Error::Rule(format!("proposal #{id} is already {:?}", p.status).to_lowercase()));
             }
-            if let Some((rule, link)) = edit(&mut p)? {
-                if let Some(rule) = rule {
-                    txn.open_table(CUSTOM)?.insert(rule.id.as_str(), serde_json::to_string(&rule)?.as_str())?;
-                }
-                let mut rules_table = txn.open_table(RULES)?;
-                let mut set = read_rules(&rules_table, name)?;
-                set.links.retain(|l| !(l.rule == link.rule && l.at == link.at));
-                set.links.push(link);
-                rules_table.insert(name, serde_json::to_string(&set)?.as_str())?;
+            let mut change = serde_json::json!({ "proposal": id });
+            if let Decision::Enforce(e) = decision {
+                p.enforce = e;
+                change = serde_json::json!({ "proposal": id, "enforce": e });
+            } else {
+                p.decided_by = Some(by.to_string());
             }
-            table.insert(key.as_str(), serde_json::to_string(&p)?.as_str())?;
+            if decision == Decision::Approve {
+                let global = read_rules(&rules_table, GLOBAL)?.links;
+                let mut set = read_rules(&rules_table, name)?;
+                let custom = read_custom(&custom_table)?;
+                let cat = rules::catalog().with(&custom);
+                let cx = review::Context {
+                    cat: &cat,
+                    custom: &custom,
+                    schema: &model,
+                    global: &global,
+                    set: &set,
+                    proposals: &all,
+                };
+                let verdict = review::verify(&cx, &p);
+                match verdict.state {
+                    review::State::Invalid => {
+                        return Err(Error::Rule(format!(
+                            "proposal #{id} does not verify: {}",
+                            verdict.notes.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join("; ")
+                        )));
+                    }
+                    review::State::Duplicate => {
+                        return Err(Error::Rule(format!("proposal #{id} repeats a rule or a proposal: reject it")));
+                    }
+                    review::State::Ready | review::State::Conflict => {}
+                }
+                let rule = match &p.what {
+                    Proposed::New { .. } => next_custom_id(&custom),
+                    Proposed::Link { rule } | Proposed::Off { rule, .. } => rule.clone(),
+                };
+                let mut switched = Vec::new();
+                for c in &verdict.conflicts {
+                    let reason = format!("replaced by proposal #{id}: {}", verdict.title);
+                    let gone = set.links.len();
+                    set.links.retain(|l| !(&l.rule == c && l.at == p.at && !l.off));
+                    if set.links.len() == gone {
+                        let off = Link {
+                            rule: c.clone(),
+                            at: p.at.clone(),
+                            off: true,
+                            locked: false,
+                            reason: Some(reason),
+                            enforce: None,
+                        };
+                        rules::admit(&cat, &model, &global, &set, &off).map_err(|e| {
+                            Error::Rule(format!("`{c}` cannot be switched off for proposal #{id}: {e}"))
+                        })?;
+                        set.links.push(off);
+                    }
+                    switched.push(c.clone());
+                }
+                if let Some(rule) = review::draft(&p, &rule, by, name, model.target) {
+                    custom_table.insert(rule.id.as_str(), serde_json::to_string(&rule)?.as_str())?;
+                }
+                let link = review::link_of(&p, &rule);
+                set.links.push(link.clone());
+                rules_table.insert(name, serde_json::to_string(&set)?.as_str())?;
+                p.status = Status::Approved;
+                p.rule = Some(rule.clone());
+                change = serde_json::json!({ "proposal": id, "rule": rule, "link": link, "switched_off": switched });
+            } else if decision == Decision::Reject {
+                p.status = Status::Rejected;
+            }
+            table.insert(proposal_key(name, id).as_str(), serde_json::to_string(&p)?.as_str())?;
             let mut ops = txn.open_table(OPERATIONS)?;
             let sequence = last_sequence(&ops, name)? + 1;
-            operation = Operation {
-                sequence,
-                kind: kind.to_string(),
-                by: by.to_string(),
-                change: serde_json::json!({ "proposal": id }),
+            let kind = match decision {
+                Decision::Approve => "approve_rule",
+                Decision::Reject => "reject_rule",
+                Decision::Enforce(_) => "change_proposal",
             };
+            operation = Operation { sequence, kind: kind.to_string(), by: by.to_string(), change };
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
             proposal = p;
         }
@@ -835,18 +879,21 @@ impl Store {
         kind: &str,
         by: &str,
         change: Value,
-        edit: impl FnOnce(&mut RuleSet) -> Result<()>,
+        edit: impl FnOnce(&mut RuleSet, &Look<'_, '_>) -> Result<()>,
     ) -> Result<Operation> {
         let key = to.key();
         let txn = self.db.begin_write()?;
         let operation;
         {
+            let schemas = txn.open_table(SCHEMAS)?;
             if let Rules::Schema(name) = to {
-                schema_info(&txn.open_table(SCHEMAS)?, name)?;
+                schema_info(&schemas, name)?;
             }
+            let objects = txn.open_table(OBJECTS)?;
+            let custom = txn.open_table(CUSTOM)?;
             let mut table = txn.open_table(RULES)?;
             let mut set = read_rules(&table, &key)?;
-            edit(&mut set)?;
+            edit(&mut set, &Look { schemas: &schemas, objects: &objects, rules: &table, custom: &custom })?;
             table.insert(key.as_str(), serde_json::to_string(&set)?.as_str())?;
             let mut ops = txn.open_table(OPERATIONS)?;
             let sequence = last_sequence(&ops, &key)? + 1;
@@ -857,6 +904,116 @@ impl Store {
         let _ = self.changes.send(Change { schema: key, operation: operation.clone() });
         Ok(operation)
     }
+}
+
+/// The schema `name`'s model, read back from its records in `objects`.
+fn read_model(
+    schemas: &impl ReadableTable<&'static str, &'static str>,
+    objects: &impl ReadableTable<&'static str, &'static str>,
+    name: &str,
+) -> Result<Schema> {
+    let info = schema_info(schemas, name)?;
+    let (lo, hi) = prefix_range(name);
+    let mut records: Vec<Record> = Vec::new();
+    for entry in objects.range(lo.as_str()..hi.as_str())? {
+        let (_, v) = entry?;
+        records.push(serde_json::from_str(v.value())?);
+    }
+    records.sort_by_key(|r| (r.section, r.position));
+    let mut doc = serde_json::Map::new();
+    doc.insert("format".to_string(), Value::from(info.format));
+    doc.insert("target".to_string(), serde_json::to_value(info.target)?);
+    for section in SECTIONS {
+        let items: Vec<Value> = records.iter().filter(|r| r.section == section).map(|r| r.object.clone()).collect();
+        if !items.is_empty() {
+            doc.insert(section.key().to_string(), Value::Array(items));
+        }
+    }
+    Ok(serde_json::from_value(Value::Object(doc))?)
+}
+
+/// What a rules change reads, inside its own write transaction, so a check and the write it allows see the
+/// same store.
+struct Look<'a, 't> {
+    schemas: &'a redb::Table<'t, &'static str, &'static str>,
+    objects: &'a redb::Table<'t, &'static str, &'static str>,
+    rules: &'a redb::Table<'t, &'static str, &'static str>,
+    custom: &'a redb::Table<'t, &'static str, &'static str>,
+}
+
+impl Look<'_, '_> {
+    fn model(&self, name: &str) -> Result<Schema> {
+        read_model(self.schemas, self.objects, name)
+    }
+
+    /// The built-in rules and the workspace's own, as this transaction sees them.
+    fn catalog(&self) -> Result<Catalog> {
+        Ok(rules::catalog().with(&read_custom(self.custom)?))
+    }
+
+    /// Checks `link` may be added to `set`, the rules of `to`: against that schema, or for a global link
+    /// against every schema of the workspace.
+    fn admit(&self, to: Rules<'_>, set: &RuleSet, link: &Link) -> Result<()> {
+        let cat = &self.catalog()?;
+        rules::well_formed(cat, link).map_err(Error::Rule)?;
+        match to {
+            Rules::Schema(name) => {
+                let global = read_rules(self.rules, GLOBAL)?.links;
+                rules::admit(cat, &self.model(name)?, &global, set, link).map_err(Error::Rule)
+            }
+            Rules::Global => {
+                for entry in self.schemas.iter()? {
+                    let (k, _) = entry?;
+                    let name = k.value();
+                    let own = read_rules(self.rules, name)?;
+                    rules::admit(cat, &self.model(name)?, &set.links, &own, link)
+                        .map_err(|e| Error::Rule(format!("{name}: {e}")))?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+/// What is done to a proposal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Decision {
+    Approve,
+    Reject,
+    Enforce(Enforce),
+}
+
+/// A proposal with its title and, while open, the system's verdict.
+#[derive(Debug, Clone, Serialize)]
+pub struct Reviewed {
+    pub proposal: Proposal,
+    pub title: String,
+    pub verdict: Option<review::Verdict>,
+}
+
+fn read_custom(table: &impl ReadableTable<&'static str, &'static str>) -> Result<Vec<CustomRule>> {
+    let mut out = Vec::new();
+    for entry in table.iter()? {
+        let (_, v) = entry?;
+        out.push(serde_json::from_str(v.value())?);
+    }
+    Ok(out)
+}
+
+fn read_proposals(table: &impl ReadableTable<&'static str, &'static str>, name: &str) -> Result<Vec<Proposal>> {
+    let (lo, hi) = prefix_range(name);
+    let mut out = Vec::new();
+    for entry in table.range(lo.as_str()..hi.as_str())? {
+        let (_, v) = entry?;
+        out.push(serde_json::from_str(v.value())?);
+    }
+    Ok(out)
+}
+
+/// The next free id for a workspace rule: one past the highest `custom.<n>` kept.
+fn next_custom_id(custom: &[CustomRule]) -> String {
+    let n = custom.iter().filter_map(|c| c.id.strip_prefix("custom.")?.parse::<u64>().ok()).max().unwrap_or(0);
+    format!("custom.{}", n + 1)
 }
 
 fn read_rules(table: &impl ReadableTable<&'static str, &'static str>, key: &str) -> Result<RuleSet> {

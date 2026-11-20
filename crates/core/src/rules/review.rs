@@ -108,13 +108,13 @@ fn note(mark: Mark, text: impl Into<String>) -> Note {
 
 /// The rule a new proposal would add, for the preview and for approval.
 #[must_use]
-pub fn draft(p: &Proposal, id: &str, approved_by: &str, schema: &str) -> Option<CustomRule> {
+pub fn draft(p: &Proposal, id: &str, approved_by: &str, schema: &str, target: Target) -> Option<CustomRule> {
     let Proposed::New { sentence, targets } = &p.what else { return None };
     Some(CustomRule {
         id: id.to_string(),
         sentence: sentence.clone(),
         hard: p.enforce == Enforce::Hard,
-        targets: targets.clone(),
+        targets: sentence.targets(targets, target),
         why: p.why.clone(),
         provenance: Provenance {
             proposed_by: p.by.clone(),
@@ -201,25 +201,34 @@ pub fn verify(cx: &Context<'_>, p: &Proposal) -> Verdict {
                 };
             }
             notes.push(note(Mark::Ok, "Written in the rule grammar: it runs as data, not code"));
-            if let Some(same) = cx.custom.iter().find(|c| &c.sentence == sentence && &c.targets == targets) {
+            let target = cx.schema.target;
+            let holds_on = sentence.targets(targets, target);
+            if let Some(same) = cx.custom.iter().find(|c| &c.sentence == sentence && c.targets == holds_on) {
                 state = State::Duplicate;
                 notes.push(note(Mark::Reuse, format!("Already a rule: `{}` says the same. Link it instead", same.id)));
             } else if let Some(other) = cx.proposals.iter().find(|o| {
                 o.id < p.id
-                    && o.status != Status::Rejected
-                    && matches!(&o.what, Proposed::New { sentence: s, .. } if s == sentence)
+                    && o.status == Status::Proposed
+                    && matches!(&o.what, Proposed::New { sentence: s, targets: t }
+                        if s == sentence && s.targets(t, target) == holds_on)
             }) {
                 state = State::Duplicate;
                 notes.push(note(Mark::Reuse, format!("Proposal #{} says the same", other.id)));
             } else {
                 notes.push(note(Mark::New, "A new rule: no rule of the catalog says it"));
             }
-            let draft = draft(p, PREVIEW, "", "").expect("a new rule");
+            let draft = draft(p, PREVIEW, "", "", cx.schema.target).expect("a new rule");
             (cx.cat.with(std::slice::from_ref(&draft)), PREVIEW.to_string())
         }
         Proposed::Link { rule } | Proposed::Off { rule, .. } => {
             let link = link_of(p, rule);
-            match admit(cx.cat, cx.schema, cx.global, cx.set, &link) {
+            let there = cx.set.links.iter().chain(cx.global).find(|l| l.rule == link.rule && l.at == link.at);
+            match there.map_or_else(|| admit(cx.cat, cx.schema, cx.global, cx.set, &link), |_| Ok(())) {
+                Ok(()) if there.is_some() => {
+                    state = State::Duplicate;
+                    let how = if there.is_some_and(|l| l.off) { "switched off" } else { "linked" };
+                    notes.push(note(Mark::Reuse, format!("Already there: `{rule}` is {how} at {}", describe(&p.at))));
+                }
                 Ok(()) => {
                     let what = if rule == ALL {
                         "every rule".to_string()
@@ -234,10 +243,6 @@ pub fn verify(cx: &Context<'_>, p: &Proposal) -> Verdict {
                         if matches!(p.what, Proposed::Off { .. }) { Mark::Warn } else { Mark::Reuse },
                         text,
                     ));
-                }
-                Err(e) if e.contains("already linked") => {
-                    state = State::Duplicate;
-                    notes.push(note(Mark::Reuse, format!("Already there: {e}")));
                 }
                 Err(e) => {
                     notes.push(note(Mark::Bad, e));
@@ -320,7 +325,8 @@ pub fn verify(cx: &Context<'_>, p: &Proposal) -> Verdict {
 }
 
 /// The proposal in words: a new rule's sentence, or the rule it links or switches off.
-fn title(cx: &Context<'_>, p: &Proposal) -> String {
+#[must_use]
+pub fn title(cx: &Context<'_>, p: &Proposal) -> String {
     match &p.what {
         Proposed::New { sentence, .. } => sentence.words(),
         Proposed::Link { rule } => cx.cat.rule(rule).map_or_else(|| rule.clone(), |r| r.title.clone()),

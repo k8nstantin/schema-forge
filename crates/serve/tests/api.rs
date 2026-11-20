@@ -126,17 +126,21 @@ async fn rules_are_read_linked_and_refused_with_a_reason() {
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST, "an exception needs a reason");
     assert!(err["error"].as_str().is_some_and(|e| e.contains("reason")), "{err}");
-    let (status, _) = send(
-        &store,
-        "PUT",
-        "/api/schemas/orders/rules/groups",
-        serde_json::json!({ "name": "hot", "tables": ["t_orders"] }),
-    )
-    .await;
+    let hot = serde_json::json!({ "name": "hot", "tables": ["t_orders"] });
+    let (status, _) = send(&store, "PUT", "/api/schemas/orders/rules/groups", hot.clone()).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "only a group there is can change");
+    let (status, _) = send(&store, "POST", "/api/schemas/orders/rules/groups", hot.clone()).await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _) = send(&store, "POST", "/api/schemas/orders/rules/groups", hot.clone()).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "a new group never replaces one");
+    let (status, _) = send(&store, "PUT", "/api/schemas/orders/rules/groups", hot).await;
     assert_eq!(status, StatusCode::OK);
     let (status, ops) = send(&store, "POST", "/api/schemas/orders/goals/postgres-iceberg", serde_json::json!({})).await;
     assert_eq!(status, StatusCode::OK, "{ops}");
-    assert_eq!(ops.as_array().map(Vec::len), Some(2), "the goal links its two packs");
+    assert_eq!(ops.as_array().map(Vec::len), Some(1), "the goal links its packs in one change");
+    assert_eq!(ops[0]["change"]["packs"].as_array().map(Vec::len), Some(2), "{ops}");
+    let (_, again) = send(&store, "POST", "/api/schemas/orders/goals/postgres-iceberg", serde_json::json!({})).await;
+    assert_eq!(again, serde_json::json!([]), "nothing left to link");
     let (status, _) = send(&store, "POST", "/api/schemas/orders/goals/nothing", serde_json::json!({})).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 

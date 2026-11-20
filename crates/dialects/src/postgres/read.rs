@@ -840,15 +840,19 @@ impl<'s> Reader<'s> {
         while !c.at_end() {
             let begin = c.i;
             if c.kw("DEFAULT") {
-                let end = c.find_top(c.i, c.toks().len(), |t| {
+                // The expression is at least its first token (`DEFAULT NULL NOT NULL` defaults to NULL).
+                if c.at_end() {
+                    return Err(Fallback);
+                }
+                let end = c.find_top(c.i + 1, c.toks().len(), |t| {
                     ["CONSTRAINT", "NOT", "NULL", "CHECK"].iter().any(|kw| is_kw(t, kw))
                 });
                 default = Some(c.text(c.i, end).to_string());
                 c.i = end;
             } else if c.kws(&["NOT", "NULL"]) {
                 not_null = true;
-            } else if c.kw("CONSTRAINT") || c.is_kw("CHECK") {
-                if c.toks()[begin].token != c.toks()[c.i - 1].token || !c.is_kw("CHECK") {
+            } else if c.is_kw("CONSTRAINT") || c.is_kw("CHECK") {
+                if c.kw("CONSTRAINT") {
                     c.ident().ok_or(Fallback)?;
                 }
                 if !c.kw("CHECK") {
@@ -1063,27 +1067,38 @@ impl<'s> Reader<'s> {
     /// partitions, tables of their own.
     fn partitions(&mut self) {
         let attaches = std::mem::take(&mut self.attaches);
+        // Each parent once, in the order first seen, however its attaches are interleaved with others'.
         let parents: Vec<Id> = {
-            let mut p: Vec<Id> = attaches.iter().map(|a| a.parent.clone()).collect();
-            p.dedup();
+            let mut p: Vec<Id> = Vec::new();
+            for a in &attaches {
+                if !p.contains(&a.parent) {
+                    p.push(a.parent.clone());
+                }
+            }
             p
         };
-        let mut gone: HashSet<Id> = HashSet::new();
+        // Each folded child, and the parent whose series it went into.
+        let mut gone: HashMap<Id, Id> = HashMap::new();
         for parent in parents {
             let mine: Vec<&Attach> = attaches.iter().filter(|a| a.parent == parent).collect();
             let run = series(&mine);
             if run.len() >= SERIES_MIN {
                 self.collapse(&parent, &run, &mut gone);
             }
-            for a in mine.iter().filter(|a| !gone.contains(&a.child)) {
-                if let Some(t) = self.schema.tables.iter_mut().find(|t| t.id == a.child) {
+            for a in mine.iter().filter(|a| !gone.contains_key(&a.child)) {
+                if self.has_own(&a.child) {
+                    // Keys, constraints, indexes, links or sequences of its own name its columns: it stays a table
+                    // with them, and its ATTACH is kept as written, after both, as pg_dump lays it out.
+                    self.keep_attach(a);
+                } else if let Some(t) = self.schema.tables.iter_mut().find(|t| t.id == a.child) {
                     t.partition_of = Some(PartitionOf { parent: parent.clone(), bounds: a.bounds.clone() });
                     t.columns.clear();
                 }
             }
         }
         if !gone.is_empty() {
-            self.schema.tables.retain(|t| !gone.contains(&t.id));
+            self.forget_folded(&gone);
+            self.schema.tables.retain(|t| !gone.contains_key(&t.id));
             let tables = &self.schema.tables;
             self.relations.retain(|_, r| !matches!(r, Rel::Table(_)));
             for (i, t) in tables.iter().enumerate() {
@@ -1095,7 +1110,94 @@ impl<'s> Reader<'s> {
         }
     }
 
-    fn collapse(&mut self, parent: &Id, run: &[(&Attach, String, String)], gone: &mut HashSet<Id>) {
+    /// Whether a table has anything of its own that names its columns.
+    fn has_own(&self, id: &Id) -> bool {
+        let Some(t) = self.schema.tables.iter().find(|t| &t.id == id) else { return false };
+        let cols: HashSet<&Id> = t.columns.iter().map(|c| &c.id).collect();
+        t.primary_key.is_some()
+            || !t.uniques.is_empty()
+            || !t.checks.is_empty()
+            || !t.indexes.is_empty()
+            || self.schema.relationships.iter().any(|r| &r.from.table == id || &r.to.table == id)
+            || self.schema.sequences.iter().any(|q| q.owned_by.as_ref().is_some_and(|c| cols.contains(c)))
+    }
+
+    /// Keeps an attached partition's ATTACH statement as written, after the later of the parent and the child.
+    fn keep_attach(&mut self, a: &Attach) {
+        let at = |id: &Id| self.schema.tables.iter().position(|t| &t.id == id);
+        let after = if at(&a.parent) > at(&a.child) { a.parent.clone() } else { a.child.clone() };
+        let id = self.new_id(Kind::Kept, &["attach", a.child.as_str()]);
+        self.classes[a.statement] = Class::Kept(KeptKind::Partitions);
+        self.kept_from.insert(id.clone(), a.statement);
+        self.schema.kept.push(Kept {
+            id,
+            kind: KeptKind::Partitions,
+            text: self.statements[a.statement].text.clone(),
+            after: Some(after),
+            refers_to: vec![a.parent.clone(), a.child.clone()],
+        });
+    }
+
+    /// After children are folded into a series (`gone`: each child and its parent): what pointed at them no longer
+    /// points at nothing.
+    fn forget_folded(&mut self, gone: &HashMap<Id, Id>) {
+        // Links from a folded child travel in the series text; a link to one is reported, not kept half.
+        let mut lost = Vec::new();
+        self.schema.relationships.retain(|r| {
+            if gone.contains_key(&r.to.table) && !gone.contains_key(&r.from.table) {
+                lost.push(r.name.clone().unwrap_or_else(|| r.id.to_string()));
+            }
+            !gone.contains_key(&r.from.table) && !gone.contains_key(&r.to.table)
+        });
+        for name in lost {
+            self.not_understood.push((0, format!("foreign key `{name}` points at a partition folded into a series")));
+        }
+        for v in &mut self.schema.views {
+            v.reads.retain(|r| !gone.contains_key(r));
+        }
+        // A sequence owned by a folded child's column keeps its OWNED BY as written, after the parent's series.
+        let ns_name = |s: &Self, id: &Id| {
+            s.schema.namespaces.iter().find(|n| &n.id == id).map_or(String::new(), |n| n.name.clone())
+        };
+        let mut owned = Vec::new();
+        for (qi, q) in self.schema.sequences.iter().enumerate() {
+            let Some(col) = &q.owned_by else { continue };
+            let Some(t) =
+                self.schema.tables.iter().find(|t| gone.contains_key(&t.id) && t.columns.iter().any(|c| &c.id == col))
+            else {
+                continue;
+            };
+            let c = t.columns.iter().find(|c| &c.id == col).expect("found");
+            let text = format!(
+                "ALTER SEQUENCE \"{}\".\"{}\" OWNED BY \"{}\".\"{}\".\"{}\"",
+                ns_name(self, &q.namespace),
+                q.name,
+                ns_name(self, &t.namespace),
+                t.name,
+                c.name
+            );
+            owned.push((qi, text, gone[&t.id].clone()));
+        }
+        for (qi, text, parent) in owned {
+            self.schema.sequences[qi].owned_by = None;
+            let id = self.new_id(Kind::Kept, &["owned", &self.schema.sequences[qi].name.clone()]);
+            self.schema.kept.push(Kept {
+                id,
+                kind: KeptKind::Other,
+                text,
+                after: Some(parent.clone()),
+                refers_to: vec![parent],
+            });
+        }
+        // Kept statements placed after a folded child go after its parent, where the series is written.
+        for k in &mut self.schema.kept {
+            if let Some(parent) = k.after.as_ref().and_then(|a| gone.get(a)) {
+                k.after = Some(parent.clone());
+            }
+        }
+    }
+
+    fn collapse(&mut self, parent: &Id, run: &[(&Attach, String, String)], gone: &mut HashMap<Id, Id>) {
         let children: HashSet<Id> = run.iter().map(|(a, _, _)| a.child.clone()).collect();
         let mut statements: Vec<usize> = Vec::new();
         for (a, _, _) in run {
@@ -1149,7 +1251,7 @@ impl<'s> Reader<'s> {
                 kept: id,
             });
         }
-        gone.extend(children);
+        gone.extend(children.into_iter().map(|c| (c, parent.clone())));
         self.series += 1;
     }
 
