@@ -11,7 +11,7 @@ and every import and export reads or writes it. This document is the design to a
 2. **Nothing is lost.** Whatever the model does not describe is kept verbatim and written back in its
    place. Every type, option and definition keeps its exact form.
 3. **Every object has an identity.** Each table, column, key, index, relationship, view and sequence has a
-   stable `id` besides its name. Renaming changes the name, not the identity, so a migration renames
+   stable, readable `id` besides its name (see [Ids](#ids)). Renaming changes the name, not the identity, so a migration renames
    instead of dropping and recreating, and data survives.
 4. **Facts only.** The model holds what the schema is. Layout, perspectives, rules and history live in
    their own files.
@@ -36,6 +36,25 @@ and every import and export reads or writes it. This document is the design to a
 
 `format` is the version of this file format; a newer `sf` upgrades older files and never writes an older
 format. `target` is `mysql`, `postgres` or `iceberg`.
+
+## Ids
+
+Readable, made once from the object's kind and name when it is created, and never changed:
+
+| Kind | Example |
+|---|---|
+| namespace, area | `n_public`, `a_billing` |
+| table, view | `t_orders`, `v_current_orders` |
+| column | `c_orders_total` |
+| key, index, check | `u_orders_version`, `i_orders_customer`, `k_orders_total_positive` |
+| relationship | `r_orders_customer` |
+| sequence, type | `s_orders_seq`, `y_order_status` |
+
+- An id that is already taken gets a number: `t_orders_2`.
+- A rename keeps the id, so after renaming `orders` to `sales` the table is still `t_orders`: the id is its
+  identity, not its name. Every perspective, the agent and the generated SQL use the name.
+- Everything refers to other objects by id: keys, indexes, relationships, views' `reads`, partition and sort
+  fields, patterns. Renames then never break a reference.
 
 ## Objects
 
@@ -245,65 +264,64 @@ Orders with SCD Type 2 on PostgreSQL (shortened):
 {
   "format": 1,
   "target": "postgres",
-  "namespaces": [{ "id": "n1", "name": "public" }],
+  "namespaces": [{ "id": "n_public", "name": "public" }],
   "tables": [
     {
-      "id": "t1", "namespace": "n1", "name": "customers", "comment": "People who order.",
+      "id": "t_customers", "namespace": "n_public", "name": "customers", "comment": "People who order.",
       "columns": [
-        { "id": "c1", "name": "id", "type": { "name": "bigint" }, "nullable": false,
+        { "id": "c_customers_id", "name": "id", "type": { "name": "bigint" }, "nullable": false,
           "identity": { "always": true } },
-        { "id": "c2", "name": "email", "type": { "name": "text" }, "nullable": false }
+        { "id": "c_customers_email", "name": "email", "type": { "name": "text" }, "nullable": false }
       ],
-      "primary_key": { "name": "customers_pkey", "columns": ["c1"] },
-      "uniques": [{ "id": "u1", "name": "customers_email_key", "columns": ["c2"] }]
+      "primary_key": { "name": "customers_pkey", "columns": ["c_customers_id"] },
+      "uniques": [{ "id": "u_customers_email", "name": "customers_email_key", "columns": ["c_customers_email"] }]
     },
     {
-      "id": "t2", "namespace": "n1", "name": "orders", "comment": "Every version of every order.",
+      "id": "t_orders", "namespace": "n_public", "name": "orders", "comment": "Every version of every order.",
       "tags": ["scd2"],
-      "patterns": { "scd2": { "business_key": ["c4"] } },
+      "patterns": { "scd2": { "business_key": ["c_orders_order_no"] } },
       "columns": [
-        { "id": "c3", "name": "order_key", "type": { "name": "bigint" }, "nullable": false,
+        { "id": "c_orders_order_key", "name": "order_key", "type": { "name": "bigint" }, "nullable": false,
           "identity": { "always": true } },
-        { "id": "c4", "name": "order_no", "type": { "name": "text" }, "nullable": false },
-        { "id": "c5", "name": "customer_id", "type": { "name": "bigint" }, "nullable": false },
-        { "id": "c6", "name": "total", "type": { "name": "numeric", "precision": 12, "scale": 2 }, "nullable": false },
-        { "id": "c7", "name": "valid_from", "type": { "name": "timestamp", "with_time_zone": true }, "nullable": false },
-        { "id": "c8", "name": "valid_to", "type": { "name": "timestamp", "with_time_zone": true }, "nullable": true }
+        { "id": "c_orders_order_no", "name": "order_no", "type": { "name": "text" }, "nullable": false },
+        { "id": "c_orders_customer_id", "name": "customer_id", "type": { "name": "bigint" }, "nullable": false },
+        { "id": "c_orders_total", "name": "total", "type": { "name": "numeric", "precision": 12, "scale": 2 }, "nullable": false },
+        { "id": "c_orders_valid_from", "name": "valid_from", "type": { "name": "timestamp", "with_time_zone": true }, "nullable": false },
+        { "id": "c_orders_valid_to", "name": "valid_to", "type": { "name": "timestamp", "with_time_zone": true }, "nullable": true }
       ],
-      "primary_key": { "name": "orders_pkey", "columns": ["c3"] },
-      "uniques": [{ "id": "u2", "name": "orders_version_key", "columns": ["c4", "c7"] }],
-      "indexes": [{ "id": "i1", "name": "orders_customer_idx", "parts": [{ "column": "c5" }] }]
+      "primary_key": { "name": "orders_pkey", "columns": ["c_orders_order_key"] },
+      "uniques": [{ "id": "u_orders_version", "name": "orders_version_key", "columns": ["c_orders_order_no", "c_orders_valid_from"] }],
+      "indexes": [{ "id": "i_orders_customer", "name": "orders_customer_idx", "parts": [{ "column": "c_orders_customer_id" }] }]
     }
   ],
   "relationships": [
-    { "id": "r1", "name": "orders_customer_fkey", "from": { "table": "t2", "columns": ["c5"] },
-      "to": { "table": "t1", "columns": ["c1"] }, "enforced": true, "on_delete": "restrict" }
+    { "id": "r_orders_customer", "name": "orders_customer_fkey", "from": { "table": "t_orders", "columns": ["c_orders_customer_id"] },
+      "to": { "table": "t_customers", "columns": ["c_customers_id"] }, "enforced": true, "on_delete": "restrict" }
   ],
   "views": [
-    { "id": "v1", "namespace": "n1", "name": "current_orders", "comment": "Each order as it is now.",
+    { "id": "v_current_orders", "namespace": "n_public", "name": "current_orders", "comment": "Each order as it is now.",
       "definition": "SELECT order_no, customer_id, total FROM orders WHERE valid_to IS NULL",
-      "reads": ["t2"] }
+      "reads": ["t_orders"] }
   ]
 }
 ```
 
 The same `orders` on Iceberg differs only where Iceberg differs: `bigint` becomes `long`, `numeric`
 becomes `decimal`, `timestamp with time zone` becomes Iceberg `timestamptz`; columns carry `field_id`s; the relationship to
-`customers` has `enforced: false`; the table has `identifier_fields: [c3]`, a `partition_spec` such as
-`[{ "source": "c7", "transform": "month" }]` and a `sort_order` on `order_no`; the view carries its Spark
+`customers` has `enforced: false`; the table has `identifier_fields: ["c_orders_order_key"]`, a `partition_spec` such as
+`[{ "source": "c_orders_valid_from", "transform": "month" }]` and a `sort_order` on `order_no`; the view carries its Spark
 and Trino `representations`.
 
-(Ids are shown short here; real ones are generated and stable.)
+
+## Decided
+
+- **One target per project** (operator, 2026-11-20). Conversion makes a new project.
+- **Readable ids** (operator, 2026-11-20), as in [Ids](#ids).
+- **References by id** (operator, 2026-11-20).
 
 ## Questions to settle
 
-1. **One target per project**, with conversion making a new project, or one project carrying several
-   targets at once?
-2. **Ids:** short readable ones (`t_orders_1`) or UUIDs? Readable ids make `schema.json` easier for you
-   and the agent to read and diff; UUIDs never collide when two branches merge.
-3. **Column references** inside keys, indexes and relationships: by id (as above, survives renames) or by
-   name (easier to read and hand-edit)?
-4. **PostgreSQL partitions:** model each partition as its own table (`partition_of`), or keep partitions
+1. **PostgreSQL partitions:** model each partition as its own table (`partition_of`), or keep partitions
    verbatim?
-5. **Kept statements:** is "written back in the same place" enough, or should triggers and functions be
+2. **Kept statements:** is "written back in the same place" enough, or should triggers and functions be
    objects the agent can edit too, in a later version?
