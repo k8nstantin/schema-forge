@@ -7,6 +7,10 @@ agent, and watch it take shape.**
 at what you mean, and tell the agent what to do. The agent works through Schema Forge's MCP, and every
 change appears at once on a rich, live perspective that you both see. When the schema is right, export it for MySQL, PostgreSQL or Apache Iceberg.
 
+**Rich visuals, agent-centric:** everything you see, you can hand to the agent. Press `C` on a table, a
+column, a rule, a finding or a change, and paste the reference into your prompt (`@orders.total`,
+`@finding:14`), or drag it there.
+
 It works with **any coding agent that speaks MCP** (Claude Code first). The MCP is the enforcer: every
 change goes through it and is checked against the schema's rules. More agents and more databases come
 later. How it compares with what exists: [docs/market.md](docs/market.md).
