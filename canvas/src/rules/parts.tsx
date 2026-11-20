@@ -1,6 +1,6 @@
 // Pieces the rules views share: a rule's strength, a pass/break bar, the findings as references, a type map.
 
-import type { Finding, Lane, Rule, Tally, TypeMap } from '../model'
+import type { Enforce, Finding, Lane, Rule, Tally, TypeMap } from '../model'
 import { tableRef, useWorkbench } from '../state'
 
 /// The exception that switches every rule off: rules are optional, for a schema, a group, any level.
@@ -14,6 +14,17 @@ export const LANES: [Lane, string][] = [
   ['iceberg', 'Iceberg'],
   ['between', 'Between databases'],
 ]
+
+/// Hard (enforced) or soft (highlighted only); unset follows each rule's default.
+export function EnforceToggle({ value, onChange, fallback }: { value?: Enforce; onChange: (e: Enforce) => void; fallback?: string }) {
+  return (
+    <span className="sf-enforce" role="group" aria-label="Hard or soft">
+      <button type="button" className={value === 'hard' ? 'sf-on-hard' : ''} onClick={() => onChange('hard')} title="Enforced: the agent's change is refused">Hard</button>
+      <button type="button" className={value === 'soft' ? 'sf-on-soft' : ''} onClick={() => onChange('soft')} title="Highlighted only">Soft</button>
+      {!value && fallback && <span className="sf-muted sf-small">{fallback}</span>}
+    </span>
+  )
+}
 
 export function Strength({ rule }: { rule: Rule }) {
   return <span className={`sf-strength sf-${rule.strength}`}>{rule.strength === 'must' ? 'Must' : 'Should'}</span>
@@ -34,7 +45,7 @@ export function TallyBar({ tally, preview }: { tally?: Tally; preview?: boolean 
         {tally.checked === 0
           ? 'nothing to check'
           : tally.breaks
-            ? `${preview ? '+' : ''}${tally.breaks.toLocaleString()} ${tally.breaks === 1 ? 'break' : 'breaks'}${preview ? ' if linked' : ''}`
+            ? `${preview ? '+' : ''}${tally.breaks.toLocaleString()} ${tally.breaks === 1 ? 'break' : 'breaks'}${tally.hard ? `, ${tally.hard.toLocaleString()} hard` : ''}${preview ? ' if linked' : ''}`
             : `all ${tally.checked.toLocaleString()} pass`}
       </span>
     </span>
@@ -50,8 +61,8 @@ export function Findings({ findings, limit = 60 }: { findings: Finding[]; limit?
       {findings.slice(0, limit).map((f, i) => {
         const col = f.column ? ix.columns.get(f.column)?.column.name : undefined
         return (
-          <button key={i} type="button" className="sf-finding" onClick={() => { point(f.column ? { kind: 'column', table: f.table, column: f.column } : { kind: 'table', table: f.table }); go('table', f.table) }}>
-            <span className="sf-mono sf-ref-inline">{tableRef(ix, f.table)}{col ? `.${col}` : ''}</span>
+          <button key={i} type="button" className={`sf-finding ${f.hard ? 'sf-hard' : 'sf-soft'}`} onClick={() => { point(f.column ? { kind: 'column', table: f.table, column: f.column } : { kind: 'table', table: f.table }); go('table', f.table) }}>
+            <span className="sf-mono sf-ref-inline"><span className="sf-hs">{f.hard ? 'hard' : 'soft'}</span> {tableRef(ix, f.table)}{col ? `.${col}` : ''}</span>
             <span>{f.message}</span>
             <span className="sf-muted sf-small">{catalog.rules.find((r) => r.id === f.rule)?.title}</span>
           </button>

@@ -88,7 +88,14 @@ fn rules_are_linked_checked_logged_and_kept() {
     let path = dir.path().join("store.redb");
     let model = fixture("orders_iceberg.json");
     let table = model.tables[0].id.clone();
-    let link = |rule: &str, at: Scope| Link { rule: rule.to_string(), at, off: false, locked: false, reason: None };
+    let link = |rule: &str, at: Scope| Link {
+        rule: rule.to_string(),
+        at,
+        off: false,
+        locked: false,
+        reason: None,
+        enforce: None,
+    };
     {
         let store = Store::open(&path).expect("open");
         store.create_schema("lake", Target::Iceberg).expect("create");
@@ -135,4 +142,41 @@ fn rules_are_linked_checked_logged_and_kept() {
     store.remove_group("lake", "hot", "you").expect("now it can go");
     assert!(store.unlink_rule(Rules::Schema("lake"), "cdc", &Scope::Schema, "you").is_err(), "nothing linked there");
     assert!(matches!(store.rules("nowhere"), Err(Error::NoSchema(_))));
+}
+
+#[test]
+fn proposals_wait_for_approval_and_are_decided_once() {
+    use schema_forge_core::rules::Enforce;
+    use schema_forge_core::rules::Scope;
+    use schema_forge_core::rules::custom::Sentence;
+    use schema_forge_core::rules::review::{Proposed, Status};
+    let dir = tempfile::tempdir().expect("dir");
+    let store = Store::open(&dir.path().join("store.redb")).expect("open");
+    store.create_schema("lake", Target::Iceberg).expect("create");
+    store.replace_model("lake", &fixture("orders_iceberg.json"), "import", "import").expect("save");
+    let new = |column: &str| Proposed::New {
+        sentence: Sentence::HasColumn { column: column.into(), required: false, types: vec![] },
+        targets: vec![],
+    };
+    let kept = store
+        .propose(
+            "lake",
+            vec![
+                (new("id"), Scope::Schema, Enforce::Soft, "seen".into()),
+                (new("id"), Scope::Schema, Enforce::Soft, "again".into()),
+            ],
+            "agent",
+        )
+        .expect("proposed");
+    assert_eq!(kept.iter().map(|p| p.id).collect::<Vec<_>>(), [1, 2]);
+    assert!(store.rules("lake").expect("rules").links.is_empty(), "nothing holds before approval");
+    store.set_proposal_enforce("lake", 1, Enforce::Hard, "you").expect("hard");
+    let approved = store.decide("lake", 1, true, "you").expect("approved");
+    assert_eq!((approved.status, approved.rule.as_deref()), (Status::Approved, Some("custom.1")));
+    let set = store.rules("lake").expect("rules");
+    assert_eq!(set.links[0].enforce, Some(Enforce::Hard));
+    assert_eq!(store.custom_rules().expect("custom")[0].provenance.approved_by, "you");
+    assert!(matches!(store.decide("lake", 1, true, "you"), Err(Error::Rule(_))), "decided once");
+    assert!(matches!(store.decide("lake", 2, true, "you"), Err(Error::Rule(_))), "#2 repeats the rule #1 became");
+    assert_eq!(store.decide("lake", 2, false, "you").expect("rejected").status, Status::Rejected);
 }

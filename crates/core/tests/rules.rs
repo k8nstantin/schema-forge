@@ -39,11 +39,11 @@ fn schema() -> Schema {
 }
 
 fn link(rule: &str, at: Scope) -> Link {
-    Link { rule: rule.to_string(), at, off: false, locked: false, reason: None }
+    Link { rule: rule.to_string(), at, off: false, locked: false, reason: None, enforce: None }
 }
 
 fn off(rule: &str, at: Scope, reason: &str) -> Link {
-    Link { rule: rule.to_string(), at, off: true, locked: false, reason: Some(reason.to_string()) }
+    Link { rule: rule.to_string(), at, off: true, locked: false, reason: Some(reason.to_string()), enforce: None }
 }
 
 fn ns(n: &str) -> Scope {
@@ -203,4 +203,102 @@ fn rules_are_optional_for_a_schema_or_a_group_even_when_locked() {
         rules::admit(cat, &schema(), &global, &RuleSet::default(), &Link { reason: None, ..none(Scope::Schema) })
             .is_err()
     );
+}
+
+mod review {
+    use super::*;
+    use schema_forge_core::rules::custom::{ColumnMust, CustomRule, Pattern, Provenance, Sentence};
+    use schema_forge_core::rules::review::{self, Proposal, Proposed, State, Status};
+    use schema_forge_core::rules::{Enforce, check_with};
+
+    fn proposal(id: u64, what: Proposed, at: Scope) -> Proposal {
+        Proposal {
+            id,
+            by: "agent".into(),
+            what,
+            at,
+            enforce: Enforce::Hard,
+            why: "seen in the schema".into(),
+            status: Status::Proposed,
+            decided_by: None,
+            rule: None,
+        }
+    }
+
+    fn times_as(types: &[&str]) -> Proposed {
+        Proposed::New {
+            sentence: Sentence::Columns {
+                name: Pattern::EndsWith("_at".into()),
+                must: ColumnMust::OfType(types.iter().map(|t| (*t).to_string()).collect()),
+            },
+            targets: vec![],
+        }
+    }
+
+    #[test]
+    fn the_system_verifies_what_the_agent_proposes() {
+        let s = schema();
+        let set = RuleSet { links: vec![link("types", Scope::Schema), link("docs", Scope::Schema)], groups: vec![] };
+        let has_id = Proposed::New {
+            sentence: Sentence::HasColumn { column: "id".into(), required: true, types: vec![] },
+            targets: vec![],
+        };
+        let all = vec![
+            proposal(1, has_id.clone(), Scope::Schema),
+            proposal(2, times_as(&["string"]), Scope::Schema),
+            proposal(3, has_id, ns("n_shop")),
+            proposal(4, times_as(&["varchar"]), Scope::Schema),
+            proposal(5, Proposed::Link { rule: "docs".into() }, Scope::Schema),
+            proposal(6, Proposed::Link { rule: "norm".into() }, Scope::Global),
+            proposal(
+                7,
+                Proposed::Off { rule: "docs.column".into(), reason: "a staging table".into() },
+                table("t_entries"),
+            ),
+        ];
+        let cat = rules::catalog();
+        let cx = review::Context { cat, custom: &[], schema: &s, global: &[], set: &set, proposals: &all };
+        let v: Vec<review::Verdict> = all.iter().map(|p| review::verify(&cx, p)).collect();
+        assert_eq!(v[0].state, State::Ready, "{:?}", v[0].notes);
+        assert_eq!(v[0].title, "Every table has `id`, required");
+        assert_eq!((v[0].tally.checked, v[0].tally.breaks), (3, 1), "entries has no id");
+        assert_eq!(v[1].state, State::Conflict, "times kept as strings contradict types.time");
+        assert_eq!(v[1].conflicts, ["types.time"]);
+        assert_eq!(v[2].state, State::Duplicate, "the same sentence as #1");
+        assert_eq!(v[3].state, State::Invalid, "varchar is not an Iceberg type");
+        assert_eq!(v[4].state, State::Duplicate, "docs is linked already");
+        assert_eq!(v[5].state, State::Invalid, "global rules are yours");
+        assert_eq!(v[6].state, State::Ready);
+        assert!(v[6].notes.iter().any(|n| n.text.contains("findings go away") || n.text.contains("finding goes away")));
+    }
+
+    #[test]
+    fn an_approved_rule_runs_hard_or_soft_as_linked() {
+        let s = schema();
+        let custom = vec![CustomRule {
+            id: "custom.1".into(),
+            sentence: Sentence::Columns {
+                name: Pattern::EndsWith("_at".into()),
+                must: ColumnMust::OfType(vec!["timestamptz".into()]),
+            },
+            hard: true,
+            targets: vec![],
+            why: "every time is zoned".into(),
+            provenance: Provenance {
+                proposed_by: "agent".into(),
+                approved_by: "you".into(),
+                proposal: "shop#1".into(),
+            },
+        }];
+        let cat = rules::catalog().with(&custom);
+        assert_eq!(cat.rule("custom.1").map(|r| r.title.as_str()), Some("Columns ending `_at` are timestamptz"));
+        let soft = Link { enforce: Some(Enforce::Soft), ..link("custom.1", Scope::Schema) };
+        let r = check_with(&cat, &s, &[], &RuleSet { links: vec![soft], groups: vec![] });
+        let f: Vec<_> = r.findings.iter().filter(|f| f.rule == "custom.1").collect();
+        assert_eq!(f.len(), 1, "created_at is a string");
+        assert!(!f[0].hard, "linked soft: highlighted only");
+        let r = check_with(&cat, &s, &[], &RuleSet { links: vec![link("custom.1", Scope::Schema)], groups: vec![] });
+        assert!(r.findings.iter().all(|f| f.hard), "hard by the rule's own default");
+        assert_eq!(r.tallies["custom.1"].hard, 1);
+    }
 }

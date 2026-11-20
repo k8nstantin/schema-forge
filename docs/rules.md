@@ -17,8 +17,9 @@ rule linked further down still applies.
 - A **check** looks at a table and says what breaks it: `pk.present` "Every table has a key".
 - A **pack** is a rule made of rules, to any depth; a rule may sit in several packs. `cdc` (CDC-ready) holds the
   whole `pk` pack, `types.time`, `mor.modes`, `cdc.position` and `cdc.source`. Linking a pack brings its tree.
-- Every check is **Must** (the agent's operations will be refused when they break it) or **Should** (listed as a
-  finding).
+- Every rule holds **hard** (enforced: the agent's change is refused) or **soft** (highlighted only). Each check
+  has a default (Must is hard, Should is soft); you set it per link, and the nearest link that says wins. Every
+  finding says which it is.
 
 ## Sorted so the catalog stays clear
 
@@ -95,13 +96,44 @@ The **Rules perspective** (the UI is the tool; the command line keeps only `sche
 - **Goals** and **Groups.**
 - The **Table** perspective lists the rules on the table, where each comes from, and its findings.
 
+## Rules the agent designs
+
+Nobody knows every rule ahead. So the agent proposes them, the system verifies them, you approve them, and the
+system enforces them.
+
+1. **The agent proposes** through the MCP (`propose_rules`), best from what a schema already does: it reads it
+   (`describe`) and turns its unwritten conventions into rules, with numbers as evidence ("41 of 42 tables have
+   `loaded_at`"). A proposal is a new rule written as a sentence, a catalog rule to link, or an exception.
+2. **New rules are sentences, run as data, never code:**
+
+   | Sentence | Example |
+   |---|---|
+   | columns whose name matches must be of a type, required, described or snake_case | `{"columns": {"name": {"ends_with": "_at"}, "must": {"of_type": ["timestamptz"]}}}` |
+   | every table has a column (required, of a type) | `{"has_column": {"column": "loaded_at", "required": true}}` |
+   | every table is partitioned by a transform of a column (Iceberg) | `{"partitioned_by": {"transform": "identity", "column": "region"}}` |
+
+   The title you read is made from the sentence itself, so a rule is always exactly what it says.
+3. **The system verifies** each: written right for the schema's type; not a repeat of a rule or of another
+   proposal; not contradicting a linked rule (a rule that columns could keep only by breaking a linked type rule
+   is a conflict); and what it would break if approved. Proposals for every schema are refused: global rules are
+   yours.
+4. **You approve** in the Rules perspective's Review: hard or soft, approve or reject. A conflict is approved only
+   with the contradicted rule switched off there, with a reason. An approved new rule joins the workspace's
+   catalog (`custom.<n>`), linked where it was proposed, with who proposed and approved it.
+5. **The system enforces**: the agent reads the rules in force (`rules`, `check`) and designs within them; when
+   its operations land, a change that breaks a hard rule is refused. The agent can never approve, link or switch
+   off a rule itself: that comes back as a proposal.
+
+**What breaks what** (in the Rules perspective) shows it at a glance: hover a rule and the tables that break it
+light up, red if it is hard and amber if soft; hover a table and the rules it breaks light up, with what is wrong.
+Each linked rule is set hard or soft right there.
+
 ## Next
 
-- The MCP: the agent reads the rules in plain words (`guide`), and its operations are refused when they break a
-  Must rule.
+- The design operations through the MCP (`add_table`, `relate`, …), refused when they break a hard rule.
 - Rules that shape, not only check, applied by the agent as a plan you approve: SCD2 columns, a surrogate key,
   audit columns, merge-on-read properties (see below).
-- Custom rules, and rule settings (the names of SCD2 columns, the type standards per kind of value).
+- Generating the schema, and a migration script that brings a schema to its rules.
 
 The rest of this page is the wider catalog to come.
 

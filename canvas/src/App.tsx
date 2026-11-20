@@ -93,7 +93,7 @@ export default function App() {
         setActivity((a) => [c, ...a].slice(0, 30))
         setHomeVersion((v) => v + 1)
         if (c.schema === schema) {
-          if (c.kind.endsWith('_rule') || c.kind.endsWith('_group')) reloadRules(c.schema)
+          if (/_rules?$|_group$|proposal/.test(c.kind)) reloadRules(c.schema)
           else load(c.schema)
         } else if (c.schema === '*' && schema) reloadRules(schema)
       }),

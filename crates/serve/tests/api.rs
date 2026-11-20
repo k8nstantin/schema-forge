@@ -184,3 +184,75 @@ async fn rules_are_read_linked_and_refused_with_a_reason() {
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST, "pk is locked for every schema");
 }
+
+/// One MCP call over the streamable HTTP endpoint; the reply's JSON-RPC message, read from its event stream.
+/// The app is made once, as `serve` makes it: MCP sessions live in it.
+async fn mcp(
+    app: &axum::Router,
+    session: Option<&str>,
+    body: serde_json::Value,
+) -> (Option<String>, serde_json::Value) {
+    let mut request = Request::post("/mcp")
+        .header("content-type", "application/json")
+        .header("accept", "application/json, text/event-stream")
+        .header("host", "127.0.0.1");
+    if let Some(s) = session {
+        request = request.header("mcp-session-id", s);
+    }
+    let response =
+        app.clone().oneshot(request.body(Body::from(body.to_string())).expect("request")).await.expect("response");
+    let session = response.headers().get("mcp-session-id").map(|v| v.to_str().expect("ascii").to_string());
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.expect("body");
+    let text = String::from_utf8(bytes.to_vec()).expect("utf-8");
+    let message = text
+        .lines()
+        .filter_map(|l| l.strip_prefix("data: "))
+        .find_map(|d| serde_json::from_str::<serde_json::Value>(d).ok())
+        .unwrap_or(serde_json::Value::Null);
+    (session, message)
+}
+
+fn tool_text(reply: &serde_json::Value) -> String {
+    reply["result"]["content"][0]["text"].as_str().unwrap_or_default().to_string()
+}
+
+#[tokio::test]
+async fn the_agent_proposes_the_person_approves_and_the_rule_holds() {
+    let dir = tempfile::tempdir().expect("dir");
+    let store = store(&dir);
+    let app = schema_forge_serve::app(store.clone());
+    let init = serde_json::json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize",
+        "params": { "protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": { "name": "test", "version": "1" } } });
+    let (session, reply) = mcp(&app, None, init).await;
+    assert_eq!(reply["result"]["serverInfo"]["name"], "schema-forge");
+    let session = session.expect("a session");
+    mcp(&app, Some(&session), serde_json::json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).await;
+
+    let call = |id: u64, name: &str, arguments: serde_json::Value| serde_json::json!({ "jsonrpc": "2.0", "id": id, "method": "tools/call", "params": { "name": name, "arguments": arguments } });
+    let (_, reply) = mcp(&app, Some(&session), call(2, "rules", serde_json::json!({ "schema": "orders" }))).await;
+    assert!(tool_text(&reply).contains("No rules are linked"), "{reply}");
+
+    let proposals = serde_json::json!({ "schema": "orders", "proposals": [
+        { "kind": "new", "sentence": { "has_column": { "column": "id", "required": true } }, "at": "schema", "enforce": "hard", "why": "every table has one" },
+        { "kind": "new", "sentence": { "columns": { "name": { "ends_with": "_at" }, "must": { "of_type": ["string"] } } }, "at": "schema", "enforce": "soft", "why": "?" }
+    ] });
+    let (_, reply) = mcp(&app, Some(&session), call(3, "propose_rules", proposals)).await;
+    let text = tool_text(&reply);
+    assert!(text.contains("#1 Every table has `id`, required"), "{text}");
+    assert!(
+        text.contains("#2") && text.contains("invalid"),
+        "`string` is an Iceberg type, not a PostgreSQL one: {text}"
+    );
+
+    let (status, _) = send(&store, "POST", "/api/schemas/orders/proposals/2/approve", serde_json::json!({})).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "an invalid proposal cannot be approved");
+    let (status, approved) =
+        send(&store, "POST", "/api/schemas/orders/proposals/1/approve", serde_json::json!({})).await;
+    assert_eq!(status, StatusCode::OK, "{approved}");
+    assert_eq!(approved["rule"], "custom.1");
+
+    let (_, reply) = mcp(&app, Some(&session), call(4, "rules", serde_json::json!({ "schema": "orders" }))).await;
+    assert!(tool_text(&reply).contains("@rule:custom.1"), "the agent sees the approved rule: {reply}");
+    let (_, body) = get(&store, "/api/rules").await;
+    assert!(body.contains("\"provenance\""), "the catalog says who proposed and approved it");
+}

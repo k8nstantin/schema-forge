@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/core", "crates/dialects", "crates/store", "crates/serve", "crates/agent", "crates/cli"]
+members = ["crates/core", "crates/dialects", "crates/store", "crates/serve", "crates/mcp", "crates/cli"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,6 +14,7 @@ schema-forge-core = { path = "crates/core" }
 schema-forge-dialects = { path = "crates/dialects" }
 schema-forge-store = { path = "crates/store" }
 schema-forge-serve = { path = "crates/serve" }
+schema-forge-mcp = { path = "crates/mcp" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 thiserror = "2.0.21"

@@ -5,6 +5,7 @@ use std::sync::LazyLock;
 use serde::Serialize;
 
 use super::compat::{MAPS, TypeMap};
+use super::custom::{CustomRule, Provenance, Sentence};
 use crate::Target;
 
 /// How hard a rule holds: a `must` is refused by the agent's operations, a `should` is listed as a finding.
@@ -47,6 +48,11 @@ pub struct Rule {
     /// The targets it checks; empty for every target.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub targets: Vec<Target>,
+    /// A rule the agent wrote and you approved: the sentence it runs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sentence: Option<Sentence>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provenance: Option<Provenance>,
 }
 
 /// What a schema has to do: the packs that get it there, and what must be set outside the schema.
@@ -70,6 +76,30 @@ pub struct Catalog {
 }
 
 impl Catalog {
+    /// The built-in catalog with the workspace's own rules beside it.
+    #[must_use]
+    pub fn with(&self, custom: &[CustomRule]) -> Self {
+        let mut rules = self.rules.clone();
+        rules.extend(custom.iter().map(|c| Rule {
+            id: c.id.clone(),
+            title: c.sentence.words(),
+            strength: if c.hard { Strength::Must } else { Strength::Should },
+            why: c.why.clone(),
+            rules: Vec::new(),
+            lane: match (&c.sentence, c.targets.as_slice()) {
+                (Sentence::PartitionedBy { .. }, _) | (_, [Target::Iceberg]) => Lane::Iceberg,
+                (_, [Target::Mysql]) => Lane::Mysql,
+                (_, [Target::Postgres]) => Lane::Postgres,
+                _ => Lane::Shared,
+            },
+            topic: c.sentence.topic(),
+            targets: c.targets.clone(),
+            sentence: Some(c.sentence.clone()),
+            provenance: Some(c.provenance.clone()),
+        }));
+        Self { rules, goals: self.goals.clone(), maps: self.maps }
+    }
+
     /// The rule called `id`.
     #[must_use]
     pub fn rule(&self, id: &str) -> Option<&Rule> {
@@ -135,6 +165,8 @@ fn check(id: &str, title: &str, strength: Strength, why: &str, targets: &[Target
         lane: Lane::Shared,
         topic: "",
         targets: targets.to_vec(),
+        sentence: None,
+        provenance: None,
     }
 }
 
@@ -148,6 +180,8 @@ fn pack(id: &str, title: &str, why: &str, rules: &[&str]) -> Rule {
         lane: Lane::Shared,
         topic: "",
         targets: Vec::new(),
+        sentence: None,
+        provenance: None,
     }
 }
 

@@ -41,6 +41,13 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/schemas/{name}/rules/groups", put(set_group))
         .route("/api/schemas/{name}/rules/groups/{group}", delete(remove_group))
         .route("/api/schemas/{name}/goals/{goal}", post(goal))
+        .route("/api/schemas/{name}/rules/enforce", post(enforce))
+        .route("/api/rules/global/enforce", post(enforce_global))
+        .route("/api/schemas/{name}/proposals", get(proposals))
+        .route("/api/schemas/{name}/proposals/{id}/approve", post(approve))
+        .route("/api/schemas/{name}/proposals/{id}/reject", post(reject))
+        .route("/api/schemas/{name}/proposals/{id}/enforce", post(proposal_enforce))
+        .nest_service("/mcp", schema_forge_mcp::service(store.clone()))
         .route("/api/events", get(events))
         .fallback(canvas)
         .with_state(store)
@@ -96,9 +103,12 @@ async fn shape(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Res
 /// Who a change made through the perspectives is recorded as.
 const BY: &str = "you";
 
-/// Every built-in rule, goal and type map.
-async fn catalog() -> Response {
-    axum::Json(rules::catalog()).into_response()
+/// Every rule (built in, and the workspace's own), goal and type map.
+async fn catalog(State(store): State<Arc<Store>>) -> Response {
+    match store.catalog() {
+        Ok(c) => axum::Json(c).into_response(),
+        Err(e) => store_failed(e),
+    }
 }
 
 /// The schema's rules: the global links, its own links and groups, and the schema checked against them.
@@ -107,7 +117,7 @@ async fn schema_rules(State(store): State<Arc<Store>>, Path(name): Path<String>)
         let model = store.model(&name)?;
         let global = store.global_rules()?;
         let set = store.rules(&name)?;
-        let report = rules::check(&model, &global, &set);
+        let report = rules::check_with(&store.catalog()?, &model, &global, &set);
         Ok(serde_json::json!({ "global": global, "links": set.links, "groups": set.groups, "report": report }))
     };
     match read() {
@@ -127,7 +137,7 @@ async fn preview(
         let global = store.global_rules()?;
         let mut set = store.rules(&name)?;
         set.links.extend(links);
-        Ok(rules::check(&model, &global, &set))
+        Ok(rules::check_with(&store.catalog()?, &model, &global, &set))
     };
     match read() {
         Ok(r) => axum::Json(r).into_response(),
@@ -182,6 +192,86 @@ async fn remove_group(State(store): State<Arc<Store>>, Path((name, group)): Path
     done(store.remove_group(&name, &group, BY))
 }
 
+/// How a link holds: `{rule, at, enforce}`.
+#[derive(serde::Deserialize)]
+struct SetEnforce {
+    rule: String,
+    at: Scope,
+    enforce: rules::Enforce,
+}
+
+async fn enforce(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::Json(e): axum::Json<SetEnforce>,
+) -> Response {
+    done(store.set_enforce(Rules::Schema(&name), &e.rule, &e.at, e.enforce, BY))
+}
+
+async fn enforce_global(State(store): State<Arc<Store>>, axum::Json(e): axum::Json<SetEnforce>) -> Response {
+    done(store.set_enforce(Rules::Global, &e.rule, &e.at, e.enforce, BY))
+}
+
+/// The schema's proposals, each still open with the system's verdict on it.
+async fn proposals(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Response {
+    let read = || -> schema_forge_store::Result<serde_json::Value> {
+        let model = store.model(&name)?;
+        let global = store.global_rules()?;
+        let set = store.rules(&name)?;
+        let custom = store.custom_rules()?;
+        let cat = rules::catalog().with(&custom);
+        let all = store.proposals(&name)?;
+        let cx = rules::review::Context {
+            cat: &cat,
+            custom: &custom,
+            schema: &model,
+            global: &global,
+            set: &set,
+            proposals: &all,
+        };
+        let out: Vec<serde_json::Value> = all
+            .iter()
+            .map(|p| {
+                let verdict = (p.status == rules::review::Status::Proposed).then(|| rules::review::verify(&cx, p));
+                serde_json::json!({ "proposal": p, "verdict": verdict })
+            })
+            .collect();
+        Ok(serde_json::Value::Array(out))
+    };
+    match read() {
+        Ok(v) => axum::Json(v).into_response(),
+        Err(e) => store_failed(e),
+    }
+}
+
+fn decided(r: schema_forge_store::Result<rules::review::Proposal>) -> Response {
+    match r {
+        Ok(p) => axum::Json(p).into_response(),
+        Err(e) => store_failed(e),
+    }
+}
+
+async fn approve(State(store): State<Arc<Store>>, Path((name, id)): Path<(String, u64)>) -> Response {
+    decided(store.decide(&name, id, true, BY))
+}
+
+async fn reject(State(store): State<Arc<Store>>, Path((name, id)): Path<(String, u64)>) -> Response {
+    decided(store.decide(&name, id, false, BY))
+}
+
+#[derive(serde::Deserialize)]
+struct ProposalEnforce {
+    enforce: rules::Enforce,
+}
+
+async fn proposal_enforce(
+    State(store): State<Arc<Store>>,
+    Path((name, id)): Path<(String, u64)>,
+    axum::Json(e): axum::Json<ProposalEnforce>,
+) -> Response {
+    decided(store.set_proposal_enforce(&name, id, e.enforce, BY))
+}
+
 /// Links a goal's packs to the whole schema, those not linked there yet.
 async fn goal(State(store): State<Arc<Store>>, Path((name, goal)): Path<(String, String)>) -> Response {
     let Some(g) = rules::catalog().goals.iter().find(|g| g.id == goal) else {
@@ -203,7 +293,8 @@ async fn goal(State(store): State<Arc<Store>>, Path((name, goal)): Path<(String,
     };
     let mut ops = Vec::new();
     for p in packs.iter().filter(|p| !linked.iter().any(|l| l.rule == **p && l.at == Scope::Schema)) {
-        let l = Link { rule: (*p).to_string(), at: Scope::Schema, off: false, locked: false, reason: None };
+        let l =
+            Link { rule: (*p).to_string(), at: Scope::Schema, off: false, locked: false, reason: None, enforce: None };
         match store.link_rule(Rules::Schema(&name), l, BY) {
             Ok(op) => ops.push(op),
             Err(e) => return store_failed(e),
