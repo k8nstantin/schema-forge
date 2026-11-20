@@ -102,6 +102,24 @@ first release:
 - **Panels:** the selected table's full detail, its SQL in the chosen dialect, the rule checks, and the
   history of who changed it.
 
+## Database views
+
+Views (`CREATE VIEW`) are part of the schema, not text carried along:
+
+- **In the model:** name, definition (kept exactly as written), columns, the tables and views it reads
+  from, and options: PostgreSQL materialized views and `WITH CHECK OPTION`; MySQL `ALGORITHM`,
+  `SQL SECURITY` and `DEFINER`.
+- **Dependencies are known:** the definition is parsed (sqlparser-rs) to find what each view reads. An
+  operation that would break a view, such as dropping or renaming a column it uses, is refused or flagged
+  with the views it breaks.
+- **In every UI view:** the relationships canvas draws views as their own kind of card (dashed outline) with
+  lines to what they read; the list view shows their columns beside the tables'; categories group them like
+  tables.
+- **For the agent:** `add_view`, `alter_view` and `drop_view` operations, `describe` shows definitions and
+  dependencies, and rules apply to views too (e.g. no `SELECT *`, a comment on every view).
+- **Generated in order:** views after the tables they read, and views on views in dependency order;
+  migrations recreate a view when something it reads changes.
+
 ## The MCP: how agents work with Schema Forge
 
 `sf serve` exposes an MCP server (Rust, the official `rmcp` SDK). Claude Code connects to it with one line
@@ -115,7 +133,7 @@ in its MCP settings.
 | `view` | open a view for the user, or create and save a custom view |
 | `rules` | every active rule, and which tables each one applies to |
 | `check` | every rule against the draft: what passes, what fails, and why |
-| `add_table`, `add_column`, `relate`, `rename`, `alter_column`, `drop`, `index`, `comment` | one operation each, validated before it applies |
+| `add_table`, `add_column`, `relate`, `rename`, `alter_column`, `drop`, `index`, `comment`, `add_view`, `alter_view`, `drop_view` | one operation each, validated before it applies |
 | `apply_rule` | make a table satisfy a rule, e.g. give `orders` its SCD Type 2 columns and keys |
 | `diff` | the draft against the last locked version |
 | `lock`, `generate` | only when the user asks |
@@ -162,11 +180,11 @@ myproject/
 ## Reading real dumps, losing nothing
 
 Dumps hold more than `CREATE TABLE`: `SET` lines, sequences, `ALTER TABLE ONLY … ADD CONSTRAINT`,
-`COMMENT ON`, owners and grants, views, functions, triggers, extensions; MySQL's `/*!40101 … */`
+`COMMENT ON`, owners and grants, functions, triggers, extensions; MySQL's `/*!40101 … */`
 version comments, `LOCK TABLES`, engines, charsets and `AUTO_INCREMENT`.
 
-- Tables, columns, keys, indexes, comments and sequences become the model, which the canvas and the agent
-  edit.
+- Tables, columns, keys, indexes, comments, sequences and views become the model, which the canvas and
+  the agent edit.
 - Everything else is kept verbatim, in order, and written back unchanged.
 - A statement that cannot be parsed is kept verbatim and listed. Every import prints a report: statements
   parsed, kept, and skipped as data, with counts that add up to the whole file.
