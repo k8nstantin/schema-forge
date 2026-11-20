@@ -81,3 +81,9 @@ Not in version 1: database connections, applying changes, multiple users.
 ## Build
 
 `cargo build` builds the workspace; `sf` is the command-line tool.
+
+## License
+
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT), at your option.
+Unless you state otherwise, any contribution you submit for inclusion is dual licensed as above, without any
+additional terms or conditions.
