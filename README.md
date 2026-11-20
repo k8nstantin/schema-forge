@@ -64,8 +64,27 @@ sf serve
   | a pulsing outline | what the agent is working on right now |
   | a lock | part of the last locked version, unchanged since |
   | area colour | which area a table belongs to, from the whole-schema view down to the card |
+- **Makes anything easy to point at.** Select a table, a column, a key or a view in any perspective and
+  copy it: you get a short reference such as `@orders` or `@orders.total` (several at once if you selected
+  several). Paste it into your prompt, "add a foreign key from `@order_items` to `@orders`", and the agent
+  resolves it through the MCP. The agent writes the same references back, and they are clickable in the
+  perspectives.
 - **Keeps to the rules.** Built-in (naming, keys, indexed foreign keys), patterns such as SCD Type 2, and
-  your own rules. The agent sees every rule, and is told plainly when an operation breaks one.
+  your own rules. The agent sees every rule, and is told plainly when an operation breaks one. Naming
+  standards, for example, are set once in `sf.toml`:
+
+  ```toml
+  [naming]
+  tables       = "snake_case"     # or "PascalCase" (TableName), "camelCase" (tableName)
+  plural       = true
+  columns      = "snake_case"
+  primary_keys = "pk_{table}"
+  foreign_keys = "fk_{table}_{referenced_table}"
+  indexes      = "ix_{table}_{columns}"
+  ```
+
+  The agent names everything by them, a relationship or index made without a name gets one from its
+  template, and a name that breaks them is refused with the expected form.
 - **Treats views as objects.** Database views carry their definition and know what they read, so a change
   that would break a view is caught.
 - **Exports SQL.** One file per version: the whole schema, or the migration from the last version.

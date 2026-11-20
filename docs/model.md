@@ -56,6 +56,20 @@ Readable, made once from the object's kind and name when it is created, and neve
 - Everything refers to other objects by id: keys, indexes, relationships, views' `reads`, partition and sort
   fields, patterns. Renames then never break a reference.
 
+## References
+
+What you copy from a perspective and paste to the agent: `@` and the object's path by name.
+
+| Object | Reference |
+|---|---|
+| table, view | `@orders` (`@billing.orders` when the name is in more than one namespace) |
+| column | `@orders.total` |
+| key, index, relationship | `@orders.fk_orders_customers` |
+
+The agent's `describe` and every operation take references as well as ids. A reference is resolved to the
+id at the moment it is used, so `@orders` keeps meaning the same table only until it is renamed; the id
+lasts.
+
 ## Objects
 
 ### Namespace
