@@ -1,43 +1,99 @@
 # Schema Forge (`sf`)
 
-A desktop tool to design relational schemas with an agent and a visual canvas, working on the same file.
-It reads MySQL and PostgreSQL schema dumps and writes the same formats back. Version 1 has no database
-connections: you run the output yourself with `psql` or `mysql`.
+Design relational schemas by prompting your coding agent, and watch the schema take shape on a live canvas.
+The agent works through Schema Forge's MCP server, under rules the project sets (SCD Type 2, naming, keys,
+your own). You and the agent see the same canvas at the same time.
+
+- **Agent first:** the first target is Claude Code. You prompt it; it calls `sf` tools; every change is
+  checked against the rules and drawn as it lands.
+- **Databases:** MySQL and PostgreSQL. Schema Forge reads their schema dumps and writes the same formats
+  back. Version 1 has no database connections: you run the output with `psql` or `mysql`.
 
 ## Workflow
 
-1. **Import** a schema dump: `pg_dump --schema-only` or `mysqldump --no-data` (a full dump works; its data
-   statements are skipped and counted).
-2. **Design** on the canvas and with the agent, live, on the same draft.
-3. **Review** the draft against the last locked version: the diff, the generated SQL, destructive changes
-   (dropped tables or columns, narrowed types, removed keys) flagged.
-4. **Lock** the draft as version N, with its content hash. A locked version never changes; editing starts N+1.
-5. **Generate** the full schema file for PostgreSQL or MySQL, and the migration from version N−1 to N.
+1. **Import** an existing schema dump (`pg_dump --schema-only`, `mysqldump --no-data`; a full dump works,
+   its data statements are skipped and counted), or start empty.
+2. **Prompt** Claude Code: "add customers and orders, orders are SCD Type 2". The agent reads the schema and
+   the rules through the MCP, then applies operations.
+3. **Watch** the canvas: each operation appears as it lands. You can also edit on the canvas yourself.
+4. **Review** the draft against the last locked version: the diff, the generated SQL, every rule satisfied,
+   destructive changes (dropped tables or columns, narrowed types, removed keys) flagged.
+5. **Lock** the draft as version N, with its content hash. A locked version never changes; editing starts N+1.
+6. **Generate** the full schema file for PostgreSQL or MySQL, and the migration from version N−1 to N.
 
-## One file, one owner
+## One model, one owner, two viewers
 
 ```
- you (canvas) ─┐
-               ├─► operations ─► core model (Rust, one owner) ─► schema.json
- agent (chat) ─┘   add_table, add_column,          │
-                   relate, rename, drop …          └─► event ─► canvas redraws live
+ Claude Code ── MCP tools ──┐
+                            ├─► operations ─► sf (one owner) ─► schema.json + operations.jsonl
+ you, on the canvas ────────┘                     │
+                                                  ├─► live canvas, seen by you
+                                                  └─► describe / render, seen by the agent
 ```
 
-- Every change, yours or the agent's, is a small operation through one queue: no overwrites.
-- The canvas shows each change as it lands: new in green, changed in amber, removed as a faded red outline.
-- The agent's changes in a turn arrive as one group, accepted or rejected whole or one at a time; undo goes
-  one agent turn at a time. An operation log is kept beside the file.
-- `schema.json` is watched: a change made outside the app (by hand, git, or another agent such as Claude
-  Code) is reloaded and highlighted the same way.
-- The agent never generates or applies anything on its own; it only changes the draft.
+- **`sf serve`** runs the owner: one local process that holds the model, serves the MCP to Claude Code, and
+  serves the live canvas in the browser at `localhost`. Every change, the agent's or yours, is a small
+  operation through one queue: no overwrites.
+- **Live view:** the canvas shows each change as it lands: new in green, changed in amber, removed as a
+  faded red outline. The agent's changes in a turn form one group, accepted or rejected whole or one at a
+  time; undo goes one agent turn at a time.
+- **The agent sees it too:** `describe` returns the schema as compact text, and `render` returns the same
+  canvas as an image (or a Mermaid diagram), so the agent checks its work the way you do.
+- **The file stays the truth:** the model is saved to `schema.json` as it changes, with every operation
+  logged (who: the agent, you, or the file; when). A change made to the file outside `sf` is reloaded,
+  validated against the rules and highlighted.
+- The agent only changes the draft: it never locks or generates unless you ask it to.
+
+## The MCP: how agents work with Schema Forge
+
+`sf serve` exposes an MCP server (Rust, the official `rmcp` SDK). Claude Code connects to it with one line
+in its MCP settings.
+
+| Tool | What it does |
+|---|---|
+| `guide` | the workflow and the project's rules, in words the agent follows |
+| `describe` | the schema, or one table, as compact text |
+| `render` | the canvas, or one area of it, as an image or a Mermaid diagram |
+| `rules` | every active rule, and which tables each one applies to |
+| `check` | every rule against the draft: what passes, what fails, and why |
+| `add_table`, `add_column`, `relate`, `rename`, `alter_column`, `drop`, `index`, `comment` | one operation each, validated before it applies |
+| `apply_rule` | make a table satisfy a rule, e.g. give `orders` its SCD Type 2 columns and keys |
+| `diff` | the draft against the last locked version |
+| `lock`, `generate` | only when the user asks |
+
+An operation that breaks a rule is refused with the rule's name and the reason, so the agent can fix its
+proposal before anything changes.
+
+## Rules
+
+Rules live in the project (`sf.toml` and `rules/`), are checked by `sf-core` on every operation from any
+source, and are listed to the agent through `guide` and `rules`.
+
+**Built in:** `snake_case` names, plural table names, every table has a primary key, every foreign key is
+indexed, types allowed per dialect, comments required on tables, destructive changes need an explicit flag,
+nothing under `versions/` is ever edited. Each can be turned on, off, or configured.
+
+**Patterns**, for example **SCD Type 2** on a table:
+- a surrogate primary key, and the business key it versions;
+- `valid_from` and `valid_to` (the current row has an open `valid_to`);
+- unique (business key, `valid_from`);
+- no column that would need an in-place update to keep history.
+
+`apply_rule scd2 orders` adds what is missing; `check` reports what does not fit.
+
+**Custom rules:** your own, declared in `rules/*.toml`, in the same form as the built-in ones: which tables
+they apply to (by name, tag or pattern), which columns, keys and types they require or forbid, and the
+message the agent sees when an operation breaks them.
 
 ## Project files (shared through git)
 
 ```
 myproject/
-  schema.json                    the draft: tables, columns, types, keys, indexes, relations, comments
+  sf.toml                        dialect, active rules and their settings
+  rules/                         custom rules
+  schema.json                    the draft: tables, columns, types, keys, indexes, relations, comments, tags
   layout.json                    canvas positions, apart so moving a box never touches the schema
-  operations.jsonl               every operation, who made it (you, the agent, the file) and when
+  operations.jsonl               every operation, who made it and when
   versions/0001.json             locked versions, never edited, each with its hash
   generated/0001_postgres.sql    the full schema and the migration for each version and dialect
   kept/                          statements carried through unparsed (see below)
@@ -62,21 +118,32 @@ version comments, `LOCK TABLES`, engines, charsets and `AUTO_INCREMENT`.
 
 | Crate | Job |
 |---|---|
-| `sf-core` | the model, the JSON files and their format version, validation, operations, versions, hashes, diffs |
+| `sf-core` | the model, the JSON files and their format version, operations, rules and their checks, versions, hashes, diffs |
 | `sf-dialects` | import and generation for PostgreSQL and MySQL: a pre-pass sorts dump statements, sqlparser-rs parses DDL; migration SQL |
-| `sf-agent` | the Claude API with tools that apply operations to the draft |
-| `sf` (cli) | `sf import`, `sf lock`, `sf diff`, `sf generate`, for scripts and CI |
-| `app` (later) | Tauri 2, React and React Flow: the canvas and the agent chat, in SuperX's purple (swindex) theme |
+| `sf-mcp` | the MCP server: the tools above, over the owner's operation queue |
+| `sf` (cli) | `sf serve`, `sf import`, `sf check`, `sf lock`, `sf diff`, `sf generate` |
+| `canvas` | the live canvas: React and React Flow, served by `sf serve`, in SuperX's purple (swindex) theme; a Tauri desktop shell later |
 
 ## Milestones
 
-1. `sf-core` and `sf-dialects` with round-trip tests on real dumps, through the CLI alone.
-2. The canvas: view and edit an imported schema, save, generate.
-3. The agent panel: live operations on the shared draft.
+1. `sf-core` and `sf-dialects`, with round-trip tests on real dumps, through the CLI.
+2. The MCP and the rules: Claude Code designs a schema by prompt, with the built-in rules and SCD Type 2,
+   `describe` and `check`.
+3. The live canvas: `sf serve`, you and the agent on the same view, changes highlighted as they land,
+   `render` for the agent.
 4. Lock, diffs and migration SQL.
-5. Converting between dialects; then SQLite and Iceberg (Spark/Trino DDL, iceberg-rust catalogs).
+5. Custom rules in `rules/`; then converting between dialects, SQLite and Iceberg.
 
 Not in version 1: database connections, applying changes, multiple users.
+
+## To think through
+
+- **Custom rules:** how far declarations go before a rule needs code (a small embedded language, or WASM),
+  and how rule packs are shared between projects.
+- **Rules that span tables:** e.g. every fact table references only SCD Type 2 dimensions by surrogate key.
+- **Seeing together:** how the agent points at what it means ("this table") and you point back, e.g.
+  selections on the canvas that the agent can read through `describe`.
+- **Several agents at once**, or an agent and a teammate, on one project.
 
 ## Build
 
