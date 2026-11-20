@@ -32,7 +32,7 @@ sf serve
   and by hand, the agent proposes and builds, and both see every change as it happens. Neither works blind,
   and nothing changes without the user seeing it.
 - **One view, from day one.** The live canvas ships in the first milestone, not after the engine.
-- **Rich graphics.** The canvas is the product's face, not a debug view (see [The canvas](#the-canvas)).
+- **Rich graphics.** The canvas is the product's face, not a debug view (see [Views](#views)).
 
 ## Workflow
 
@@ -69,7 +69,20 @@ sf serve
   validated against the rules and highlighted.
 - The agent only changes the draft: it never locks or generates unless you ask it to.
 
-## The canvas
+## Views
+
+One live model, many views of it. Every view updates as each change lands, a selection made in one view is
+selected in all of them (and readable by the agent), and the agent can open any view for you or render it
+for itself. Served by `sf serve` in the browser, in SuperX's purple (swindex) theme, light and dark.
+
+| View | What it shows |
+|---|---|
+| **List** | every table and its columns, data types, nullability, defaults and constraints (primary, foreign, unique, check), as a sortable, filterable list; the quickest way to read and compare definitions |
+| **Relationships** | the diagram: tables as cards and how they relate (the canvas below) |
+| **Categories** | tables grouped by area or tag (billing, catalog; `fact`, `dimension`, `scd2`), each group with its tables and their rule status |
+| **Custom** | your own: which tables and columns, grouped how, coloured how, laid out how; saved in the project and shared through git. The agent can make one on request ("show me the billing tables with their SCD columns") |
+
+### The relationships canvas
 
 Served by `sf serve` in the browser, in SuperX's purple (swindex) theme, light and dark. Rich from the
 first release:
@@ -98,7 +111,8 @@ in its MCP settings.
 |---|---|
 | `guide` | the workflow and the project's rules, in words the agent follows |
 | `describe` | the schema, or one table, as compact text |
-| `render` | the canvas, or one area of it, as an image or a Mermaid diagram |
+| `render` | any view, or one area of it, as an image (the relationships view also as a Mermaid diagram) |
+| `view` | open a view for the user, or create and save a custom view |
 | `rules` | every active rule, and which tables each one applies to |
 | `check` | every rule against the draft: what passes, what fails, and why |
 | `add_table`, `add_column`, `relate`, `rename`, `alter_column`, `drop`, `index`, `comment` | one operation each, validated before it applies |
@@ -138,6 +152,7 @@ myproject/
   rules/                         custom rules
   schema.json                    the draft: tables, columns, types, keys, indexes, relations, comments, tags
   layout.json                    canvas positions, apart so moving a box never touches the schema
+  views/                         custom views: tables, columns, grouping, colours, layout
   operations.jsonl               every operation, who made it and when
   versions/0001.json             locked versions, never edited, each with its hash
   generated/0001_postgres.sql    the full schema and the migration for each version and dialect
@@ -172,10 +187,12 @@ version comments, `LOCK TABLES`, engines, charsets and `AUTO_INCREMENT`.
 ## Milestones
 
 1. **The engine and the view:** `sf-core` and `sf-dialects` with round-trip tests on real dumps, and
-   `sf serve` showing an imported schema on the rich canvas: cards, relationships, areas, layout.
+   `sf serve` showing an imported schema in the list and relationships views: cards, relationships, areas,
+   layout.
 2. **Designing together:** the full [first run](#first-run): `sf serve` adds its MCP to Claude Code and opens the canvas; the MCP and the rules (built-ins and SCD Type 2); Claude Code builds by prompt
    while the canvas shows each change as it lands; `describe`, `render`, `check`, shared selection.
-3. Editing on the canvas by hand, through the same operation queue as the agent.
+3. The categories and custom views; editing by hand in any view, through the same operation queue as the
+   agent.
 4. Lock, diffs and migration SQL.
 5. Custom rules in `rules/`; then converting between dialects, SQLite and Iceberg.
 
