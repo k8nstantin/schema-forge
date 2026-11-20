@@ -14,24 +14,38 @@ live perspective that you both see. When the schema is right, export it for MySQ
 
 ## Start
 
-Every schema starts the same way:
+You and the agent take the same path:
 
 ```
-name it ──► choose its type (MySQL · PostgreSQL · Iceberg) ──► set its rules ──► design with the agent
+ you    ──► Schema Forge ──┐
+                           ├──► schema ──► type ──► rules ──► design
+ agent  ──► MCP ───────────┘
 ```
 
+1. **Schema:** open one, or create one with a name.
+2. **Type:** MySQL, PostgreSQL or Iceberg.
+3. **Rules:** none, a template (the type's default, or your own), or its own made from a template.
+4. **Design:** together, live.
+
 ```
-sf new orders-db --target iceberg     # name and type; then its rules: none, a template, or its own
-sf serve                              # the perspectives open; the MCP is added for Claude Code
+sf serve      # the workspace opens; the MCP is added for Claude Code
 ```
+
+The agent can take every step itself, through the MCP, while you watch: "create an Iceberg schema called
+orders, with our lakehouse rules, then design an order system; orders are SCD Type 2". It never designs
+before it knows the schema's type and has read its rules; those are its cues.
+
+| Step | The agent's MCP tools |
+|---|---|
+| schema | `schemas` (list), `open_schema`, `new_schema` (name, type) |
+| type | part of the schema; `describe` says it |
+| rules | `templates` (per type), `set_rules`, `rules`, `guide` (the rules in plain words) |
+| design | `describe`, `render`, `check`, the operations (`add_table`, `relate`, `add_view`, …), `apply_pattern` |
 
 Rules are standards that keep a schema consistent: every integer the same type, every string the same,
-every name the same form. They are configured by type in their own rich UI, **Standards**: each type has
-default rules, which you edit, and your own templates. A new schema can use none, a template, or its own
-made from a template: naming,
-keys, types, standard columns, patterns such as SCD Type 2, target defaults such as merge-on-read on
-Iceberg. They are the agent's cues. Then you prompt Claude Code in the same folder: "design an order
-system; orders are SCD Type 2". The full catalog: [docs/rules.md](docs/rules.md).
+every name the same form; naming, keys, standard columns, patterns such as SCD Type 2, and target defaults
+such as merge-on-read on Iceberg. They are configured by type in their own UI, **Standards**. The full
+catalog: [docs/rules.md](docs/rules.md).
 
 ## What it does
 
@@ -137,7 +151,7 @@ The model behind it all: [docs/model.md](docs/model.md).
 | `sf-core` | the schema model, operations, rules, versions |
 | `sf-dialects` | reading and writing MySQL, PostgreSQL and Iceberg |
 | `sf-mcp` | the MCP the agent works through |
-| `sf` | the command: `sf new`, `sf serve`, `sf import`, `sf export` |
+| `sf` | the command: `sf serve`, `sf new`, `sf import`, `sf export` |
 
 ## Built on
 
