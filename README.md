@@ -167,10 +167,10 @@ The model behind it all: [docs/model.md](docs/model.md).
 
 - **One model, one owner.** `schema-forge serve` holds the schema. Every change is an operation from the agent,
   through the MCP, in one queue; it is stored and appears in every perspective at once.
-- **Stored in an embedded SurrealDB.** `schema-forge` carries its own database (SurrealDB on SurrealKV, its
-  pure-Rust storage engine): schemas, operations and history, versions, findings, standards, pipelines.
-  Relationships and view dependencies are a graph it queries directly, and its live queries push every
-  change to the perspectives. Nothing to install or run beside `schema-forge` ([docs/store.md](docs/store.md)).
+- **Stored in an embedded redb.** `schema-forge` carries its own database (redb: pure Rust, one file,
+  ACID): schemas, operations and history, versions, findings, standards, pipelines. Every change is
+  announced to the open perspectives as it commits. Nothing to install or run beside `schema-forge`
+  ([docs/store.md](docs/store.md)).
 - **Definitions on disk.** `schema-forge export` writes, and `schema-forge import` reads, the shareable form: one SQL file
   per object under `<node>/<database>/<schema>/`, and `.schema-forge/` beside them (the model's ids, tags, areas and
   patterns, the rules, custom perspectives, versions, migrations).
@@ -180,7 +180,7 @@ The model behind it all: [docs/model.md](docs/model.md).
 | Crate | Job |
 |---|---|
 | `schema-forge-core` | the schema model, operations, rules, versions |
-| `schema-forge-store` | the embedded SurrealDB: storing, querying and live changes |
+| `schema-forge-store` | the embedded redb: storing, loading and announcing changes |
 | `schema-forge-dialects` | reading and writing MySQL, PostgreSQL and Iceberg |
 | `schema-forge-mcp` | the MCP the agent works through |
 | `schema-forge` | the command: `schema-forge serve`, `schema-forge new`, `schema-forge import`, `schema-forge export` |
@@ -195,7 +195,7 @@ We build the schema logic; everything else comes from established libraries, pur
 | Iceberg | **iceberg** (Apache iceberg-rust, the official crate): table metadata, partition specs, sort orders, catalogs |
 | MCP | **rmcp**, the official Rust SDK, over streamable HTTP |
 | Server and live push | **tokio**, **axum**, **tower-http** (static files, server-sent events) |
-| Storage | **surrealdb**, embedded, on **SurrealKV** (pure Rust) |
+| Storage | **redb**, embedded, pure Rust |
 | Files and formats | **serde**, **serde_json**, **toml**, **schemars** (JSON Schema for `schema.json` and the MCP tools) |
 | Command line | **clap** |
 | View dependencies | **petgraph** (dependency order, cycle detection) |
@@ -228,6 +228,3 @@ We build the schema logic; everything else comes from established libraries, pur
 Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT), at your option.
 Unless you state otherwise, any contribution you submit for inclusion is dual licensed as above, without any
 additional terms or conditions.
-
-`schema-forge` binaries include SurrealDB, whose core is licensed under the Business Source License 1.1 (each release
-becomes Apache-2.0 four years after it is published); SurrealKV is Apache-2.0.
