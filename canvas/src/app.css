@@ -1541,3 +1541,5 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+.sf-pick-view { font-style: italic; }

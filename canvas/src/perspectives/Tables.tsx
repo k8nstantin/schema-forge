@@ -63,7 +63,7 @@ export function Tables() {
         </div>
         {namespaces.filter((n) => !ns || n.id === ns).map((n) => {
           const mine = rows.filter((r) => r.t.namespace === n.id)
-          if (!mine.length) return null
+          if (!mine.length && !(model.views ?? []).some((v) => v.namespace === n.id)) return null
           return (
             <div key={n.id}>
               <div className="sf-nshead">
@@ -71,6 +71,19 @@ export function Tables() {
                 <span className="sf-ns">{ix.path(n.id)}</span>
                 <span className="sf-muted">{mine.length} tables</span>
               </div>
+              {(model.views ?? []).filter((v) => v.namespace === n.id && (!query.trim() || v.name.toLowerCase().includes(query.trim().toLowerCase()))).map((v) => (
+                <button key={v.id} type="button" className="sf-trow" onClick={() => go('table', v.id)}>
+                  <span className="sf-tname">
+                    <span className="sf-mono sf-strong">{v.name}</span>
+                    {v.comment && <span className="sf-muted sf-ellipsis">{v.comment}</span>}
+                  </span>
+                  <span className="sf-fam"><span className="sf-dot" style={{ background: '#7fb2ff' }} />view</span>
+                  <span className="sf-num">{v.columns?.length || ''}</span>
+                  <span className="sf-num" />
+                  <span className="sf-mono sf-type">{v.options?.postgres?.materialized ? 'materialized' : ''}</span>
+                  <span className="sf-muted sf-right">reads {v.reads?.length ?? 0}</span>
+                </button>
+              ))}
               {mine.map((r) => (
                 <button key={r.t.id} type="button" className="sf-trow" onClick={() => go('table', r.t.id)}>
                   <span className="sf-tname">

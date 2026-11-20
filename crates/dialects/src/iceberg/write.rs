@@ -156,6 +156,17 @@ fn view(paths: &HashMap<Id, Vec<String>>, v: &View) -> String {
     let mut out = String::new();
     notes(v.notes.as_ref(), &mut out);
     let _ = write!(out, "CREATE VIEW {}", name(paths, &v.namespace, &v.name));
+    if !v.columns.is_empty() {
+        let fields: Vec<String> = v
+            .columns
+            .iter()
+            .map(|c| match &c.comment {
+                Some(cm) => format!("  `{}` COMMENT {}", c.name.replace('`', "``"), quote(cm)),
+                None => format!("  `{}`", c.name.replace('`', "``")),
+            })
+            .collect();
+        let _ = write!(out, " (\n{}\n)", fields.join(",\n"));
+    }
     if let Some(comment) = &v.comment {
         let _ = write!(out, "\nCOMMENT {}", quote(comment));
     }

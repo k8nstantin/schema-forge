@@ -278,3 +278,38 @@ async fn the_agent_proposes_the_person_approves_and_the_rule_holds() {
     let (_, body) = get(&store, "/api/schemas/orders").await;
     assert!(!body.contains("\"notes\""), "undone");
 }
+
+#[tokio::test]
+async fn the_agent_adds_views_and_their_reads_come_from_the_query() {
+    let dir = tempfile::tempdir().expect("dir");
+    let store = store(&dir);
+    let app = schema_forge_serve::app(store.clone());
+    let init = serde_json::json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize",
+        "params": { "protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": { "name": "test", "version": "1" } } });
+    let (session, _) = mcp(&app, None, init).await;
+    let session = session.expect("a session");
+    mcp(&app, Some(&session), serde_json::json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).await;
+    let change = |id: u64, ops: serde_json::Value| {
+        serde_json::json!({ "jsonrpc": "2.0", "id": id, "method": "tools/call",
+            "params": { "name": "change", "arguments": { "schema": "orders", "operations": ops } } })
+    };
+    let view = serde_json::json!([{ "op": "add_view", "namespace": "public", "name": "customer_orders",
+        "definition": "SELECT c.email, o.order_no FROM public.orders o JOIN customers c ON o.customer_id = c.id",
+        "reads": ["nothing"] }]);
+    let (_, reply) = mcp(&app, Some(&session), change(2, view)).await;
+    assert!(tool_text(&reply).contains("added view `customer_orders`"), "{reply}");
+    let (_, body) = get(&store, "/api/schemas/orders").await;
+    let model: Schema = serde_json::from_str(&body).expect("a model");
+    let v = model.views.iter().find(|v| v.name == "customer_orders").expect("the view");
+    assert_eq!(v.reads.len(), 2, "orders and customers, from the query; the `reads` sent was ignored");
+    let broken =
+        serde_json::json!([{ "op": "add_view", "namespace": "public", "name": "oops", "definition": "SELEC 1" }]);
+    let (_, reply) = mcp(&app, Some(&session), change(3, broken)).await;
+    assert!(tool_text(&reply).contains("does not parse"), "{reply}");
+    let drop = serde_json::json!([{ "op": "drop_table", "table": "customers" }]);
+    let (_, reply) = mcp(&app, Some(&session), change(4, drop)).await;
+    assert!(tool_text(&reply).contains("views read"), "a table a view reads stays: {reply}");
+    let (status, sql) = get(&store, &format!("/api/schemas/orders/definition/{}", v.id)).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(sql.contains("CREATE VIEW") && sql.contains("JOIN customers"), "{sql}");
+}

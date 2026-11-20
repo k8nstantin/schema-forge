@@ -207,6 +207,19 @@ fn operation(target: Target, mut v: serde_json::Value) -> Result<schema_forge_co
     {
         parse(t)?;
     }
+    // A view reads what its query names: found here, from the query, never taken from the caller.
+    let op = v.get("op").and_then(|o| o.as_str()).unwrap_or("");
+    if matches!(op, "add_view" | "alter_view")
+        && let Some(definition) = v.get("definition").and_then(|d| d.as_str()).map(str::to_string)
+    {
+        let reads: Vec<String> = schema_forge_dialects::view_relations(target, &definition)?
+            .into_iter()
+            .map(|parts| parts.join("."))
+            .collect();
+        v["reads"] = serde_json::json!(reads);
+    } else if let Some(o) = v.as_object_mut() {
+        o.remove("reads");
+    }
     serde_json::from_value(v).map_err(|e| format!("not an operation: {e}"))
 }
 
@@ -231,6 +244,9 @@ Operations, as JSON objects with "op". Tables are named `orders` or `namespace.o
 - rename_table {table, name}; rename_column {column, name}; rename_namespace {namespace, name}; set_table_comment {table, comment}
 - set_primary_key {table, columns}; set_identifier_fields {table, columns} (Iceberg)
 - add_index {table, columns, unique?, name?}; drop_index {table, index} (MySQL, PostgreSQL)
+- add_view {namespace, name, definition (one SELECT in the target's SQL: Spark SQL on Iceberg), columns?: [{name, type?, comment?}], comment?, materialized? (PostgreSQL)}; what it reads is found from the query
+- alter_view {view, definition?, columns?, comment?} (on Iceberg a new version); rename_view {view, name}; add_view_dialect {view, dialect, definition} (Iceberg: the same query for another engine, e.g. trino)
+- drop_view {view}: destructive; a table or view other views read cannot be dropped, and renaming one needs those views altered in the same change
 - relate {from, columns, to, to_columns, name?}; unrelate {relationship}
 - set_partition_spec {table, fields: [{column, transform}]}; set_property {table, key, value}; unset_property {table, key} (Iceberg)
 - drop_table {table}; drop_column {column}; drop_namespace {namespace}: destructive."#
@@ -317,8 +333,36 @@ Operations, as JSON objects with "op". Tables are named `orders` or `namespace.o
                 }
             }
         }
+        for v in &model.views {
+            if a.table.as_deref().is_some_and(|n| n != v.name) || only_ns.as_ref().is_some_and(|n| n != &v.namespace) {
+                continue;
+            }
+            let ns = model.namespaces.iter().find(|n| n.id == v.namespace).map_or("", |n| n.name.as_str());
+            let reads: Vec<&str> = v
+                .reads
+                .iter()
+                .filter_map(|r| {
+                    model
+                        .tables
+                        .iter()
+                        .find(|t| &t.id == r)
+                        .map(|t| t.name.as_str())
+                        .or_else(|| model.views.iter().find(|x| &x.id == r).map(|x| x.name.as_str()))
+                })
+                .collect();
+            let _ = writeln!(
+                out,
+                "{ns}.{} (view, reads {}){}",
+                v.name,
+                reads.join(", "),
+                v.comment.as_deref().map(|c| format!(": {c}")).unwrap_or_default()
+            );
+            if a.table.is_some() {
+                let _ = writeln!(out, "  {}", v.definition.replace('\n', "\n  "));
+            }
+        }
         if out.is_empty() {
-            return Err("no table matches".to_string());
+            return Err("no table or view matches".to_string());
         }
         Ok(out)
     }

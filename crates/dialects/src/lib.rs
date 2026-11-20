@@ -92,3 +92,73 @@ mod parse_type_tests {
         assert!(parse_type(Target::Postgres, "not a type at all").is_err());
     }
 }
+
+/// The tables and views a view's definition reads, each as the name parts written (`shop.orders` is
+/// `["shop", "orders"]`), in `target`'s dialect: Spark SQL on Iceberg, PostgreSQL's own.
+///
+/// # Errors
+/// When the definition does not parse as one query in that dialect.
+pub fn view_relations(target: Target, definition: &str) -> Result<Vec<Vec<String>>, String> {
+    let parsed = match target {
+        Target::Iceberg => sqlparser::parser::Parser::parse_sql(&sqlparser::dialect::DatabricksDialect {}, definition),
+        Target::Postgres => sqlparser::parser::Parser::parse_sql(&sqlparser::dialect::PostgreSqlDialect {}, definition),
+        Target::Mysql => sqlparser::parser::Parser::parse_sql(&sqlparser::dialect::MySqlDialect {}, definition),
+    }
+    .map_err(|e| format!("the definition does not parse: {e}"))?;
+    if parsed.len() != 1 || !matches!(parsed[0], sqlparser::ast::Statement::Query(_)) {
+        return Err("a view's definition is one query (SELECT …)".to_string());
+    }
+    let fold = target == Target::Postgres;
+    let mut names: Vec<Vec<String>> = Vec::new();
+    let _ = sqlparser::ast::visit_relations(&parsed, |name| {
+        let parts: Vec<String> = name
+            .0
+            .iter()
+            .filter_map(|p| p.as_ident())
+            .map(|i| if fold && i.quote_style.is_none() { i.value.to_lowercase() } else { i.value.clone() })
+            .collect();
+        if !names.contains(&parts) {
+            names.push(parts);
+        }
+        std::ops::ControlFlow::<()>::Continue(())
+    });
+    Ok(names)
+}
+
+#[cfg(test)]
+mod view_relations_tests {
+    use super::*;
+
+    #[test]
+    fn a_view_reads_what_its_query_names() {
+        let r = view_relations(
+            Target::Iceberg,
+            "SELECT o.id, c.email FROM shop.orders o JOIN customers c ON o.customer_id = c.id",
+        );
+        assert_eq!(r, Ok(vec![vec!["shop".to_string(), "orders".to_string()], vec!["customers".to_string()]]));
+        assert_eq!(
+            view_relations(Target::Postgres, "SELECT * FROM Public.Orders"),
+            Ok(vec![vec!["public".to_string(), "orders".to_string()]])
+        );
+        assert!(view_relations(Target::Iceberg, "SELEC nonsense").is_err());
+        assert!(view_relations(Target::Iceberg, "DROP TABLE orders").is_err(), "a view is a query");
+    }
+}
+
+#[cfg(test)]
+mod view_fields_tests {
+    use super::*;
+
+    #[test]
+    fn a_views_fields_are_written_and_read_back() {
+        let sql = "CREATE TABLE `shop`.`orders` (`id` STRING NOT NULL, `total` BIGINT) USING iceberg;\n\nCREATE VIEW `shop`.`totals` (\n  `id`,\n  `total` COMMENT 'summed'\n)\nCOMMENT 'per order' AS\nSELECT id, total FROM shop.orders;\n";
+        let first = iceberg::import(sql).expect("read");
+        let v = &first.schema.views[0];
+        assert_eq!(
+            v.columns.iter().map(|c| (c.name.as_str(), c.comment.as_deref())).collect::<Vec<_>>(),
+            [("id", None), ("total", Some("summed"))]
+        );
+        let again = iceberg::import(&iceberg::generate(&first.schema)).expect("read back");
+        assert_eq!(again.schema.views, first.schema.views, "the fields survive a round trip");
+    }
+}
