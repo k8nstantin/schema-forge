@@ -201,7 +201,8 @@ still open (below).
 
 ### Open decisions
 
-- **The perspectives (the UI).** A solid, elegant design users like, not a quick UI. Browser perspectives (React Flow) give the
+- **The perspectives (the UI).** Designed in [docs/perspectives.md](docs/perspectives.md), which ends with
+  what the technology must do and a recommendation. A solid, elegant design users like, not a quick UI. Browser perspectives (React Flow) give the
   richest diagrams today; Rust UI (Leptos or Dioxus in the browser; egui, Iced or Slint as a native app)
   keeps one language. Decided before any perspective is built, from a design of the perspectives themselves.
 - **PostgreSQL parsing.** sqlparser (pure Rust) is the default; the round-trip tests decide whether it
