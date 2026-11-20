@@ -105,8 +105,12 @@ fn rules_are_linked_checked_logged_and_kept() {
         assert_eq!(heard.try_recv().expect("announced").schema, "*");
         store.link_rule(Rules::Schema("lake"), link("norm", Scope::Schema), "you").expect("link");
         let op = store
-            .set_group("lake", Group { name: "hot".to_string(), tables: vec![table.clone()] }, "you")
+            .set_group("lake", Group { name: "hot".to_string(), tables: vec![table.clone()] }, true, "you")
             .expect("group");
+        let again = Group { name: "hot".to_string(), tables: vec![] };
+        assert!(store.set_group("lake", again.clone(), true, "you").is_err(), "a new group never replaces one");
+        let cold = Group { name: "cold".to_string(), ..again };
+        assert!(store.set_group("lake", cold, false, "you").is_err(), "only a group there is can change");
         assert_eq!(op.kind, "set_group");
         store
             .link_rule(Rules::Schema("lake"), link("cdc", Scope::Group { group: "hot".to_string() }), "you")
@@ -142,6 +146,19 @@ fn rules_are_linked_checked_logged_and_kept() {
     store.remove_group("lake", "hot", "you").expect("now it can go");
     assert!(store.unlink_rule(Rules::Schema("lake"), "cdc", &Scope::Schema, "you").is_err(), "nothing linked there");
     assert!(matches!(store.rules("nowhere"), Err(Error::NoSchema(_))));
+    // A goal links what is not in place, all at once; `pk` is linked to every schema already.
+    let op = store.link_packs("lake", &["norm", "pk", "cdc"], "you").expect("packs").expect("a change");
+    assert_eq!(op.change, serde_json::json!({ "packs": ["cdc"] }));
+    assert!(store.link_packs("lake", &["norm", "cdc"], "you").expect("packs").is_none(), "nothing left to link");
+    // Every rule switched off for every schema: `*` is no catalog rule, but it is a link; without a reason it is not.
+    let all = Link {
+        off: true,
+        reason: Some("a scratch workspace".to_string()),
+        ..link(schema_forge_core::rules::ALL, Scope::Global)
+    };
+    let bare = Link { reason: None, ..all.clone() };
+    assert!(matches!(store.link_rule(Rules::Global, bare, "you"), Err(Error::Rule(_))));
+    store.link_rule(Rules::Global, all, "you").expect("every rule off");
 }
 
 #[test]
