@@ -166,8 +166,8 @@ The model behind it all: [docs/model.md](docs/model.md).
   Relationships and view dependencies are a graph it queries directly, and its live queries push every
   change to the perspectives. Nothing to install or run beside `sf`.
 - **Definitions on disk.** `sf export` writes, and `sf import` reads, the shareable form: one SQL file
-  per object under `<node>/<database>/<schema>/`, and `.sf/` (model, rules, versions, migrations),
-  `sf.toml` (name and type), `rules.toml` (the rules), `perspectives/` (custom perspectives), `export/` (the SQL).
+  per object under `<node>/<database>/<schema>/`, and `.sf/` beside them (the model's ids, tags, areas and
+  patterns, the rules, custom perspectives, versions, migrations).
 - **Rust** throughout where it can be; the perspectives in SuperX's purple theme, their technology still open (below).
 
 | Crate | Job |

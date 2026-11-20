@@ -20,6 +20,7 @@ definitions/
       .sf/
         model.json                      what SQL cannot say: ids, tags, areas, patterns, logical relationships, layout
         rules.toml                      the schema's rules
+        perspectives/                   custom perspectives
         versions/0003.json              each locked version: its number, hash, and every file's hash
         migrations/0002_to_0003.sql     what changed since the version before
         CHANGELOG.md                    one entry per version, in words
