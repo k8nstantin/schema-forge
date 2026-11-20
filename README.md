@@ -80,12 +80,12 @@ type without an equivalent is reported, never dropped.
 
 ## Built on
 
-We build the schema logic; everything else comes from established libraries.
+We build the schema logic; everything else comes from established, pure-Rust libraries. Two choices are
+still open (below).
 
 | Need | Library |
 |---|---|
-| PostgreSQL parsing | **pg_query** (pganalyze): PostgreSQL's own parser, with deparse back to SQL; exact for `pg_dump` output |
-| MySQL parsing, and SQL in general | **sqlparser** (Apache DataFusion): MySQL and PostgreSQL dialects |
+| SQL parsing | **sqlparser** (Apache DataFusion): MySQL and PostgreSQL dialects, pure Rust |
 | Iceberg | **iceberg** (Apache iceberg-rust, the official crate): table metadata, partition specs, sort orders, catalogs |
 | MCP | **rmcp**, the official Rust SDK, over streamable HTTP |
 | Server and live push | **tokio**, **axum**, **tower-http** (static files, server-sent events) |
@@ -97,8 +97,15 @@ We build the schema logic; everything else comes from established libraries.
 | Errors | **thiserror** |
 | Tests against real databases | **testcontainers** (PostgreSQL, MySQL) |
 | Deploy, later | **sqlx** (PostgreSQL, MySQL), **iceberg** catalogs |
-| The views | **React**, **React Flow** (@xyflow/react), **elkjs** (layout), **Mantine** (the purple theme), **CodeMirror** (SQL in the definition view) |
-| `render` for the agent | a headless browser (**chromiumoxide**) screenshots the real views, so the agent sees exactly what you see |
+
+### Open decisions
+
+- **The views.** A solid, elegant design users like, not a quick UI. Browser views (React Flow) give the
+  richest diagrams today; Rust UI (Leptos or Dioxus in the browser; egui, Iced or Slint as a native app)
+  keeps one language. Decided before any view is built, from a design of the views themselves.
+- **PostgreSQL parsing.** sqlparser (pure Rust) is the default; the round-trip tests decide whether it
+  reads real `pg_dump` files exactly. `pg_query` (PostgreSQL's own parser) is exact, but links C code, so it
+  is not used unless pure Rust cannot do the job.
 
 ## Roadmap
 
