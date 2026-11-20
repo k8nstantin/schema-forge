@@ -3,8 +3,9 @@
 **An ER design tool with many useful perspectives: build your database schema together with your coding
 agent, and watch it take shape.**
 
-You prompt the agent. The agent works through Schema Forge's MCP. Every change appears at once on a rich,
-live perspective that you both see. When the schema is right, export it for MySQL, PostgreSQL or Apache Iceberg.
+**You direct; the agent builds.** You never edit the schema by hand: you look at it from every side, point
+at what you mean, and tell the agent what to do. The agent works through Schema Forge's MCP, and every
+change appears at once on a rich, live perspective that you both see. When the schema is right, export it for MySQL, PostgreSQL or Apache Iceberg.
 
 ```
  you ──prompt──► coding agent ──MCP──► sf ──► live perspectives (you see them, the agent can render them)
@@ -49,9 +50,9 @@ catalog: [docs/rules.md](docs/rules.md).
 
 ## What it does
 
-- **Builds the schema with the agent.** The agent reads the schema and the rules, then changes it one
+- **The agent builds; you direct.** The agent reads the schema and the rules, then changes it one
   operation at a time: add a table, a column, a relation, a view. Each operation is checked against the
-  rules before it applies. You steer by prompt, or point at something in a perspective and say "this one".
+  rules before it applies. You never edit: you prompt, and you point.
 - **Shows it, live, from several sides.** Every change lands in every perspective as it happens:
 
   | Perspective | Shows |
@@ -91,11 +92,21 @@ catalog: [docs/rules.md](docs/rules.md).
   | a pulsing outline | what the agent is working on right now |
   | a lock | part of the last locked version, unchanged since |
   | area colour | which area a table belongs to, from the whole-schema view down to the card |
-- **Makes anything easy to point at.** Select a table, a column, a key or a view in any perspective and
-  copy it: you get a short reference such as `@orders` or `@orders.total` (several at once if you selected
-  several). Paste it into your prompt, "add a foreign key from `@order_items` to `@orders`", and the agent
-  resolves it through the MCP. The agent writes the same references back, and they are clickable in the
-  perspectives.
+- **Makes everything easy to point at.** Pointing is how you direct, so anything you can see can be copied
+  as a short reference and pasted into your prompt; the agent resolves it through the MCP:
+
+  | You point at | Reference |
+  |---|---|
+  | a table, a view, a column | `@orders`, `@current_orders`, `@orders.total` |
+  | a key, an index, a relationship | `@orders.fk_orders_customers` |
+  | an area, a tag | `@area:billing`, `@tag:scd2` |
+  | a rule | `@rule:naming.tables`, `@rule:scd2` |
+  | a finding (an inconsistency, a failing rule) | `@finding:14` |
+  | a locked version, a change | `@v3`, `@change:42` |
+  | what you selected | `@selection` |
+
+  "Make `@tag:dimension` follow `@rule:scd2`", "fix `@finding:14`", "why did `@change:42` drop that
+  index?" The agent writes the same references back, and they are clickable in the perspectives.
 - **Keeps to the rules.** Set per schema from a template, as above. The agent sees every rule, and is
   told plainly, with the expected form, when an operation breaks one. Naming, for example:
 
@@ -139,9 +150,8 @@ The model behind it all: [docs/model.md](docs/model.md).
 
 ## How it is built
 
-- **One model, one owner.** `sf serve` holds the schema. The agent's operations (through the MCP) and
-  your edits (in the perspectives) go through one queue, are saved to `schema.json`, and appear in every perspective at
-  once.
+- **One model, one owner.** `sf serve` holds the schema. Every change is an operation from the agent,
+  through the MCP, in one queue; it is saved to `schema.json` and appears in every perspective at once.
 - **Plain files, in git.** `schema.json` (the draft), `versions/` (locked versions, never edited),
   `sf.toml` (name and type), `rules.toml` (the rules), `perspectives/` (custom perspectives), `export/` (the SQL).
 - **Rust** throughout where it can be; the perspectives in SuperX's purple theme, their technology still open (below).
@@ -188,7 +198,7 @@ still open (below).
 2. Build with the agent: the MCP, the rules, every change live.
 3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets;
    CDC pipelines from MySQL through Debezium.
-4. Categories and custom perspectives; editing by hand.
+4. Categories and custom perspectives; references to everything.
 5. Locked versions and migrations.
 6. **Deploy:** apply a version to a destination database or Iceberg catalog directly, or through the exported SQL file.
 

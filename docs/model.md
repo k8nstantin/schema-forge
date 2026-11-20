@@ -58,13 +58,19 @@ Readable, made once from the object's kind and name when it is created, and neve
 
 ## References
 
-What you copy from a perspective and paste to the agent: `@` and the object's path by name.
+How you point the agent at anything: you never edit the schema, so a reference is how an instruction says
+what it means. Copied from any perspective with one action, pasted into the prompt.
 
 | Object | Reference |
 |---|---|
 | table, view | `@orders` (`@billing.orders` when the name is in more than one namespace) |
 | column | `@orders.total` |
 | key, index, relationship | `@orders.fk_orders_customers` |
+| area, tag | `@area:billing`, `@tag:scd2` |
+| rule, pattern | `@rule:naming.tables`, `@rule:scd2` |
+| finding | `@finding:14` (an inconsistency or a failing rule, numbered while it lasts) |
+| locked version, change | `@v3`, `@change:42` (a line of `operations.jsonl`) |
+| the current selection | `@selection` |
 
 The agent's `describe` and every operation take references as well as ids. A reference is resolved to the
 id at the moment it is used, so `@orders` keeps meaning the same table only until it is renamed; the id
@@ -233,7 +239,7 @@ These are the model's own rules. Project rules (naming, SCD Type 2, custom ones)
 
 ## Operations
 
-Every change, from the agent or from you, is one operation. Each names who made it and the turn it belongs
+Every change is one operation, made by the agent (you direct; you do not edit). Each names who made it and the turn it belongs
 to, is checked, applied, written to `operations.jsonl`, and carries what is needed to undo it.
 
 | Area | Operations |
