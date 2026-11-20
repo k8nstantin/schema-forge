@@ -46,6 +46,7 @@ system; orders are SCD Type 2". The full catalog: [docs/rules.md](docs/rules.md)
   | **List** | every table and view with its columns, types and constraints |
   | **Definition** | the SQL definition of what you selected, in your target database |
   | **Categories** | the schema grouped by area or tag |
+  | **Consistency** | every inconsistency: one column with different types, mismatched relationship ends, drifting lengths, mixed time types, CDC hazards; each with a fix the agent can make |
   | **Custom** | the tables, columns and grouping you choose, saved with the project |
 
 - **Zooms from the big picture into one table.** The diagram shows more as you zoom, without losing your
@@ -93,6 +94,11 @@ system; orders are SCD Type 2". The full catalog: [docs/rules.md](docs/rules.md)
 
 - **Treats views as objects.** Database views carry their definition and know what they read, so a change
   that would break a view is caught.
+- **Highlights inconsistencies.** The same column with different types, relationship ends that do not
+  match, one kind of data in many types: marked on every table and column, gathered in the Consistency
+  perspective, each with a fix the agent can make.
+- **Designs CDC targets.** From a MySQL schema to Iceberg tables through Debezium: every column mapped by
+  the rules, every hazard shown, the Debezium settings written to match ([docs/cdc.md](docs/cdc.md)).
 - **Exports SQL.** One file per version: the whole schema, or the migration from the last version.
 - **Reads what you have.** Import a MySQL or PostgreSQL schema dump, or Iceberg table definitions;
   nothing in them is lost.
@@ -166,7 +172,8 @@ still open (below).
 
 1. Import a MySQL or PostgreSQL dump and see it in the diagram, list and definition perspectives; export SQL.
 2. Build with the agent: the MCP, the rules, every change live.
-3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets.
+3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets;
+   CDC pipelines from MySQL through Debezium.
 4. Categories and custom perspectives; editing by hand.
 5. Locked versions and migrations.
 6. **Deploy:** apply a version to a destination database or Iceberg catalog directly, or through the exported SQL file.
