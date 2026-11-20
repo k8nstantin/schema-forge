@@ -71,3 +71,16 @@ fn iceberg_options_and_notes() {
     let view = &s.views[0];
     assert_eq!((view.notes.as_deref(), view.reads.len()), (Some("Each order as it is now."), 1));
 }
+
+/// A view written before the view it reads is exported after it; an empty sort item is kept as written.
+#[test]
+fn views_follow_what_they_read_and_odd_sort_orders_are_kept() {
+    let sql = "CREATE TABLE shop.orders (id STRING NOT NULL, total BIGINT) USING iceberg;\n\n\
+               CREATE VIEW shop.a_summary AS SELECT count(*) AS n FROM shop.b_orders_v;\n\n\
+               CREATE VIEW shop.b_orders_v AS SELECT id, total FROM shop.orders;\n\n\
+               ALTER TABLE shop.orders WRITE ORDERED BY (id,, total);\n";
+    let read = schema_forge_dialects::iceberg::import(sql).expect("no panic on the empty sort item");
+    assert!(read.schema.kept.iter().any(|k| k.text.contains("WRITE ORDERED BY (id,, total)")), "kept as written");
+    let out = schema_forge_dialects::iceberg::generate(&read.schema);
+    assert!(out.find("b_orders_v").expect("b") < out.find("CREATE VIEW `shop`.`a_summary`").expect("a"), "{out}");
+}
