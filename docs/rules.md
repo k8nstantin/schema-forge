@@ -1,7 +1,9 @@
 # Rules
 
-The rules are the schema's standards, set before the design starts. They are the agent's cues: it reads
-them first, designs by them, and is told plainly when an operation breaks one.
+Rules are standards: they keep a schema consistent. Every integer is the same kind of integer, every
+string the same kind of string, every name in the same form, so you and the agent both know what the
+schema looks like before a table exists. The agent reads them first, designs by them, and is told plainly
+when an operation breaks one.
 
 ## Two places: Standards, and the schema
 
@@ -28,25 +30,53 @@ Schema Forge has two parts, each with its own UI:
 - The agent can help here too: "make our Iceberg default copy-on-write for deletes" is a change to the
   standard, shown for you to accept.
 
-**A schema** takes a copy when it is created:
+**A schema** chooses its rules when it is created, and does not have to have any:
 
 1. **Name** it.
-2. **Type:** MySQL, PostgreSQL or Iceberg; the type's default rules are chosen for you.
-3. **Rules:** keep the default, pick another template for that type, and adjust anything for this schema.
+2. **Type:** MySQL, PostgreSQL or Iceberg.
+3. **Rules,** one of:
+   - **none:** design freely; only the model's own checks apply;
+   - **a template:** the type's default, or one of your own for that type;
+   - **your own:** start from a template and change it for this schema (and save it as a new template
+     if you like).
 4. **Design** with the agent.
 
 ```
-sf new orders-db --target iceberg                     # Iceberg's default rules
-sf new ledger --target postgres --template billing    # your own PostgreSQL template
+sf new orders-db --target iceberg --rules default    # Iceberg's default rules
+sf new ledger --target postgres --rules billing       # your own PostgreSQL template
+sf new scratch --target mysql --rules none            # no rules
 ```
 
-The schema keeps its own copy in `rules.toml`. A later change to a standard affects new schemas, not
+A schema with rules keeps its own copy in `rules.toml`. A later change to a standard affects new schemas, not
 existing ones; `sf rules update` shows what would change in a schema and applies it if you agree.
 
 Every rule has a **severity:** `error` (the operation is refused), `warn` (allowed, marked in the
 perspectives) or `off`.
 
 ## What rules can cover
+
+### Type standards
+
+The heart of consistency: one type for each kind of data, used everywhere.
+
+| Kind of data | e.g. PostgreSQL | e.g. MySQL | e.g. Iceberg |
+|---|---|---|---|
+| integers | `bigint` | `bigint` | `long` |
+| keys | `bigint` identity | `bigint unsigned` auto-increment | `long` |
+| strings | `text` | `varchar(255)` | `string` |
+| short codes | `varchar(32)` | `varchar(32)` | `string` |
+| money | `numeric(18,2)` | `decimal(18,2)` | `decimal(18,2)` |
+| other decimals | `numeric(18,6)` | `decimal(18,6)` | `decimal(18,6)` |
+| booleans | `boolean` | `tinyint(1)` | `boolean` |
+| points in time | `timestamptz` | `datetime(6)` | `timestamptz` |
+| dates | `date` | `date` | `date` |
+| identifiers from elsewhere | `uuid` | `char(36)` | `uuid` |
+| documents | `jsonb` | `json` | `variant` |
+
+- The agent asks for a **kind** ("an integer", "money") and gets the standard type; a column of another
+  type is refused or warned, with the standard named.
+- Each kind can say when it applies (columns ending `_amount` are money; `_at` are points in time), so
+  existing schemas can be checked too.
 
 ### Naming
 
@@ -129,10 +159,27 @@ What each type starts with, as shipped. Every value can be changed in Standards.
 |---|---|---|---|
 | **Names** | `snake_case`, plural tables | `snake_case`, plural tables | `snake_case`, plural tables |
 | **Keys** | `id bigint unsigned AUTO_INCREMENT`; foreign keys indexed, `on delete restrict` | `id bigint GENERATED ALWAYS AS IDENTITY`; foreign keys indexed, `on delete restrict` | identifier fields required; relationships logical |
-| **Types** | `InnoDB`, `utf8mb4`, `utf8mb4_0900_ai_ci`; `decimal` for money; `datetime(6)` | `timestamptz`, `text` over `varchar(n)`, `numeric` for money | `decimal` for money, `timestamptz`; format version 2 |
+| **Types** | `InnoDB`, `utf8mb4`, `utf8mb4_0900_ai_ci`; `decimal` for money; `datetime(6)` | `timestamptz`, `text` over `varchar(n)`, `numeric` for money | `decimal` for money, `timestamptz`; **format version 3** |
 | **Table defaults** | `ROW_FORMAT=DYNAMIC` | | **merge-on-read** for deletes, updates and merges (`write.delete.mode`, `write.update.mode`, `write.merge.mode` = `merge-on-read`); Parquet, `zstd`; a partition spec on every table with a time column (by `day` unless set); a sort order on every table |
 | **Comments** | on every table | on every table | on every table |
 | **Change safety** | destructive changes flagged | destructive changes flagged | destructive changes flagged; no partition change without a flag |
+
+## The Standards UI
+
+Rules are a product of their own, with a rich UI:
+
+- **Catalog:** every rule by category (types, naming, keys, standard columns, patterns, documentation,
+  views, change safety, size), each with its setting and severity, switchable in place.
+- **See before you set:** every rule shows what it accepts and what it refuses, with live examples that
+  change as you edit it ("`orderTotal` is refused; expected `order_total`").
+- **Try it on a schema:** run a template against an existing or imported schema and see every table and
+  column it would pass or fail, before you adopt it.
+- **Compare:** two templates, or a template against a schema's copy, side by side.
+- **Type standards as a table:** each kind of data and its type, per target, edited like a spreadsheet.
+- **Patterns drawn:** an SCD Type 2 or star-schema pattern shown as a small diagram of what it adds.
+- **History:** who changed a standard and when; templates are files, so git keeps them too.
+- **With the agent:** "make money `decimal(19,4)` in our PostgreSQL standard" becomes a change shown for
+  you to accept.
 
 ## How the agent uses them
 
