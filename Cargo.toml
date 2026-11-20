@@ -12,6 +12,7 @@ repository = "https://github.com/k8nstantin/schema-forge"
 [workspace.dependencies]
 schema-forge-core = { path = "crates/core" }
 schema-forge-dialects = { path = "crates/dialects" }
+schema-forge-store = { path = "crates/store" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 thiserror = "2.0.21"

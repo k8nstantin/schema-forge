@@ -142,3 +142,24 @@ impl ParseId for &str {
         schema_forge_core::Id::try_from(self.to_string()).expect("a readable id")
     }
 }
+
+#[test]
+fn user_defined_types_round_trip_through_json() {
+    let text = r#"{"format":1,"target":"postgres",
+      "namespaces":[{"id":"n_public","name":"public"}],
+      "types":[
+        {"id":"y_status","namespace":"n_public","name":"status","kind":"enum","values":["new","paid"]},
+        {"id":"y_amount","namespace":"n_public","name":"amount","kind":"domain","base":{"name":"numeric","precision":18,"scale":2},
+         "not_null":true,"checks":["CHECK ((VALUE > (0)::numeric))"],"comment":"money"},
+        {"id":"y_address","namespace":"n_public","name":"address","kind":"composite",
+         "fields":[{"name":"city","type":{"name":"text"}}]}
+      ]}"#;
+    let schema: Schema = serde_json::from_str(text).expect("types read");
+    assert_eq!(check(&schema), vec![]);
+    let again: Schema = serde_json::from_str(&serde_json::to_string(&schema).expect("write")).expect("read back");
+    assert_eq!(again, schema);
+    assert!(
+        serde_json::from_str::<Schema>(&text.replace("\"values\"", "\"valuez\"")).is_err(),
+        "unknown fields still refused"
+    );
+}

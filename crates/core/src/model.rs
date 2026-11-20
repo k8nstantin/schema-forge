@@ -371,9 +371,9 @@ pub struct Sequence {
     pub owned_by: Option<Id>,
 }
 
-/// A PostgreSQL user-defined type.
+/// A PostgreSQL user-defined type. (Its kind is flattened in, which serde cannot combine with refusing unknown
+/// fields; the kind's own variants still refuse them.)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct TypeDef {
     pub id: Id,
     pub namespace: Id,
@@ -386,7 +386,7 @@ pub struct TypeDef {
 
 /// What a user-defined type is.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "lowercase")]
+#[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
 pub enum TypeKind {
     /// Values in their declared order.
     Enum {
