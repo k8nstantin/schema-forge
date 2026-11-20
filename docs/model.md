@@ -61,19 +61,33 @@ Readable, made once from the object's kind and name when it is created, and neve
 
 ## References
 
-How you point the agent at anything: you never edit the schema, so a reference is how an instruction says
-what it means. Copied from any perspective with one action, pasted into the prompt.
+You direct the agent by prompt while you look at the perspectives, so every visual aid can be pointed at
+with one action, and the agent resolves the reference through the MCP.
 
-| Object | Reference |
+| What you point at | Reference |
 |---|---|
-| table, view | `@orders` (`@billing.orders` when the name is in more than one namespace) |
-| column | `@orders.total` |
-| key, index, relationship | `@orders.fk_orders_customers` |
-| area, tag | `@area:billing`, `@tag:scd2` |
-| rule, pattern | `@rule:naming.tables`, `@rule:scd2` |
-| finding | `@finding:14` (an inconsistency or a failing rule, numbered while it lasts) |
-| locked version, change | `@v3`, `@change:42` (a line of `operations.jsonl`) |
+| a schema, a pipeline (Home) | `@schema:orders`, `@pipeline:orders-lakehouse` |
+| a table, a view | `@orders` (`@billing.orders` when the name is in more than one namespace) |
+| a column | `@orders.total` |
+| a key, an index, a relationship | `@orders.fk_orders_customers` |
+| a partition series | `@orders.partitions` |
+| an area, a tag | `@area:billing`, `@tag:scd2` |
+| a rule pack, a rule, a rule setting | `@pack:debezium`, `@rule:scd2`, `@rule:debezium.bigint_unsigned_handling` |
+| a pipeline mapping (source column to target column) | `@map:orders.total` |
+| a finding | `@finding:14` (an inconsistency or a failing rule, numbered while it lasts) |
+| a locked version, a change, an agent turn | `@v3`, `@change:42`, `@turn:12` |
+| a perspective, as you see it now | `@perspective` (which one, what is in view, the zoom level) |
 | the current selection | `@selection` |
+| your pinned notes | `@notes` |
+
+**Easy to use:**
+- **Copy:** `C` or a click copies the reference; with several selected, all of them.
+- **Copy with context:** `Shift+C` adds one line about it, so the prompt reads clearly to you and the agent:
+  `@orders.total (decimal(18,2), not null, money)`.
+- **Drag** a card, a column or a finding into your terminal: its reference is dropped there.
+- **Hover** shows any object's reference; references in the agent's replies are clickable.
+- **Pinned notes:** pin an instruction to any object ("make this SCD Type 2", "why is this nullable?");
+  `@notes` hands them all to the agent, and each is marked done when the agent has acted on it.
 
 The agent's `describe` and every operation take references as well as ids. A reference is resolved to the
 id at the moment it is used, so `@orders` keeps meaning the same table only until it is renamed; the id

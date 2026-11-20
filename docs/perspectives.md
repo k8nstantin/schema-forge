@@ -123,14 +123,19 @@ whole-schema view down to the card. A legend is one key away.
 
 ## Directing the agent
 
-- **Copy a reference** of anything with one key (`C`) or click: `@orders`, `@orders.total`,
-  `@rule:scd2`, `@finding:14`, `@v3`, `@change:42`; several selected copy together. References in the
-  agent's replies (in Activity) are clickable.
+You prompt the agent while you look, so pointing is effortless (the full list:
+[model.md, References](model.md#references)):
+
+- **Copy** (`C`) the reference of anything you see, **copy with context** (`Shift+C`), or **drag** it into
+  your terminal: schemas, tables, columns, relationships, partition series, areas, packs, rules and their
+  settings, pipeline mappings, findings, versions, changes, the agent's turns, the perspective as you see
+  it, your selection.
+- **Pin notes** to anything; tell the agent to work through `@notes`; each is marked when done.
 - **The selection is shared:** what you select is `@selection` to the agent.
 - **Watching the agent:** each operation animates in where it lands; the perspective follows the agent's
-  work if you let it (a "follow" toggle), or stays where you are and marks what changed off-screen.
+  work if you let it ("follow"), or stays where you are and marks what changed off-screen.
 - **Accept or reject** a turn's changes in Activity, whole or one by one; undo a turn.
-- **Ask about anything:** every finding and rule marker has "copy as instruction" ("fix `@finding:14`").
+- **Every finding and rule marker** has "copy as instruction" ("fix `@finding:14`").
 
 ## Standards, its own place
 
