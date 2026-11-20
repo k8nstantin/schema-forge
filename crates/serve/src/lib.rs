@@ -281,7 +281,19 @@ async fn proposal_enforce(
 }
 
 /// Links a goal's packs to the whole schema, those not linked there yet.
-async fn goal(State(store): State<Arc<Store>>, Path((name, goal)): Path<(String, String)>) -> Response {
+/// How a goal's packs hold: `{enforce}`; each rule's default when left out.
+#[derive(serde::Deserialize, Default)]
+struct GoalHow {
+    #[serde(default)]
+    enforce: Option<rules::Enforce>,
+}
+
+async fn goal(
+    State(store): State<Arc<Store>>,
+    Path((name, goal)): Path<(String, String)>,
+    body: Option<axum::Json<GoalHow>>,
+) -> Response {
+    let how = body.map(|b| b.0).unwrap_or_default();
     let Some(g) = rules::catalog().goals.iter().find(|g| g.id == goal) else {
         return failed(StatusCode::NOT_FOUND, format!("there is no goal `{goal}`"));
     };
@@ -301,8 +313,14 @@ async fn goal(State(store): State<Arc<Store>>, Path((name, goal)): Path<(String,
     };
     let mut ops = Vec::new();
     for p in packs.iter().filter(|p| !linked.iter().any(|l| l.rule == **p && l.at == Scope::Schema)) {
-        let l =
-            Link { rule: (*p).to_string(), at: Scope::Schema, off: false, locked: false, reason: None, enforce: None };
+        let l = Link {
+            rule: (*p).to_string(),
+            at: Scope::Schema,
+            off: false,
+            locked: false,
+            reason: None,
+            enforce: how.enforce,
+        };
         match store.link_rule(Rules::Schema(&name), l, BY) {
             Ok(op) => ops.push(op),
             Err(e) => return store_failed(e),

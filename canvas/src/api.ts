@@ -56,7 +56,8 @@ export const unlinkRule = (name: string | null, rule: string, at: Scope) =>
   send('POST', name === null ? '/api/rules/global/unlink' : `${rulesOf(name)}/unlink`, { rule, at })
 export const setGroup = (name: string, group: RuleGroup) => send('PUT', `${rulesOf(name)}/groups`, group)
 export const removeGroup = (name: string, group: string) => send('DELETE', `${rulesOf(name)}/groups/${encodeURIComponent(group)}`)
-export const applyGoal = (name: string, goal: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/goals/${encodeURIComponent(goal)}`)
+export const applyGoal = (name: string, goal: string, enforce: Enforce) =>
+  send('POST', `/api/schemas/${encodeURIComponent(name)}/goals/${encodeURIComponent(goal)}`, { enforce })
 export const setEnforce = (name: string | null, rule: string, at: Scope, enforce: Enforce) =>
   send('POST', name === null ? '/api/rules/global/enforce' : `${rulesOf(name)}/enforce`, { rule, at, enforce })
 

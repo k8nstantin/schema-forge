@@ -260,3 +260,64 @@ fn changes_apply_whole_are_refused_by_hard_rules_and_undo() {
     let kinds: Vec<String> = store.operations("lake").expect("log").into_iter().map(|o| o.kind).collect();
     assert_eq!(kinds, ["change", "link_rule", "enforce_rule", "change", "change", "undo", "undo"]);
 }
+
+#[test]
+fn hard_means_hard_on_every_table_a_change_touches() {
+    use schema_forge_core::DataType;
+    use schema_forge_core::ops::{NewColumn, Op};
+    use schema_forge_core::rules::{Enforce, Link, Scope};
+    use schema_forge_store::Rules;
+    let dir = tempfile::tempdir().expect("dir");
+    let store = Store::open(&dir.path().join("store.redb")).expect("open");
+    store.create_schema("lake", Target::Iceberg).expect("create");
+    let col = |name: &str| NewColumn {
+        name: name.into(),
+        data_type: DataType::named("string"),
+        nullable: true,
+        default: None,
+        comment: None,
+    };
+    let table = |name: &str| Op::AddTable {
+        namespace: "shop".into(),
+        name: name.into(),
+        comment: None,
+        columns: vec![col("id")],
+        primary_key: vec![],
+    };
+    // No rules yet: anything goes.
+    store
+        .change(
+            "lake",
+            &[Op::AddNamespace { name: "shop".into(), parent: None, comment: None }, table("orders"), table("items")],
+            false,
+            "agent",
+        )
+        .expect("built");
+    // Soft first: the breaks are shown, nothing is refused.
+    let docs = Link {
+        rule: "docs.table".into(),
+        at: Scope::Schema,
+        off: false,
+        locked: false,
+        reason: None,
+        enforce: Some(Enforce::Soft),
+    };
+    store.link_rule(Rules::Schema("lake"), docs, "you").expect("soft");
+    store
+        .change("lake", &[Op::RenameTable { table: "items".into(), name: "lines".into() }], false, "agent")
+        .expect("soft lets it through");
+    // Then hard: touching a table that breaks it is refused until the change fixes it.
+    store.set_enforce(Rules::Schema("lake"), "docs.table", &Scope::Schema, Enforce::Hard, "you").expect("hard");
+    let rename = [Op::RenameTable { table: "lines".into(), name: "items".into() }];
+    let Err(Error::Refused(why)) = store.change("lake", &rename, false, "agent") else { panic!("refused") };
+    assert!(why.contains("docs.table") && why.contains("has no description"), "{why}");
+    let fixed = [
+        Op::SetTableComment { table: "lines".into(), comment: Some("one line of an order".into()) },
+        rename[0].clone(),
+    ];
+    store.change("lake", &fixed, false, "agent").expect("fixed in the same change, it lands");
+    // A table the change does not touch does not block it.
+    store
+        .change("lake", &[Op::AddColumn { table: "items".into(), column: col("sku"), after: None }], false, "agent")
+        .expect("items keeps its rules");
+}

@@ -708,9 +708,21 @@ impl Store {
             rules::check_with(&cat, &old, &global, &set).findings.iter().map(key).collect();
         let after = rules::check_with(&cat, &model, &global, &set);
         let new: Vec<&Finding> = after.findings.iter().filter(|f| !before.contains(&key(f))).collect();
-        let hard: Vec<String> = new
+        // Hard means hard: a table the change touches keeps every hard rule on it, breaks it had before included;
+        // and nothing anywhere may newly break one.
+        let touched: std::collections::HashSet<&Id> = model
+            .tables
             .iter()
-            .filter(|f| f.hard)
+            .filter(|t| old.tables.iter().find(|o| o.id == t.id) != Some(*t))
+            .map(|t| &t.id)
+            .collect();
+        let refusing: Vec<&Finding> = after
+            .findings
+            .iter()
+            .filter(|f| f.hard && (touched.contains(&f.table) || !before.contains(&key(f))))
+            .collect();
+        let hard: Vec<String> = refusing
+            .iter()
             .take(10)
             .map(|f| {
                 let title = cat.rule(&f.rule).map_or(f.rule.as_str(), |r| r.title.as_str());
@@ -719,9 +731,9 @@ impl Store {
             })
             .collect();
         if !hard.is_empty() {
-            let more = new.iter().filter(|f| f.hard).count().saturating_sub(hard.len());
+            let more = refusing.len().saturating_sub(hard.len());
             return Err(Error::Refused(format!(
-                "refused: it breaks hard rules: {}{}",
+                "refused: hard rules would be broken: {}{}",
                 hard.join("; "),
                 if more > 0 { format!("; and {more} more") } else { String::new() }
             )));

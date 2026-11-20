@@ -4,9 +4,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { linkRule, preview } from '../api'
-import type { Lane, Report, Rule } from '../model'
+import type { Enforce, Lane, Report, Rule } from '../model'
 import { useWorkbench } from '../state'
-import { Findings, LANES, MapTable, Strength, TallyBar, mapOf } from './parts'
+import { EnforceToggle, Findings, LANES, MapTable, Strength, TallyBar, mapOf } from './parts'
 import { scopeKey, scopeTitle } from './scope'
 
 const TOPICS = ['keys', 'indexes', 'types', 'naming', 'documentation', 'normalization', 'history', 'storage', 'cdc', 'compatibility', 'basics']
@@ -17,6 +17,7 @@ export function CatalogView({ selected }: { selected?: string }) {
   const [query, setQuery] = useState('')
   const [pre, setPre] = useState<Report | null>(null)
   const [locked, setLocked] = useState(false)
+  const [enforce, setHow] = useState<Enforce | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const r = catalog.rules.find((x) => x.id === selected)
   const forThis = (x: Rule) => !x.targets?.length || x.targets.includes(model.target)
@@ -143,8 +144,9 @@ export function CatalogView({ selected }: { selected?: string }) {
                 <span className="sf-caption">Link it</span>
                 <label className="sf-check"><input type="checkbox" checked={locked} onChange={(e) => setLocked(e.target.checked)} /> Locked: cannot be switched off below</label>
                 <span className="sf-row-gap">
-                  <button type="button" className="sf-button" onClick={() => act(linkRule(name, { rule: r.id, at: { level: 'schema' }, locked: locked || undefined }))}>To the whole of {name}</button>
-                  <button type="button" className="sf-chip" onClick={() => act(linkRule(null, { rule: r.id, at: { level: 'global' }, locked: locked || undefined }))}>For every schema</button>
+                  <EnforceToggle value={enforce} onChange={setHow} fallback="choose how it holds" />
+                  <button type="button" className="sf-button" disabled={!enforce} onClick={() => act(linkRule(name, { rule: r.id, at: { level: 'schema' }, locked: locked || undefined, enforce }))}>To the whole of {name}</button>
+                  <button type="button" className="sf-chip" disabled={!enforce} onClick={() => act(linkRule(null, { rule: r.id, at: { level: 'global' }, locked: locked || undefined, enforce }))}>For every schema</button>
                 </span>
                 <span className="sf-muted sf-small">For one namespace, family, group or table, open that level in the diagram.</span>
               </div>

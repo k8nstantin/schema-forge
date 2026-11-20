@@ -123,7 +123,10 @@ system enforces them.
 5. **The system enforces**: the agent reads the rules in force (`rules`, `check`) and designs within them. Its
    changes go through the MCP's `change`, one or more operations as one change, all or none: a change that breaks
    a hard rule attached to what it touches is refused, with the rule and the reason, and nothing lands; what breaks
-   a soft rule lands and is reported. Breaks the schema already had do not block a change; only new ones do. The
+   a soft rule lands and is reported. Hard means hard: a table the change touches must keep every hard rule on it,
+   breaks it had before included, and nothing anywhere may newly break one; untouched tables do not block it. A new
+   or imported schema has no rules; you link them as you choose, hard or soft (typically soft first, hard once the
+   schema keeps them). The
    agent can never approve, link or switch off a rule itself: that comes back as a proposal.
 
 **What breaks what** (in the Rules perspective) shows it at a glance: hover a rule and the tables that break it

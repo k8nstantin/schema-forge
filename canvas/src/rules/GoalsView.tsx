@@ -4,9 +4,9 @@
 import { useEffect, useState } from 'react'
 
 import { applyGoal, preview } from '../api'
-import type { Report, Target } from '../model'
+import type { Enforce, Report, Target } from '../model'
 import { useWorkbench } from '../state'
-import { Findings, TallyBar } from './parts'
+import { EnforceToggle, Findings, TallyBar } from './parts'
 
 const NAMES: Record<Target, string> = { mysql: 'MySQL', postgres: 'PostgreSQL', iceberg: 'Iceberg' }
 
@@ -15,6 +15,7 @@ export function GoalsView({ selected }: { selected?: string }) {
   const [gap, setGap] = useState<Report | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [enforce, setHow] = useState<Enforce | undefined>(undefined)
   const g = catalog.goals.find((x) => x.id === selected) ?? catalog.goals[0]
   const packs = g?.packs.find(([t]) => t === model.target)?.[1] ?? []
   const linked = (p: string) => rules.links.some((l) => l.rule === p && l.at.level === 'schema' && !l.off) || rules.global.some((l) => l.rule === p)
@@ -81,8 +82,9 @@ export function GoalsView({ selected }: { selected?: string }) {
               })}
             </div>
             <span className="sf-row-gap">
-              <button type="button" className="sf-button" disabled={!missing.length}
-                onClick={() => applyGoal(name, g.id).then(() => { setError(null); reloadRules() }, (e) => setError(String(e.message ?? e)))}>
+              <EnforceToggle value={enforce} onChange={setHow} fallback="choose how they hold" />
+              <button type="button" className="sf-button" disabled={!missing.length || !enforce}
+                onClick={() => applyGoal(name, g.id, enforce!).then(() => { setError(null); reloadRules() }, (e) => setError(String(e.message ?? e)))}>
                 {missing.length ? `Link the ${missing.length === 1 ? 'pack' : `${missing.length} packs`}` : 'All its packs are linked'}
               </button>
               <button type="button" className="sf-chip" onClick={() => navigator.clipboard.writeText(prompt).then(() => setCopied(true), () => setCopied(false))}>{copied ? 'Copied' : 'Copy for the agent'}</button>
