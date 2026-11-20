@@ -3,6 +3,48 @@
 What you see. You never edit the schema: the perspectives are where you look, point and direct, while the
 agent builds. They must make a schema of three tables and one of three thousand equally easy to read.
 
+## Entering the app: Home
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ Schema Forge                                                       [ + New schema ]      │
+├──────────────────────────────────────────────┬───────────────────────────────────────────┤
+│ Working on                                   │ Standards                                 │
+│  orders     MySQL · mysql, debezium, scd2    │  Type defaults: MySQL · PostgreSQL ·      │
+│             CDC ──► lakehouse.orders         │                 Iceberg                   │
+│             2 findings · agent idle          │  Packs: debezium · scd2 · star schema ·   │
+│  ledger     PostgreSQL · billing standard    │         company naming · lakehouse        │
+│             locked v7 · 3 changes since      │  Templates: billing standard · lakehouse  │
+│                                              │                                           │
+│ All schemas  (search, filter by type)        │ Pipelines                                 │
+│  …                                           │  orders ──► lakehouse.orders (Iceberg)    │
+└──────────────────────────────────────────────┴───────────────────────────────────────────┘
+```
+
+- **Working on:** the schemas you have open or touched lately, each with its type, its rule collection,
+  its pipeline, its findings and whether the agent is at work on it; one click opens it.
+- **All schemas:** every schema in the workspace, searchable, filterable by type.
+- **Standards:** the rules that exist: each type's defaults, the packs, your templates; one click opens
+  Standards.
+- **Pipelines:** every CDC pipeline, source to target.
+
+## Starting a schema: New schema
+
+One short flow, the same whether you click through it or the agent does it through the MCP:
+
+1. **Name** it: `orders`.
+2. **Type:** MySQL, PostgreSQL or Iceberg.
+3. **Rules,** a collection: the type's defaults are selected; add packs (`debezium`, `scd2`,
+   `company naming`) or start from a template; or none. Each pack shows in a line what it brings.
+4. **Where it goes** (optional): a CDC target, e.g. "captured by Debezium into Iceberg as
+   `lakehouse.orders`", which creates the pipeline and the Iceberg schema with its own collection
+   (Iceberg defaults, plus the packs you choose).
+5. **Summary:** `orders · MySQL · mysql, debezium, scd2 · CDC ──► lakehouse.orders (Iceberg)`. Create.
+
+Then the agent comes in: once the schema is defined, you prompt it ("design an order system; orders and
+customers are SCD Type 2"), and it designs under that collection. You can also start from an imported dump
+instead of an empty schema, at step 1.
+
 ## The shape of the app
 
 ```
@@ -135,7 +177,7 @@ The choice of UI technology (an open decision) follows from this design. It must
 | 6. browser and desktop | browser now, desktop via Tauri | browser now, desktop via Tauri | desktop only |
 | one language with the engine | no | yes | yes |
 
-Recommendation, for you to decide: **browser perspectives in TypeScript (React Flow, ELK)**, served by the
+**Decided** (operator, 2026-11-20): **browser perspectives in TypeScript (React Flow, ELK)**, served by the
 Rust engine, desktop later through Tauri. It is the only column where the hardest parts (large diagrams,
 semantic zoom, stable layout) already exist and are proven, so the effort goes into the design itself. The
 engine stays pure Rust; the perspectives are one well-bounded part that talks to it through the store's

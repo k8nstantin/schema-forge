@@ -168,7 +168,8 @@ The model behind it all: [docs/model.md](docs/model.md).
 - **Definitions on disk.** `schema-forge export` writes, and `schema-forge import` reads, the shareable form: one SQL file
   per object under `<node>/<database>/<schema>/`, and `.schema-forge/` beside them (the model's ids, tags, areas and
   patterns, the rules, custom perspectives, versions, migrations).
-- **Rust** throughout where it can be; the perspectives in SuperX's purple theme, their technology still open (below).
+- **Rust** for the engine; the perspectives in **TypeScript** in the browser (React Flow, ELK), served by
+  the engine, in SuperX's purple theme; a desktop app through Tauri later ([docs/perspectives.md](docs/perspectives.md)).
 
 | Crate | Job |
 |---|---|
@@ -180,8 +181,7 @@ The model behind it all: [docs/model.md](docs/model.md).
 
 ## Built on
 
-We build the schema logic; everything else comes from established, pure-Rust libraries. Two choices are
-still open (below).
+We build the schema logic; everything else comes from established libraries, pure Rust in the engine.
 
 | Need | Library |
 |---|---|
@@ -198,13 +198,11 @@ still open (below).
 | Errors | **thiserror** |
 | Tests against real databases | **testcontainers** (PostgreSQL, MySQL) |
 | Deploy, later | **sqlx** (PostgreSQL, MySQL), **iceberg** catalogs |
+| The perspectives | **TypeScript**, **React**, **React Flow** (@xyflow/react), **ELK** (elkjs, layout), **Mantine** (theme) |
+| `render` for the agent | a headless browser (**chromiumoxide**) screenshots the real perspective |
 
 ### Open decisions
 
-- **The perspectives (the UI).** Designed in [docs/perspectives.md](docs/perspectives.md), which ends with
-  what the technology must do and a recommendation. A solid, elegant design users like, not a quick UI. Browser perspectives (React Flow) give the
-  richest diagrams today; Rust UI (Leptos or Dioxus in the browser; egui, Iced or Slint as a native app)
-  keeps one language. Decided before any perspective is built, from a design of the perspectives themselves.
 - **PostgreSQL parsing.** sqlparser (pure Rust) is the default; the round-trip tests decide whether it
   reads real `pg_dump` files exactly. `pg_query` (PostgreSQL's own parser) is exact, but links C code, so it
   is not used unless pure Rust cannot do the job.
