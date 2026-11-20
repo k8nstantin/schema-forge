@@ -229,7 +229,7 @@ Checked on every change; a change that breaks one is refused.
 - Partition and sort fields point at columns of the table, with a transform that fits the column's type.
 
 These are the model's own rules. Project rules (naming, SCD Type 2, custom ones) come on top, from
-`sf.toml` and `rules/`.
+`rules.toml` (see [rules.md](rules.md)).
 
 ## Operations
 

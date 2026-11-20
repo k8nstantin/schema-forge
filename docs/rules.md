@@ -3,26 +3,45 @@
 The rules are the schema's standards, set before the design starts. They are the agent's cues: it reads
 them first, designs by them, and is told plainly when an operation breaks one.
 
-## Where rules come from
+## Two places: Standards, and the schema
+
+Schema Forge has two parts, each with its own UI:
 
 ```
-sf new orders-db --target iceberg
+ Standards                                   Schemas
+ ─────────                                   ───────
+ the types: MySQL · PostgreSQL · Iceberg      name ──► type ──► rules ──► design with the agent
+ each type's default rules                                 ▲
+ your own templates, per type          ──────── copied ────┘
 ```
 
-1. **Name** the schema.
-2. **Type:** MySQL, PostgreSQL or Iceberg.
-3. **Rules:** the new schema starts from that type's **template**, and you edit it before you design (in
-   the Rules perspective, or in `rules.toml`).
+**Standards** is where rules are configured, by type, before any schema exists:
+
+- **One default rule set per type.** MySQL, PostgreSQL and Iceberg each come with built-in defaults
+  (below), and you edit them: "our Iceberg tables are merge-on-read, `snake_case`, partitioned by day".
+- **Your own templates, per type**, beside the default: "billing standard (PostgreSQL)", "lakehouse
+  (Iceberg)". Each says which type it is for.
+- The Standards UI shows every rule with its setting, its severity and an example of what it accepts and
+  refuses, so a rule reads clearly before it is ever used.
+- Kept in `~/.schema-forge/standards/`, one file per type and template, and shareable: point Schema Forge
+  at a shared folder or git repo and a team uses the same standards.
+- The agent can help here too: "make our Iceberg default copy-on-write for deletes" is a change to the
+  standard, shown for you to accept.
+
+**A schema** takes a copy when it is created:
+
+1. **Name** it.
+2. **Type:** MySQL, PostgreSQL or Iceberg; the type's default rules are chosen for you.
+3. **Rules:** keep the default, pick another template for that type, and adjust anything for this schema.
 4. **Design** with the agent.
 
-**Templates** are rule sets kept for reuse:
+```
+sf new orders-db --target iceberg                     # Iceberg's default rules
+sf new ledger --target postgres --template billing    # your own PostgreSQL template
+```
 
-- **Built in**, one per type: `mysql`, `postgres`, `iceberg`, each with sensible defaults for that type
-  (below). You can edit them.
-- **Your own**, e.g. "our company standard for Iceberg", saved once in `~/.schema-forge/templates/` and
-  chosen at `sf new --template <name>`.
-- A schema keeps its own copy in `rules.toml`. Editing a template later changes new schemas, not existing
-  ones; `sf rules update` shows what would change in one and applies it if you agree.
+The schema keeps its own copy in `rules.toml`. A later change to a standard affects new schemas, not
+existing ones; `sf rules update` shows what would change in a schema and applies it if you agree.
 
 Every rule has a **severity:** `error` (the operation is refused), `warn` (allowed, marked in the
 perspectives) or `off`.
@@ -102,9 +121,9 @@ What a table tagged with a pattern must have; the agent applies the pattern on r
 
 - the most columns a table may have, the most indexes, the most tables in an area
 
-## The built-in templates
+## Each type's default rules
 
-What each type starts with. Every value can be changed.
+What each type starts with, as shipped. Every value can be changed in Standards.
 
 | | MySQL | PostgreSQL | Iceberg |
 |---|---|---|---|

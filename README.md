@@ -25,7 +25,9 @@ sf new orders-db --target iceberg     # name and type; the rules start from Iceb
 sf serve                              # the perspectives open; the MCP is added for Claude Code
 ```
 
-The rules come from the type's template (or your own), and you edit them before you design: naming,
+Rules are configured by type in their own UI, **Standards**: each type (MySQL, PostgreSQL, Iceberg) has
+its default rules, which you edit, and you can keep your own templates per type. A new schema takes its
+type's default (or a template you choose), and you adjust it before you design: naming,
 keys, types, standard columns, patterns such as SCD Type 2, target defaults such as merge-on-read on
 Iceberg. They are the agent's cues. Then you prompt Claude Code in the same folder: "design an order
 system; orders are SCD Type 2". The full catalog: [docs/rules.md](docs/rules.md).
