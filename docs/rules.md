@@ -42,13 +42,13 @@ Schema Forge has two parts, each with its own UI:
 4. **Design** with the agent.
 
 ```
-sf new orders-db --target iceberg --rules default    # Iceberg's default rules
-sf new ledger --target postgres --rules billing       # your own PostgreSQL template
-sf new scratch --target mysql --rules none            # no rules
+schema-forge new orders-db --target iceberg --rules default    # Iceberg's default rules
+schema-forge new ledger --target postgres --rules billing       # your own PostgreSQL template
+schema-forge new scratch --target mysql --rules none            # no rules
 ```
 
 A schema with rules keeps its own copy in `rules.toml`. A later change to a standard affects new schemas, not
-existing ones; `sf rules update` shows what would change in a schema and applies it if you agree.
+existing ones; `schema-forge rules update` shows what would change in a schema and applies it if you agree.
 
 Every rule has a **severity:** `error` (the operation is refused), `warn` (allowed, marked in the
 perspectives) or `off`.

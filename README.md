@@ -1,4 +1,4 @@
-# Schema Forge (`sf`)
+# Schema Forge
 
 **An ER design tool with many useful perspectives: build your database schema together with your coding
 agent, and watch it take shape.**
@@ -12,7 +12,7 @@ change goes through it and is checked against the schema's rules. More agents an
 later. How it compares with what exists: [docs/market.md](docs/market.md).
 
 ```
- you ──prompt──► coding agent ──MCP──► sf ──► live perspectives (you see them, the agent can render them)
+ you ──prompt──► coding agent ──MCP──► schema-forge ──► live perspectives (you see them, the agent can render them)
                                         │
                                         └──► export   (MySQL, PostgreSQL, Iceberg)
 ```
@@ -33,7 +33,7 @@ You and the agent take the same path:
 4. **Design:** together, live.
 
 ```
-sf serve      # the workspace opens; the MCP is added for Claude Code
+schema-forge serve      # the workspace opens; the MCP is added for Claude Code
 ```
 
 The agent can take every step itself, through the MCP, while you watch: "create an Iceberg schema called
@@ -130,7 +130,7 @@ catalog: [docs/rules.md](docs/rules.md).
   the rules, every hazard shown, the Debezium settings written to match ([docs/cdc.md](docs/cdc.md)).
 - **Versions as definitions, with or without git.** A locked version is written as one SQL file per
   object, at a path that says where it lives (`<node>/<database>/<schema>/tables/orders.sql`), plus a small
-  `.sf/` folder for what SQL cannot say. A plain folder works; in a git repository each lock is also a
+  `.schema-forge/` folder for what SQL cannot say. A plain folder works; in a git repository each lock is also a
   commit and a tag, and a plain folder can join a repository later with its history
   ([docs/versions.md](docs/versions.md)).
 - **Exports SQL.** One file per version: the whole schema, or the migration from the last version.
@@ -159,24 +159,24 @@ The model behind it all: [docs/model.md](docs/model.md).
 
 ## How it is built
 
-- **One model, one owner.** `sf serve` holds the schema. Every change is an operation from the agent,
+- **One model, one owner.** `schema-forge serve` holds the schema. Every change is an operation from the agent,
   through the MCP, in one queue; it is stored and appears in every perspective at once.
-- **Stored in an embedded SurrealDB.** `sf` carries its own database (SurrealDB on SurrealKV, its
+- **Stored in an embedded SurrealDB.** `schema-forge` carries its own database (SurrealDB on SurrealKV, its
   pure-Rust storage engine): schemas, operations and history, versions, findings, standards, pipelines.
   Relationships and view dependencies are a graph it queries directly, and its live queries push every
-  change to the perspectives. Nothing to install or run beside `sf`.
-- **Definitions on disk.** `sf export` writes, and `sf import` reads, the shareable form: one SQL file
-  per object under `<node>/<database>/<schema>/`, and `.sf/` beside them (the model's ids, tags, areas and
+  change to the perspectives. Nothing to install or run beside `schema-forge`.
+- **Definitions on disk.** `schema-forge export` writes, and `schema-forge import` reads, the shareable form: one SQL file
+  per object under `<node>/<database>/<schema>/`, and `.schema-forge/` beside them (the model's ids, tags, areas and
   patterns, the rules, custom perspectives, versions, migrations).
 - **Rust** throughout where it can be; the perspectives in SuperX's purple theme, their technology still open (below).
 
 | Crate | Job |
 |---|---|
-| `sf-core` | the schema model, operations, rules, versions |
-| `sf-store` | the embedded SurrealDB: storing, querying and live changes |
-| `sf-dialects` | reading and writing MySQL, PostgreSQL and Iceberg |
-| `sf-mcp` | the MCP the agent works through |
-| `sf` | the command: `sf serve`, `sf new`, `sf import`, `sf export` |
+| `schema-forge-core` | the schema model, operations, rules, versions |
+| `schema-forge-store` | the embedded SurrealDB: storing, querying and live changes |
+| `schema-forge-dialects` | reading and writing MySQL, PostgreSQL and Iceberg |
+| `schema-forge-mcp` | the MCP the agent works through |
+| `schema-forge` | the command: `schema-forge serve`, `schema-forge new`, `schema-forge import`, `schema-forge export` |
 
 ## Built on
 
@@ -224,5 +224,5 @@ Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT l
 Unless you state otherwise, any contribution you submit for inclusion is dual licensed as above, without any
 additional terms or conditions.
 
-`sf` binaries include SurrealDB, whose core is licensed under the Business Source License 1.1 (each release
+`schema-forge` binaries include SurrealDB, whose core is licensed under the Business Source License 1.1 (each release
 becomes Apache-2.0 four years after it is published); SurrealKV is Apache-2.0.

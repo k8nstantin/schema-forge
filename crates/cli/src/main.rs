@@ -1,5 +1,5 @@
-//! `sf`: import, lock, diff and generate schemas from the terminal.
+//! `schema-forge`: import, lock, diff and generate schemas from the terminal.
 
 fn main() {
-    println!("sf {}", env!("CARGO_PKG_VERSION"));
+    println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 }

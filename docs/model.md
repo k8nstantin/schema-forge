@@ -19,8 +19,8 @@ and every import and export reads or writes it. This document is the design to a
 
 ## The schema file
 
-The model lives in `sf`'s embedded SurrealDB while you work; `schema.json` is the same model written as a
-file, for git and for sharing (`sf export`, `sf import`).
+The model lives in `schema-forge`'s embedded SurrealDB while you work; `schema.json` is the same model written as a
+file, for git and for sharing (`schema-forge export`, `schema-forge import`).
 
 ```json
 {
@@ -37,7 +37,7 @@ file, for git and for sharing (`sf export`, `sf import`).
 }
 ```
 
-`format` is the version of this file format; a newer `sf` upgrades older files and never writes an older
+`format` is the version of this file format; a newer `schema-forge` upgrades older files and never writes an older
 format. `target` is `mysql`, `postgres` or `iceberg`.
 
 ## Ids
