@@ -154,8 +154,8 @@ impl<'a> Cur<'a> {
         let mut out = Vec::new();
         let mut depth = 0i32;
         let mut start = from;
-        for n in from..to {
-            match self.st.tokens[n].token {
+        for (n, tok) in self.st.tokens.iter().enumerate().take(to).skip(from) {
+            match tok.token {
                 Token::LParen | Token::LBracket => depth += 1,
                 Token::RParen | Token::RBracket => depth -= 1,
                 Token::Comma if depth == 0 => {
@@ -174,8 +174,8 @@ impl<'a> Cur<'a> {
     /// The first index in `from..to`, outside parentheses, whose token `stop` accepts.
     pub fn find_top(&self, from: usize, to: usize, stop: impl Fn(&Token) -> bool) -> usize {
         let mut depth = 0i32;
-        for n in from..to {
-            let t = &self.st.tokens[n].token;
+        for (n, tok) in self.st.tokens.iter().enumerate().take(to).skip(from) {
+            let t = &tok.token;
             match t {
                 Token::LParen | Token::LBracket => depth += 1,
                 Token::RParen | Token::RBracket => depth -= 1,

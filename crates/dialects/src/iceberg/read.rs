@@ -427,8 +427,8 @@ fn commas(c: &Cur<'_>, from: usize, to: usize) -> Vec<(usize, usize)> {
     let mut out = Vec::new();
     let mut depth = 0i32;
     let mut start = from;
-    for n in from..to {
-        match c.toks()[n].token {
+    for (n, tok) in c.toks().iter().enumerate().take(to).skip(from) {
+        match tok.token {
             Token::LParen | Token::Lt => depth += 1,
             Token::RParen | Token::Gt => depth -= 1,
             Token::ShiftRight => depth -= 2,
@@ -448,8 +448,8 @@ fn commas(c: &Cur<'_>, from: usize, to: usize) -> Vec<(usize, usize)> {
 /// Where a column's type ends: the first `NOT`, `COMMENT` or `DEFAULT` outside parentheses and angle brackets.
 fn type_end(c: &Cur<'_>, from: usize, to: usize) -> usize {
     let mut depth = 0i32;
-    for n in from..to {
-        let t = &c.toks()[n].token;
+    for (n, tok) in c.toks().iter().enumerate().take(to).skip(from) {
+        let t = &tok.token;
         match t {
             Token::LParen | Token::Lt => depth += 1,
             Token::RParen | Token::Gt => depth -= 1,
