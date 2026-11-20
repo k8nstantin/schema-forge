@@ -66,7 +66,7 @@ pub fn generate(schema: &Schema) -> String {
             );
         }
     }
-    for v in views_in_order(schema) {
+    for v in crate::views_in_order(schema) {
         w.view(v);
         w.kept_after(Some(&v.id));
     }
@@ -355,9 +355,17 @@ impl Writer<'_> {
                 })
                 .collect()
         };
+        // A partitioned table takes its foreign key whole (PostgreSQL refuses ONLY there), as pg_dump writes it.
+        let partitioned = self
+            .schema
+            .tables
+            .iter()
+            .find(|t| t.id == r.from.table)
+            .is_some_and(|t| t.options.postgres.as_ref().is_some_and(|p| p.partition_by.is_some()));
         let _ = write!(
             self.out,
-            "ALTER TABLE ONLY {}\n    ADD {}FOREIGN KEY ({}) REFERENCES {}({})",
+            "ALTER TABLE {}{}\n    ADD {}FOREIGN KEY ({}) REFERENCES {}({})",
+            if partitioned { "" } else { "ONLY " },
             self.table_name(&r.from.table),
             named(r.name.as_deref()),
             col_names(&r.from.table, &r.from.columns).join(", "),
@@ -381,27 +389,6 @@ impl Writer<'_> {
 }
 
 /// Views after the views they read.
-fn views_in_order(schema: &Schema) -> Vec<&View> {
-    let mut done: HashSet<&Id> = HashSet::new();
-    let mut out = Vec::new();
-    let mut left: Vec<&View> = schema.views.iter().collect();
-    while !left.is_empty() {
-        let before = left.len();
-        left.retain(|v| {
-            let ready = v.reads.iter().all(|r| done.contains(r) || !schema.views.iter().any(|x| &x.id == r));
-            if ready {
-                done.insert(&v.id);
-                out.push(*v);
-            }
-            !ready
-        });
-        if left.len() == before {
-            out.append(&mut left);
-        }
-    }
-    out
-}
-
 fn named(name: Option<&str>) -> String {
     name.map(|n| format!("CONSTRAINT {} ", qi(n))).unwrap_or_default()
 }

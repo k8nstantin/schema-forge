@@ -20,7 +20,7 @@ pub fn generate(schema: &Schema) -> String {
         out.push_str(&table(schema, &paths, t));
         kept_after(schema, &t.id, &mut out);
     }
-    for v in &schema.views {
+    for v in crate::views_in_order(schema) {
         out.push_str(&view(&paths, v));
         kept_after(schema, &v.id, &mut out);
     }
