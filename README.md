@@ -215,8 +215,9 @@ We build the schema logic; everything else comes from established libraries, pur
 
 ## Roadmap
 
-1. Import a MySQL or PostgreSQL dump and see it in the diagram, list and definition perspectives; export SQL.
-2. Build with the agent: the MCP, the rules, every change live.
+1. Import a PostgreSQL dump or an Iceberg Spark SQL folder and see it in the diagram, list and definition
+   perspectives, Iceberg's own features drawn as they are; export SQL.
+2. Build with the agent: the MCP, the rules, every change live; MySQL dumps.
 3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets;
    CDC pipelines from MySQL or PostgreSQL through Debezium.
 4. Categories and custom perspectives; references to everything.
