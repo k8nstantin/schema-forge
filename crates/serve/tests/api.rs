@@ -51,6 +51,15 @@ async fn the_perspectives_read_schemas_models_and_definitions() {
     let (status, body) = get(&store, "/api/schemas/orders/definition/t_orders").await;
     assert_eq!(status, StatusCode::OK);
     assert!(body.starts_with("CREATE TABLE"), "the table's SQL: {body}");
+
+    let (status, body) = get(&store, "/api/schemas/orders/shape").await;
+    assert_eq!(status, StatusCode::OK);
+    let shape: serde_json::Value = serde_json::from_str(&body).expect("json");
+    assert_eq!(shape["tables"].as_array().map(Vec::len), Some(2), "every table has its place");
+    assert!(
+        shape["links"].as_array().is_some_and(|l| l.iter().any(|x| x["declared"] == true)),
+        "the declared foreign key is a link"
+    );
 }
 
 #[tokio::test]
@@ -60,6 +69,7 @@ async fn what_is_missing_is_not_found_and_never_the_app() {
     for uri in [
         "/api/schemas/nowhere",
         "/api/schemas/nowhere/definition/t_orders",
+        "/api/schemas/nowhere/shape",
         "/api/schemas/orders/definition/t_nothing",
         "/api/nothing",
     ] {

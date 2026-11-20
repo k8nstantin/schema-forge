@@ -29,6 +29,7 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/schemas", get(schemas))
         .route("/api/schemas/{name}", get(model))
         .route("/api/schemas/{name}/definition/{id}", get(definition))
+        .route("/api/schemas/{name}/shape", get(shape))
         .route("/api/events", get(events))
         .fallback(canvas)
         .with_state(store)
@@ -67,6 +68,14 @@ fn store_failed(e: schema_forge_store::Error) -> Response {
 async fn model(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Response {
     match store.model(&name) {
         Ok(m) => axum::Json(m).into_response(),
+        Err(e) => store_failed(e),
+    }
+}
+
+/// The schema as the perspectives show it: families, stacked copies and the links between tables.
+async fn shape(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Response {
+    match store.model(&name) {
+        Ok(m) => axum::Json(schema_forge_core::shape(&m)).into_response(),
         Err(e) => store_failed(e),
     }
 }

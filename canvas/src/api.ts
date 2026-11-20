@@ -1,6 +1,6 @@
 // The server's API: the workspace's schemas, a schema's model, an object's SQL, and every change as it lands.
 
-import type { Schema, SchemaInfo } from './model'
+import type { Schema, SchemaInfo, Shape } from './model'
 
 async function json<T>(path: string): Promise<T> {
   const r = await fetch(path)
@@ -13,6 +13,7 @@ async function json<T>(path: string): Promise<T> {
 
 export const schemas = () => json<SchemaInfo[]>('/api/schemas')
 export const model = (name: string) => json<Schema>(`/api/schemas/${encodeURIComponent(name)}`)
+export const shape = (name: string) => json<Shape>(`/api/schemas/${encodeURIComponent(name)}/shape`)
 
 export async function definition(name: string, id: string): Promise<string> {
   const r = await fetch(`/api/schemas/${encodeURIComponent(name)}/definition/${encodeURIComponent(id)}`)

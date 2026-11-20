@@ -208,3 +208,10 @@ export function nested(t: DataType): StructField[] {
   if ((t.name === 'list' || t.name === 'map') && t.of) return nested(t.of)
   return []
 }
+
+/// The schema as the perspectives show it (crates/core/src/shape.rs): families, stacked copies, links.
+export interface Shape {
+  tables: { table: string; family: string; copy_of?: string; stack?: { series: string; label: string; count: number } }[]
+  families: { namespace: string; name: string; tables: number; copies: number }[]
+  links: { from: string; column: string; to: string; declared: boolean; shared: boolean }[]
+}

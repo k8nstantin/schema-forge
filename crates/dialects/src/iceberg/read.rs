@@ -38,7 +38,7 @@ pub fn import(text: &str) -> Result<Imported, Error> {
     Ok(r.done())
 }
 
-/// Reads every `.sql` file under `dir`, in path order: one table (or view) per file, as gryphon-kn lays them out
+/// Reads every `.sql` file under `dir`, in path order: one table (or view) per file, as a catalog export lays them out
 /// (`<catalog>/<namespace>/<table>.sql`), or any mix.
 ///
 /// # Errors

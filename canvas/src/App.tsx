@@ -1,46 +1,54 @@
-// The app: Home, and a schema seen from its perspectives, with the Inspector and the live Activity beside them.
+// The app: Home, and a schema seen from its perspectives (Tables, Categories, Table, Map), with what you point at
+// ready to copy for the agent, and the live Activity under them.
 
-import { Anchor, Badge, Group, Kbd, SegmentedControl, Text } from '@mantine/core'
+import { Anchor, Badge, Kbd, Text } from '@mantine/core'
 import { useHotkeys } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { changes, model as fetchModel, type Change } from './api'
-import { Diagram } from './diagram/Diagram'
-import type { Schema } from './model'
-import { Definition } from './perspectives/Definition'
+import { changes, model as fetchModel, shape as fetchShape, type Change } from './api'
+import type { Schema, Shape } from './model'
+import { Categories } from './perspectives/Categories'
 import { Home } from './perspectives/Home'
-import { Inspector } from './perspectives/Inspector'
-import { List } from './perspectives/List'
-import { WorkbenchProvider, indexOf, reference, referenceWithContext, type Selection } from './state'
+import { MapView } from './perspectives/MapView'
+import { Tables } from './perspectives/Tables'
+import { TableView } from './perspectives/TableView'
+import { WorkbenchProvider, indexOf, reference, referenceWithContext, type Perspective, type Pointer } from './state'
 
-type Perspective = 'diagram' | 'list' | 'definition'
 const PERSPECTIVES: { value: Perspective; label: string }[] = [
-  { value: 'diagram', label: 'Diagram' },
-  { value: 'list', label: 'List' },
-  { value: 'definition', label: 'Definition' },
+  { value: 'tables', label: 'Tables' },
+  { value: 'categories', label: 'Categories' },
+  { value: 'table', label: 'Table' },
+  { value: 'map', label: 'Map' },
 ]
 const TARGET = { postgres: 'PostgreSQL', mysql: 'MySQL', iceberg: 'Iceberg' } as const
 
-/// `#/<schema>/<perspective>`: where you are survives a reload.
-function readHash(): { schema: string | null; perspective: Perspective } {
-  const [, schema, p] = window.location.hash.split('/')
-  const perspective = PERSPECTIVES.some((x) => x.value === p) ? (p as Perspective) : 'diagram'
-  return { schema: schema ? decodeURIComponent(schema) : null, perspective }
+interface Place { schema: string | null; perspective: Perspective; arg?: string }
+
+/// `#/<schema>/<perspective>/<table or family>`: where you are survives a reload and can be sent.
+function readHash(): Place {
+  const [, schema, p, arg] = window.location.hash.split('/')
+  const perspective = PERSPECTIVES.some((x) => x.value === p) ? (p as Perspective) : 'tables'
+  return { schema: schema ? decodeURIComponent(schema) : null, perspective, arg: arg ? decodeURIComponent(arg) : undefined }
+}
+
+function writeHash(p: Place) {
+  window.location.hash = p.schema ? `/${encodeURIComponent(p.schema)}/${p.perspective}${p.arg ? `/${encodeURIComponent(p.arg)}` : ''}` : ''
 }
 
 export default function App() {
-  const [{ schema, perspective }, setPlace] = useState(readHash)
-  const [model, setModel] = useState<Schema | null>(null)
-  const [selection, select] = useState<Selection>(null)
+  const [place, setPlace] = useState(readHash)
+  const { schema, perspective, arg } = place
+  const [loaded, setLoaded] = useState<{ name: string; model: Schema; shape: Shape } | null>(null)
+  const [pointer, point] = useState<Pointer>(null)
   const [activity, setActivity] = useState<Change[]>([])
   const [homeVersion, setHomeVersion] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
-  const go = useCallback((s: string | null, p: Perspective = 'diagram') => {
-    window.location.hash = s ? `/${encodeURIComponent(s)}/${p}` : ''
-    setPlace({ schema: s, perspective: p })
-    if (!s) select(null)
+  const open = useCallback((p: Place) => {
+    writeHash(p)
+    setPlace(p)
+    document.querySelector('.sf-main')?.scrollTo({ top: 0 })
   }, [])
 
   useEffect(() => {
@@ -50,9 +58,9 @@ export default function App() {
   }, [])
 
   const load = useCallback((name: string) => {
-    fetchModel(name).then(
-      (m) => {
-        setModel(m)
+    Promise.all([fetchModel(name), fetchShape(name)]).then(
+      ([model, shape]) => {
+        setLoaded({ name, model, shape })
         setError(null)
       },
       (e) => setError(String(e.message ?? e)),
@@ -60,8 +68,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    setModel(null)
-    select(null)
+    point(null)
     if (schema) load(schema)
   }, [schema, load])
 
@@ -76,94 +83,90 @@ export default function App() {
     [schema, load],
   )
 
+  const current = loaded && loaded.name === schema ? loaded : null
+  const ix = useMemo(() => (current ? indexOf(current.model, current.shape) : null), [current])
+  const go = useCallback((p: Perspective, a?: string) => { if (schema) open({ schema, perspective: p, arg: a }) }, [schema, open])
+
   const copy = (withContext: boolean) => {
-    if (!model || !selection) return
-    const ix = indexOf(model)
-    const text = withContext ? referenceWithContext(selection, ix, model) : reference(selection, ix)
-    if (text) {
-      navigator.clipboard.writeText(text).then(() => notifications.show({ message: `Copied ${text}`, autoClose: 1800 }))
-    }
+    if (!current || !ix || !pointer) return
+    const text = withContext ? referenceWithContext(ix, current.model, pointer) : reference(ix, pointer)
+    if (!text) return
+    navigator.clipboard.writeText(text).then(
+      () => notifications.show({ message: `Copied ${text}`, autoClose: 1800 }),
+      () => notifications.show({ color: 'red', message: `Could not copy; select it: ${text}` }),
+    )
   }
   useHotkeys([
     ['c', () => copy(false)],
     ['shift+c', () => copy(true)],
-    ['1', () => schema && go(schema, 'diagram')],
-    ['2', () => schema && go(schema, 'list')],
-    ['3', () => schema && go(schema, 'definition')],
-    ['Escape', () => select(null)],
+    ['1', () => go('tables')],
+    ['2', () => go('categories')],
+    ['3', () => go('table', pointer?.table)],
+    ['4', () => go('map')],
+    ['Escape', () => point(null)],
   ])
 
+  const pointed = ix && pointer ? reference(ix, pointer) : null
   return (
     <div className="sf-app">
       <header className="sf-header">
-        <Group gap="md" wrap="nowrap">
-          <Anchor className="sf-brand" onClick={() => go(null)} underline="never">
+        <div className="sf-head-left">
+          <Anchor className="sf-brand" onClick={() => open({ schema: null, perspective: 'tables' })} underline="never">
             Schema Forge
           </Anchor>
           {schema && (
-            <>
-              <Text c="dimmed">/</Text>
-              <Text fw={600}>{schema}</Text>
-              {model && <Badge variant="light">{TARGET[model.target]}</Badge>}
-            </>
+            <div className="sf-schemaname">
+              <span className="sf-caption">schema</span>
+              <span className="sf-schema-title">{schema}</span>
+              {current && <Badge variant="light">{TARGET[current.model.target]}</Badge>}
+            </div>
           )}
-        </Group>
+        </div>
         {schema && (
-          <SegmentedControl
-            size="xs"
-            value={perspective}
-            onChange={(p) => go(schema, p as Perspective)}
-            data={PERSPECTIVES}
-          />
+          <nav className="sf-perspectives" role="tablist" aria-label="Perspectives">
+            {PERSPECTIVES.map((p, i) => (
+              <button key={p.value} type="button" role="tab" aria-selected={perspective === p.value} title={`${p.label} (${i + 1})`}
+                onClick={() => go(p.value, p.value === 'table' ? pointer?.table : undefined)}>
+                {p.label}
+              </button>
+            ))}
+          </nav>
         )}
-        <Group gap={6} c="dimmed" visibleFrom="md">
-          <Kbd size="xs">C</Kbd>
-          <Text size="xs">copy reference</Text>
-          <Kbd size="xs">1</Kbd>
-          <Kbd size="xs">2</Kbd>
-          <Kbd size="xs">3</Kbd>
-          <Text size="xs">perspectives</Text>
-        </Group>
+        <div className="sf-pointer">
+          {pointed ? (
+            <>
+              <span className="sf-caption">pointing at</span>
+              <code className="sf-ref">{pointed}</code>
+              <button type="button" className="sf-chip" onClick={() => copy(false)} title="Copy the reference (C)">Copy</button>
+              <button type="button" className="sf-chip" onClick={() => copy(true)} title="Copy it with what it is (Shift+C)">Copy with context</button>
+              <button type="button" className="sf-chip" onClick={() => point(null)} title="Stop pointing (Esc)" aria-label="Stop pointing">×</button>
+            </>
+          ) : (
+            schema && <span className="sf-muted sf-small">Click a table's title or a column to point at it; <Kbd size="xs">C</Kbd> copies it for your agent.</span>
+          )}
+        </div>
       </header>
-      {!schema && (
-        <main className="sf-home">
-          <Home open={(n) => go(n)} version={homeVersion} />
-        </main>
-      )}
-      {schema && error && (
-        <Text c="red" p="lg">
-          {error}
-        </Text>
-      )}
-      {schema && model && (
-        <WorkbenchProvider value={{ name: schema, model, selection, select }}>
-          <main className="sf-body">
-            <section className="sf-perspective">
-              {perspective === 'diagram' && <Diagram />}
-              {perspective === 'list' && <List />}
-              {perspective === 'definition' && <Definition />}
-            </section>
-            <aside className="sf-inspector">
-              <Inspector />
-            </aside>
-          </main>
-        </WorkbenchProvider>
-      )}
+      <main className="sf-main">
+        {!schema && <Home open={(n) => open({ schema: n, perspective: 'tables' })} version={homeVersion} />}
+        {schema && error && <Text c="red" p="lg">{error}</Text>}
+        {schema && !error && !current && <Text c="dimmed" p="lg">Opening {schema}…</Text>}
+        {schema && current && (
+          <WorkbenchProvider value={{ name: schema, model: current.model, shape: current.shape, go, pointer, point }}>
+            {perspective === 'tables' && <Tables />}
+            {perspective === 'categories' && <Categories />}
+            {perspective === 'table' && <TableView id={arg} />}
+            {perspective === 'map' && <MapView family={arg} />}
+          </WorkbenchProvider>
+        )}
+      </main>
       <footer className="sf-activity">
-        <Text size="xs" c="dimmed" fw={600}>
-          Activity
-        </Text>
+        <Text size="xs" c="dimmed" fw={600}>Activity</Text>
         {activity.length === 0 ? (
-          <Text size="xs" c="dimmed">
-            Changes appear here as they land.
-          </Text>
+          <Text size="xs" c="dimmed">Changes appear here as they land.</Text>
         ) : (
           activity.slice(0, 6).map((a) => (
             <Text key={`${a.schema}-${a.sequence}`} size="xs">
-              <Text span c="pelican.3">
-                {a.schema}
-              </Text>{' '}
-              #{a.sequence} {a.kind} by {a.by}
+              <Text span c="pelican.3">{a.schema}</Text> #{a.sequence} {a.kind} by {a.by}
             </Text>
           ))
         )}
