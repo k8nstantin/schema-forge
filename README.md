@@ -78,6 +78,28 @@ type without an equivalent is reported, never dropped.
 | `sf-mcp` | the MCP the agent works through |
 | `sf` | the command: `sf serve`, `sf import`, `sf export` |
 
+## Built on
+
+We build the schema logic; everything else comes from established libraries.
+
+| Need | Library |
+|---|---|
+| PostgreSQL parsing | **pg_query** (pganalyze): PostgreSQL's own parser, with deparse back to SQL; exact for `pg_dump` output |
+| MySQL parsing, and SQL in general | **sqlparser** (Apache DataFusion): MySQL and PostgreSQL dialects |
+| Iceberg | **iceberg** (Apache iceberg-rust, the official crate): table metadata, partition specs, sort orders, catalogs |
+| MCP | **rmcp**, the official Rust SDK, over streamable HTTP |
+| Server and live push | **tokio**, **axum**, **tower-http** (static files, server-sent events) |
+| Files and formats | **serde**, **serde_json**, **toml**, **schemars** (JSON Schema for `schema.json` and the MCP tools) |
+| Command line | **clap** |
+| Watching `schema.json` | **notify** |
+| View dependencies | **petgraph** (dependency order, cycle detection) |
+| Version hashes | **blake3** |
+| Errors | **thiserror** |
+| Tests against real databases | **testcontainers** (PostgreSQL, MySQL) |
+| Deploy, later | **sqlx** (PostgreSQL, MySQL), **iceberg** catalogs |
+| The views | **React**, **React Flow** (@xyflow/react), **elkjs** (layout), **Mantine** (the purple theme), **CodeMirror** (SQL in the definition view) |
+| `render` for the agent | a headless browser (**chromiumoxide**) screenshots the real views, so the agent sees exactly what you see |
+
 ## Roadmap
 
 1. Import a MySQL or PostgreSQL dump and see it in the diagram, list and definition views; export SQL.
