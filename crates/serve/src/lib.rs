@@ -44,6 +44,7 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/schemas/{name}/rules/enforce", post(enforce))
         .route("/api/rules/global/enforce", post(enforce_global))
         .route("/api/schemas/{name}/proposals", get(proposals))
+        .route("/api/schemas/{name}/undo", post(undo))
         .route("/api/schemas/{name}/proposals/{id}/approve", post(approve))
         .route("/api/schemas/{name}/proposals/{id}/reject", post(reject))
         .route("/api/schemas/{name}/proposals/{id}/enforce", post(proposal_enforce))
@@ -80,7 +81,9 @@ async fn schemas(State(store): State<Arc<Store>>) -> Response {
 fn store_failed(e: schema_forge_store::Error) -> Response {
     match e {
         schema_forge_store::Error::NoSchema(_) => failed(StatusCode::NOT_FOUND, e),
-        schema_forge_store::Error::Rule(_) => failed(StatusCode::BAD_REQUEST, e),
+        schema_forge_store::Error::Rule(_) | schema_forge_store::Error::Refused(_) => {
+            failed(StatusCode::BAD_REQUEST, e)
+        }
         e => failed(StatusCode::INTERNAL_SERVER_ERROR, e),
     }
 }
@@ -190,6 +193,11 @@ async fn set_group(
 
 async fn remove_group(State(store): State<Arc<Store>>, Path((name, group)): Path<(String, String)>) -> Response {
     done(store.remove_group(&name, &group, BY))
+}
+
+/// Undoes the schema's latest design change.
+async fn undo(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Response {
+    done(store.undo(&name, BY))
 }
 
 /// How a link holds: `{rule, at, enforce}`.
@@ -330,6 +338,9 @@ async fn events(State(store): State<Arc<Store>>) -> Sse<impl tokio_stream::Strea
             "sequence": change.operation.sequence,
             "kind": change.operation.kind,
             "by": change.operation.by,
+            "summary": change.operation.change["summaries"].as_array().map(|s| {
+                s.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>().join("; ")
+            }),
         });
         Some(Ok(Event::default().event("change").data(data.to_string())))
     });

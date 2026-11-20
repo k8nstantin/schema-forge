@@ -6,7 +6,7 @@ import { useHotkeys } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { catalog as fetchCatalog, changes, model as fetchModel, schemaRules, shape as fetchShape, type Change } from './api'
+import { catalog as fetchCatalog, changes, model as fetchModel, schemaRules, shape as fetchShape, undo, type Change } from './api'
 import type { Catalog, Schema, SchemaRules, Shape } from './model'
 import { Categories } from './perspectives/Categories'
 import { Home } from './perspectives/Home'
@@ -180,12 +180,19 @@ export default function App() {
       </main>
       <footer className="sf-activity">
         <Text size="xs" c="dimmed" fw={600}>Activity</Text>
+        {schema && activity.some((a) => a.schema === schema && a.kind === 'change') && (
+          <button type="button" className="sf-chip" title="Undo the latest design change"
+            onClick={() => undo(schema).catch((e) => notifications.show({ color: 'red', message: String(e.message ?? e) }))}>
+            Undo
+          </button>
+        )}
         {activity.length === 0 ? (
           <Text size="xs" c="dimmed">Changes appear here as they land.</Text>
         ) : (
-          activity.slice(0, 6).map((a) => (
-            <Text key={`${a.schema}-${a.sequence}`} size="xs">
-              <Text span c="pelican.3">{a.schema}</Text> #{a.sequence} {a.kind} by {a.by}
+          activity.slice(0, 4).map((a) => (
+            <Text key={`${a.schema}-${a.sequence}`} size="xs" className="sf-ellipsis" title={a.summary ?? undefined}>
+              <Text span c="pelican.3">{a.schema}</Text> #{a.sequence} {a.kind === 'change' ? '' : `${a.kind} `}by {a.by}
+              {a.summary ? `: ${a.summary}` : ''}
             </Text>
           ))
         )}

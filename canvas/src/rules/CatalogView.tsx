@@ -9,7 +9,7 @@ import { useWorkbench } from '../state'
 import { Findings, LANES, MapTable, Strength, TallyBar, mapOf } from './parts'
 import { scopeKey, scopeTitle } from './scope'
 
-const TOPICS = ['keys', 'types', 'naming', 'documentation', 'normalization', 'history', 'storage', 'cdc', 'compatibility', 'basics']
+const TOPICS = ['keys', 'indexes', 'types', 'naming', 'documentation', 'normalization', 'history', 'storage', 'cdc', 'compatibility', 'basics']
 
 export function CatalogView({ selected }: { selected?: string }) {
   const { name, model, ix, go, catalog, rules, reloadRules } = useWorkbench()

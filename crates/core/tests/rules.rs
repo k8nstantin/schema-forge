@@ -302,3 +302,71 @@ mod review {
         assert_eq!(r.tallies["custom.1"].hard, 1);
     }
 }
+
+#[test]
+fn index_rules_find_unindexed_joins_and_repeats() {
+    use schema_forge_core::DataType;
+    use schema_forge_core::ops::{self, NewColumn, Op};
+    let col = |name: &str| NewColumn {
+        name: name.into(),
+        data_type: DataType::named("bigint"),
+        nullable: false,
+        default: None,
+        comment: None,
+    };
+    let mut s = Schema::new(schema_forge_core::Target::Postgres);
+    let build = [
+        Op::AddNamespace { name: "public".into(), parent: None, comment: None },
+        Op::AddTable {
+            namespace: "public".into(),
+            name: "customers".into(),
+            comment: None,
+            columns: vec![col("id")],
+            primary_key: vec!["id".into()],
+        },
+        Op::AddTable {
+            namespace: "public".into(),
+            name: "orders".into(),
+            comment: None,
+            columns: vec![col("id"), col("customer_id"), col("shop_id")],
+            primary_key: vec!["id".into()],
+        },
+        Op::Relate {
+            from: "orders".into(),
+            columns: vec!["customer_id".into()],
+            to: "customers".into(),
+            to_columns: vec!["id".into()],
+            name: None,
+        },
+    ];
+    for op in &build {
+        ops::apply(&mut s, op, false).expect("built");
+    }
+    let set = RuleSet { links: vec![link("idx", Scope::Schema)], groups: vec![] };
+    let r = rules::check(&s, &[], &set);
+    assert_eq!(found(&r, "idx.related"), ["`orders` (customer_id) joins another table with no index"]);
+    let index = |cols: &[&str], name: &str| Op::AddIndex {
+        table: "orders".into(),
+        columns: cols.iter().map(|c| (*c).to_string()).collect(),
+        unique: false,
+        name: Some(name.into()),
+    };
+    ops::apply(&mut s, &index(&["customer_id", "shop_id"], "ix_orders_customer_shop"), false).expect("indexed");
+    ops::apply(&mut s, &index(&["customer_id"], "ix_orders_customer"), false).expect("indexed again");
+    let r = rules::check(&s, &[], &set);
+    assert!(found(&r, "idx.related").is_empty(), "the join leads an index now");
+    assert_eq!(
+        found(&r, "idx.redundant"),
+        ["index `ix_orders_customer` on `orders` repeats the start of ix_orders_customer_shop"]
+    );
+    assert!(
+        ops::apply(
+            &mut schema(),
+            &Op::AddIndex { table: "orders".into(), columns: vec!["id".into()], unique: false, name: None },
+            false
+        )
+        .is_err(),
+        "no indexes on Iceberg"
+    );
+    assert_eq!(rules::catalog().rule("idx.related").map(|r| r.lane), Some(rules::Lane::Shared));
+}

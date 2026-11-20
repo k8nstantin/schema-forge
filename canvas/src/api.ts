@@ -26,6 +26,8 @@ export interface Change {
   sequence: number
   kind: string
   by: string
+  /// For a design change or its undo: what each operation did.
+  summary?: string | null
 }
 
 /// Calls `on` with every change committed while the page is open; returns the way to stop listening.
@@ -64,3 +66,4 @@ export const approve = (name: string, id: number) => send<Proposal>('POST', `${p
 export const reject = (name: string, id: number) => send<Proposal>('POST', `${proposalsOf(name)}/${id}/reject`)
 export const proposalEnforce = (name: string, id: number, enforce: Enforce) =>
   send<Proposal>('POST', `${proposalsOf(name)}/${id}/enforce`, { enforce })
+export const undo = (name: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/undo`)

@@ -9,6 +9,7 @@ repository.workspace = true
 [dependencies]
 schema-forge-core.workspace = true
 schema-forge-store.workspace = true
+schema-forge-dialects.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 rmcp = { version = "=3.9.0", default-features = false, features = ["server", "macros", "transport-streamable-http-server"] }

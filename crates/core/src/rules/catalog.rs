@@ -188,6 +188,7 @@ fn pack(id: &str, title: &str, why: &str, rules: &[&str]) -> Rule {
 const ICEBERG: &[Target] = &[Target::Iceberg];
 const SOURCES: &[Target] = &[Target::Mysql, Target::Postgres];
 const MYSQL: &[Target] = &[Target::Mysql];
+const RELATIONAL: &[Target] = &[Target::Mysql, Target::Postgres];
 const POSTGRES: &[Target] = &[Target::Postgres];
 
 fn target_title(t: Target) -> &'static str {
@@ -349,6 +350,33 @@ fn build() -> Catalog {
             "Some source types arrive changed, approximated or as placeholders.",
             SOURCES,
         ),
+        pack(
+            "idx",
+            "Indexes",
+            "Joins and lookups find rows by index, not by reading the table.",
+            &["idx.related", "idx.redundant", "idx.pk_narrow"],
+        ),
+        check(
+            "idx.related",
+            "The columns a relationship joins are indexed",
+            Should,
+            "A join or a delete on the other side reads the whole table without one. PostgreSQL does not make it for you.",
+            RELATIONAL,
+        ),
+        check(
+            "idx.redundant",
+            "No index repeats the start of another",
+            Should,
+            "An index whose columns lead another one, or the key, costs every write and serves no read the other cannot.",
+            RELATIONAL,
+        ),
+        check(
+            "idx.pk_narrow",
+            "The primary key is narrow",
+            Should,
+            "InnoDB copies the primary key into every secondary index: a wide one (text, blob, long strings) swells them all.",
+            MYSQL,
+        ),
         pack("mysql", "MySQL basics", "What every MySQL table should be.", &["mysql.engine", "mysql.charset"]),
         check(
             "mysql.engine",
@@ -439,6 +467,7 @@ fn classify(r: &mut Rule) {
         (_, "mysql.charset" | "pg.timestamptz") => "types",
         (_, "pg.identity") => "keys",
         (_, "mysql.engine" | "iceberg.format") => "storage",
+        ("idx", _) => "indexes",
         ("types", _) => "types",
         ("pk", _) => "keys",
         ("naming", _) => "naming",
@@ -450,10 +479,11 @@ fn classify(r: &mut Rule) {
         ("compat", _) => "compatibility",
         _ => "basics",
     };
-    r.lane = if r.topic == "compatibility" || r.id == "cdc" || r.targets.len() > 1 {
+    // Several targets, but not a pair: a rule of every relational database, shown with the shared ones.
+    r.lane = if r.topic == "compatibility" || r.topic == "cdc" && r.targets.len() != 1 {
         Lane::Between
     } else {
-        match r.targets.first() {
+        match r.targets.first().filter(|_| r.targets.len() == 1) {
             None => Lane::Shared,
             Some(Target::Mysql) => Lane::Mysql,
             Some(Target::Postgres) => Lane::Postgres,

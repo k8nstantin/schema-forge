@@ -273,6 +273,13 @@ to, is checked, applied, written to `operations.jsonl`, and carries what is need
 | Sequences, types | `add_sequence`, `alter_sequence`, `drop_sequence`; `add_type`, `alter_type`, `drop_type` |
 | Patterns | `apply_pattern` (e.g. SCD Type 2 on a table: adds what is missing, as the operations above) |
 
+Built so far (`crates/core/src/ops.rs`, applied by the store as one change, all or none, through the MCP's
+`change`): `add_namespace`, `rename_namespace`, `drop_namespace`, `add_table`, `rename_table`, `drop_table`,
+`set_table_comment`, `add_column`, `rename_column`, `alter_column`, `drop_column`, `set_primary_key`,
+`set_identifier_fields`, `relate`, `unrelate`, `add_index`, `drop_index`, `set_partition_spec`, `set_property`,
+`unset_property`. Each change keeps the records it touched as they were, so it can be undone, and each operation
+is what the migration script will be written from: `CREATE TABLE` or `ALTER TABLE` in the target's own SQL.
+
 **Destructive** operations (dropping a table, column, key or view; narrowing a type; making a column not
 nullable) need an explicit flag, and say what they would break: the views that read it, the relationships
 that use it, the kept statements that name it.

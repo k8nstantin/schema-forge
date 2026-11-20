@@ -180,3 +180,83 @@ fn proposals_wait_for_approval_and_are_decided_once() {
     assert!(matches!(store.decide("lake", 2, true, "you"), Err(Error::Rule(_))), "#2 repeats the rule #1 became");
     assert_eq!(store.decide("lake", 2, false, "you").expect("rejected").status, Status::Rejected);
 }
+
+#[test]
+fn changes_apply_whole_are_refused_by_hard_rules_and_undo() {
+    use schema_forge_core::DataType;
+    use schema_forge_core::ops::{NewColumn, Op};
+    use schema_forge_core::rules::{Enforce, Link, Scope};
+    use schema_forge_store::Rules;
+    let dir = tempfile::tempdir().expect("dir");
+    let store = Store::open(&dir.path().join("store.redb")).expect("open");
+    store.create_schema("lake", Target::Iceberg).expect("create");
+    let col = |name: &str, ty: &str| NewColumn {
+        name: name.into(),
+        data_type: DataType::named(ty),
+        nullable: true,
+        default: None,
+        comment: None,
+    };
+    let build = [
+        Op::AddNamespace { name: "shop".into(), parent: None, comment: None },
+        Op::AddTable {
+            namespace: "shop".into(),
+            name: "orders".into(),
+            comment: Some("what was bought".into()),
+            columns: vec![col("id", "string"), col("placed_at", "timestamptz")],
+            primary_key: vec!["id".into()],
+        },
+    ];
+    let made = store.change("lake", &build, false, "agent").expect("built");
+    assert_eq!(made.summaries, ["added namespace `shop`", "added table `orders` with 2 columns"]);
+    assert_eq!(store.model("lake").expect("model").tables.len(), 1);
+
+    // A hard rule: descriptions, hard. A table without one is refused, and nothing of the batch lands.
+    store
+        .link_rule(
+            Rules::Schema("lake"),
+            Link {
+                rule: "docs.table".into(),
+                at: Scope::Schema,
+                off: false,
+                locked: false,
+                reason: None,
+                enforce: Some(Enforce::Hard),
+            },
+            "you",
+        )
+        .expect("linked");
+    let bare = Op::AddTable {
+        namespace: "shop".into(),
+        name: "items".into(),
+        comment: None,
+        columns: vec![col("id", "string")],
+        primary_key: vec![],
+    };
+    let refused = store.change(
+        "lake",
+        &[Op::RenameTable { table: "orders".into(), name: "sales".into() }, bare.clone()],
+        false,
+        "agent",
+    );
+    let Err(Error::Refused(why)) = refused else { panic!("refused, not {refused:?}") };
+    assert!(why.contains("docs.table") && why.contains("items"), "{why}");
+    assert_eq!(store.model("lake").expect("model").tables[0].name, "orders", "all or nothing");
+
+    // Soft: the same break is highlighted, not refused.
+    store.set_enforce(Rules::Schema("lake"), "docs.table", &Scope::Schema, Enforce::Soft, "you").expect("soft");
+    let soft = store.change("lake", &[bare], false, "agent").expect("lands");
+    assert_eq!(soft.soft.len(), 1, "the break is reported");
+
+    // Destructive needs a yes; undo takes the latest change back, and only while it is still there.
+    let drop = [Op::DropTable { table: "items".into() }];
+    assert!(matches!(store.change("lake", &drop, false, "agent"), Err(Error::Refused(_))));
+    store.change("lake", &drop, true, "agent").expect("dropped");
+    assert_eq!(store.model("lake").expect("model").tables.len(), 1);
+    store.undo("lake", "you").expect("undone");
+    assert_eq!(store.model("lake").expect("model").tables.len(), 2, "items is back");
+    store.undo("lake", "you").expect("the add undone too");
+    assert_eq!(store.model("lake").expect("model").tables.len(), 1);
+    let kinds: Vec<String> = store.operations("lake").expect("log").into_iter().map(|o| o.kind).collect();
+    assert_eq!(kinds, ["change", "link_rule", "enforce_rule", "change", "change", "undo", "undo"]);
+}
