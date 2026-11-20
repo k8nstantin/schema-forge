@@ -36,6 +36,18 @@ sf serve
   | **Categories** | the schema grouped by area or tag |
   | **Custom** | the tables, columns and grouping you choose, saved with the project |
 
+- **Zooms from the big picture into one table.** The diagram shows more as you zoom, without losing your
+  place:
+
+  | Level | Shows |
+  |---|---|
+  | **Whole schema** | areas as regions, tables as named blocks, how the areas connect |
+  | **Area** | tables with their keys, and the relationships between them |
+  | **Table** | the full card: every column, type, constraint, index, tag and rule result |
+  | **Focus** | one table and everything about it: its relationships both ways, the views that read it, its rules, its history, its SQL |
+
+  The agent works at any level too: "zoom into `orders`" opens the focus for you, and it can render the
+  level it needs to check its work.
 - **Keeps to the rules.** Built-in (naming, keys, indexed foreign keys), patterns such as SCD Type 2, and
   your own rules. The agent sees every rule, and is told plainly when an operation breaks one.
 - **Treats views as objects.** Database views carry their definition and know what they read, so a change
