@@ -9,6 +9,14 @@ your own). You and the agent see the same canvas at the same time.
 - **Databases:** MySQL and PostgreSQL. Schema Forge reads their schema dumps and writes the same formats
   back. Version 1 has no database connections: you run the output with `psql` or `mysql`.
 
+## Principles
+
+- **We design together.** The user and the agent are partners on one schema: the user directs by prompt
+  and by hand, the agent proposes and builds, and both see every change as it happens. Neither works blind,
+  and nothing changes without the user seeing it.
+- **One view, from day one.** The live canvas ships in the first milestone, not after the engine.
+- **Rich graphics.** The canvas is the product's face, not a debug view (see [The canvas](#the-canvas)).
+
 ## Workflow
 
 1. **Import** an existing schema dump (`pg_dump --schema-only`, `mysqldump --no-data`; a full dump works,
@@ -43,6 +51,26 @@ your own). You and the agent see the same canvas at the same time.
   logged (who: the agent, you, or the file; when). A change made to the file outside `sf` is reloaded,
   validated against the rules and highlighted.
 - The agent only changes the draft: it never locks or generates unless you ask it to.
+
+## The canvas
+
+Served by `sf serve` in the browser, in SuperX's purple (swindex) theme, light and dark. Rich from the
+first release:
+
+- **Tables as cards:** every column with its type, nullability and default; key icons for primary, foreign
+  and unique keys; tags (e.g. `scd2`, `fact`, `dimension`) as badges.
+- **Relationships drawn as they are:** crow's-foot cardinality, labelled with the columns they join, routed
+  around the cards.
+- **Rules on the canvas:** a table that fails a rule shows it on the card, with the rule's name; a pattern
+  such as SCD Type 2 shows its validity columns and keys marked as the pattern's.
+- **Areas:** tables grouped into named domains (billing, catalog, …), each its own colour, folded or open.
+- **Layout:** automatic layout (ELK) for an imported or agent-built schema, hand placement kept once you
+  move a card; minimap, zoom, search, focus on one table and its neighbours.
+- **Designing together, visibly:** the agent's changes animate in as they land (new in green, changed in
+  amber, removed as a faded red outline); while it works, the canvas shows what it is working on; the
+  user's selection is readable by the agent through `describe`, so "this table" means the same to both.
+- **Panels:** the selected table's full detail, its SQL in the chosen dialect, the rule checks, and the
+  history of who changed it.
 
 ## The MCP: how agents work with Schema Forge
 
@@ -126,11 +154,11 @@ version comments, `LOCK TABLES`, engines, charsets and `AUTO_INCREMENT`.
 
 ## Milestones
 
-1. `sf-core` and `sf-dialects`, with round-trip tests on real dumps, through the CLI.
-2. The MCP and the rules: Claude Code designs a schema by prompt, with the built-in rules and SCD Type 2,
-   `describe` and `check`.
-3. The live canvas: `sf serve`, you and the agent on the same view, changes highlighted as they land,
-   `render` for the agent.
+1. **The engine and the view:** `sf-core` and `sf-dialects` with round-trip tests on real dumps, and
+   `sf serve` showing an imported schema on the rich canvas: cards, relationships, areas, layout.
+2. **Designing together:** the MCP and the rules (built-ins and SCD Type 2); Claude Code builds by prompt
+   while the canvas shows each change as it lands; `describe`, `render`, `check`, shared selection.
+3. Editing on the canvas by hand, through the same operation queue as the agent.
 4. Lock, diffs and migration SQL.
 5. Custom rules in `rules/`; then converting between dialects, SQLite and Iceberg.
 
@@ -141,8 +169,8 @@ Not in version 1: database connections, applying changes, multiple users.
 - **Custom rules:** how far declarations go before a rule needs code (a small embedded language, or WASM),
   and how rule packs are shared between projects.
 - **Rules that span tables:** e.g. every fact table references only SCD Type 2 dimensions by surrogate key.
-- **Seeing together:** how the agent points at what it means ("this table") and you point back, e.g.
-  selections on the canvas that the agent can read through `describe`.
+- **Seeing together:** beyond shared selection, how the agent points at what it means on the canvas
+  (highlights, notes pinned to a table).
 - **Several agents at once**, or an agent and a teammate, on one project.
 
 ## Build
