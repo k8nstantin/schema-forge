@@ -338,3 +338,73 @@ fn hard_means_hard_on_every_table_a_change_touches() {
         .change("lake", &[Op::AddColumn { table: "items".into(), column: col("sku"), after: None }], false, "agent")
         .expect("items keeps its rules");
 }
+
+#[test]
+fn approvals_take_their_own_ids_and_switch_off_what_they_contradict() {
+    use schema_forge_core::rules::custom::{ColumnMust, Pattern, Sentence};
+    use schema_forge_core::rules::review::{Proposed, Status};
+    use schema_forge_core::rules::{Enforce, Link, Scope};
+    use schema_forge_store::Rules;
+    let dir = tempfile::tempdir().expect("dir");
+    let store = std::sync::Arc::new(Store::open(&dir.path().join("store.redb")).expect("open"));
+    store.create_schema("lake", Target::Iceberg).expect("create");
+    let model: Schema = serde_json::from_value(serde_json::json!({
+        "format": 1,
+        "target": "iceberg",
+        "namespaces": [{ "id": "n_a", "name": "a" }],
+        "tables": [{ "id": "t_x", "namespace": "n_a", "name": "x", "columns": [
+            { "id": "c_x_created_at", "name": "created_at", "type": { "name": "string" }, "nullable": true }
+        ] }]
+    }))
+    .expect("a schema");
+    store.replace_model("lake", &model, "import", "import").expect("save");
+    let types =
+        Link { rule: "types".into(), at: Scope::Schema, off: false, locked: false, reason: None, enforce: None };
+    store.link_rule(Rules::Schema("lake"), types, "you").expect("types");
+    let has = |c: &str| Proposed::New {
+        sentence: Sentence::HasColumn { column: c.into(), required: false, types: vec![] },
+        targets: vec![],
+    };
+    let strings = Proposed::New {
+        sentence: Sentence::Columns {
+            name: Pattern::EndsWith("_at".into()),
+            must: ColumnMust::OfType(vec!["string".into()]),
+        },
+        targets: vec![],
+    };
+    let items = vec![
+        (has("a"), Scope::Schema, Enforce::Soft, "seen".into()),
+        (has("b"), Scope::Schema, Enforce::Soft, "seen".into()),
+        (has("c"), Scope::Schema, Enforce::Soft, "seen".into()),
+        (strings, Scope::Schema, Enforce::Soft, "times arrive as text".into()),
+    ];
+    store.propose("lake", items, "agent").expect("proposed");
+    // Approved at once, as "Approve the verified" does: each gets its own rule.
+    let handles: Vec<_> = (1..=3)
+        .map(|id| {
+            let s = std::sync::Arc::clone(&store);
+            std::thread::spawn(move || s.decide("lake", id, true, "you").expect("approved").rule)
+        })
+        .collect();
+    let mut ids: Vec<String> = handles.into_iter().filter_map(|h| h.join().expect("joined")).collect();
+    ids.sort();
+    assert_eq!(ids, ["custom.1", "custom.2", "custom.3"]);
+    assert_eq!(store.custom_rules().expect("custom").len(), 3);
+    // Times kept as text contradict types.time: approving switches it off here, in the same change.
+    let p = store.decide("lake", 4, true, "you").expect("approved with the conflict settled");
+    assert_eq!(p.status, Status::Approved);
+    let set = store.rules("lake").expect("rules");
+    let off = set.links.iter().find(|l| l.rule == "types.time").expect("types.time switched off");
+    assert!(off.off && off.reason.as_deref().is_some_and(|r| r.contains("proposal #4")));
+    let custom = store.custom_rules().expect("custom");
+    assert_eq!(
+        custom.last().map(|c| c.targets.as_slice()),
+        Some([Target::Iceberg].as_slice()),
+        "a type rule holds on its target"
+    );
+    let log = store.operations("lake").expect("log");
+    let last = log.last().expect("an operation");
+    assert_eq!(last.kind, "approve_rule");
+    assert_eq!(last.change["switched_off"], serde_json::json!(["types.time"]));
+    assert_eq!(last.change["rule"], "custom.4");
+}

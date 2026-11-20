@@ -230,32 +230,13 @@ async fn enforce_global(State(store): State<Arc<Store>>, axum::Json(e): axum::Js
 
 /// The schema's proposals, each still open with the system's verdict on it.
 async fn proposals(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Response {
-    let read = || -> schema_forge_store::Result<serde_json::Value> {
-        let model = store.model(&name)?;
-        let global = store.global_rules()?;
-        let set = store.rules(&name)?;
-        let custom = store.custom_rules()?;
-        let cat = rules::catalog().with(&custom);
-        let all = store.proposals(&name)?;
-        let cx = rules::review::Context {
-            cat: &cat,
-            custom: &custom,
-            schema: &model,
-            global: &global,
-            set: &set,
-            proposals: &all,
-        };
-        let out: Vec<serde_json::Value> = all
-            .iter()
-            .map(|p| {
-                let verdict = (p.status == rules::review::Status::Proposed).then(|| rules::review::verify(&cx, p));
-                serde_json::json!({ "proposal": p, "verdict": verdict })
-            })
-            .collect();
-        Ok(serde_json::Value::Array(out))
-    };
-    match read() {
-        Ok(v) => axum::Json(v).into_response(),
+    match store.reviewed(&name) {
+        Ok((_, all)) => axum::Json(
+            all.into_iter()
+                .map(|r| serde_json::json!({ "proposal": r.proposal, "verdict": r.verdict }))
+                .collect::<Vec<_>>(),
+        )
+        .into_response(),
         Err(e) => store_failed(e),
     }
 }

@@ -412,3 +412,17 @@ fn index_rules_find_unindexed_joins_and_repeats() {
     );
     assert_eq!(rules::catalog().rule("idx.related").map(|r| r.lane), Some(rules::Lane::Shared));
 }
+
+#[test]
+fn sentences_name_types_as_their_target_reports_them_and_hold_on_it() {
+    use schema_forge_core::Target;
+    use schema_forge_core::rules::custom::{ColumnMust, Pattern, Sentence};
+    let zoned = Sentence::Columns {
+        name: Pattern::EndsWith("_at".into()),
+        must: ColumnMust::OfType(vec!["timestamptz".into()]),
+    };
+    assert!(zoned.valid(Target::Postgres).is_ok(), "PostgreSQL's zoned timestamp is named timestamptz");
+    assert_eq!(zoned.targets(&[], Target::Postgres), [Target::Postgres], "a type rule holds on its target");
+    let has = Sentence::HasColumn { column: "id".into(), required: true, types: vec![] };
+    assert!(has.targets(&[], Target::Iceberg).is_empty(), "no types named: it holds everywhere");
+}
