@@ -7,6 +7,10 @@ agent, and watch it take shape.**
 at what you mean, and tell the agent what to do. The agent works through Schema Forge's MCP, and every
 change appears at once on a rich, live perspective that you both see. When the schema is right, export it for MySQL, PostgreSQL or Apache Iceberg.
 
+It works with **any coding agent that speaks MCP** (Claude Code first). The MCP is the enforcer: every
+change goes through it and is checked against the schema's rules. More agents and more databases come
+later. How it compares with what exists: [docs/market.md](docs/market.md).
+
 ```
  you ──prompt──► coding agent ──MCP──► sf ──► live perspectives (you see them, the agent can render them)
                                         │
@@ -185,6 +189,14 @@ still open (below).
 
 ### Open decisions
 
+- **Storage.** Proposed: an embedded **SurrealDB** inside `sf`, on its pure-Rust storage engine
+  **SurrealKV**, so everything is stored and queried easily: schemas, operations and history, versions,
+  findings, standards. Relationships and view dependencies are a graph it queries natively, and its live
+  queries can push each change to the perspectives. Plain files stay the shareable form for git
+  (`sf export` / `sf import` of `schema.json`, versions and rules). To weigh: SurrealKV is Apache-2.0, but
+  SurrealDB's core is under BSL 1.1 (free to use and ship inside an application; not to offer as a
+  database service; each release becomes Apache-2.0 after four years), so `sf` binaries would include
+  BSL-licensed code while Schema Forge's own code stays MIT or Apache-2.0.
 - **The perspectives (the UI).** A solid, elegant design users like, not a quick UI. Browser perspectives (React Flow) give the
   richest diagrams today; Rust UI (Leptos or Dioxus in the browser; egui, Iced or Slint as a native app)
   keeps one language. Decided before any perspective is built, from a design of the perspectives themselves.
