@@ -110,7 +110,7 @@ Where objects live: a PostgreSQL schema (`public`, `billing`), a MySQL database,
 
 | MySQL | PostgreSQL | Iceberg |
 |---|---|---|
-| `engine`, `charset`, `collation`, `row_format`, `auto_increment` (next value), `partitioning` (kept as written) | `tablespace`, `unlogged`, `partition_by` (`range`/`list`/`hash`, keys), `partition_of` (parent and bounds), `inherits`, `storage` parameters | `format_version` (1–3), `identifier_fields`, `partition_spec`, `sort_order`, `properties`, `location` |
+| `engine`, `charset`, `collation`, `row_format`, `auto_increment` (next value), `partitioning` (kept as written) | `tablespace`, `unlogged`, `partition_by` (`range`/`list`/`hash`, keys), `inherits`, `storage` parameters | `format_version` (1–3), `identifier_fields`, `partition_spec`, `sort_order`, `properties`, `location` |
 
 Iceberg's own parts:
 
