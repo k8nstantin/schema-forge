@@ -111,7 +111,7 @@ catalog: [docs/rules.md](docs/rules.md).
 
   "Make `@tag:dimension` follow `@rule:scd2`", "fix `@finding:14`", "why did `@change:42` drop that
   index?" The agent writes the same references back, and they are clickable in the perspectives.
-- **Keeps to the rules.** Set per schema from a template, as above. The agent sees every rule, and is
+- **Keeps to the rules.** Set per schema as a collection of rule packs (type defaults, Debezium, SCD, your naming…), as above. The agent sees every rule, and is
   told plainly, with the expected form, when an operation breaks one. Naming, for example:
 
   ```toml
@@ -126,7 +126,7 @@ catalog: [docs/rules.md](docs/rules.md).
 - **Highlights inconsistencies.** The same column with different types, relationship ends that do not
   match, one kind of data in many types: marked on every table and column, gathered in the Consistency
   perspective, each with a fix the agent can make.
-- **Designs CDC targets.** From a MySQL schema to Iceberg tables through Debezium: every column mapped by
+- **Designs CDC targets.** From a MySQL or PostgreSQL schema to Iceberg tables through Debezium: every column mapped by
   the rules, every hazard shown, the Debezium settings written to match ([docs/cdc.md](docs/cdc.md)).
 - **Versions as definitions, with or without git.** A locked version is written as one SQL file per
   object, at a path that says where it lives (`<node>/<database>/<schema>/tables/orders.sql`), plus a small
@@ -213,7 +213,7 @@ still open (below).
 1. Import a MySQL or PostgreSQL dump and see it in the diagram, list and definition perspectives; export SQL.
 2. Build with the agent: the MCP, the rules, every change live.
 3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets;
-   CDC pipelines from MySQL through Debezium.
+   CDC pipelines from MySQL or PostgreSQL through Debezium.
 4. Categories and custom perspectives; references to everything.
 5. Locked versions as definitions; migrations; git when present (commits, tags, merges); CI checks.
 6. **Deploy:** apply a version to a destination database or Iceberg catalog directly, or through the exported SQL file.

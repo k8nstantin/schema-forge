@@ -5,6 +5,25 @@ string the same kind of string, every name in the same form, so you and the agen
 schema looks like before a table exists. The agent reads them first, designs by them, and is told plainly
 when an operation breaks one.
 
+## A schema's rules are a collection
+
+A schema's rules are not one block: they are a **collection of rule packs**, applied together.
+
+```
+orders (MySQL source)        lakehouse.orders (Iceberg target)
+  mysql (type defaults)        iceberg (type defaults)
+  company naming               company naming
+  debezium (MySQL source)      scd2, star schema
+```
+
+- **Type defaults:** the base for the schema's type (MySQL, PostgreSQL, Iceberg).
+- **Packs** on top: Debezium, SCD, star schema, your company's naming, a team's lakehouse standard; built in
+  or your own, each a file in Standards, each saying which types it applies to.
+- **Order decides:** packs are listed in order in `rules.toml`; where two set the same thing, the later one
+  wins, and Standards shows every such overlap so none is a surprise.
+- **Per schema:** add or remove packs, and override any setting, for one schema only.
+- A template is simply a saved collection: type defaults plus packs.
+
 ## Two places: Standards, and the schema
 
 Schema Forge has two parts, each with its own UI:
@@ -132,7 +151,7 @@ What a table tagged with a pattern must have; the agent applies the pattern on r
 
 ### Debezium (a rule pack)
 
-For a MySQL schema whose changes are captured by Debezium. Add the pack in Standards, to a template or one
+For a MySQL or PostgreSQL schema whose changes are captured by Debezium. Add the pack in Standards, to a template or one
 schema; a [CDC pipeline](cdc.md) adds it to its source for you.
 
 - **Connector settings, as rules.** How types travel is set here, like any rule, and the pipeline writes
@@ -158,6 +177,18 @@ schema; a [CDC pipeline](cdc.md) adds it to its source for you.
   `TINYINT(1)` used as a number is not.
 - **Time:** one type for points in time (`TIMESTAMP` arrives zoned in UTC, `DATETIME` without a zone);
   mixing them is flagged.
+- **PostgreSQL sources:**
+  - **Replica identity:** a captured table without a primary key needs `REPLICA IDENTITY FULL`, or its
+    deletes arrive without their data; tables with large values (`text`, `jsonb`, `bytea`) need it too, or
+    an update that leaves them unchanged sends a placeholder (`unavailable.value.placeholder`) instead.
+  - **`NUMERIC` without a precision** arrives with a different scale per value, which Iceberg's `decimal(p,s)`
+    cannot hold: give it a precision and scale.
+  - **`INTERVAL`** arrives as microseconds, with months approximated as average days, unless
+    `interval.handling.mode` is `string`; flagged where exactness matters.
+  - **`TIMETZ`** arrives as a string; `MONEY` takes its scale from `money.fraction.digits`; infinite dates
+    become sentinel values.
+  - More connector settings as rules: `interval.handling.mode` (shipped `string`), `hstore.handling.mode`
+    (shipped `json`), `money.fraction.digits` (shipped `2`).
 - **Names:** column names valid for Avro (`[A-Za-z_][A-Za-z0-9_]*`) when the pipeline uses Avro, or the
   name adjustment noted; no source column named like a CDC field (`__op`, `__deleted`, `__source_ts_ms`).
 - **Enums:** a change to `ENUM` or `SET` values flagged, since it changes what consumers receive.
