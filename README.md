@@ -53,10 +53,12 @@ before it knows the schema's type and has read its rules; those are its cues.
 | rules | `templates` (per type), `set_rules`, `rules`, `guide` (the rules in plain words) |
 | design | `describe`, `render`, `check`, the operations (`add_table`, `relate`, `add_view`, …), `apply_pattern` |
 
-Rules are standards that keep a schema consistent: every integer the same type, every string the same,
-every name the same form; naming, keys, standard columns, patterns such as SCD Type 2, and target defaults
-such as merge-on-read on Iceberg. They are configured by type in their own UI, **Standards**. The full
-catalog: [docs/rules.md](docs/rules.md).
+Rules are standards that keep a schema consistent and fit for what it has to do: nothing without a key, one
+type per column name, merge-on-read on Iceberg, compatible with MySQL, ready for CDC. They are rules made of
+rules, sorted by where they apply (every database, MySQL, PostgreSQL, Iceberg, between two) and what they are
+about, and linked at any level of the schema: globally, the schema, a namespace, a family, a group of tables, a
+table, with exceptions that say why. A goal ("feed it by CDC") links the packs it needs and shows the gap. The
+Rules perspective draws them as link diagrams: [docs/rules.md](docs/rules.md).
 
 ## What it does
 
@@ -110,7 +112,7 @@ catalog: [docs/rules.md](docs/rules.md).
 
   "Make `@tag:dimension` follow `@rule:scd2`", "fix `@finding:14`", "why did `@change:42` drop that
   index?" The agent writes the same references back, and they are clickable in the perspectives.
-- **Keeps to the rules.** Set per schema as a collection of rule packs (type defaults, Debezium, SCD, your naming…), as above. The agent sees every rule, and is
+- **Keeps to the rules.** Linked on the schema's hierarchy, as above. The agent sees every rule, and is
   told plainly, with the expected form, when an operation breaks one. Naming, for example:
 
   ```toml

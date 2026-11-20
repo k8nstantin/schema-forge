@@ -7,6 +7,8 @@ import { definition } from '../api'
 import { Sql } from '../components/Sql'
 import { LinkDiagram, type Card, type Line, type Row } from '../diagram/LinkDiagram'
 import { nested, typeLabel } from '../model'
+import { Findings } from '../rules/parts'
+import { scopeTitle } from '../rules/scope'
 import { partitioning, tableRef, useWorkbench } from '../state'
 
 const MAX_SIDE = 14
@@ -121,6 +123,8 @@ export function TableView({ id }: { id?: string }) {
           )}
         </section>
 
+        <TableRules id={t.id} />
+
         <div className="sf-tabs" role="tablist">
           <button type="button" role="tab" aria-selected={tab === 'columns'} onClick={() => setTab('columns')}>Columns · {t.columns.length}</button>
           <button type="button" role="tab" aria-selected={tab === 'definition'} onClick={() => setTab('definition')}>Definition</button>
@@ -150,5 +154,35 @@ export function TableView({ id }: { id?: string }) {
         )}
       </div>
     </div>
+  )
+}
+
+/// The rules on this table: what reaches it and from where, what is switched off, and what it breaks.
+function TableRules({ id }: { id: string }) {
+  const { name, ix, go, catalog, rules } = useWorkbench()
+  const eff = rules.report.tables[id]
+  const findings = rules.report.findings.filter((f) => f.table === id)
+  const title = (r: string) => (r === '*' ? 'All rules' : catalog.rules.find((x) => x.id === r)?.title ?? r)
+  if (!eff?.applied.length && !eff?.excepted?.length) {
+    return <span className="sf-muted sf-small">No rules reach this table. <button type="button" className="sf-link" onClick={() => go('rules', `level:table:${id}`)}>Link one</button></span>
+  }
+  return (
+    <section className="sf-col">
+      <div className="sf-row-between">
+        <span className="sf-caption">Rules on it · {eff.applied.length}{findings.length ? ` · ${findings.length} ${findings.length === 1 ? 'break' : 'breaks'}` : ' · all pass'}</span>
+        <button type="button" className="sf-link sf-small" onClick={() => go('rules', `level:table:${id}`)}>See how they reach it</button>
+      </div>
+      <div className="sf-ruleschips">
+        {eff.applied.map((a) => (
+          <button key={a.rule} type="button" className="sf-chip" onClick={() => go('rules', `rule:${a.rule}`)} title={`from ${a.from.level === 'global' ? 'every schema' : scopeTitle(ix, name, a.from)}`}>
+            {title(a.rule)}<span className="sf-muted">&nbsp;· {a.from.level === 'global' ? 'every schema' : scopeTitle(ix, name, a.from)}</span>
+          </button>
+        ))}
+        {(eff.excepted ?? []).map((e) => (
+          <span key={e.rule} className="sf-chip sf-static sf-struck" title={e.reason}>{title(e.rule)} · off: {e.reason}</span>
+        ))}
+      </div>
+      <Findings findings={findings} limit={20} />
+    </section>
   )
 }

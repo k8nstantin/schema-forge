@@ -1,100 +1,111 @@
 # Rules
 
-Rules are standards: they keep a schema consistent. Every integer is the same kind of integer, every
-string the same kind of string, every name in the same form, so you and the agent both know what the
-schema looks like before a table exists. The agent reads them first, designs by them, and is told plainly
-when an operation breaks one.
+Rules are standards: they keep a schema consistent and fit for what it has to do. The architect sets them up once,
+on the schema and the levels inside it; the agent reads them before it designs anything and builds inside them, so
+neither of you repeats them. Built in milestone 2: `crates/core/src/rules`, the store's `rules` table, the API
+under `/api/rules` and `/api/schemas/<name>/rules`, and the Rules perspective.
 
-## A schema's rules are a collection
+## Optional
 
-A schema's rules are not one block: they are a **collection of rule packs**, applied together.
+Rules are optional. A schema with nothing linked has no rules; nothing links them for you. Where rules reach from
+above (global links), **no rules here** switches every rule off for a schema, a namespace, a family, a group or a
+table, with a reason. It holds even over locked rules, since it is the choice not to use rules there at all, and a
+rule linked further down still applies.
 
-```
-orders (MySQL source)        lakehouse.orders (Iceberg target)
-  mysql (type defaults)        iceberg (type defaults)
-  company naming               company naming
-  debezium (MySQL source)      scd2, star schema
-```
+## Rules made of rules
 
-- **Type defaults:** the base for the schema's type (MySQL, PostgreSQL, Iceberg).
-- **Packs** on top: Debezium, SCD, star schema, your company's naming, a team's lakehouse standard; built in
-  or your own, each a file in Standards, each saying which types it applies to.
-- **Order decides:** packs are listed in order in `rules.toml`; where two set the same thing, the later one
-  wins, and Standards shows every such overlap so none is a surprise.
-- **Per schema:** add or remove packs, and override any setting, for one schema only.
-- A template is simply a saved collection: type defaults plus packs.
+- A **check** looks at a table and says what breaks it: `pk.present` "Every table has a key".
+- A **pack** is a rule made of rules, to any depth; a rule may sit in several packs. `cdc` (CDC-ready) holds the
+  whole `pk` pack, `types.time`, `mor.modes`, `cdc.position` and `cdc.source`. Linking a pack brings its tree.
+- Every check is **Must** (the agent's operations will be refused when they break it) or **Should** (listed as a
+  finding).
 
-## Rules that shape, not only check
+## Sorted so the catalog stays clear
 
-A rule can set what it requires, not only report what breaks it. The agent applies it when it creates or
-changes a table, and every card shows which rules shaped it.
+Every rule has two labels, and the catalog is browsed by them:
 
-| Rule | On every table it covers |
+| Lane: where it applies | Examples |
 |---|---|
-| **Iceberg merge-on-read** | `write.delete.mode`, `write.update.mode`, `write.merge.mode` = `merge-on-read` |
-| **Iceberg format** | `format-version` = 3 (or 2), file format, compression |
-| **Iceberg partitioning** | a partition spec on the event-time column by `day` (or the transform set), a sort order on the key |
-| **MySQL primary key UUIDv7** | an `id` primary key holding a UUIDv7, as `BINARY(16)` (or `CHAR(36)`, as set), made by the application |
-| **PostgreSQL primary key UUIDv7** | an `id uuid` primary key with `DEFAULT uuidv7()` (PostgreSQL 18) or made by the application |
-| **PostgreSQL identity keys** | an `id bigint GENERATED ALWAYS AS IDENTITY` primary key |
-| **Audit columns** | `created_at`, `updated_at` in their standard types, at the end |
+| **Every database** | nothing without a key; one type per column name; money is decimal; snake_case; descriptions; normalization; SCD2 |
+| **MySQL** | tables use InnoDB; text is utf8mb4 |
+| **PostgreSQL** | times are `timestamptz`; keys are identity columns, not `serial` |
+| **Iceberg** | identifier fields declared; merge-on-read; a format version of 2 or 3 |
+| **Between databases** | compatibility (one pack per pair of targets); CDC-ready |
 
-- **Applied by operation:** "make `@tag:events` follow `@rule:iceberg-mor`" becomes the operations that set
-  each property, shown as they land.
-- **Checked always:** a table that drifts from a shaping rule is a finding, with the operation that brings it
-  back as the fix.
-- **Rule packs are made of them:** a "lakehouse" pack is Iceberg merge-on-read + format 3 + day partitioning
-  + the type standards; a "service database" pack is MySQL UUIDv7 keys + audit columns + naming.
+Topics within a lane: keys, types, naming, documentation, normalization, history, storage, cdc, compatibility. A
+check keeps its own lane inside a pack of another: `pk.ident` is an Iceberg rule in the shared `pk` pack, and only
+checks Iceberg schemas.
 
-## Two places: Standards, and the schema
+## Linked on the hierarchy
 
-Schema Forge has two parts, each with its own UI:
+A rule is **linked** at a level and applies to every table under it:
 
 ```
- Standards                                   Schemas
- ─────────                                   ───────
- the types: MySQL · PostgreSQL · Iceberg      name ──► type ──► rules ──► design with the agent
- each type's default rules                                 ▲
- your own templates, per type          ──────── copied ────┘
+global (every schema of the workspace)
+  └ schema
+      └ namespace (and the namespaces inside it)
+          └ family (node__, ungrouped, …)
+              └ table
+      └ group (tables picked by hand, across namespaces and families)
 ```
 
-**Standards** is where rules are configured, by type, before any schema exists:
+- **The nearest link wins.** A table's rules are found by walking from global down to the table: its namespaces
+  from the outermost, its family, the groups it is in, itself.
+- **An exception** switches a rule, or one rule inside a pack, off at a level and below, and always says why. The
+  agent is told the reason. Normalization off on a reporting namespace; "no repeating groups" off on one table
+  whose report fixes ten slots, while the rest of Normalization still applies.
+- **A locked** link cannot be switched off below the level it is linked at: the architect's guardrail ("nothing
+  without a key", locked globally). A lower link of the same rule does not unlock it.
+- A link is checked before it is kept: the rule and the level exist, an exception has a reason and switches off
+  something that reaches every table under it, and nothing locked is switched off.
+- Every change (`link_rule`, `unlink_rule`, `set_group`, `remove_group`) is an operation in the log, announced
+  live; global links are logged under `*`.
 
-- **One default rule set per type.** MySQL, PostgreSQL and Iceberg each come with built-in defaults
-  (below), and you edit them: "our Iceberg tables are merge-on-read, `snake_case`, partitioned by day".
-- **Your own templates, per type**, beside the default: "billing standard (PostgreSQL)", "lakehouse
-  (Iceberg)". Each says which type it is for.
-- The Standards UI shows every rule with its setting, its severity and an example of what it accepts and
-  refuses, so a rule reads clearly before it is ever used.
-- Kept in `~/.schema-forge/standards/`, one file per type and template, and shareable: point Schema Forge
-  at a shared folder or git repo and a team uses the same standards.
-- The agent can help here too: "make our Iceberg default copy-on-write for deletes" is a change to the
-  standard, shown for you to accept.
+## Goals
 
-**A schema** chooses its rules when it is created, and does not have to have any:
+A goal says what the schema has to do and links the packs that get it there, by the schema's type:
 
-1. **Name** it.
-2. **Type:** MySQL, PostgreSQL or Iceberg.
-3. **Rules,** one of:
-   - **none:** design freely; only the model's own checks apply;
-   - **a template:** the type's default, or one of your own for that type;
-   - **your own:** start from a template and change it for this schema (and save it as a new template
-     if you like).
-4. **Design** with the agent.
+| Goal | Links |
+|---|---|
+| Feed it by CDC | `cdc`; lists what must be set on MySQL (binlog ROW and FULL, GTID, grants) or PostgreSQL (logical WAL, a publication and a slot, replica identity) |
+| Build in MySQL and PostgreSQL | the pair's compatibility pack, naming, keys |
+| Move PostgreSQL to Iceberg, Move MySQL to Iceberg | the pair's compatibility pack, keys |
 
-```
-schema-forge new orders-db --target iceberg --rules default    # Iceberg's default rules
-schema-forge new ledger --target postgres --rules billing       # your own PostgreSQL template
-schema-forge new scratch --target mysql --rules none            # no rules
-```
+Before linking, the perspective shows the gap: what the schema still lacks, from a preview that stores nothing.
 
-A schema with rules keeps its own copy in `rules.toml`. A later change to a standard affects new schemas, not
-existing ones; `schema-forge rules update` shows what would change in a schema and applies it if you agree.
+## Compatibility
 
-Every rule has a **severity:** `error` (the operation is refused), `warn` (allowed, marked in the
-perspectives) or `off`.
+One **type map** per pair of targets (Iceberg, MySQL, PostgreSQL, both ways) grades how each type lands:
+**exact**, **widened** (bigger, safe), **decide** (a choice to make: `VARCHAR(n)` or `TEXT`), **lossy**, or **no
+type**. Each pair's pack has two checks: nothing lost (Must, breaks on lossy and no type) and every choice made
+(Should). The same maps will drive conversion between targets, so a check and a conversion never disagree. The
+maps are a first draft, to be checked against each database's documentation.
 
-## What rules can cover
+## Where you work with them
+
+The **Rules perspective** (the UI is the tool; the command line keeps only `schema-forge check`, for CI):
+
+- **Diagram, a level:** the rules that reach it on the left (quiet lines from wider levels, bright ones linked here
+  or inside it, landing on the gold row they are linked at), the level and what is inside it in the middle, the
+  exceptions on the right in dashed gold. Below: link a rule here (locked, or for every schema), switch one off
+  with a reason, take a link away, and what breaks here as references (`@orders.total`) that open the table.
+- **Diagram, a rule:** the packs it sits in, the rules it is made of, where it is linked and switched off, what
+  breaks it, and for a compatibility rule its type map.
+- **Catalog:** every rule by lane and topic, with what it breaks here, or would break if linked.
+- **Goals** and **Groups.**
+- The **Table** perspective lists the rules on the table, where each comes from, and its findings.
+
+## Next
+
+- The MCP: the agent reads the rules in plain words (`guide`), and its operations are refused when they break a
+  Must rule.
+- Rules that shape, not only check, applied by the agent as a plan you approve: SCD2 columns, a surrogate key,
+  audit columns, merge-on-read properties (see below).
+- Custom rules, and rule settings (the names of SCD2 columns, the type standards per kind of value).
+
+The rest of this page is the wider catalog to come.
+
+## What rules will cover
 
 ### Type standards
 

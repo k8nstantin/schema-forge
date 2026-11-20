@@ -9,6 +9,8 @@ export interface Card {
   meta?: string
   sub?: string
   color?: string
+  /// An exception: drawn gold and dashed.
+  tone?: 'off'
   onClick?: () => void
 }
 
@@ -26,6 +28,8 @@ export interface Line {
   card: string
   /// The middle's row the line lands on; the middle's header when left out.
   row?: string
+  /// `above`: reaches it from a wider level (quiet); `off`: switched off (gold, dashed, a bar for a head).
+  tone?: 'above' | 'off'
 }
 
 const CW = 270, GAP = 150, H = 52, VG = 10, TOP = 44, HEAD = 46, ROW = 26
@@ -57,24 +61,26 @@ export function LinkDiagram(props: {
     return `M${x1} ${y1} C${m} ${y1} ${m} ${y2} ${x2} ${y2} `
   }
   const head = (x: number, y: number) => `M${x} ${y} L${x - 9} ${y - 5} L${x - 9} ${y + 5} Z `
-  let paths = '', heads = ''
+  const d = { line: '', above: '', off: '' }
+  const h = { line: '', above: '', off: '' }
   for (const l of lines) {
+    const tone = l.tone ?? 'line'
     if (l.side === 'left') {
       const i = left.findIndex((c) => c.key === l.card)
       if (i < 0) continue
       const y2 = rowY(l.row)
-      paths += curve(xL + CW, yL + i * (H + VG) + H / 2, xC - 2, y2)
-      heads += head(xC - 1, y2)
+      d[tone] += curve(xL + CW, yL + i * (H + VG) + H / 2, xC - 2, y2)
+      h[tone] += tone === 'off' ? `M${xC - 3} ${y2 - 8} L${xC - 3} ${y2 + 8} ` : head(xC - 1, y2)
     } else {
       const i = right.findIndex((c) => c.key === l.card)
       if (i < 0) continue
       const y2 = yR + i * (H + VG) + H / 2
-      paths += curve(xC + CW, rowY(l.row), xR - 2, y2)
-      heads += head(xR - 1, y2)
+      d[tone] += curve(xC + CW, rowY(l.row), xR - 2, y2)
+      h[tone] += tone === 'off' ? `M${xR - 3} ${y2 - 8} L${xR - 3} ${y2 + 8} ` : head(xR - 1, y2)
     }
   }
   const card = (c: Card, x: number, y: number) => (
-    <button key={c.key} type="button" className="sf-dcard" onClick={c.onClick} title={c.sub ? `${c.title} ${c.sub}` : c.title} style={{ left: x, top: y, width: CW, height: H, borderLeftColor: c.color }}>
+    <button key={c.key} type="button" className={`sf-dcard${c.tone === 'off' ? ' sf-dcard-off' : ''}`} onClick={c.onClick} title={c.sub ? `${c.title} ${c.sub}` : c.title} style={{ left: x, top: y, width: CW, height: H, borderLeftColor: c.color }}>
       <span className="sf-dcard-top">
         <span className="sf-dcard-title">{c.title}</span>
         {c.meta && <span className="sf-dcard-meta">{c.meta}</span>}
@@ -86,8 +92,12 @@ export function LinkDiagram(props: {
     <div className="sf-diagram-frame">
       <div className="sf-diagram" style={{ width, height }}>
         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
-          <path d={paths} className="sf-line" />
-          <path d={heads} className="sf-head" />
+          <path d={d.above} className="sf-line sf-above" />
+          <path d={h.above} className="sf-head sf-above" />
+          <path d={d.line} className="sf-line" />
+          <path d={h.line} className="sf-head" />
+          <path d={d.off} className="sf-line sf-off" />
+          <path d={h.off} className="sf-bar" />
         </svg>
         <span className="sf-dhead" style={{ left: xL }}>{props.leftHead}</span>
         <span className="sf-dhead" style={{ left: xR }}>{props.rightHead}</span>

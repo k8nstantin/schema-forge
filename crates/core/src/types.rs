@@ -128,16 +128,20 @@ const ICEBERG: &[&str] = &[
     "unknown",
 ];
 
+/// The names of `target`'s types.
+#[must_use]
+pub const fn names(target: Target) -> &'static [&'static str] {
+    match target {
+        Target::Mysql => MYSQL,
+        Target::Postgres => POSTGRES,
+        Target::Iceberg => ICEBERG,
+    }
+}
+
 /// Whether `target` has a type called `name` (`verbatim` is always accepted).
 #[must_use]
 pub fn known(target: Target, name: &str) -> bool {
-    name == "verbatim"
-        || match target {
-            Target::Mysql => MYSQL,
-            Target::Postgres => POSTGRES,
-            Target::Iceberg => ICEBERG,
-        }
-        .contains(&name)
+    name == "verbatim" || names(target).contains(&name)
 }
 
 /// Iceberg format 3 types, which a format 1 or 2 table cannot hold.
