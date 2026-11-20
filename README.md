@@ -48,6 +48,22 @@ sf serve
 
   The agent works at any level too: "zoom into `orders`" opens the focus for you, and it can render the
   level it needs to check its work.
+- **Says what things are at a glance.** One set of visual cues, the same in every perspective and at
+  every zoom level:
+
+  | Cue | Means |
+  |---|---|
+  | key icons | primary key, unique, foreign key, Iceberg identifier field |
+  | solid / dashed line | enforced relationship / logical one (always dashed on Iceberg) |
+  | crow's foot, ring | many, optional |
+  | dashed card | a database view; a double outline for a materialized one |
+  | badges | tags and patterns (`scd2`, `fact`, `dimension`), partitioned, sorted |
+  | a faint dot on a column | nullable |
+  | red / amber marker | a rule fails / a rule warns, with the rule's name on hover |
+  | green / amber / faded red | just added / changed / removed, as changes land |
+  | a pulsing outline | what the agent is working on right now |
+  | a lock | part of the last locked version, unchanged since |
+  | area colour | which area a table belongs to, from the whole-schema view down to the card |
 - **Keeps to the rules.** Built-in (naming, keys, indexed foreign keys), patterns such as SCD Type 2, and
   your own rules. The agent sees every rule, and is told plainly when an operation breaks one.
 - **Treats views as objects.** Database views carry their definition and know what they read, so a change
