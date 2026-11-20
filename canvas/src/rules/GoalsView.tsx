@@ -17,8 +17,11 @@ export function GoalsView({ selected }: { selected?: string }) {
   const [copied, setCopied] = useState(false)
   const g = catalog.goals.find((x) => x.id === selected) ?? catalog.goals[0]
   const packs = g?.packs.find(([t]) => t === model.target)?.[1] ?? []
-  const linked = (p: string) => rules.links.some((l) => l.rule === p && l.at.level === 'schema' && !l.off) || rules.global.some((l) => l.rule === p)
-  const missing = packs.filter((p) => !linked(p))
+  // As the server reads it: in place when linked to the whole schema or to every schema; a pack the schema
+  // switches off stays off, and the goal leaves it so.
+  const linked = (p: string) => rules.links.some((l) => l.rule === p && l.at.level === 'schema' && !l.off) || rules.global.some((l) => l.rule === p && !l.off)
+  const switchedOff = (p: string) => rules.links.some((l) => l.rule === p && l.at.level === 'schema' && l.off)
+  const missing = packs.filter((p) => !linked(p) && !switchedOff(p))
 
   useEffect(() => {
     setGap(null)
@@ -35,6 +38,7 @@ export function GoalsView({ selected }: { selected?: string }) {
     const r = catalog.rules.find((x) => x.id === c)
     return !r?.targets?.length || r.targets.includes(model.target)
   })
+  const gapFindings = gap?.findings.filter((f) => goalChecks.includes(f.rule)) ?? []
   const prompt = `Make ${name} ready to ${g.title.toLowerCase()} under @goal:${g.id}: fix what its packs find, and ask me where there is a choice.`
   return (
     <div className="sf-split sf-split-wide">
@@ -62,7 +66,7 @@ export function GoalsView({ selected }: { selected?: string }) {
               <div className="sf-chips">
                 {packs.map((p) => (
                   <button key={p} type="button" className={`sf-chip${linked(p) ? ' sf-on' : ''}`} onClick={() => go('rules', `catalog:${p}`)}>
-                    {catalog.rules.find((r) => r.id === p)?.title}{linked(p) ? ' · linked' : ''}
+                    {catalog.rules.find((r) => r.id === p)?.title}{linked(p) ? ' · linked' : switchedOff(p) ? ' · switched off here' : ''}
                   </button>
                 ))}
               </div>
@@ -103,10 +107,10 @@ export function GoalsView({ selected }: { selected?: string }) {
             ))}
           </div>
         )}
-        {gap && gap.findings.length > 0 && (
+        {gapFindings.length > 0 && (
           <section className="sf-col">
-            <span className="sf-caption">What is missing · {gap.findings.length.toLocaleString()}</span>
-            <Findings findings={gap.findings.filter((f) => goalChecks.includes(f.rule))} />
+            <span className="sf-caption">What is missing · {gapFindings.length.toLocaleString()}</span>
+            <Findings findings={gapFindings} />
           </section>
         )}
       </section>

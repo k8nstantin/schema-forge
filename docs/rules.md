@@ -53,13 +53,16 @@ global (every schema of the workspace)
   from the outermost, its family, the groups it is in, itself.
 - **An exception** switches a rule, or one rule inside a pack, off at a level and below, and always says why. The
   agent is told the reason. Normalization off on a reporting namespace; "no repeating groups" off on one table
-  whose report fixes ten slots, while the rest of Normalization still applies.
+  whose report fixes ten slots, while the rest of Normalization still applies. An exception switches off only
+  the rules it is part of: switching CDC-ready off leaves a Primary keys pack linked on its own running.
 - **A locked** link cannot be switched off below the level it is linked at: the architect's guardrail ("nothing
   without a key", locked globally). A lower link of the same rule does not unlock it.
 - A link is checked before it is kept: the rule and the level exist, an exception has a reason and switches off
-  something that reaches every table under it, and nothing locked is switched off.
-- Every change (`link_rule`, `unlink_rule`, `set_group`, `remove_group`) is an operation in the log, announced
-  live; global links are logged under `*`.
+  something that reaches every table under it, nothing locked is switched off, and nothing is locked above an
+  exception that would then stop working. The check and the write are one transaction.
+- A new group never replaces one of the same name; changing a group's tables checks its exceptions again.
+- Every change (`link_rule`, `unlink_rule`, `set_group`, `remove_group`, a goal's `link_packs`) is an operation in
+  the log, announced live; global links are logged under `*`. A goal links its packs in one change, all or none.
 
 ## Goals
 

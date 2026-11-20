@@ -38,7 +38,7 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/schemas/{name}/rules/links", post(link))
         .route("/api/schemas/{name}/rules/preview", post(preview))
         .route("/api/schemas/{name}/rules/unlink", post(unlink))
-        .route("/api/schemas/{name}/rules/groups", put(set_group))
+        .route("/api/schemas/{name}/rules/groups", put(set_group).post(new_group))
         .route("/api/schemas/{name}/rules/groups/{group}", delete(remove_group))
         .route("/api/schemas/{name}/goals/{goal}", post(goal))
         .route("/api/events", get(events))
@@ -175,14 +175,22 @@ async fn set_group(
     Path(name): Path<String>,
     axum::Json(g): axum::Json<Group>,
 ) -> Response {
-    done(store.set_group(&name, g, BY))
+    done(store.set_group(&name, g, false, BY))
+}
+
+async fn new_group(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::Json(g): axum::Json<Group>,
+) -> Response {
+    done(store.set_group(&name, g, true, BY))
 }
 
 async fn remove_group(State(store): State<Arc<Store>>, Path((name, group)): Path<(String, String)>) -> Response {
     done(store.remove_group(&name, &group, BY))
 }
 
-/// Links a goal's packs to the whole schema, those not linked there yet.
+/// Links a goal's packs to the whole schema, those not in place yet, all or none.
 async fn goal(State(store): State<Arc<Store>>, Path((name, goal)): Path<(String, String)>) -> Response {
     let Some(g) = rules::catalog().goals.iter().find(|g| g.id == goal) else {
         return failed(StatusCode::NOT_FOUND, format!("there is no goal `{goal}`"));
@@ -197,19 +205,10 @@ async fn goal(State(store): State<Arc<Store>>, Path((name, goal)): Path<(String,
     let Some((_, packs)) = g.packs.iter().find(|(t, _)| *t == target) else {
         return failed(StatusCode::BAD_REQUEST, format!("`{}` is not for a {target:?} schema", g.title));
     };
-    let linked = match store.rules(&name) {
-        Ok(set) => set.links,
-        Err(e) => return store_failed(e),
-    };
-    let mut ops = Vec::new();
-    for p in packs.iter().filter(|p| !linked.iter().any(|l| l.rule == **p && l.at == Scope::Schema)) {
-        let l = Link { rule: (*p).to_string(), at: Scope::Schema, off: false, locked: false, reason: None };
-        match store.link_rule(Rules::Schema(&name), l, BY) {
-            Ok(op) => ops.push(op),
-            Err(e) => return store_failed(e),
-        }
+    match store.link_packs(&name, packs, BY) {
+        Ok(op) => axum::Json(op.into_iter().collect::<Vec<_>>()).into_response(),
+        Err(e) => store_failed(e),
     }
-    axum::Json(ops).into_response()
 }
 
 /// One object's SQL, as its target writes it.
