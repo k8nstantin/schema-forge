@@ -128,9 +128,11 @@ catalog: [docs/rules.md](docs/rules.md).
   perspective, each with a fix the agent can make.
 - **Designs CDC targets.** From a MySQL schema to Iceberg tables through Debezium: every column mapped by
   the rules, every hazard shown, the Debezium settings written to match ([docs/cdc.md](docs/cdc.md)).
-- **Versions in git.** Locking a version is a commit (and a tag) in the repository the schema is linked to:
-  the version, its SQL, the migration from the last version, and a changelog entry the agent writes. Any
-  two versions compare as schemas; branches merge on the model, not on text ([docs/versions.md](docs/versions.md)).
+- **Versions as definitions, with or without git.** A locked version is written as one SQL file per
+  object, at a path that says where it lives (`<node>/<database>/<schema>/tables/orders.sql`), plus a small
+  `.sf/` folder for what SQL cannot say. A plain folder works; in a git repository each lock is also a
+  commit and a tag, and a plain folder can join a repository later with its history
+  ([docs/versions.md](docs/versions.md)).
 - **Exports SQL.** One file per version: the whole schema, or the migration from the last version.
 - **Reads what you have.** Import a MySQL or PostgreSQL schema dump, or Iceberg table definitions;
   nothing in them is lost.
@@ -163,8 +165,8 @@ The model behind it all: [docs/model.md](docs/model.md).
   pure-Rust storage engine): schemas, operations and history, versions, findings, standards, pipelines.
   Relationships and view dependencies are a graph it queries directly, and its live queries push every
   change to the perspectives. Nothing to install or run beside `sf`.
-- **Plain files for git.** `sf export` writes, and `sf import` reads, the shareable form: `schema.json`
-  (the draft), `versions/` (locked versions, never edited),
+- **Definitions on disk.** `sf export` writes, and `sf import` reads, the shareable form: one SQL file
+  per object under `<node>/<database>/<schema>/`, and `.sf/` (model, rules, versions, migrations),
   `sf.toml` (name and type), `rules.toml` (the rules), `perspectives/` (custom perspectives), `export/` (the SQL).
 - **Rust** throughout where it can be; the perspectives in SuperX's purple theme, their technology still open (below).
 
@@ -213,7 +215,7 @@ still open (below).
 3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets;
    CDC pipelines from MySQL through Debezium.
 4. Categories and custom perspectives; references to everything.
-5. Locked versions and migrations, in git: commits, tags, schema diffs, merges, CI checks.
+5. Locked versions as definitions; migrations; git when present (commits, tags, merges); CI checks.
 6. **Deploy:** apply a version to a destination database or Iceberg catalog directly, or through the exported SQL file.
 
 ## License
