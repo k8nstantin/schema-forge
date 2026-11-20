@@ -1,0 +1,309 @@
+# The schema model
+
+The one structure Schema Forge is built on. The agent's operations change it, every perspective shows it,
+and every import and export reads or writes it. This document is the design to agree before any code.
+
+## Principles
+
+1. **One project, one target.** A project is designed for MySQL, PostgreSQL or Iceberg. Types, options and
+   rules are that target's own, written the way that target writes them. Moving to another target is a
+   conversion that makes a new project, with a report (see [Conversion](#conversion)).
+2. **Nothing is lost.** Whatever the model does not describe is kept verbatim and written back in its
+   place. Every type, option and definition keeps its exact form.
+3. **Every object has an identity.** Each table, column, key, index, relationship, view and sequence has a
+   stable `id` besides its name. Renaming changes the name, not the identity, so a migration renames
+   instead of dropping and recreating, and data survives.
+4. **Facts only.** The model holds what the schema is. Layout, perspectives, rules and history live in
+   their own files.
+5. **Order is meaning.** Column order, statement order and view dependency order are kept and respected.
+
+## The schema file
+
+```json
+{
+  "format": 1,
+  "target": "postgres",
+  "namespaces": [ … ],
+  "areas": [ … ],
+  "tables": [ … ],
+  "relationships": [ … ],
+  "views": [ … ],
+  "sequences": [ … ],
+  "types": [ … ],
+  "kept": [ … ]
+}
+```
+
+`format` is the version of this file format; a newer `sf` upgrades older files and never writes an older
+format. `target` is `mysql`, `postgres` or `iceberg`.
+
+## Objects
+
+### Namespace
+
+Where objects live: a PostgreSQL schema (`public`, `billing`), a MySQL database, an Iceberg namespace
+(which can be nested: `analytics.sales`).
+
+| Field | |
+|---|---|
+| `id`, `name` | `name` is a path for Iceberg (`["analytics", "sales"]`) |
+| `comment` | |
+
+### Table
+
+| Field | |
+|---|---|
+| `id`, `namespace`, `name` | |
+| `comment`, `tags`, `area` | `tags` are free words (`fact`, `dimension`); `area` groups tables in the perspectives |
+| `columns` | ordered |
+| `primary_key` | `{ name, columns }`; Iceberg: see `identifier_fields` |
+| `uniques` | `[{ id, name, columns, nulls_distinct }]` (`nulls_distinct`: PostgreSQL 15+) |
+| `checks` | `[{ id, name, expression }]`, the expression kept as written |
+| `indexes` | see [Index](#index) |
+| `patterns` | patterns the table follows, with their settings, e.g. `{ "scd2": { "business_key": ["customer_no"] } }` |
+| `options` | the target's own, below |
+
+**Options by target:**
+
+| MySQL | PostgreSQL | Iceberg |
+|---|---|---|
+| `engine`, `charset`, `collation`, `row_format`, `auto_increment` (next value), `partitioning` (kept as written) | `tablespace`, `unlogged`, `partition_by` (`range`/`list`/`hash`, keys), `partition_of` (parent and bounds), `inherits`, `storage` parameters | `format_version` (1–3), `identifier_fields`, `partition_spec`, `sort_order`, `properties`, `location` |
+
+Iceberg's own parts:
+
+- **`identifier_fields`:** the columns that identify a row. Required columns, not float or double, not
+  inside a list or map. Iceberg does not enforce them.
+- **`partition_spec`:** `[{ source, transform, name }]`, where `transform` is `identity`, `bucket[N]`,
+  `truncate[W]`, `year`, `month`, `day`, `hour` or `void`.
+- **`sort_order`:** `[{ source, transform, direction, nulls }]`, `direction` `asc`/`desc`, `nulls`
+  `first`/`last`.
+- **`properties`:** a map of Iceberg table properties (`write.format.default`,
+  `write.parquet.compression-codec`, `write.delete.mode`, …), kept as given.
+
+### Column
+
+| Field | |
+|---|---|
+| `id`, `name` | |
+| `type` | the target's type, structured (below) |
+| `nullable` | Iceberg calls it `required` (the opposite); the model stores `nullable` for all |
+| `default` | expression, kept as written; Iceberg (v3): `initial_default` and `write_default` |
+| `generated` | `{ expression, stored }`, MySQL and PostgreSQL generated columns |
+| `identity` | PostgreSQL `GENERATED ALWAYS/BY DEFAULT AS IDENTITY` with its options; MySQL `AUTO_INCREMENT` |
+| `collation` | MySQL, PostgreSQL |
+| `comment` | Iceberg calls it `doc` |
+| `field_id` | Iceberg only: the column's permanent number, assigned once, never reused |
+
+### Types
+
+A type is stored the way the target spells it, as structure rather than text, so it can be shown,
+checked and converted:
+
+```json
+{ "name": "varchar", "length": 255 }
+{ "name": "numeric", "precision": 12, "scale": 2 }
+{ "name": "timestamp", "with_time_zone": true, "precision": 6 }
+{ "name": "enum", "values": ["new", "paid", "shipped"] }                      // MySQL, inline
+{ "name": "user", "type": "order_status" }                                    // PostgreSQL, see Types below
+{ "name": "array", "of": { "name": "text" } }                                 // PostgreSQL
+{ "name": "struct", "fields": [ { "field_id": 12, "name": "city", "nullable": true, "type": { "name": "string" } } ] }   // Iceberg
+{ "name": "list", "element_id": 13, "element_nullable": false, "of": { "name": "long" } }  // Iceberg
+```
+
+Only the target's real types are accepted; anything the parser reads but the model does not know is kept
+as `{ "name": "verbatim", "text": "…" }` and written back exactly.
+
+**PostgreSQL user-defined types** live in `types`: `enum` (values, in order), `domain` (base type,
+default, not null, checks) and `composite` (fields). Other kinds (ranges, base types) are kept verbatim.
+
+### Index
+
+| Field | |
+|---|---|
+| `id`, `name`, `unique` | |
+| `parts` | `[{ column or expression, direction, nulls, length }]` (`length`: MySQL prefix indexes) |
+| `method` | PostgreSQL `btree`/`hash`/`gin`/`gist`/`brin`/`spgist`; MySQL `btree`/`hash`/`fulltext`/`spatial` |
+| `include`, `where` | PostgreSQL covering and partial indexes |
+
+Iceberg has no indexes; its sort order and partition spec do that work.
+
+### Relationship
+
+One concept, two strengths:
+
+| Field | |
+|---|---|
+| `id`, `name` | |
+| `from` | `{ table, columns }`, the referencing side |
+| `to` | `{ table, columns }`, a primary or unique key on the referenced side |
+| `enforced` | `true`: a foreign key the database enforces (MySQL, PostgreSQL). `false`: logical, drawn and checked by Schema Forge, never written as a constraint (always the case on Iceberg) |
+| `on_delete`, `on_update` | for enforced ones: `no action`, `restrict`, `cascade`, `set null`, `set default` |
+| `deferrable` | PostgreSQL |
+
+Cardinality is not stored; it is read from the model: one-to-one when `from` columns are unique, otherwise
+one-to-many; optional when any `from` column is nullable.
+
+### View
+
+| Field | |
+|---|---|
+| `id`, `namespace`, `name`, `comment`, `tags`, `area` | |
+| `columns` | `[{ name, type (when known), comment }]` |
+| `definition` | the `SELECT`, kept exactly as written |
+| `reads` | the tables and views it reads, found by parsing the definition; kept up to date |
+| `options` | the target's own, below |
+
+| MySQL | PostgreSQL | Iceberg |
+|---|---|---|
+| `algorithm`, `sql_security`, `definer`, `check_option` | `materialized` (with its indexes and `with_data`), `check_option`, `security_barrier`, `security_invoker` | `versions`: each with its schema, `representations` (one `SELECT` per dialect: `spark`, `trino`, …), `default_catalog`, `default_namespace`; the current version |
+
+For Iceberg, `definition` is the representation in the project's chosen dialect, and every other dialect's
+text is kept beside it.
+
+### Sequence (PostgreSQL)
+
+`id`, `namespace`, `name`, `type`, `start`, `increment`, `min`, `max`, `cache`, `cycle`, `owned_by`
+(a column).
+
+### Area
+
+`id`, `name`, `colour`. A table or view belongs to at most one area.
+
+### Kept statements
+
+Everything else in an imported dump: functions, procedures, triggers, grants, owners, extensions,
+`SET` lines, events, policies.
+
+| Field | |
+|---|---|
+| `id`, `kind` | `function`, `trigger`, `grant`, `extension`, `setting`, `other` |
+| `text` | exactly as read |
+| `after` | the object it followed in the dump (or `start`), so it is written back in the same place |
+| `refers_to` | objects it names, where the parser can tell, so dropping a table warns about its trigger |
+
+## Rules every schema keeps
+
+Checked on every change; a change that breaks one is refused.
+
+- Names are unique within their namespace (tables and views share one name space), columns within their
+  table, field IDs within an Iceberg table.
+- A primary key's columns are not nullable. Iceberg identifier fields are required, not float or double,
+  not inside a list or map.
+- A relationship points at a primary or unique key, with as many columns, of matching types.
+- An enforced relationship is impossible on Iceberg.
+- Every column, key, index and option exists in the project's target.
+- View dependencies have no cycles; a view's `reads` exist.
+- Partition and sort fields point at columns of the table, with a transform that fits the column's type.
+
+These are the model's own rules. Project rules (naming, SCD Type 2, custom ones) come on top, from
+`sf.toml` and `rules/`.
+
+## Operations
+
+Every change, from the agent or from you, is one operation. Each names who made it and the turn it belongs
+to, is checked, applied, written to `operations.jsonl`, and carries what is needed to undo it.
+
+| Area | Operations |
+|---|---|
+| Namespaces, areas | `add_namespace`, `rename_namespace`, `drop_namespace`; `add_area`, `set_area` |
+| Tables | `add_table`, `rename_table`, `drop_table`, `move_table` (namespace), `set_table_comment`, `set_table_option`, `tag`, `untag` |
+| Columns | `add_column` (at a position), `rename_column`, `alter_column` (type, nullable, default, generated, identity, collation, comment), `move_column`, `drop_column` |
+| Keys | `set_primary_key`, `add_unique`, `drop_unique`, `add_check`, `drop_check`, `set_identifier_fields` |
+| Indexes | `add_index`, `drop_index` |
+| Relationships | `relate`, `alter_relationship`, `unrelate` |
+| Iceberg | `set_partition_spec`, `set_sort_order`, `set_property`, `unset_property` |
+| Views | `add_view`, `alter_view` (definition, columns, options; on Iceberg a new version), `rename_view`, `drop_view`, `add_view_dialect` (Iceberg) |
+| Sequences, types | `add_sequence`, `alter_sequence`, `drop_sequence`; `add_type`, `alter_type`, `drop_type` |
+| Patterns | `apply_pattern` (e.g. SCD Type 2 on a table: adds what is missing, as the operations above) |
+
+**Destructive** operations (dropping a table, column, key or view; narrowing a type; making a column not
+nullable) need an explicit flag, and say what they would break: the views that read it, the relationships
+that use it, the kept statements that name it.
+
+## Versions
+
+A locked version is the schema with everything but facts removed, written in a canonical form (keys
+sorted, fixed number formatting) and hashed with BLAKE3. The hash is the version's identity: the same
+schema always gives the same hash, on any machine.
+
+## Conversion
+
+Converting to another target makes a new project and a report of every decision:
+
+- types mapped to their nearest equal (`varchar(255)` to Iceberg `string`, `numeric(12,2)` to
+  `decimal(12,2)`), and anything without an equal reported, never silently dropped;
+- MySQL or PostgreSQL to Iceberg: foreign keys become logical relationships, primary keys become
+  identifier fields, indexes are listed for you to turn into a sort order or partition spec;
+- Iceberg to MySQL or PostgreSQL: logical relationships can become foreign keys, if you choose;
+- views: the definition is translated to the new dialect where it can be, and flagged where it cannot.
+
+## Example
+
+Orders with SCD Type 2 on PostgreSQL (shortened):
+
+```json
+{
+  "format": 1,
+  "target": "postgres",
+  "namespaces": [{ "id": "n1", "name": "public" }],
+  "tables": [
+    {
+      "id": "t1", "namespace": "n1", "name": "customers", "comment": "People who order.",
+      "columns": [
+        { "id": "c1", "name": "id", "type": { "name": "bigint" }, "nullable": false,
+          "identity": { "always": true } },
+        { "id": "c2", "name": "email", "type": { "name": "text" }, "nullable": false }
+      ],
+      "primary_key": { "name": "customers_pkey", "columns": ["c1"] },
+      "uniques": [{ "id": "u1", "name": "customers_email_key", "columns": ["c2"] }]
+    },
+    {
+      "id": "t2", "namespace": "n1", "name": "orders", "comment": "Every version of every order.",
+      "tags": ["scd2"],
+      "patterns": { "scd2": { "business_key": ["c4"] } },
+      "columns": [
+        { "id": "c3", "name": "order_key", "type": { "name": "bigint" }, "nullable": false,
+          "identity": { "always": true } },
+        { "id": "c4", "name": "order_no", "type": { "name": "text" }, "nullable": false },
+        { "id": "c5", "name": "customer_id", "type": { "name": "bigint" }, "nullable": false },
+        { "id": "c6", "name": "total", "type": { "name": "numeric", "precision": 12, "scale": 2 }, "nullable": false },
+        { "id": "c7", "name": "valid_from", "type": { "name": "timestamp", "with_time_zone": true }, "nullable": false },
+        { "id": "c8", "name": "valid_to", "type": { "name": "timestamp", "with_time_zone": true }, "nullable": true }
+      ],
+      "primary_key": { "name": "orders_pkey", "columns": ["c3"] },
+      "uniques": [{ "id": "u2", "name": "orders_version_key", "columns": ["c4", "c7"] }],
+      "indexes": [{ "id": "i1", "name": "orders_customer_idx", "parts": [{ "column": "c5" }] }]
+    }
+  ],
+  "relationships": [
+    { "id": "r1", "name": "orders_customer_fkey", "from": { "table": "t2", "columns": ["c5"] },
+      "to": { "table": "t1", "columns": ["c1"] }, "enforced": true, "on_delete": "restrict" }
+  ],
+  "views": [
+    { "id": "v1", "namespace": "n1", "name": "current_orders", "comment": "Each order as it is now.",
+      "definition": "SELECT order_no, customer_id, total FROM orders WHERE valid_to IS NULL",
+      "reads": ["t2"] }
+  ]
+}
+```
+
+The same `orders` on Iceberg differs only where Iceberg differs: `bigint` becomes `long`, `numeric`
+becomes `decimal`, `timestamp with time zone` becomes Iceberg `timestamptz`; columns carry `field_id`s; the relationship to
+`customers` has `enforced: false`; the table has `identifier_fields: [c3]`, a `partition_spec` such as
+`[{ "source": "c7", "transform": "month" }]` and a `sort_order` on `order_no`; the view carries its Spark
+and Trino `representations`.
+
+(Ids are shown short here; real ones are generated and stable.)
+
+## Questions to settle
+
+1. **One target per project**, with conversion making a new project, or one project carrying several
+   targets at once?
+2. **Ids:** short readable ones (`t_orders_1`) or UUIDs? Readable ids make `schema.json` easier for you
+   and the agent to read and diff; UUIDs never collide when two branches merge.
+3. **Column references** inside keys, indexes and relationships: by id (as above, survives renames) or by
+   name (easier to read and hand-edit)?
+4. **PostgreSQL partitions:** model each partition as its own table (`partition_of`), or keep partitions
+   verbatim?
+5. **Kept statements:** is "written back in the same place" enough, or should triggers and functions be
+   objects the agent can edit too, in a later version?

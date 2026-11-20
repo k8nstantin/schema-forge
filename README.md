@@ -1,12 +1,13 @@
 # Schema Forge (`sf`)
 
-**Build your database schema together with your coding agent, and watch it take shape.**
+**An ER design tool with many useful perspectives: build your database schema together with your coding
+agent, and watch it take shape.**
 
 You prompt the agent. The agent works through Schema Forge's MCP. Every change appears at once on a rich,
-live view that you both see. When the schema is right, export it for MySQL, PostgreSQL or Apache Iceberg.
+live perspective that you both see. When the schema is right, export it for MySQL, PostgreSQL or Apache Iceberg.
 
 ```
- you ──prompt──► coding agent ──MCP──► sf ──► live views (you see them, the agent can render them)
+ you ──prompt──► coding agent ──MCP──► sf ──► live perspectives (you see them, the agent can render them)
                                         │
                                         └──► export   (MySQL, PostgreSQL, Iceberg)
 ```
@@ -18,17 +19,16 @@ cd myproject
 sf serve
 ```
 
-`sf serve` starts Schema Forge, adds its MCP to the project for Claude Code, and opens the views in your
-browser. Then you prompt Claude Code in the same folder: "design an order system; orders are SCD Type 2".
+`sf serve` starts Schema Forge, adds its MCP to the project for Claude Code, and opens the perspectives. Then you prompt Claude Code in the same folder: "design an order system; orders are SCD Type 2".
 
 ## What it does
 
 - **Builds the schema with the agent.** The agent reads the schema and the rules, then changes it one
   operation at a time: add a table, a column, a relation, a view. Each operation is checked against the
-  rules before it applies. You steer by prompt, or point at something in a view and say "this one".
-- **Shows it, live, from several sides.** Every change lands in every view as it happens:
+  rules before it applies. You steer by prompt, or point at something in a perspective and say "this one".
+- **Shows it, live, from several sides.** Every change lands in every perspective as it happens:
 
-  | View | Shows |
+  | Perspective | Shows |
   |---|---|
   | **Diagram** | tables and views as cards, with their relationships |
   | **List** | every table and view with its columns, types and constraints |
@@ -62,14 +62,16 @@ Moving a schema between targets is a conversion the agent and the rules check: f
 foreign keys become logical relationships and primary keys become identifier fields; types map, and any
 type without an equivalent is reported, never dropped.
 
+The model behind it all: [docs/model.md](docs/model.md).
+
 ## How it is built
 
 - **One model, one owner.** `sf serve` holds the schema. The agent's operations (through the MCP) and
-  your edits (in the views) go through one queue, are saved to `schema.json`, and appear in every view at
+  your edits (in the perspectives) go through one queue, are saved to `schema.json`, and appear in every perspective at
   once.
 - **Plain files, in git.** `schema.json` (the draft), `versions/` (locked versions, never edited),
-  `sf.toml` and `rules/` (the rules), `views/` (custom views), `export/` (the SQL).
-- **Rust** throughout where it can be; the views in SuperX's purple theme, their technology still open (below).
+  `sf.toml` and `rules/` (the rules), `perspectives/` (custom perspectives), `export/` (the SQL).
+- **Rust** throughout where it can be; the perspectives in SuperX's purple theme, their technology still open (below).
 
 | Crate | Job |
 |---|---|
@@ -100,19 +102,19 @@ still open (below).
 
 ### Open decisions
 
-- **The views.** A solid, elegant design users like, not a quick UI. Browser views (React Flow) give the
+- **The perspectives (the UI).** A solid, elegant design users like, not a quick UI. Browser perspectives (React Flow) give the
   richest diagrams today; Rust UI (Leptos or Dioxus in the browser; egui, Iced or Slint as a native app)
-  keeps one language. Decided before any view is built, from a design of the views themselves.
+  keeps one language. Decided before any perspective is built, from a design of the perspectives themselves.
 - **PostgreSQL parsing.** sqlparser (pure Rust) is the default; the round-trip tests decide whether it
   reads real `pg_dump` files exactly. `pg_query` (PostgreSQL's own parser) is exact, but links C code, so it
   is not used unless pure Rust cannot do the job.
 
 ## Roadmap
 
-1. Import a MySQL or PostgreSQL dump and see it in the diagram, list and definition views; export SQL.
+1. Import a MySQL or PostgreSQL dump and see it in the diagram, list and definition perspectives; export SQL.
 2. Build with the agent: the MCP, the rules, every change live.
 3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets.
-4. Categories and custom views; editing by hand.
+4. Categories and custom perspectives; editing by hand.
 5. Locked versions and migrations.
 6. **Deploy:** apply a version to a destination database or Iceberg catalog directly, or through the exported SQL file.
 
