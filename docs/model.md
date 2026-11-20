@@ -342,11 +342,9 @@ and Trino `representations`.
 - **One target per project** (operator, 2026-11-20). Conversion makes a new project.
 - **Readable ids** (operator, 2026-11-20), as in [Ids](#ids).
 - **References by id** (operator, 2026-11-20).
+- **Functions, procedures and triggers: verbatim now, objects later** (operator, 2026-11-20): version 1
+  carries them through exactly, in place, knowing which tables they name; a later version makes them
+  objects the agent can write and edit.
 - **PostgreSQL partitions are tables** (operator, 2026-11-20): each partition is a table with
   `partition_of` (its parent) and its bounds, shown folded under the parent; the agent adds, splits and
   detaches partitions as operations, and rules and migrations cover them.
-
-## Questions to settle
-
-1. **Kept statements:** is "written back in the same place" enough, or should triggers and functions be
-   objects the agent can edit too, in a later version?
