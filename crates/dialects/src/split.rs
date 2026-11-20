@@ -54,9 +54,16 @@ pub fn split(dialect: &dyn Dialect, text: &str) -> Result<Split, SplitError> {
     let mut segment_start = 0;
     let mut segment_line = 1;
     let lines: Vec<(usize, &str)> = line_offsets(text);
+    let mut quoted = Quoted::default();
     let mut i = 0;
     while i < lines.len() {
         let (offset, line) = lines[i];
+        // Only a line that starts outside any string, body or comment can be a meta-command or start data.
+        if !quoted.is_clear() {
+            quoted.scan(line);
+            i += 1;
+            continue;
+        }
         if is_meta(line) {
             split_segment(dialect, &text[segment_start..offset], segment_line, &mut out)?;
             out.statements.push(Statement {
@@ -85,10 +92,106 @@ pub fn split(dialect: &dyn Dialect, text: &str) -> Result<Split, SplitError> {
             segment_line = i + 1;
             continue;
         }
+        quoted.scan(line);
         i += 1;
     }
     split_segment(dialect, &text[segment_start..], segment_line, &mut out)?;
     Ok(out)
+}
+
+/// Whether the text read so far is inside a string, a dollar-quoted body, a quoted name or a block comment, line by
+/// line: enough to tell a line that starts a meta-command or data from one inside a function body.
+#[derive(Debug, Default)]
+struct Quoted {
+    dollar: Option<String>,
+    single: bool,
+    double: bool,
+    block: usize,
+}
+
+impl Quoted {
+    fn is_clear(&self) -> bool {
+        self.dollar.is_none() && !self.single && !self.double && self.block == 0
+    }
+
+    fn scan(&mut self, line: &str) {
+        let b = line.as_bytes();
+        let mut i = 0;
+        while i < b.len() {
+            if let Some(tag) = &self.dollar {
+                if line[i..].starts_with(tag.as_str()) {
+                    i += tag.len();
+                    self.dollar = None;
+                } else {
+                    i += 1;
+                }
+                continue;
+            }
+            if self.block > 0 {
+                if line[i..].starts_with("*/") {
+                    self.block -= 1;
+                    i += 2;
+                } else if line[i..].starts_with("/*") {
+                    self.block += 1;
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+                continue;
+            }
+            if self.single {
+                if b[i] == b'\'' {
+                    if b.get(i + 1) == Some(&b'\'') {
+                        i += 2
+                    } else {
+                        self.single = false;
+                        i += 1
+                    }
+                } else {
+                    i += 1;
+                }
+                continue;
+            }
+            if self.double {
+                if b[i] == b'"' {
+                    self.double = false;
+                }
+                i += 1;
+                continue;
+            }
+            match b[i] {
+                b'-' if b.get(i + 1) == Some(&b'-') => return,
+                b'/' if b.get(i + 1) == Some(&b'*') => {
+                    self.block = 1;
+                    i += 2;
+                }
+                b'\'' => {
+                    self.single = true;
+                    i += 1;
+                }
+                b'"' => {
+                    self.double = true;
+                    i += 1;
+                }
+                b'$' => {
+                    // `$tag$` or `$$`, not `$1`.
+                    let rest = &line[i + 1..];
+                    match rest.find('$') {
+                        Some(end)
+                            if rest[..end].chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+                                && !rest[..end].starts_with(|c: char| c.is_ascii_digit()) =>
+                        {
+                            let tag = format!("${}$", &rest[..end]);
+                            i += tag.len();
+                            self.dollar = Some(tag);
+                        }
+                        _ => i += 1,
+                    }
+                }
+                _ => i += 1,
+            }
+        }
+    }
 }
 
 fn line_offsets(text: &str) -> Vec<(usize, &str)> {
@@ -131,6 +234,8 @@ fn split_segment(dialect: &dyn Dialect, text: &str, first_line: usize, out: &mut
 
     let mut current: Vec<Tok> = Vec::new();
     let mut atomic_depth = 0usize;
+    // A `CASE … END` inside a `BEGIN ATOMIC` body: its `END` is the expression's, not the body's.
+    let mut case_depth = 0usize;
     let mut comments = String::new();
     let mut leading = String::new();
     for t in tokens {
@@ -150,6 +255,8 @@ fn split_segment(dialect: &dyn Dialect, text: &str, first_line: usize, out: &mut
             Token::Word(w) if w.keyword == Keyword::ATOMIC && is_word(current.last(), Keyword::BEGIN) => {
                 atomic_depth += 1;
             }
+            Token::Word(w) if w.keyword == Keyword::CASE && atomic_depth > 0 => case_depth += 1,
+            Token::Word(w) if w.keyword == Keyword::END && case_depth > 0 => case_depth -= 1,
             Token::Word(w) if w.keyword == Keyword::END && atomic_depth > 0 => atomic_depth -= 1,
             _ => {}
         }
@@ -194,6 +301,25 @@ mod tests {
     use sqlparser::dialect::PostgreSqlDialect;
 
     use super::*;
+
+    #[test]
+    fn a_case_inside_an_atomic_body_does_not_end_it() {
+        let sql = "CREATE FUNCTION f() RETURNS int LANGUAGE sql BEGIN ATOMIC SELECT CASE WHEN true THEN 1 END; SELECT 2; END;\nSELECT 3;";
+        let s = split(&PostgreSqlDialect {}, sql).expect("split");
+        assert_eq!(s.statements.len(), 2, "{:?}", s.statements.iter().map(|x| &x.text).collect::<Vec<_>>());
+        assert!(s.statements[0].text.ends_with("SELECT 2; END"));
+    }
+
+    #[test]
+    fn a_meta_line_or_copy_inside_a_body_is_part_of_it() {
+        let sql = "CREATE FUNCTION g() RETURNS void LANGUAGE plpgsql AS $body$\nBEGIN\n\\d+ is a pattern here\nCOPY t FROM stdin;\nEND\n$body$;\n\\unrestrict x\nSELECT 1;\n";
+        let s = split(&PostgreSqlDialect {}, sql).expect("split");
+        let texts: Vec<&str> = s.statements.iter().map(|x| x.text.as_str()).collect();
+        assert_eq!(texts.len(), 3, "{texts:?}");
+        assert!(texts[0].contains("COPY t FROM stdin") && texts[0].ends_with("$body$"));
+        assert!(s.statements[1].meta, "the meta line after the body is one");
+        assert_eq!(s.copy_blocks, 0);
+    }
 
     #[test]
     fn statements_are_cut_at_semicolons_outside_strings_bodies_and_data() {

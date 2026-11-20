@@ -189,8 +189,10 @@ pub(super) fn run(id: &str, cx: &Context<'_>, table: &Table) -> Outcome {
                 }
                 o.look();
                 let mine = label(&c.data_type);
-                let (most, _) = types.iter().max_by_key(|(_, n)| **n).expect("a type");
-                if types.len() > 1 && &mine != most {
+                // With one most common type the others drift from it; with a tie no type is agreed, so all do.
+                let top = types.values().copied().max().unwrap_or(0);
+                let tops: Vec<&String> = types.iter().filter(|(_, n)| **n == top).map(|(l, _)| l).collect();
+                if types.len() > 1 && (tops.len() > 1 || *tops[0] != mine) {
                     let others: Vec<String> =
                         types.iter().filter(|(l, _)| **l != mine).map(|(l, n)| format!("{l} in {n}")).collect();
                     o.column(&c.id, format!("`{}` is {mine} here; elsewhere {}", c.name, others.join(", ")));
@@ -261,7 +263,8 @@ pub(super) fn run(id: &str, cx: &Context<'_>, table: &Table) -> Outcome {
             }
         }
         "norm.repeat" => {
-            o.look();
+            // Each column is looked at, so a table never has more breaks than things checked.
+            table.columns.iter().for_each(|_| o.look());
             let mut groups: BTreeMap<String, Vec<&str>> = BTreeMap::new();
             for c in &table.columns {
                 let stem = c.name.trim_end_matches(|ch: char| ch.is_ascii_digit());
@@ -279,7 +282,7 @@ pub(super) fn run(id: &str, cx: &Context<'_>, table: &Table) -> Outcome {
             }
         }
         "norm.copies" => {
-            o.look();
+            table.columns.iter().for_each(|_| o.look());
             for (c, source, attr) in cx.copies(table) {
                 o.column(&c.id, format!("`{}` copies `{}.{attr}`", c.name, source.name));
             }

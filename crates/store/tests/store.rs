@@ -105,8 +105,12 @@ fn rules_are_linked_checked_logged_and_kept() {
         assert_eq!(heard.try_recv().expect("announced").schema, "*");
         store.link_rule(Rules::Schema("lake"), link("norm", Scope::Schema), "you").expect("link");
         let op = store
-            .set_group("lake", Group { name: "hot".to_string(), tables: vec![table.clone()] }, "you")
+            .set_group("lake", Group { name: "hot".to_string(), tables: vec![table.clone()] }, true, "you")
             .expect("group");
+        let again = Group { name: "hot".to_string(), tables: vec![] };
+        assert!(store.set_group("lake", again.clone(), true, "you").is_err(), "a new group never replaces one");
+        let cold = Group { name: "cold".to_string(), ..again };
+        assert!(store.set_group("lake", cold, false, "you").is_err(), "only a group there is can change");
         assert_eq!(op.kind, "set_group");
         store
             .link_rule(Rules::Schema("lake"), link("cdc", Scope::Group { group: "hot".to_string() }), "you")
@@ -142,6 +146,19 @@ fn rules_are_linked_checked_logged_and_kept() {
     store.remove_group("lake", "hot", "you").expect("now it can go");
     assert!(store.unlink_rule(Rules::Schema("lake"), "cdc", &Scope::Schema, "you").is_err(), "nothing linked there");
     assert!(matches!(store.rules("nowhere"), Err(Error::NoSchema(_))));
+    // A goal links what is not in place, all at once; `pk` is linked to every schema already.
+    let op = store.link_packs("lake", &["norm", "pk", "cdc"], None, "you").expect("packs").expect("a change");
+    assert_eq!(op.change, serde_json::json!({ "packs": ["cdc"] }));
+    assert!(store.link_packs("lake", &["norm", "cdc"], None, "you").expect("packs").is_none(), "nothing left to link");
+    // Every rule switched off for every schema: `*` is no catalog rule, but it is a link; without a reason it is not.
+    let all = Link {
+        off: true,
+        reason: Some("a scratch workspace".to_string()),
+        ..link(schema_forge_core::rules::ALL, Scope::Global)
+    };
+    let bare = Link { reason: None, ..all.clone() };
+    assert!(matches!(store.link_rule(Rules::Global, bare, "you"), Err(Error::Rule(_))));
+    store.link_rule(Rules::Global, all, "you").expect("every rule off");
 }
 
 #[test]
@@ -386,4 +403,74 @@ fn a_turn_groups_the_agents_changes_to_accept_or_reject_whole() {
         .expect("you");
     assert!(matches!(store.reject_turn("lake", three.id, "you"), Err(Error::Refused(_))));
     assert_eq!(store.model("lake").expect("model").tables.len(), 2, "notes stays");
+}
+
+#[test]
+fn approvals_take_their_own_ids_and_switch_off_what_they_contradict() {
+    use schema_forge_core::rules::custom::{ColumnMust, Pattern, Sentence};
+    use schema_forge_core::rules::review::{Proposed, Status};
+    use schema_forge_core::rules::{Enforce, Link, Scope};
+    use schema_forge_store::Rules;
+    let dir = tempfile::tempdir().expect("dir");
+    let store = std::sync::Arc::new(Store::open(&dir.path().join("store.redb")).expect("open"));
+    store.create_schema("lake", Target::Iceberg).expect("create");
+    let model: Schema = serde_json::from_value(serde_json::json!({
+        "format": 1,
+        "target": "iceberg",
+        "namespaces": [{ "id": "n_a", "name": "a" }],
+        "tables": [{ "id": "t_x", "namespace": "n_a", "name": "x", "columns": [
+            { "id": "c_x_created_at", "name": "created_at", "type": { "name": "string" }, "nullable": true }
+        ] }]
+    }))
+    .expect("a schema");
+    store.replace_model("lake", &model, "import", "import").expect("save");
+    let types =
+        Link { rule: "types".into(), at: Scope::Schema, off: false, locked: false, reason: None, enforce: None };
+    store.link_rule(Rules::Schema("lake"), types, "you").expect("types");
+    let has = |c: &str| Proposed::New {
+        sentence: Sentence::HasColumn { column: c.into(), required: false, types: vec![] },
+        targets: vec![],
+    };
+    let strings = Proposed::New {
+        sentence: Sentence::Columns {
+            name: Pattern::EndsWith("_at".into()),
+            must: ColumnMust::OfType(vec!["string".into()]),
+        },
+        targets: vec![],
+    };
+    let items = vec![
+        (has("a"), Scope::Schema, Enforce::Soft, "seen".into()),
+        (has("b"), Scope::Schema, Enforce::Soft, "seen".into()),
+        (has("c"), Scope::Schema, Enforce::Soft, "seen".into()),
+        (strings, Scope::Schema, Enforce::Soft, "times arrive as text".into()),
+    ];
+    store.propose("lake", items, "agent").expect("proposed");
+    // Approved at once, as "Approve the verified" does: each gets its own rule.
+    let handles: Vec<_> = (1..=3)
+        .map(|id| {
+            let s = std::sync::Arc::clone(&store);
+            std::thread::spawn(move || s.decide("lake", id, true, "you").expect("approved").rule)
+        })
+        .collect();
+    let mut ids: Vec<String> = handles.into_iter().filter_map(|h| h.join().expect("joined")).collect();
+    ids.sort();
+    assert_eq!(ids, ["custom.1", "custom.2", "custom.3"]);
+    assert_eq!(store.custom_rules().expect("custom").len(), 3);
+    // Times kept as text contradict types.time: approving switches it off here, in the same change.
+    let p = store.decide("lake", 4, true, "you").expect("approved with the conflict settled");
+    assert_eq!(p.status, Status::Approved);
+    let set = store.rules("lake").expect("rules");
+    let off = set.links.iter().find(|l| l.rule == "types.time").expect("types.time switched off");
+    assert!(off.off && off.reason.as_deref().is_some_and(|r| r.contains("proposal #4")));
+    let custom = store.custom_rules().expect("custom");
+    assert_eq!(
+        custom.last().map(|c| c.targets.as_slice()),
+        Some([Target::Iceberg].as_slice()),
+        "a type rule holds on its target"
+    );
+    let log = store.operations("lake").expect("log");
+    let last = log.last().expect("an operation");
+    assert_eq!(last.kind, "approve_rule");
+    assert_eq!(last.change["switched_off"], serde_json::json!(["types.time"]));
+    assert_eq!(last.change["rule"], "custom.4");
 }

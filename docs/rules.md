@@ -54,13 +54,16 @@ global (every schema of the workspace)
   from the outermost, its family, the groups it is in, itself.
 - **An exception** switches a rule, or one rule inside a pack, off at a level and below, and always says why. The
   agent is told the reason. Normalization off on a reporting namespace; "no repeating groups" off on one table
-  whose report fixes ten slots, while the rest of Normalization still applies.
+  whose report fixes ten slots, while the rest of Normalization still applies. An exception switches off only
+  the rules it is part of: switching CDC-ready off leaves a Primary keys pack linked on its own running.
 - **A locked** link cannot be switched off below the level it is linked at: the architect's guardrail ("nothing
   without a key", locked globally). A lower link of the same rule does not unlock it.
 - A link is checked before it is kept: the rule and the level exist, an exception has a reason and switches off
-  something that reaches every table under it, and nothing locked is switched off.
-- Every change (`link_rule`, `unlink_rule`, `set_group`, `remove_group`) is an operation in the log, announced
-  live; global links are logged under `*`.
+  something that reaches every table under it, nothing locked is switched off, and nothing is locked above an
+  exception that would then stop working. The check and the write are one transaction.
+- A new group never replaces one of the same name; changing a group's tables checks its exceptions again.
+- Every change (`link_rule`, `unlink_rule`, `set_group`, `remove_group`, a goal's `link_packs`) is an operation in
+  the log, announced live; global links are logged under `*`. A goal links its packs in one change, all or none.
 
 ## Goals
 
@@ -117,9 +120,12 @@ system enforces them.
    proposal; not contradicting a linked rule (a rule that columns could keep only by breaking a linked type rule
    is a conflict); and what it would break if approved. Proposals for every schema are refused: global rules are
    yours.
-4. **You approve** in the Rules perspective's Review: hard or soft, approve or reject. A conflict is approved only
-   with the contradicted rule switched off there, with a reason. An approved new rule joins the workspace's
-   catalog (`custom.<n>`), linked where it was proposed, with who proposed and approved it.
+4. **You approve** in the Rules perspective's Review: hard or soft, approve or reject. Approving a conflict switches
+   each contradicted rule off there in the same change: its link at that level is taken away, otherwise an
+   exception records that the proposal replaced it (refused if it is locked). An approved new rule joins the
+   workspace's catalog under the next free `custom.<n>`, linked where it was proposed, with who proposed and
+   approved it; one that names types or transforms holds only on schemas of that target. The check and the write
+   are one transaction, and the log records the rule, the link and what was switched off.
 5. **The system enforces**: the agent reads the rules in force (`rules`, `check`) and designs within them. Its
    changes go through the MCP's `change`, one or more operations as one change, all or none: a change that breaks
    a hard rule attached to what it touches is refused, with the rule and the reason, and nothing lands; what breaks

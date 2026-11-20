@@ -1,6 +1,8 @@
 // The Rules perspective: the rules as a diagram (a level, or one rule), the catalog, goals, and groups.
 // Its place in the address: `level:<level>`, `rule:<id>`, `catalog:<id>`, `goals:<id>`, `groups`.
 
+import { useMemo } from 'react'
+
 import { useWorkbench } from '../state'
 import { BreaksView } from './BreaksView'
 import { CatalogView } from './CatalogView'
@@ -25,6 +27,8 @@ export function RulesView({ arg }: { arg?: string }) {
   const view = !arg ? 'level' : colon < 0 ? arg : arg.slice(0, colon)
   const rest = colon < 0 ? undefined : arg!.slice(colon + 1)
   const tab = view === 'rule' ? 'level' : view
+  // One scope object per address, so the diagram's layout is not worked out again on every render.
+  const scope = useMemo(() => parseScope(rest), [rest])
   return (
     <div className="sf-col">
       <div className="sf-subnav">
@@ -35,7 +39,7 @@ export function RulesView({ arg }: { arg?: string }) {
         </nav>
         {rules.report.problems.length > 0 && <span className="sf-error">{rules.report.problems.join(' · ')}</span>}
       </div>
-      {view === 'level' && <div className="sf-page"><LevelDiagram scope={parseScope(rest)} /></div>}
+      {view === 'level' && <div className="sf-page"><LevelDiagram scope={scope} /></div>}
       {view === 'rule' && rest && <div className="sf-page"><RuleDiagram id={rest} /></div>}
       {view === 'catalog' && <CatalogView selected={rest} />}
       {view === 'goals' && <GoalsView selected={rest} />}
