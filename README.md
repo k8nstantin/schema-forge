@@ -69,7 +69,7 @@ type without an equivalent is reported, never dropped.
   once.
 - **Plain files, in git.** `schema.json` (the draft), `versions/` (locked versions, never edited),
   `sf.toml` and `rules/` (the rules), `views/` (custom views), `export/` (the SQL).
-- **Rust**, with the views in the browser (React, React Flow), in SuperX's purple theme.
+- **Rust** throughout where it can be; the views in SuperX's purple theme, their technology still open (below).
 
 | Crate | Job |
 |---|---|
