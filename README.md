@@ -128,6 +128,9 @@ catalog: [docs/rules.md](docs/rules.md).
   perspective, each with a fix the agent can make.
 - **Designs CDC targets.** From a MySQL schema to Iceberg tables through Debezium: every column mapped by
   the rules, every hazard shown, the Debezium settings written to match ([docs/cdc.md](docs/cdc.md)).
+- **Versions in git.** Locking a version is a commit (and a tag) in the repository the schema is linked to:
+  the version, its SQL, the migration from the last version, and a changelog entry the agent writes. Any
+  two versions compare as schemas; branches merge on the model, not on text ([docs/versions.md](docs/versions.md)).
 - **Exports SQL.** One file per version: the whole schema, or the migration from the last version.
 - **Reads what you have.** Import a MySQL or PostgreSQL schema dump, or Iceberg table definitions;
   nothing in them is lost.
@@ -189,6 +192,7 @@ still open (below).
 | Command line | **clap** |
 | View dependencies | **petgraph** (dependency order, cycle detection) |
 | Version hashes | **blake3** |
+| Git | **gix** (gitoxide), pure Rust: history, commits, tags |
 | Errors | **thiserror** |
 | Tests against real databases | **testcontainers** (PostgreSQL, MySQL) |
 | Deploy, later | **sqlx** (PostgreSQL, MySQL), **iceberg** catalogs |
@@ -209,7 +213,7 @@ still open (below).
 3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets;
    CDC pipelines from MySQL through Debezium.
 4. Categories and custom perspectives; references to everything.
-5. Locked versions and migrations.
+5. Locked versions and migrations, in git: commits, tags, schema diffs, merges, CI checks.
 6. **Deploy:** apply a version to a destination database or Iceberg catalog directly, or through the exported SQL file.
 
 ## License
