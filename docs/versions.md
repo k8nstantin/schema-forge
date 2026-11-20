@@ -1,6 +1,6 @@
 # Versions and the definitions folder
 
-The draft lives in `schema-forge`'s embedded SurrealDB while you and the agent work. Locked versions are written as
+The draft lives in `schema-forge`'s embedded store (redb) while you and the agent work. Locked versions are written as
 **definitions**: one SQL file per object, in a folder whose path says where the object lives. The folder is
 a plain directory; in a git repository, locking a version is also a commit.
 

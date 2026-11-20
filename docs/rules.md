@@ -24,6 +24,28 @@ orders (MySQL source)        lakehouse.orders (Iceberg target)
 - **Per schema:** add or remove packs, and override any setting, for one schema only.
 - A template is simply a saved collection: type defaults plus packs.
 
+## Rules that shape, not only check
+
+A rule can set what it requires, not only report what breaks it. The agent applies it when it creates or
+changes a table, and every card shows which rules shaped it.
+
+| Rule | On every table it covers |
+|---|---|
+| **Iceberg merge-on-read** | `write.delete.mode`, `write.update.mode`, `write.merge.mode` = `merge-on-read` |
+| **Iceberg format** | `format-version` = 3 (or 2), file format, compression |
+| **Iceberg partitioning** | a partition spec on the event-time column by `day` (or the transform set), a sort order on the key |
+| **MySQL primary key UUIDv7** | an `id` primary key holding a UUIDv7, as `BINARY(16)` (or `CHAR(36)`, as set), made by the application |
+| **PostgreSQL primary key UUIDv7** | an `id uuid` primary key with `DEFAULT uuidv7()` (PostgreSQL 18) or made by the application |
+| **PostgreSQL identity keys** | an `id bigint GENERATED ALWAYS AS IDENTITY` primary key |
+| **Audit columns** | `created_at`, `updated_at` in their standard types, at the end |
+
+- **Applied by operation:** "make `@tag:events` follow `@rule:iceberg-mor`" becomes the operations that set
+  each property, shown as they land.
+- **Checked always:** a table that drifts from a shaping rule is a finding, with the operation that brings it
+  back as the fix.
+- **Rule packs are made of them:** a "lakehouse" pack is Iceberg merge-on-read + format 3 + day partitioning
+  + the type standards; a "service database" pack is MySQL UUIDv7 keys + audit columns + naming.
+
 ## Two places: Standards, and the schema
 
 Schema Forge has two parts, each with its own UI:

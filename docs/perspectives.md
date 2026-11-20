@@ -47,71 +47,75 @@ instead of an empty schema, at step 1.
 
 ## The shape of the app
 
+The first canvas, one zoomable map of every card and line, was judged unusable on a real schema: jumpy, a
+tangle of lines, columns cut off when zoomed. It was redesigned with the operator through mocks, screen by
+screen, and rebuilt as separate perspectives, each a plain page that does one job.
+
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ Schema Forge   [workspace ▾]  orders · Iceberg · lakehouse rules        ● agent working   │
-├────────┬─────────────────────────────────────────────────────────────┬────────────────────┤
-│        │                                                             │                    │
-│ Schemas│                 the perspective                             │  Inspector         │
-│ ────── │                 (Diagram, List, Definition, …)              │  what is selected: │
-│ orders │                                                             │  its detail, rules,│
-│ ledger │                                                             │  history, SQL,     │
-│        │                                                             │  references        │
-│ Pipe-  │                                                             │                    │
-│ lines  │                                                             │                    │
-│        │                                                             │                    │
-│Standards                                                             │                    │
-├────────┴─────────────────────────────────────────────────────────────┴────────────────────┤
-│ Activity: the agent's turns as they happen · findings · changes          @selection: orders │
+│ Schema Forge  SCHEMA orders  Iceberg  [Tables│Categories│Table│Map]  pointing at @orders.total  Copy │
+├──────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                          │
+│                              the perspective                                             │
+│                                                                                          │
+├──────────────────────────────────────────────────────────────────────────────────────────┤
+│ Activity: changes as they land                                                           │
 └──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Left:** the workspace: schemas, pipelines, and **Standards** (its own place, see below).
-- **Centre:** one perspective at a time, switched by tabs or keys `1`–`9`; any perspective can be split
-  beside another (Diagram beside Definition, the source beside the target of a pipeline).
-- **Right, the Inspector:** everything about what is selected, the same in every perspective.
-- **Bottom, Activity:** the agent's turns, operation by operation, as they land; findings; the current
-  selection's reference, one click to copy.
-- **Top:** the schema, its type, its rule collection, and whether the agent is working.
+- **Top:** the schema's name, large, under a `schema` caption, with its type; the perspectives, keys
+  `1`–`4`; what you point at, as the reference the agent reads (`@orders.total`): `C` copies it,
+  `Shift+C` copies it with what it is.
+- **Hierarchy everywhere:** schema › namespace › family › table. Schema and namespace are set bigger than
+  the tables and marked by caption and a namespace pill, so you always know which one you are in.
+- **Where you are is in the address:** `#/<schema>/<perspective>/<table or family>`, so it survives a reload
+  and can be sent.
+- **Bottom, Activity:** every change as it lands; the open schema reloads with it.
+
+## The shape of a schema
+
+What the perspectives group and draw is computed by the engine (`schema_forge_core::shape`, served at
+`/api/schemas/<name>/shape`), so the agent and the browser see the same thing:
+
+- **Families** come from names: a `prefix__` (`node__accounts`), else the first word after a prefix most of
+  the namespace shares (`tbl_ShopLogins` → `Shop`), when at least four tables share it; the rest are
+  `ungrouped`. A namespace of twelve tables or fewer is one family.
+- **Copies** stack under one table: a series of dated tables (`tbl_ShipLog202203`…), or temporary names
+  (`_old`, `_bak`, `_3`). They draw no lines of their own.
+- **Links** are the declared relationships, then column names that name a table (`node_id`, `StoreKey`,
+  `PromotionID` → `nodes`, `tbl_Stores`, `tbl_Promotions`), then an `_id` column whose description names a
+  table.
+- **Shared keys:** a table that more than max(25, 15% of the namespace) tables refer to is noted, not drawn.
 
 ## The perspectives
 
 | Perspective | What it answers | Shows |
 |---|---|---|
-| **Diagram** | how it fits together | tables and views as cards, relationships, areas; zoom from the whole schema into one table |
-| **List** | what exactly is defined | every table and view: columns, types, nullability, defaults, constraints; sortable, filterable, grouped |
-| **Definition** | what the database will be told | the SQL of what is selected, in the target's dialect, as it will be exported |
-| **Categories** | what belongs together | the schema by area and by tag, with each group's rule status |
-| **Dependencies** | what relies on what | views and what they read; relationships as a graph; "what breaks if this changes" for anything selected |
-| **Consistency** | where it disagrees with itself | every inconsistency and failing rule, grouped, each with the agent's suggested fix |
-| **Changes** | what changed since the last version | added, changed and removed objects, on the diagram and as a list; any two versions compared |
-| **History** | how it got here | versions and the agent's turns: the prompt, the operations, who locked what, when |
-| **Pipeline** | source and target side by side | for a CDC pipeline: each source table beside its Iceberg table, column by column, with the rule that decided each mapping |
-| **Custom** | what you choose | your own selection of tables, columns, grouping, colours; saved, shareable, makeable by the agent |
+| **Tables** | what is here | every table under its namespace, searchable by table or column name, sortable by family, columns, nesting, partitioning, links |
+| **Categories** | what belongs together | namespaces, then families as cards listing their tables and where the family links |
+| **Table** | everything about one table | a picker by namespace; the table's link diagram; every column (type, required, description); its SQL in the target's dialect; its copies |
+| **Map** | how the families fit | families in columns, left to right by who refers to whom, each line with its count; click a family for its link diagram |
+| **Consistency** | where it disagrees with itself | every inconsistency and failing rule, grouped, each with the agent's suggested fix (next) |
+| **Changes** | what changed since the last version | added, changed and removed objects; any two versions compared (later) |
+| **History** | how it got here | versions and the agent's turns: the prompt, the operations, who locked what, when (later) |
+| **Pipeline** | source and target side by side | for a CDC pipeline: each source table beside its Iceberg table, column by column (later) |
+| **Custom** | what you choose | your own selection of tables, columns, grouping, colours; saved, shareable, makeable by the agent (later) |
 
-## The diagram, in depth
+## The link diagram
 
-**Zoom changes what is drawn,** not only its size:
+One drawing, used by the Table and the Map: the thing in the middle, what refers to it on the left, what it
+refers to on the right, one curved line per link.
 
-| Level | Drawn |
-|---|---|
-| Whole schema | areas as coloured regions, tables as named blocks, how areas connect (one line per pair of areas, its weight the number of relationships) |
-| Area | tables with their keys; relationships between them |
-| Table | the full card: every column, type, constraint, index, badge and rule marker |
-| Focus | one table centred, its neighbours around it, everything else faded; the Inspector opens on it |
-
-**Cards:** name, area colour band, badges (`scd2`, `fact`, partitioned, sorted), columns with key icons,
-types and nullability; a view's card dashed, a materialized view's doubled; a partition series one row
-("1,096 daily partitions").
-
-**Lines:** crow's foot and ring for cardinality; solid for enforced, dashed for logical; labelled with the
-columns they join when zoomed in; routed around cards.
-
-**Layout:** automatic (layered, areas kept together) for an imported or agent-built schema; stable as the
-schema grows, so a new table does not throw everything else around; positions remembered per schema.
-
-**Large schemas:** areas fold; search jumps and focuses; a minimap; only what is on screen is drawn, so
-thousands of tables stay smooth.
+- **Table:** the table in the middle with its key and its joining columns, those in gold; each table on the
+  left names the column it joins by, each line landing on the row it joins; a click on any table walks there,
+  a click on a row points at that column.
+- **Map, one family:** the family's tables in the middle (those that link across first, gold where they refer
+  out); the families that refer to it left, the ones it refers to right; a click on a table opens it.
+- **Map, the whole schema:** families as cards in columns; a line between neighbouring columns is a curve,
+  a line that skips columns or runs back runs in its own lane under the cards, never through them; each line
+  carries its count. Families with no links across are listed under it.
+- Colour follows the family when there are six or fewer, else the namespace, from a palette checked for
+  colour-blind separation; green and red are kept for passing and breaking rules.
 
 ## The cues
 
@@ -152,10 +156,11 @@ The rules have their own perspectives (docs/rules.md, "The Standards UI"):
 ## Look and feel
 
 - SuperX's purple theme, light and dark; quiet surfaces, colour kept for meaning (areas, cues).
-- Keyboard first: every perspective, zoom level, search and copy has a key; a command palette for the rest.
+- Keyboard first: every perspective, search and copy has a key; a command palette for the rest.
 - Fast: a change from the agent appears in well under a second; nothing waits on the whole schema to
   redraw.
-- Readable at a glance, detailed on demand: the Inspector holds detail so cards stay calm.
+- Readable at a glance, detailed on demand: a list to find, a link diagram to see how it fits, the table
+  whole when you open it.
 - Accessible: cues never rely on colour alone (icons and line styles carry meaning too).
 
 ## What the technology must do
@@ -187,3 +192,8 @@ Rust engine, desktop later through Tauri. It is the only column where the hardes
 semantic zoom, stable layout) already exist and are proven, so the effort goes into the design itself. The
 engine stays pure Rust; the perspectives are one well-bounded part that talks to it through the store's
 live queries and a small API.
+
+**Revised** (operator, 2026-11-20, after the first canvas was judged unusable): the perspectives stay in the
+browser in TypeScript, but React Flow and ELK are gone. The redesign draws no zoomable map; its link
+diagrams are small, laid out by rule (left, middle, right; columns by who refers to whom) and drawn as plain
+SVG, so they need neither a graph library nor a layout engine.

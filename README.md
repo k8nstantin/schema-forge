@@ -67,27 +67,20 @@ catalog: [docs/rules.md](docs/rules.md).
 
   | Perspective | Shows |
   |---|---|
-  | **Diagram** | tables and views as cards, with their relationships |
-  | **List** | every table and view with its columns, types and constraints |
-  | **Definition** | the SQL definition of what you selected, in your target database |
-  | **Categories** | the schema grouped by area or tag |
+  | **Tables** | every table under its namespace: find, sort, open; its family, columns, nesting, partitioning and links |
+  | **Categories** | the schema by namespace, then by family, each family a card of its tables and where it links |
+  | **Table** | one table whole: every column with its type and description, its SQL, its copies, and how it links |
+  | **Map** | the families from left to right by who refers to whom; click one for its own link diagram |
   | **Consistency** | every inconsistency: one column with different types, mismatched relationship ends, drifting lengths, mixed time types, CDC hazards; each with a fix the agent can make |
   | **Custom** | the tables, columns and grouping you choose, saved with the project |
 
-- **Zooms from the big picture into one table.** The diagram shows more as you zoom, without losing your
-  place:
-
-  | Level | Shows |
-  |---|---|
-  | **Whole schema** | areas as regions, tables as named blocks, how the areas connect |
-  | **Area** | tables with their keys, and the relationships between them |
-  | **Table** | the full card: every column, type, constraint, index, tag and rule result |
-  | **Focus** | one table and everything about it: its relationships both ways, the views that read it, its rules, its history, its SQL |
-
-  The agent works at any level too: "zoom into `orders`" opens the focus for you, and it can render the
-  level it needs to check its work.
-- **Says what things are at a glance.** One set of visual cues, the same in every perspective and at
-  every zoom level:
+- **Shows how a table links, not a tangle.** Large schemas are read through a picker and a link diagram,
+  never a zoomable map of every card and line: the table in the middle with its joining columns in gold,
+  the tables that refer to it on the left, the tables it refers to on the right, one curved line per link,
+  and a click on any of them walks there. Families come from the names (`node__`, `tbl_Orders…`); a series of
+  dated copies stacks under one table; a key nearly every table carries is noted, not drawn
+  ([docs/perspectives.md](docs/perspectives.md)).
+- **Says what things are at a glance.** One set of visual cues, the same in every perspective:
 
   | Cue | Means |
   |---|---|
@@ -167,20 +160,20 @@ The model behind it all: [docs/model.md](docs/model.md).
 
 - **One model, one owner.** `schema-forge serve` holds the schema. Every change is an operation from the agent,
   through the MCP, in one queue; it is stored and appears in every perspective at once.
-- **Stored in an embedded SurrealDB.** `schema-forge` carries its own database (SurrealDB on SurrealKV, its
-  pure-Rust storage engine): schemas, operations and history, versions, findings, standards, pipelines.
-  Relationships and view dependencies are a graph it queries directly, and its live queries push every
-  change to the perspectives. Nothing to install or run beside `schema-forge` ([docs/store.md](docs/store.md)).
+- **Stored in an embedded redb.** `schema-forge` carries its own database (redb: pure Rust, one file,
+  ACID): schemas, operations and history, versions, findings, standards, pipelines. Every change is
+  announced to the open perspectives as it commits. Nothing to install or run beside `schema-forge`
+  ([docs/store.md](docs/store.md)).
 - **Definitions on disk.** `schema-forge export` writes, and `schema-forge import` reads, the shareable form: one SQL file
   per object under `<node>/<database>/<schema>/`, and `.schema-forge/` beside them (the model's ids, tags, areas and
   patterns, the rules, custom perspectives, versions, migrations).
-- **Rust** for the engine; the perspectives in **TypeScript** in the browser (React Flow, ELK), served by
+- **Rust** for the engine; the perspectives in **TypeScript** in the browser, served by
   the engine, in SuperX's purple theme; a desktop app through Tauri later ([docs/perspectives.md](docs/perspectives.md)).
 
 | Crate | Job |
 |---|---|
 | `schema-forge-core` | the schema model, operations, rules, versions |
-| `schema-forge-store` | the embedded SurrealDB: storing, querying and live changes |
+| `schema-forge-store` | the embedded redb: storing, loading and announcing changes |
 | `schema-forge-dialects` | reading and writing MySQL, PostgreSQL and Iceberg |
 | `schema-forge-mcp` | the MCP the agent works through |
 | `schema-forge` | the command: `schema-forge serve`, `schema-forge new`, `schema-forge import`, `schema-forge export` |
@@ -195,7 +188,7 @@ We build the schema logic; everything else comes from established libraries, pur
 | Iceberg | **iceberg** (Apache iceberg-rust, the official crate): table metadata, partition specs, sort orders, catalogs |
 | MCP | **rmcp**, the official Rust SDK, over streamable HTTP |
 | Server and live push | **tokio**, **axum**, **tower-http** (static files, server-sent events) |
-| Storage | **surrealdb**, embedded, on **SurrealKV** (pure Rust) |
+| Storage | **redb**, embedded, pure Rust |
 | Files and formats | **serde**, **serde_json**, **toml**, **schemars** (JSON Schema for `schema.json` and the MCP tools) |
 | Command line | **clap** |
 | View dependencies | **petgraph** (dependency order, cycle detection) |
@@ -204,7 +197,7 @@ We build the schema logic; everything else comes from established libraries, pur
 | Errors | **thiserror** |
 | Tests against real databases | **testcontainers** (PostgreSQL, MySQL) |
 | Deploy, later | **sqlx** (PostgreSQL, MySQL), **iceberg** catalogs |
-| The perspectives | **TypeScript**, **React**, **React Flow** (@xyflow/react), **ELK** (elkjs, layout), **Mantine** (theme) |
+| The perspectives | **TypeScript**, **React**, **Mantine** (theme), **CodeMirror** (SQL); the link diagrams are plain SVG |
 | `render` for the agent | a headless browser (**chromiumoxide**) screenshots the real perspective |
 
 ### Open decisions
@@ -215,8 +208,9 @@ We build the schema logic; everything else comes from established libraries, pur
 
 ## Roadmap
 
-1. Import a MySQL or PostgreSQL dump and see it in the diagram, list and definition perspectives; export SQL.
-2. Build with the agent: the MCP, the rules, every change live.
+1. Import a PostgreSQL dump or an Iceberg Spark SQL folder and see it in the Tables, Categories, Table and Map
+   perspectives, Iceberg's own features drawn as they are; export SQL.
+2. Build with the agent: the MCP, the rules, every change live; MySQL dumps.
 3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets;
    CDC pipelines from MySQL or PostgreSQL through Debezium.
 4. Categories and custom perspectives; references to everything.
@@ -228,6 +222,3 @@ We build the schema logic; everything else comes from established libraries, pur
 Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT), at your option.
 Unless you state otherwise, any contribution you submit for inclusion is dual licensed as above, without any
 additional terms or conditions.
-
-`schema-forge` binaries include SurrealDB, whose core is licensed under the Business Source License 1.1 (each release
-becomes Apache-2.0 four years after it is published); SurrealKV is Apache-2.0.
