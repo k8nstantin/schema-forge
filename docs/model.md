@@ -96,6 +96,7 @@ Where objects live: a PostgreSQL schema (`public`, `billing`), a MySQL database,
 | Field | |
 |---|---|
 | `id`, `namespace`, `name` | |
+| `partition_of` | PostgreSQL: the parent table and this partition's bounds (`FOR VALUES …`, or `DEFAULT`) |
 | `comment`, `tags`, `area` | `tags` are free words (`fact`, `dimension`); `area` groups tables in the perspectives |
 | `columns` | ordered |
 | `primary_key` | `{ name, columns }`; Iceberg: see `identifier_fields` |
@@ -248,7 +249,7 @@ to, is checked, applied, written to `operations.jsonl`, and carries what is need
 | Area | Operations |
 |---|---|
 | Namespaces, areas | `add_namespace`, `rename_namespace`, `drop_namespace`; `add_area`, `set_area` |
-| Tables | `add_table`, `rename_table`, `drop_table`, `move_table` (namespace), `set_table_comment`, `set_table_option`, `tag`, `untag` |
+| Tables | `add_table`, `rename_table`, `drop_table`, `add_partition`, `detach_partition`, `split_partition`, `move_table` (namespace), `set_table_comment`, `set_table_option`, `tag`, `untag` |
 | Columns | `add_column` (at a position), `rename_column`, `alter_column` (type, nullable, default, generated, identity, collation, comment), `move_column`, `drop_column` |
 | Keys | `set_primary_key`, `add_unique`, `drop_unique`, `add_check`, `drop_check`, `set_identifier_fields` |
 | Indexes | `add_index`, `drop_index` |
@@ -341,10 +342,11 @@ and Trino `representations`.
 - **One target per project** (operator, 2026-11-20). Conversion makes a new project.
 - **Readable ids** (operator, 2026-11-20), as in [Ids](#ids).
 - **References by id** (operator, 2026-11-20).
+- **PostgreSQL partitions are tables** (operator, 2026-11-20): each partition is a table with
+  `partition_of` (its parent) and its bounds, shown folded under the parent; the agent adds, splits and
+  detaches partitions as operations, and rules and migrations cover them.
 
 ## Questions to settle
 
-1. **PostgreSQL partitions:** model each partition as its own table (`partition_of`), or keep partitions
-   verbatim?
-2. **Kept statements:** is "written back in the same place" enough, or should triggers and functions be
+1. **Kept statements:** is "written back in the same place" enough, or should triggers and functions be
    objects the agent can edit too, in a later version?
