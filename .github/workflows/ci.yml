@@ -16,3 +16,6 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
+        env:
+          # Loads written SQL into a real PostgreSQL 17 (Docker is on the runner).
+          SCHEMA_FORGE_DOCKER: "1"

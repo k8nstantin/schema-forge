@@ -608,7 +608,12 @@ impl<'s> Reader<'s> {
             Constraint::Foreign { name, columns, to, to_columns, rest } => {
                 let fk = PendingFk { table: table_id.clone(), name, columns, to, to_columns, rest, statement: k };
                 let relationship = self.resolve_fk(&fk).ok_or(Fallback)?;
+                let rid = relationship.id.clone();
                 self.schema.relationships.push(relationship);
+                self.classes[k] = Class::Modelled;
+                self.touched.entry(table_id).or_default().push(k);
+                self.last = Some(rid);
+                return Ok(());
             }
         }
         self.modelled(k, &table_id);
