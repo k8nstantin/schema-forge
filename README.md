@@ -14,12 +14,21 @@ live perspective that you both see. When the schema is right, export it for MySQ
 
 ## Start
 
+Every schema starts the same way:
+
 ```
-cd myproject
-sf serve
+name it ──► choose its type (MySQL · PostgreSQL · Iceberg) ──► set its rules ──► design with the agent
 ```
 
-`sf serve` starts Schema Forge, adds its MCP to the project for Claude Code, and opens the perspectives. Then you prompt Claude Code in the same folder: "design an order system; orders are SCD Type 2".
+```
+sf new orders-db --target iceberg     # name and type; the rules start from Iceberg's template
+sf serve                              # the perspectives open; the MCP is added for Claude Code
+```
+
+The rules come from the type's template (or your own), and you edit them before you design: naming,
+keys, types, standard columns, patterns such as SCD Type 2, target defaults such as merge-on-read on
+Iceberg. They are the agent's cues. Then you prompt Claude Code in the same folder: "design an order
+system; orders are SCD Type 2". The full catalog: [docs/rules.md](docs/rules.md).
 
 ## What it does
 
@@ -69,22 +78,16 @@ sf serve
   several). Paste it into your prompt, "add a foreign key from `@order_items` to `@orders`", and the agent
   resolves it through the MCP. The agent writes the same references back, and they are clickable in the
   perspectives.
-- **Keeps to the rules.** Built-in (naming, keys, indexed foreign keys), patterns such as SCD Type 2, and
-  your own rules. The agent sees every rule, and is told plainly when an operation breaks one. Naming
-  standards, for example, are set once in `sf.toml`:
+- **Keeps to the rules.** Set per schema from a template, as above. The agent sees every rule, and is
+  told plainly, with the expected form, when an operation breaks one. Naming, for example:
 
   ```toml
   [naming]
   tables       = "snake_case"     # or "PascalCase" (TableName), "camelCase" (tableName)
   plural       = true
-  columns      = "snake_case"
-  primary_keys = "pk_{table}"
   foreign_keys = "fk_{table}_{referenced_table}"
-  indexes      = "ix_{table}_{columns}"
   ```
 
-  The agent names everything by them, a relationship or index made without a name gets one from its
-  template, and a name that breaks them is refused with the expected form.
 - **Treats views as objects.** Database views carry their definition and know what they read, so a change
   that would break a view is caught.
 - **Exports SQL.** One file per version: the whole schema, or the migration from the last version.
@@ -117,7 +120,7 @@ The model behind it all: [docs/model.md](docs/model.md).
   your edits (in the perspectives) go through one queue, are saved to `schema.json`, and appear in every perspective at
   once.
 - **Plain files, in git.** `schema.json` (the draft), `versions/` (locked versions, never edited),
-  `sf.toml` and `rules/` (the rules), `perspectives/` (custom perspectives), `export/` (the SQL).
+  `sf.toml` (name and type), `rules.toml` (the rules), `perspectives/` (custom perspectives), `export/` (the SQL).
 - **Rust** throughout where it can be; the perspectives in SuperX's purple theme, their technology still open (below).
 
 | Crate | Job |
@@ -125,7 +128,7 @@ The model behind it all: [docs/model.md](docs/model.md).
 | `sf-core` | the schema model, operations, rules, versions |
 | `sf-dialects` | reading and writing MySQL, PostgreSQL and Iceberg |
 | `sf-mcp` | the MCP the agent works through |
-| `sf` | the command: `sf serve`, `sf import`, `sf export` |
+| `sf` | the command: `sf new`, `sf serve`, `sf import`, `sf export` |
 
 ## Built on
 
