@@ -19,6 +19,9 @@ and every import and export reads or writes it. This document is the design to a
 
 ## The schema file
 
+The model lives in `sf`'s embedded SurrealDB while you work; `schema.json` is the same model written as a
+file, for git and for sharing (`sf export`, `sf import`).
+
 ```json
 {
   "format": 1,
