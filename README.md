@@ -164,7 +164,7 @@ The model behind it all: [docs/model.md](docs/model.md).
 - **Stored in an embedded SurrealDB.** `schema-forge` carries its own database (SurrealDB on SurrealKV, its
   pure-Rust storage engine): schemas, operations and history, versions, findings, standards, pipelines.
   Relationships and view dependencies are a graph it queries directly, and its live queries push every
-  change to the perspectives. Nothing to install or run beside `schema-forge`.
+  change to the perspectives. Nothing to install or run beside `schema-forge` ([docs/store.md](docs/store.md)).
 - **Definitions on disk.** `schema-forge export` writes, and `schema-forge import` reads, the shareable form: one SQL file
   per object under `<node>/<database>/<schema>/`, and `.schema-forge/` beside them (the model's ids, tags, areas and
   patterns, the rules, custom perspectives, versions, migrations).
