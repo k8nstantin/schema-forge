@@ -9,6 +9,23 @@ your own). You and the agent see the same canvas at the same time.
 - **Databases:** MySQL and PostgreSQL. Schema Forge reads their schema dumps and writes the same formats
   back. Version 1 has no database connections: you run the output with `psql` or `mysql`.
 
+## First run
+
+```
+cd myproject
+sf serve
+```
+
+1. **It fires up.** `sf serve` starts the owner: the model, the MCP server and the canvas, on `localhost`.
+2. **The MCP is added.** It writes the project's `.mcp.json` entry for Claude Code (`sf`, over HTTP to
+   the local server), so Claude Code finds it on its next start in the project and asks you once to
+   approve it. Nothing outside the project is touched.
+3. **The UI opens.** The canvas opens in your browser: the imported schema, or an empty one.
+4. **We start building.** You prompt Claude Code in the same folder ("design an order system, orders are
+   SCD Type 2"). It reads the guide and the rules through the MCP, and builds with operations.
+5. **You watch, and steer.** Every change lands on the canvas as it is made. You steer by prompt, or by
+   selecting a table and saying "this one", or by editing on the canvas yourself.
+
 ## Principles
 
 - **We design together.** The user and the agent are partners on one schema: the user directs by prompt
@@ -156,7 +173,7 @@ version comments, `LOCK TABLES`, engines, charsets and `AUTO_INCREMENT`.
 
 1. **The engine and the view:** `sf-core` and `sf-dialects` with round-trip tests on real dumps, and
    `sf serve` showing an imported schema on the rich canvas: cards, relationships, areas, layout.
-2. **Designing together:** the MCP and the rules (built-ins and SCD Type 2); Claude Code builds by prompt
+2. **Designing together:** the full [first run](#first-run): `sf serve` adds its MCP to Claude Code and opens the canvas; the MCP and the rules (built-ins and SCD Type 2); Claude Code builds by prompt
    while the canvas shows each change as it lands; `describe`, `render`, `check`, shared selection.
 3. Editing on the canvas by hand, through the same operation queue as the agent.
 4. Lock, diffs and migration SQL.
