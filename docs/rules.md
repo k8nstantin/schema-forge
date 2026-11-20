@@ -135,10 +135,24 @@ What a table tagged with a pattern must have; the agent applies the pattern on r
 For a MySQL schema whose changes are captured by Debezium. Add the pack in Standards, to a template or one
 schema; a [CDC pipeline](cdc.md) adds it to its source for you.
 
+- **Connector settings, as rules.** How types travel is set here, like any rule, and the pipeline writes
+  them out for the connector, so the connector and the designed tables always agree:
+
+  | Rule | Shipped default | Other choices |
+  |---|---|---|
+  | `decimal.handling.mode` | `precise` (exact decimals) | `double`, `string` |
+  | `bigint.unsigned.handling.mode` | `precise` (`decimal(20,0)` on Iceberg; Debezium's own default, `long`, corrupts values above 2^63 − 1) | `long` |
+  | `time.precision.mode` | `adaptive_time_microseconds` | `adaptive`, `connect` |
+  | `binary.handling.mode` | `bytes` | `base64`, `base64-url-safe`, `hex` |
+  | TinyInt-to-boolean converter | on, for the columns marked as booleans | off |
+  | zero-date fallback | `null` | a date you choose, per type or column |
+
+  Each choice changes the type mapping at once: set `bigint.unsigned.handling.mode` to `long`, and every
+  `BIGINT UNSIGNED` column maps to `long` and is flagged.
 - **Keys:** every captured table has a primary key, or a key Debezium is told to use
   (`message.key.columns`); without one there are no reliable updates or deletes downstream.
-- **Types Debezium carries badly:** `BIGINT UNSIGNED` only with `bigint.unsigned.handling.mode=precise`;
-  no `FLOAT` or `DOUBLE` for money; `DECIMAL` only with `decimal.handling.mode=precise`; `TIME` within one
+- **Types Debezium carries badly:** `BIGINT UNSIGNED` flagged unless `bigint.unsigned.handling.mode` is
+  `precise`; no `FLOAT` or `DOUBLE` for money; `DECIMAL` flagged unless `decimal.handling.mode` is `precise`; `TIME` within one
   day; no zero dates in `NOT NULL` date and time columns.
 - **Booleans:** `TINYINT(1)` used as a boolean is marked so the TinyInt-to-boolean converter covers it, and
   `TINYINT(1)` used as a number is not.
