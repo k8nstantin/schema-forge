@@ -1,0 +1,55 @@
+{
+  "format": 1,
+  "target": "iceberg",
+  "namespaces": [
+    { "id": "n_analytics", "name": "analytics" },
+    { "id": "n_analytics_sales", "name": "sales", "parent": "n_analytics" }
+  ],
+  "tables": [
+    {
+      "id": "t_customers", "namespace": "n_analytics_sales", "name": "customers",
+      "columns": [
+        { "id": "c_customers_id", "name": "id", "type": { "name": "long" }, "nullable": false, "field_id": 1 },
+        { "id": "c_customers_email", "name": "email", "type": { "name": "string" }, "nullable": false, "field_id": 2 },
+        { "id": "c_customers_address", "name": "address", "nullable": true, "field_id": 3,
+          "type": { "name": "struct", "fields": [
+            { "field_id": 4, "name": "city", "nullable": true, "type": { "name": "string" } },
+            { "field_id": 5, "name": "lines", "nullable": true,
+              "type": { "name": "list", "element_id": 6, "element_nullable": false, "of": { "name": "string" } } }
+          ] } }
+      ],
+      "options": { "iceberg": { "format_version": 3, "identifier_fields": ["c_customers_id"] } }
+    },
+    {
+      "id": "t_orders", "namespace": "n_analytics_sales", "name": "orders", "tags": ["scd2"],
+      "columns": [
+        { "id": "c_orders_order_key", "name": "order_key", "type": { "name": "long" }, "nullable": false, "field_id": 1 },
+        { "id": "c_orders_order_no", "name": "order_no", "type": { "name": "string" }, "nullable": false, "field_id": 2 },
+        { "id": "c_orders_customer_id", "name": "customer_id", "type": { "name": "long" }, "nullable": false, "field_id": 3 },
+        { "id": "c_orders_total", "name": "total", "type": { "name": "decimal", "precision": 12, "scale": 2 },
+          "nullable": false, "field_id": 4 },
+        { "id": "c_orders_valid_from", "name": "valid_from", "type": { "name": "timestamptz" }, "nullable": false, "field_id": 5 },
+        { "id": "c_orders_valid_to", "name": "valid_to", "type": { "name": "timestamptz" }, "nullable": true, "field_id": 6 }
+      ],
+      "patterns": { "scd2": { "business_key": ["c_orders_order_no"] } },
+      "options": { "iceberg": {
+        "format_version": 3,
+        "identifier_fields": ["c_orders_order_key"],
+        "partition_spec": [{ "source": "c_orders_valid_from", "transform": "month" }],
+        "sort_order": [{ "source": "c_orders_order_no", "direction": "asc", "nulls": "first" }],
+        "properties": { "write.delete.mode": "merge-on-read", "write.format.default": "parquet" }
+      } }
+    }
+  ],
+  "relationships": [
+    { "id": "r_orders_customer", "from": { "table": "t_orders", "columns": ["c_orders_customer_id"] },
+      "to": { "table": "t_customers", "columns": ["c_customers_id"] }, "enforced": false }
+  ],
+  "views": [
+    { "id": "v_current_orders", "namespace": "n_analytics_sales", "name": "current_orders",
+      "definition": "SELECT order_no, customer_id, total FROM orders WHERE valid_to IS NULL",
+      "reads": ["t_orders"],
+      "options": { "iceberg": { "dialect": "spark",
+        "representations": { "trino": "SELECT order_no, customer_id, total FROM orders WHERE valid_to IS NULL" } } } }
+  ]
+}
