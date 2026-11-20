@@ -27,7 +27,8 @@ struct Canvas;
 /// The routes, over `store`.
 pub fn app(store: Arc<Store>) -> Router {
     Router::new()
-        .route("/api/schemas", get(schemas))
+        .route("/api/schemas", get(schemas).post(new_schema))
+        .route("/api/schemas/{name}/change", post(change))
         .route("/api/schemas/{name}", get(model))
         .route("/api/schemas/{name}/definition/{id}", get(definition))
         .route("/api/schemas/{name}/shape", get(shape))
@@ -193,6 +194,62 @@ async fn set_group(
 
 async fn remove_group(State(store): State<Arc<Store>>, Path((name, group)): Path<(String, String)>) -> Response {
     done(store.remove_group(&name, &group, BY))
+}
+
+#[derive(serde::Deserialize)]
+struct NewSchema {
+    name: String,
+    target: Target,
+}
+
+/// Makes an empty schema of a type.
+async fn new_schema(State(store): State<Arc<Store>>, axum::Json(n): axum::Json<NewSchema>) -> Response {
+    match store.create_schema(&n.name, n.target) {
+        Ok(info) => axum::Json(info).into_response(),
+        Err(e @ (schema_forge_store::Error::SchemaExists(_) | schema_forge_store::Error::BadName(_))) => {
+            failed(StatusCode::BAD_REQUEST, e)
+        }
+        Err(e) => store_failed(e),
+    }
+}
+
+/// A change made by hand: operations as the agent writes them (types as text), and a yes to destructive ones.
+/// Hard rules hold for a person too: to go ahead, the rule is turned soft first.
+#[derive(serde::Deserialize)]
+struct ByHand {
+    operations: Vec<serde_json::Value>,
+    #[serde(default)]
+    confirm_destructive: bool,
+}
+
+async fn change(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::Json(c): axum::Json<ByHand>,
+) -> Response {
+    let target = match store.model(&name) {
+        Ok(m) => m.target,
+        Err(e) => return store_failed(e),
+    };
+    let ops = match c
+        .operations
+        .into_iter()
+        .enumerate()
+        .map(|(i, v)| schema_forge_mcp::operation(target, v).map_err(|m| format!("operation {}: {m}", i + 1)))
+        .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(ops) => ops,
+        Err(m) => return failed(StatusCode::BAD_REQUEST, m),
+    };
+    match store.change(&name, &ops, c.confirm_destructive, BY) {
+        Ok(ch) => axum::Json(serde_json::json!({
+            "sequence": ch.operation.sequence,
+            "summaries": ch.summaries,
+            "soft": ch.soft,
+        }))
+        .into_response(),
+        Err(e) => store_failed(e),
+    }
 }
 
 /// Undoes the schema's latest design change.

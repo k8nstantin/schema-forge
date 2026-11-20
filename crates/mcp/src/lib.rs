@@ -185,7 +185,7 @@ const GRAMMAR: &str = r#"A new rule is a sentence, as JSON. Three forms:
 Reuse a rule of the catalog with kind "link" before writing a new one."#;
 
 /// An operation as the agent writes it, with its types read from text for `target`.
-fn operation(target: Target, mut v: serde_json::Value) -> Result<schema_forge_core::ops::Op, String> {
+pub fn operation(target: Target, mut v: serde_json::Value) -> Result<schema_forge_core::ops::Op, String> {
     let parse = |t: &mut serde_json::Value| -> Result<(), String> {
         if let Some(text) = t.as_str() {
             *t = serde_json::to_value(schema_forge_dialects::parse_type(target, text)?).map_err(|e| e.to_string())?;

@@ -56,7 +56,8 @@ before data flows.
 
 1. **Your agent, any agent.** It works with any coding agent that speaks MCP; Claude Code first. The MCP
    is the enforcer, not a convenience: every change goes through it and is checked.
-2. **You direct; you never edit.** The user sees, points and instructs, with references to everything.
+2. **You direct, and can edit by hand.** The user sees, points and instructs, with references to everything,
+   or makes the change in the perspectives, under the same rules as the agent.
 3. **Standards by type:** type standards, naming, keys, patterns such as SCD Type 2, the Debezium pack;
    enforced on every operation, not suggested.
 4. **Inconsistencies surfaced** across the whole schema, before they become data problems.

@@ -688,6 +688,7 @@ impl Store {
     ///
     /// # Errors
     /// [`Error::Refused`] with the operation and the reason, or when there is no such schema or the store fails.
+    /// Hard rules hold for everyone, the agent and you alike: to go ahead, a rule is turned soft first.
     pub fn change(&self, name: &str, ops: &[Op], confirmed: bool, by: &str) -> Result<Changed> {
         if ops.is_empty() {
             return Err(Error::Refused("no operations".to_string()));
