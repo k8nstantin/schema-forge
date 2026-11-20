@@ -1,7 +1,9 @@
 # Schema Forge
 
-**An ER design tool with many useful perspectives: build your database schema together with your coding
-agent, and watch it take shape.**
+**The schema design and generation tool made for a coding agent and a human, working together.**
+
+An ER design tool with many useful perspectives: your coding agent builds the schema, you watch it take
+shape and direct, and Schema Forge generates it for MySQL, PostgreSQL or Apache Iceberg.
 
 **You direct; the agent builds.** You never edit the schema by hand: you look at it from every side, point
 at what you mean, and tell the agent what to do. The agent works through Schema Forge's MCP, and every
