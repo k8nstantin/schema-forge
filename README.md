@@ -1,233 +1,71 @@
 # Schema Forge (`sf`)
 
-Design relational schemas by prompting your coding agent, and watch the schema take shape on a live canvas.
-The agent works through Schema Forge's MCP server, under rules the project sets (SCD Type 2, naming, keys,
-your own). You and the agent see the same canvas at the same time.
+**Build your database schema together with your coding agent, and watch it take shape.**
 
-- **Agent first:** the first target is Claude Code. You prompt it; it calls `sf` tools; every change is
-  checked against the rules and drawn as it lands.
-- **Databases:** MySQL and PostgreSQL. Schema Forge reads their schema dumps and writes the same formats
-  back. Version 1 has no database connections: you run the output with `psql` or `mysql`.
+You prompt the agent. The agent works through Schema Forge's MCP. Every change appears at once on a rich,
+live view that you both see. When the schema is right, export it as SQL for MySQL or PostgreSQL.
 
-## First run
+```
+ you ──prompt──► coding agent ──MCP──► sf ──► live views (you see them, the agent can render them)
+                                        │
+                                        └──► schema.sql   (MySQL or PostgreSQL)
+```
+
+## Start
 
 ```
 cd myproject
 sf serve
 ```
 
-1. **It fires up.** `sf serve` starts the owner: the model, the MCP server and the canvas, on `localhost`.
-2. **The MCP is added.** It writes the project's `.mcp.json` entry for Claude Code (`sf`, over HTTP to
-   the local server), so Claude Code finds it on its next start in the project and asks you once to
-   approve it. Nothing outside the project is touched.
-3. **The UI opens.** The canvas opens in your browser: the imported schema, or an empty one.
-4. **We start building.** You prompt Claude Code in the same folder ("design an order system, orders are
-   SCD Type 2"). It reads the guide and the rules through the MCP, and builds with operations.
-5. **You watch, and steer.** Every change lands on the canvas as it is made. You steer by prompt, or by
-   selecting a table and saying "this one", or by editing on the canvas yourself.
+`sf serve` starts Schema Forge, adds its MCP to the project for Claude Code, and opens the views in your
+browser. Then you prompt Claude Code in the same folder: "design an order system; orders are SCD Type 2".
 
-## Principles
+## What it does
 
-- **We design together.** The user and the agent are partners on one schema: the user directs by prompt
-  and by hand, the agent proposes and builds, and both see every change as it happens. Neither works blind,
-  and nothing changes without the user seeing it.
-- **One view, from day one.** The live canvas ships in the first milestone, not after the engine.
-- **Rich graphics.** The canvas is the product's face, not a debug view (see [Views](#views)).
+- **Builds the schema with the agent.** The agent reads the schema and the rules, then changes it one
+  operation at a time: add a table, a column, a relation, a view. Each operation is checked against the
+  rules before it applies. You steer by prompt, or point at something in a view and say "this one".
+- **Shows it, live, from several sides.** Every change lands in every view as it happens:
 
-## Workflow
+  | View | Shows |
+  |---|---|
+  | **Diagram** | tables and views as cards, with their relationships |
+  | **List** | every table and view with its columns, types and constraints |
+  | **Definition** | the SQL definition of what you selected, in your target database |
+  | **Categories** | the schema grouped by area or tag |
+  | **Custom** | the tables, columns and grouping you choose, saved with the project |
 
-1. **Import** an existing schema dump (`pg_dump --schema-only`, `mysqldump --no-data`; a full dump works,
-   its data statements are skipped and counted), or start empty.
-2. **Prompt** Claude Code: "add customers and orders, orders are SCD Type 2". The agent reads the schema and
-   the rules through the MCP, then applies operations.
-3. **Watch** the canvas: each operation appears as it lands. You can also edit on the canvas yourself.
-4. **Review** the draft against the last locked version: the diff, the generated SQL, every rule satisfied,
-   destructive changes (dropped tables or columns, narrowed types, removed keys) flagged.
-5. **Lock** the draft as version N, with its content hash. A locked version never changes; editing starts N+1.
-6. **Generate** the full schema file for PostgreSQL or MySQL, and the migration from version N−1 to N.
+- **Keeps to the rules.** Built-in (naming, keys, indexed foreign keys), patterns such as SCD Type 2, and
+  your own rules. The agent sees every rule, and is told plainly when an operation breaks one.
+- **Treats views as objects.** Database views carry their definition and know what they read, so a change
+  that would break a view is caught.
+- **Exports SQL.** One file per version: the whole schema, or the migration from the last version.
+- **Reads what you have.** Import a MySQL or PostgreSQL schema dump; nothing in it is lost.
 
-## One model, one owner, two viewers
+## How it is built
 
-```
- Claude Code ── MCP tools ──┐
-                            ├─► operations ─► sf (one owner) ─► schema.json + operations.jsonl
- you, on the canvas ────────┘                     │
-                                                  ├─► live canvas, seen by you
-                                                  └─► describe / render, seen by the agent
-```
-
-- **`sf serve`** runs the owner: one local process that holds the model, serves the MCP to Claude Code, and
-  serves the live canvas in the browser at `localhost`. Every change, the agent's or yours, is a small
-  operation through one queue: no overwrites.
-- **Live view:** the canvas shows each change as it lands: new in green, changed in amber, removed as a
-  faded red outline. The agent's changes in a turn form one group, accepted or rejected whole or one at a
-  time; undo goes one agent turn at a time.
-- **The agent sees it too:** `describe` returns the schema as compact text, and `render` returns the same
-  canvas as an image (or a Mermaid diagram), so the agent checks its work the way you do.
-- **The file stays the truth:** the model is saved to `schema.json` as it changes, with every operation
-  logged (who: the agent, you, or the file; when). A change made to the file outside `sf` is reloaded,
-  validated against the rules and highlighted.
-- The agent only changes the draft: it never locks or generates unless you ask it to.
-
-## Views
-
-One live model, many views of it. Every view updates as each change lands, a selection made in one view is
-selected in all of them (and readable by the agent), and the agent can open any view for you or render it
-for itself. Served by `sf serve` in the browser, in SuperX's purple (swindex) theme, light and dark.
-
-| View | What it shows |
-|---|---|
-| **List** | every table and its columns, data types, nullability, defaults and constraints (primary, foreign, unique, check), as a sortable, filterable list; the quickest way to read and compare definitions |
-| **Relationships** | the diagram: tables as cards and how they relate (the canvas below) |
-| **Categories** | tables grouped by area or tag (billing, catalog; `fact`, `dimension`, `scd2`), each group with its tables and their rule status |
-| **Custom** | your own: which tables and columns, grouped how, coloured how, laid out how; saved in the project and shared through git. The agent can make one on request ("show me the billing tables with their SCD columns") |
-
-### The relationships canvas
-
-Served by `sf serve` in the browser, in SuperX's purple (swindex) theme, light and dark. Rich from the
-first release:
-
-- **Tables as cards:** every column with its type, nullability and default; key icons for primary, foreign
-  and unique keys; tags (e.g. `scd2`, `fact`, `dimension`) as badges.
-- **Relationships drawn as they are:** crow's-foot cardinality, labelled with the columns they join, routed
-  around the cards.
-- **Rules on the canvas:** a table that fails a rule shows it on the card, with the rule's name; a pattern
-  such as SCD Type 2 shows its validity columns and keys marked as the pattern's.
-- **Areas:** tables grouped into named domains (billing, catalog, …), each its own colour, folded or open.
-- **Layout:** automatic layout (ELK) for an imported or agent-built schema, hand placement kept once you
-  move a card; minimap, zoom, search, focus on one table and its neighbours.
-- **Designing together, visibly:** the agent's changes animate in as they land (new in green, changed in
-  amber, removed as a faded red outline); while it works, the canvas shows what it is working on; the
-  user's selection is readable by the agent through `describe`, so "this table" means the same to both.
-- **Panels:** the selected table's full detail, its SQL in the chosen dialect, the rule checks, and the
-  history of who changed it.
-
-## Database views
-
-Views (`CREATE VIEW`) are part of the schema, not text carried along:
-
-- **In the model:** name, definition (kept exactly as written), columns, the tables and views it reads
-  from, and options: PostgreSQL materialized views and `WITH CHECK OPTION`; MySQL `ALGORITHM`,
-  `SQL SECURITY` and `DEFINER`.
-- **Dependencies are known:** the definition is parsed (sqlparser-rs) to find what each view reads. An
-  operation that would break a view, such as dropping or renaming a column it uses, is refused or flagged
-  with the views it breaks.
-- **In every UI view:** the relationships canvas draws views as their own kind of card (dashed outline) with
-  lines to what they read; the list view shows their columns beside the tables'; categories group them like
-  tables.
-- **For the agent:** `add_view`, `alter_view` and `drop_view` operations, `describe` shows definitions and
-  dependencies, and rules apply to views too (e.g. no `SELECT *`, a comment on every view).
-- **Generated in order:** views after the tables they read, and views on views in dependency order;
-  migrations recreate a view when something it reads changes.
-
-## The MCP: how agents work with Schema Forge
-
-`sf serve` exposes an MCP server (Rust, the official `rmcp` SDK). Claude Code connects to it with one line
-in its MCP settings.
-
-| Tool | What it does |
-|---|---|
-| `guide` | the workflow and the project's rules, in words the agent follows |
-| `describe` | the schema, or one table, as compact text |
-| `render` | any view, or one area of it, as an image (the relationships view also as a Mermaid diagram) |
-| `view` | open a view for the user, or create and save a custom view |
-| `rules` | every active rule, and which tables each one applies to |
-| `check` | every rule against the draft: what passes, what fails, and why |
-| `add_table`, `add_column`, `relate`, `rename`, `alter_column`, `drop`, `index`, `comment`, `add_view`, `alter_view`, `drop_view` | one operation each, validated before it applies |
-| `apply_rule` | make a table satisfy a rule, e.g. give `orders` its SCD Type 2 columns and keys |
-| `diff` | the draft against the last locked version |
-| `lock`, `generate` | only when the user asks |
-
-An operation that breaks a rule is refused with the rule's name and the reason, so the agent can fix its
-proposal before anything changes.
-
-## Rules
-
-Rules live in the project (`sf.toml` and `rules/`), are checked by `sf-core` on every operation from any
-source, and are listed to the agent through `guide` and `rules`.
-
-**Built in:** `snake_case` names, plural table names, every table has a primary key, every foreign key is
-indexed, types allowed per dialect, comments required on tables, destructive changes need an explicit flag,
-nothing under `versions/` is ever edited. Each can be turned on, off, or configured.
-
-**Patterns**, for example **SCD Type 2** on a table:
-- a surrogate primary key, and the business key it versions;
-- `valid_from` and `valid_to` (the current row has an open `valid_to`);
-- unique (business key, `valid_from`);
-- no column that would need an in-place update to keep history.
-
-`apply_rule scd2 orders` adds what is missing; `check` reports what does not fit.
-
-**Custom rules:** your own, declared in `rules/*.toml`, in the same form as the built-in ones: which tables
-they apply to (by name, tag or pattern), which columns, keys and types they require or forbid, and the
-message the agent sees when an operation breaks them.
-
-## Project files (shared through git)
-
-```
-myproject/
-  sf.toml                        dialect, active rules and their settings
-  rules/                         custom rules
-  schema.json                    the draft: tables, columns, types, keys, indexes, relations, comments, tags
-  layout.json                    canvas positions, apart so moving a box never touches the schema
-  views/                         custom views: tables, columns, grouping, colours, layout
-  operations.jsonl               every operation, who made it and when
-  versions/0001.json             locked versions, never edited, each with its hash
-  generated/0001_postgres.sql    the full schema and the migration for each version and dialect
-  kept/                          statements carried through unparsed (see below)
-```
-
-## Reading real dumps, losing nothing
-
-Dumps hold more than `CREATE TABLE`: `SET` lines, sequences, `ALTER TABLE ONLY … ADD CONSTRAINT`,
-`COMMENT ON`, owners and grants, functions, triggers, extensions; MySQL's `/*!40101 … */`
-version comments, `LOCK TABLES`, engines, charsets and `AUTO_INCREMENT`.
-
-- Tables, columns, keys, indexes, comments, sequences and views become the model, which the canvas and
-  the agent edit.
-- Everything else is kept verbatim, in order, and written back unchanged.
-- A statement that cannot be parsed is kept verbatim and listed. Every import prints a report: statements
-  parsed, kept, and skipped as data, with counts that add up to the whole file.
-- **The proof is the round trip:** import a dump, generate it with no edits, and compare. Tests run this on
-  real `pg_dump` and `mysqldump` files; CI loads the output into throwaway PostgreSQL and MySQL containers
-  to prove it is valid SQL.
-
-## Workspace
+- **One model, one owner.** `sf serve` holds the schema. The agent's operations (through the MCP) and
+  your edits (in the views) go through one queue, are saved to `schema.json`, and appear in every view at
+  once.
+- **Plain files, in git.** `schema.json` (the draft), `versions/` (locked versions, never edited),
+  `sf.toml` and `rules/` (the rules), `views/` (custom views), `export/` (the SQL).
+- **Rust**, with the views in the browser (React, React Flow), in SuperX's purple theme.
 
 | Crate | Job |
 |---|---|
-| `sf-core` | the model, the JSON files and their format version, operations, rules and their checks, versions, hashes, diffs |
-| `sf-dialects` | import and generation for PostgreSQL and MySQL: a pre-pass sorts dump statements, sqlparser-rs parses DDL; migration SQL |
-| `sf-mcp` | the MCP server: the tools above, over the owner's operation queue |
-| `sf` (cli) | `sf serve`, `sf import`, `sf check`, `sf lock`, `sf diff`, `sf generate` |
-| `canvas` | the live canvas: React and React Flow, served by `sf serve`, in SuperX's purple (swindex) theme; a Tauri desktop shell later |
+| `sf-core` | the schema model, operations, rules, versions |
+| `sf-dialects` | reading and writing MySQL and PostgreSQL |
+| `sf-mcp` | the MCP the agent works through |
+| `sf` | the command: `sf serve`, `sf import`, `sf export` |
 
-## Milestones
+## Roadmap
 
-1. **The engine and the view:** `sf-core` and `sf-dialects` with round-trip tests on real dumps, and
-   `sf serve` showing an imported schema in the list and relationships views: cards, relationships, areas,
-   layout.
-2. **Designing together:** the full [first run](#first-run): `sf serve` adds its MCP to Claude Code and opens the canvas; the MCP and the rules (built-ins and SCD Type 2); Claude Code builds by prompt
-   while the canvas shows each change as it lands; `describe`, `render`, `check`, shared selection.
-3. The categories and custom views; editing by hand in any view, through the same operation queue as the
-   agent.
-4. Lock, diffs and migration SQL.
-5. Custom rules in `rules/`; then converting between dialects, SQLite and Iceberg.
-
-Not in version 1: database connections, applying changes, multiple users.
-
-## To think through
-
-- **Custom rules:** how far declarations go before a rule needs code (a small embedded language, or WASM),
-  and how rule packs are shared between projects.
-- **Rules that span tables:** e.g. every fact table references only SCD Type 2 dimensions by surrogate key.
-- **Seeing together:** beyond shared selection, how the agent points at what it means on the canvas
-  (highlights, notes pinned to a table).
-- **Several agents at once**, or an agent and a teammate, on one project.
-
-## Build
-
-`cargo build` builds the workspace; `sf` is the command-line tool.
+1. Import a dump and see it in the diagram, list and definition views; export SQL.
+2. Build with the agent: the MCP, the rules, every change live.
+3. Categories and custom views; editing by hand.
+4. Locked versions and migrations.
+5. **Deploy:** apply a version to a destination database directly, or through the exported SQL file.
 
 ## License
 
