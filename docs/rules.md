@@ -57,7 +57,8 @@ perspectives) or `off`.
 
 ### Type standards
 
-The heart of consistency: one type for each kind of data, used everywhere.
+The heart of consistency: one type for each kind of data, used everywhere. The table below is what ships
+(agreed with the operator, 2026-11-20); every value can be changed in Standards.
 
 | Kind of data | e.g. PostgreSQL | e.g. MySQL | e.g. Iceberg |
 |---|---|---|---|
