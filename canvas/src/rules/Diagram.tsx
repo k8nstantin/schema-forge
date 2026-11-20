@@ -4,11 +4,11 @@
 
 import { useMemo, useState } from 'react'
 
-import { linkRule, unlinkRule } from '../api'
+import { linkRule, setEnforce, unlinkRule } from '../api'
 import { LinkDiagram, type Card, type Line, type Row } from '../diagram/LinkDiagram'
-import type { Applied, RuleLink, Scope, Table } from '../model'
+import type { Applied, Enforce, RuleLink, Scope, Table } from '../model'
 import { useWorkbench } from '../state'
-import { Findings, LANES, MapTable, Strength, TallyBar, mapOf } from './parts'
+import { EnforceToggle, Findings, LANES, MapTable, Strength, TallyBar, mapOf } from './parts'
 import { ALL } from './parts'
 import { childrenOf, holds, levelName, path, sameScope, scopeKey, scopeTitle } from './scope'
 
@@ -151,6 +151,7 @@ function LevelActions({ scope, under }: { scope: Scope; under: Table[] }) {
   const { name, ix, catalog, rules, reloadRules } = useWorkbench()
   const [pick, setPick] = useState('')
   const [locked, setLocked] = useState(false)
+  const [enforce, setHow] = useState<Enforce | undefined>(undefined)
   const [everywhere, setEverywhere] = useState(false)
   const [offPick, setOffPick] = useState('')
   const [reason, setReason] = useState('')
@@ -179,7 +180,10 @@ function LevelActions({ scope, under }: { scope: Scope; under: Table[] }) {
               <span className={link.off ? 'sf-struck' : 'sf-strong'}>{link.off ? '− ' : ''}{title(link.rule)}</span>
               <span className="sf-muted sf-small"> {global ? 'for every schema' : ''}{link.locked ? ' · locked' : ''}{link.off ? ` · ${link.reason}` : ''}</span>
             </span>
-            <button type="button" className="sf-chip" onClick={() => act(unlinkRule(global ? null : name, link.rule, link.at))}>Take away</button>
+            <span className="sf-row-gap">
+              {!link.off && link.rule !== ALL && <EnforceToggle value={link.enforce} fallback="defaults" onChange={(e) => act(setEnforce(global ? null : name, link.rule, link.at, e))} />}
+              <button type="button" className="sf-chip" onClick={() => act(unlinkRule(global ? null : name, link.rule, link.at))}>Take away</button>
+            </span>
           </div>
         ))}
       </div>
@@ -195,10 +199,11 @@ function LevelActions({ scope, under }: { scope: Scope; under: Table[] }) {
             </optgroup>
           ))}
         </select>
+        <span className="sf-row-gap"><EnforceToggle value={enforce} onChange={setHow} fallback="each rule's default" /></span>
         <label className="sf-check"><input type="checkbox" checked={locked} onChange={(e) => setLocked(e.target.checked)} /> Locked: cannot be switched off below</label>
         {scope.level === 'schema' && <label className="sf-check"><input type="checkbox" checked={everywhere} onChange={(e) => setEverywhere(e.target.checked)} /> For every schema of the workspace</label>}
         <button type="button" className="sf-button" disabled={!pick}
-          onClick={() => act(linkRule(everywhere ? null : name, { rule: pick, at: everywhere ? { level: 'global' } : scope, locked: locked || undefined }).then(() => setPick('')))}>
+          onClick={() => act(linkRule(everywhere ? null : name, { rule: pick, at: everywhere ? { level: 'global' } : scope, locked: locked || undefined, enforce }).then(() => setPick('')))}>
           Link
         </button>
       </div>

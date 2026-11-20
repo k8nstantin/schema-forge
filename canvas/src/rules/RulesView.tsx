@@ -4,14 +4,18 @@
 import { useMemo } from 'react'
 
 import { useWorkbench } from '../state'
+import { BreaksView } from './BreaksView'
 import { CatalogView } from './CatalogView'
 import { LevelDiagram, RuleDiagram } from './Diagram'
 import { GoalsView } from './GoalsView'
 import { GroupsView } from './GroupsView'
+import { ReviewView } from './ReviewView'
 import { parseScope } from './scope'
 
 const VIEWS = [
   ['level', 'Diagram'],
+  ['breaks', 'What breaks'],
+  ['review', 'Review'],
   ['catalog', 'Catalog'],
   ['goals', 'Goals'],
   ['groups', 'Groups'],
@@ -40,6 +44,8 @@ export function RulesView({ arg }: { arg?: string }) {
       {view === 'catalog' && <CatalogView selected={rest} />}
       {view === 'goals' && <GoalsView selected={rest} />}
       {view === 'groups' && <GroupsView />}
+      {view === 'breaks' && <BreaksView />}
+      {view === 'review' && <ReviewView />}
     </div>
   )
 }

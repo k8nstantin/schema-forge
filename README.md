@@ -46,12 +46,17 @@ The agent can take every step itself, through the MCP, while you watch: "create 
 orders, with our lakehouse rules, then design an order system; orders are SCD Type 2". It never designs
 before it knows the schema's type and has read its rules; those are its cues.
 
+The MCP is served at `http://127.0.0.1:7410/mcp` while `schema-forge serve` runs; add it to Claude Code with
+`claude mcp add --transport http schema-forge http://127.0.0.1:7410/mcp`.
+
 | Step | The agent's MCP tools |
 |---|---|
-| schema | `schemas` (list), `open_schema`, `new_schema` (name, type) |
-| type | part of the schema; `describe` says it |
-| rules | `templates` (per type), `set_rules`, `rules`, `guide` (the rules in plain words) |
-| design | `describe`, `render`, `check`, the operations (`add_table`, `relate`, `add_view`, …), `apply_pattern` |
+| schema | `schemas`, `describe` (tables, columns, types, partitions, identifier fields) |
+| rules | `rules` (what holds, in plain words, on the schema or one table), `check` (what breaks, hard or soft), `catalog` (every rule and the grammar new ones are written in) |
+| proposing rules | `propose_rules` (new rules as sentences, catalog rules to link, exceptions), `proposals` (status and the system's verdict) |
+| design, next | `new_schema`, the operations (`add_table`, `relate`, `add_view`, …), refused when they break a hard rule; `render` |
+
+The agent proposes rules and the system verifies them; only you approve them, in the Rules perspective.
 
 Rules are standards that keep a schema consistent and fit for what it has to do: nothing without a key, one
 type per column name, merge-on-read on Iceberg, compatible with MySQL, ready for CDC. They are rules made of

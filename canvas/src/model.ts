@@ -237,6 +237,9 @@ export interface Rule {
   lane: Lane
   topic: string
   targets?: Target[]
+  /// A rule the agent wrote and you approved.
+  sentence?: unknown
+  provenance?: { proposed_by: string; approved_by: string; proposal: string }
 }
 
 export interface Goal {
@@ -251,12 +254,14 @@ export interface MapRow { from: string; to: string; grade: 'exact' | 'widened' |
 export interface TypeMap { id: string; from: Target; to: Target; rows: MapRow[] }
 export interface Catalog { rules: Rule[]; goals: Goal[]; maps: TypeMap[] }
 
-export interface RuleLink { rule: string; at: Scope; off?: boolean; locked?: boolean; reason?: string }
+/// Hard: enforced, the agent's change is refused. Soft: highlighted only.
+export type Enforce = 'hard' | 'soft'
+export interface RuleLink { rule: string; at: Scope; off?: boolean; locked?: boolean; reason?: string; enforce?: Enforce }
 export interface RuleGroup { name: string; tables: string[] }
-export interface Applied { rule: string; from: Scope; locked?: boolean }
+export interface Applied { rule: string; from: Scope; locked?: boolean; enforce?: Enforce }
 export interface Excepted { rule: string; at: Scope; reason: string }
-export interface Finding { rule: string; table: string; column?: string; message: string }
-export interface Tally { checked: number; breaks: number }
+export interface Finding { rule: string; table: string; column?: string; message: string; hard: boolean }
+export interface Tally { checked: number; breaks: number; hard: number }
 export interface Report {
   tallies: Record<string, Tally>
   findings: Finding[]
@@ -264,3 +269,28 @@ export interface Report {
   problems: string[]
 }
 export interface SchemaRules { global: RuleLink[]; links: RuleLink[]; groups: RuleGroup[]; report: Report }
+
+/// What the agent proposes, and the system's word on it.
+export type Proposed =
+  | { kind: 'new'; sentence: unknown; targets?: Target[] }
+  | { kind: 'link'; rule: string }
+  | { kind: 'off'; rule: string; reason: string }
+export interface Proposal {
+  id: number
+  by: string
+  what: Proposed
+  at: Scope
+  enforce: Enforce
+  why: string
+  status: 'proposed' | 'approved' | 'rejected'
+  decided_by?: string
+  rule?: string
+}
+export interface Verdict {
+  state: 'ready' | 'conflict' | 'duplicate' | 'invalid'
+  title: string
+  notes: { mark: 'ok' | 'new' | 'reuse' | 'warn' | 'bad'; text: string }[]
+  tally: Tally
+  breaks: Finding[]
+  conflicts?: string[]
+}

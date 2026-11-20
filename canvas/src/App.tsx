@@ -92,8 +92,10 @@ export default function App() {
       changes((c) => {
         setActivity((a) => [c, ...a].slice(0, 30))
         setHomeVersion((v) => v + 1)
+        // An approved new rule joins the catalog: read it again so its sentence shows everywhere.
+        if (c.kind === 'approve_rule') fetchCatalog().then(setCatalog, () => undefined)
         if (c.schema === schema) {
-          if (c.kind.endsWith('_rule') || c.kind.endsWith('_group')) reloadRules(c.schema)
+          if (/_rules?$|_group$|_packs$|proposal/.test(c.kind)) reloadRules(c.schema)
           else load(c.schema)
         } else if (c.schema === '*' && schema) reloadRules(schema)
       }),

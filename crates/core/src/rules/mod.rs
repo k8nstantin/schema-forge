@@ -5,6 +5,8 @@
 mod catalog;
 mod checks;
 pub mod compat;
+pub mod custom;
+pub mod review;
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -44,6 +46,14 @@ pub enum Scope {
     },
 }
 
+/// How a rule holds where it is linked: hard is enforced (the agent's change is refused), soft is highlighted only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Enforce {
+    Hard,
+    Soft,
+}
+
 /// A rule linked at a level, or switched off there.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -59,6 +69,9 @@ pub struct Link {
     /// Why: required for an exception.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Hard or soft here; the rule's own default when not said.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enforce: Option<Enforce>,
 }
 
 /// Tables grouped by hand, across namespaces and families, to link rules to.
@@ -86,6 +99,8 @@ pub struct Applied {
     pub from: Scope,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub locked: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enforce: Option<Enforce>,
 }
 
 /// A rule switched off for a table, where, and why.
@@ -113,6 +128,8 @@ pub struct Finding {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub column: Option<Id>,
     pub message: String,
+    /// Breaks a hard rule: the agent's change would be refused.
+    pub hard: bool,
 }
 
 /// How a rule (a check, or a pack counting its checks) did: what it looked at, and how many broke it.
@@ -120,6 +137,8 @@ pub struct Finding {
 pub struct Tally {
     pub checked: usize,
     pub breaks: usize,
+    /// Of the breaks, those of a hard rule.
+    pub hard: usize,
 }
 
 /// A schema checked against its rules.
@@ -170,7 +189,7 @@ fn resolve(cat: &Catalog, chain: &[Scope], links: &[&Link]) -> Effective {
             }
             applied.retain(|a| a.rule != l.rule);
             excepted.retain(|e| !cat.contains(&l.rule, &e.rule));
-            applied.push(Applied { rule: l.rule.clone(), from: step.clone(), locked: l.locked });
+            applied.push(Applied { rule: l.rule.clone(), from: step.clone(), locked: l.locked, enforce: l.enforce });
         }
         for l in links.iter().filter(|l| &l.at == step && l.off) {
             if l.rule == ALL {
@@ -214,6 +233,16 @@ impl Effective {
             }
         }
         out
+    }
+
+    /// Whether `check` holds hard on the table: as the nearest link holding it says, else as the rule's default.
+    #[must_use]
+    pub fn hard(&self, cat: &Catalog, check: &str) -> bool {
+        let said = self.applied.iter().rev().filter(|a| cat.contains(&a.rule, check)).find_map(|a| a.enforce);
+        match said {
+            Some(e) => e == Enforce::Hard,
+            None => cat.rule(check).is_some_and(|r| r.strength == Strength::Must),
+        }
     }
 }
 
@@ -288,6 +317,60 @@ pub fn admit(cat: &Catalog, schema: &Schema, global: &[Link], set: &RuleSet, lin
     Ok(())
 }
 
+/// A level written as text, as the agent writes it: `global`, `schema`, `namespace:<name>`,
+/// `family:<namespace>/<family>`, `group:<name>`, `table:<name>`. Names may also be ids; a nested namespace may be
+/// named by its path (`analytics.sales`).
+///
+/// # Errors
+/// What does not name a level of the schema.
+pub fn parse_scope(schema: &Schema, set: &RuleSet, text: &str) -> Result<Scope, String> {
+    let path = |id: &Id| {
+        let mut names = Vec::new();
+        let mut at = Some(id);
+        while let Some(i) = at {
+            let Some(n) = schema.namespaces.iter().find(|n| &n.id == i) else { break };
+            names.push(n.name.as_str());
+            at = n.parent.as_ref();
+            if names.len() > schema.namespaces.len() {
+                break;
+            }
+        }
+        names.reverse();
+        names.join(".")
+    };
+    let namespace = |n: &str| {
+        let hits: Vec<&crate::Namespace> =
+            schema.namespaces.iter().filter(|x| x.name == n || x.id.as_str() == n || path(&x.id) == n).collect();
+        match hits.as_slice() {
+            [one] => Ok(one.id.clone()),
+            [] => Err(format!("there is no namespace `{n}`")),
+            _ => Err(format!("`{n}` names more than one namespace: give its path")),
+        }
+    };
+    match text.split_once(':') {
+        None if text == "schema" => Ok(Scope::Schema),
+        None if text == "global" => Ok(Scope::Global),
+        Some(("namespace", n)) => Ok(Scope::Namespace { namespace: namespace(n)? }),
+        Some(("family", f)) => {
+            let (n, family) = f.rsplit_once('/').ok_or("a family is `family:<namespace>/<family>`")?;
+            Ok(Scope::Family { namespace: namespace(n)?, family: family.to_string() })
+        }
+        Some(("group", g)) if set.groups.iter().any(|x| x.name == g) => Ok(Scope::Group { group: g.to_string() }),
+        Some(("group", g)) => Err(format!("there is no group `{g}`")),
+        Some(("table", t)) => {
+            let hits: Vec<&Table> = schema.tables.iter().filter(|x| x.name == t || x.id.as_str() == t).collect();
+            match hits.as_slice() {
+                [one] => Ok(Scope::Table { table: one.id.clone() }),
+                [] => Err(format!("there is no table `{t}`")),
+                _ => Err(format!("`{t}` is in more than one namespace: give its id")),
+            }
+        }
+        _ => Err(format!(
+            "`{text}`: write global, schema, namespace:<name>, family:<namespace>/<family>, group:<name> or table:<name>"
+        )),
+    }
+}
+
 /// What every link must be, whatever schema it is on: a rule that exists, `*` only switched off, an exception
 /// with a reason and never locked.
 ///
@@ -358,10 +441,15 @@ pub fn describe(at: &Scope) -> String {
     }
 }
 
-/// Checks `schema` against the rules linked to it (`set`) and to every schema (`global`).
+/// Checks `schema` against the built-in rules linked to it (`set`) and to every schema (`global`).
 #[must_use]
 pub fn check(schema: &Schema, global: &[Link], set: &RuleSet) -> Report {
-    let cat = catalog();
+    check_with(catalog(), schema, global, set)
+}
+
+/// Checks `schema` against the rules of `cat` linked to it (`set`) and to every schema (`global`).
+#[must_use]
+pub fn check_with(cat: &Catalog, schema: &Schema, global: &[Link], set: &RuleSet) -> Report {
     let families = families(schema);
     let fam: HashMap<&Id, &str> = families.iter().map(|(k, v)| (k, v.as_str())).collect();
     let mut report = Report::default();
@@ -373,27 +461,40 @@ pub fn check(schema: &Schema, global: &[Link], set: &RuleSet) -> Report {
         }
     }
     let links: Vec<&Link> = global.iter().chain(&set.links).collect();
-    let mut runs: Vec<(&Table, Vec<&str>)> = Vec::new();
+    let mut runs: Vec<(&Table, Vec<(&str, bool)>)> = Vec::new();
     for t in &schema.tables {
         let eff = resolve(cat, &chain(schema, &fam, &set.groups, t), &links);
-        let checks = eff.checks(cat);
+        let checks = eff.checks(cat).into_iter().map(|c| (c, eff.hard(cat, c))).collect();
         report.tables.insert(t.id.clone(), eff);
         runs.push((t, checks));
     }
-    let drift: Vec<&Table> = runs.iter().filter(|(_, c)| c.contains(&"types.drift")).map(|(t, _)| *t).collect();
+    let drift: Vec<&Table> =
+        runs.iter().filter(|(_, c)| c.iter().any(|(id, _)| *id == "types.drift")).map(|(t, _)| *t).collect();
     let cx = checks::Context::new(schema, &drift);
     for (t, list) in &runs {
-        for id in list {
+        for (id, hard) in list {
             let rule = cat.rule(id).expect("a check of the catalog");
             if !rule.targets.is_empty() && !rule.targets.contains(&schema.target) {
                 continue;
             }
-            let o = checks::run(id, &cx, t);
+            let o = match &rule.sentence {
+                Some(s) => s.run(t),
+                None => checks::run(id, &cx, t),
+            };
             let tally = report.tallies.entry((*id).to_string()).or_default();
             tally.checked += o.checked;
             tally.breaks += o.breaks.len();
+            if *hard {
+                tally.hard += o.breaks.len();
+            }
             for (column, message) in o.breaks {
-                report.findings.push(Finding { rule: (*id).to_string(), table: t.id.clone(), column, message });
+                report.findings.push(Finding {
+                    rule: (*id).to_string(),
+                    table: t.id.clone(),
+                    column,
+                    message,
+                    hard: *hard,
+                });
             }
         }
     }
@@ -406,6 +507,7 @@ pub fn check(schema: &Schema, global: &[Link], set: &RuleSet) -> Report {
                 any = true;
                 sum.checked += t.checked;
                 sum.breaks += t.breaks;
+                sum.hard += t.hard;
             }
         }
         if any && report.tables.values().any(|e| e.applied.iter().any(|a| cat.contains(&a.rule, &r.id))) {

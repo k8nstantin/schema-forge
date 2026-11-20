@@ -1,6 +1,6 @@
 // The server's API: the workspace's schemas, a schema's model, an object's SQL, and every change as it lands.
 
-import type { Catalog, Report, RuleGroup, RuleLink, Schema, SchemaInfo, SchemaRules, Scope, Shape } from './model'
+import type { Catalog, Enforce, Proposal, Report, RuleGroup, RuleLink, Schema, SchemaInfo, SchemaRules, Scope, Shape, Verdict } from './model'
 
 async function json<T>(path: string): Promise<T> {
   const r = await fetch(path)
@@ -56,3 +56,12 @@ export const setGroup = (name: string, group: RuleGroup) => send('PUT', `${rules
 export const newGroup = (name: string, group: RuleGroup) => send('POST', `${rulesOf(name)}/groups`, group)
 export const removeGroup = (name: string, group: string) => send('DELETE', `${rulesOf(name)}/groups/${encodeURIComponent(group)}`)
 export const applyGoal = (name: string, goal: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/goals/${encodeURIComponent(goal)}`)
+export const setEnforce = (name: string | null, rule: string, at: Scope, enforce: Enforce) =>
+  send('POST', name === null ? '/api/rules/global/enforce' : `${rulesOf(name)}/enforce`, { rule, at, enforce })
+
+const proposalsOf = (name: string) => `/api/schemas/${encodeURIComponent(name)}/proposals`
+export const proposals = (name: string) => json<{ proposal: Proposal; verdict: Verdict | null }[]>(proposalsOf(name))
+export const approve = (name: string, id: number) => send<Proposal>('POST', `${proposalsOf(name)}/${id}/approve`)
+export const reject = (name: string, id: number) => send<Proposal>('POST', `${proposalsOf(name)}/${id}/reject`)
+export const proposalEnforce = (name: string, id: number, enforce: Enforce) =>
+  send<Proposal>('POST', `${proposalsOf(name)}/${id}/enforce`, { enforce })
