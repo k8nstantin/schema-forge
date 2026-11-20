@@ -46,7 +46,7 @@ sf serve
 
 ## Three targets
 
-One model, three targets. The model holds what each target can express, and the rules and views know the
+One model, three targets. The model holds what each target can express, and the rules and perspectives know the
 difference.
 
 | | MySQL | PostgreSQL | Apache Iceberg |
