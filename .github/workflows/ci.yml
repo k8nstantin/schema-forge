@@ -18,3 +18,19 @@ jobs:
         env:
           # Loads written SQL into a real PostgreSQL 17 (Docker is on the runner).
           SCHEMA_FORGE_DOCKER: "1"
+
+  canvas:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: canvas
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: canvas/package-lock.json
+      - run: npm ci
+      # Type-checks with tsc, then bundles what the serve crate embeds.
+      - run: npm run build

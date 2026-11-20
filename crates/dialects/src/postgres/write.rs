@@ -77,6 +77,28 @@ pub fn generate(schema: &Schema) -> String {
     w.out
 }
 
+/// One object's definition (a table with its indexes and comments, a view, a type or a sequence), as it is
+/// written in the whole schema; `None` when no object has that id.
+#[must_use]
+pub fn definition(schema: &Schema, id: &Id) -> Option<String> {
+    let mut w = Writer { schema, out: String::new(), names: names(schema), type_names: type_names(schema) };
+    if let Some(t) = schema.tables.iter().find(|t| &t.id == id) {
+        w.table(t);
+        for r in schema.relationships.iter().filter(|r| &r.from.table == id) {
+            w.foreign_key(r);
+        }
+    } else if let Some(v) = schema.views.iter().find(|v| &v.id == id) {
+        w.view(v);
+    } else if let Some(t) = schema.types.iter().find(|t| &t.id == id) {
+        w.type_def(t);
+    } else if let Some(q) = schema.sequences.iter().find(|q| &q.id == id) {
+        w.sequence(q);
+    } else {
+        return None;
+    }
+    Some(w.out.trim_end().to_string() + "\n")
+}
+
 struct Writer<'s> {
     schema: &'s Schema,
     out: String,

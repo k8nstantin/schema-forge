@@ -6,4 +6,4 @@ pub mod types;
 mod write;
 
 pub use read::{Error, import, import_folder};
-pub use write::generate;
+pub use write::{definition, generate};

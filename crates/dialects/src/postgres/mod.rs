@@ -8,4 +8,4 @@ pub mod types;
 mod write;
 
 pub use read::import;
-pub use write::generate;
+pub use write::{definition, generate};

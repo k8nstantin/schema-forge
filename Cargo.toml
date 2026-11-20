@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/core", "crates/dialects", "crates/store", "crates/agent", "crates/cli"]
+members = ["crates/core", "crates/dialects", "crates/store", "crates/serve", "crates/agent", "crates/cli"]
 
 [workspace.package]
 version = "0.1.0"
@@ -13,8 +13,11 @@ repository = "https://github.com/k8nstantin/schema-forge"
 schema-forge-core = { path = "crates/core" }
 schema-forge-dialects = { path = "crates/dialects" }
 schema-forge-store = { path = "crates/store" }
+schema-forge-serve = { path = "crates/serve" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 thiserror = "2.0.21"
 blake3 = { version = "1.8.7", features = ["pure"] }
-sqlparser = { version = "0.64.0", features = ["visitor"] }
+# Without the default recursive-protection, which grows the stack with compiled assembly (psm): the parser's own
+# recursion limit still bounds how deep a view's query may nest.
+sqlparser = { version = "0.64.0", default-features = false, features = ["std", "visitor"] }

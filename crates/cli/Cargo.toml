@@ -14,6 +14,8 @@ path = "src/main.rs"
 schema-forge-core.workspace = true
 schema-forge-dialects.workspace = true
 schema-forge-store.workspace = true
+schema-forge-serve.workspace = true
+tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread"] }
 clap = { version = "4.6.9", features = ["derive"] }
 
 [dev-dependencies]

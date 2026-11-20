@@ -27,6 +27,16 @@ pub fn generate(schema: &Schema) -> String {
     out
 }
 
+/// One table's or view's definition as it is written in the whole schema; `None` when no object has that id.
+#[must_use]
+pub fn definition(schema: &Schema, id: &Id) -> Option<String> {
+    let paths = namespace_paths(schema);
+    if let Some(t) = schema.tables.iter().find(|t| &t.id == id) {
+        return Some(table(schema, &paths, t).trim_end().to_string() + "\n");
+    }
+    schema.views.iter().find(|v| &v.id == id).map(|v| view(&paths, v).trim_end().to_string() + "\n")
+}
+
 fn kept_after(schema: &Schema, id: &Id, out: &mut String) {
     for k in schema.kept.iter().filter(|k| k.after.as_ref() == Some(id)) {
         let _ = writeln!(out, "{};\n", k.text);

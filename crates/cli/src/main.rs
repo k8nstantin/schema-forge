@@ -41,6 +41,14 @@ enum Command {
     },
     /// List the workspace's schemas.
     Schemas,
+    /// Serve the perspectives of the workspace, and open them.
+    Serve {
+        #[arg(long, default_value_t = 7410)]
+        port: u16,
+        /// Do not open the browser.
+        #[arg(long)]
+        no_open: bool,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -101,12 +109,37 @@ fn run(cli: Cli) -> Result<(), String> {
                 }
             }
         }
+        Command::Serve { port, no_open } => {
+            let store = std::sync::Arc::new(store);
+            let runtime = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
+            runtime.block_on(schema_forge_serve::serve(store, port, |addr| {
+                let url = format!("http://{addr}");
+                println!("Schema Forge is serving {} at {url}", workspace.display());
+                if !no_open {
+                    open_browser(&url);
+                }
+            }))
+        }
         Command::Schemas => {
             for s in store.schemas().map_err(|e| e.to_string())? {
                 println!("{}\t{}", s.name, target_name(s.target));
             }
             Ok(())
         }
+    }
+}
+
+/// Opens `url` in the default browser; a failure is only reported, the server runs on.
+fn open_browser(url: &str) {
+    let opener = if cfg!(target_os = "macos") {
+        "open"
+    } else if cfg!(windows) {
+        "explorer"
+    } else {
+        "xdg-open"
+    };
+    if let Err(e) = std::process::Command::new(opener).arg(url).spawn() {
+        eprintln!("schema-forge: could not open the browser ({e}); open {url}");
     }
 }
 
