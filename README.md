@@ -3,12 +3,12 @@
 **Build your database schema together with your coding agent, and watch it take shape.**
 
 You prompt the agent. The agent works through Schema Forge's MCP. Every change appears at once on a rich,
-live view that you both see. When the schema is right, export it as SQL for MySQL or PostgreSQL.
+live view that you both see. When the schema is right, export it for MySQL, PostgreSQL or Apache Iceberg.
 
 ```
  you ──prompt──► coding agent ──MCP──► sf ──► live views (you see them, the agent can render them)
                                         │
-                                        └──► schema.sql   (MySQL or PostgreSQL)
+                                        └──► export   (MySQL, PostgreSQL, Iceberg)
 ```
 
 ## Start
@@ -41,7 +41,26 @@ browser. Then you prompt Claude Code in the same folder: "design an order system
 - **Treats views as objects.** Database views carry their definition and know what they read, so a change
   that would break a view is caught.
 - **Exports SQL.** One file per version: the whole schema, or the migration from the last version.
-- **Reads what you have.** Import a MySQL or PostgreSQL schema dump; nothing in it is lost.
+- **Reads what you have.** Import a MySQL or PostgreSQL schema dump, or Iceberg table definitions;
+  nothing in them is lost.
+
+## Three targets
+
+One model, three targets. The model holds what each target can express, and the rules and views know the
+difference.
+
+| | MySQL | PostgreSQL | Apache Iceberg |
+|---|---|---|---|
+| **Keys** | primary, unique, foreign, enforced | primary, unique, foreign, enforced | no referential integrity: **identifier fields** mark the key, not enforced (enforced constraints arrive only in format v4) |
+| **Relationships** | foreign keys | foreign keys | **logical only:** drawn in the diagram and checked by the rules, never written as constraints |
+| **Table parameters** | engine, charset, collation, auto-increment | tablespaces, partitioning, storage options | **partition spec** (identity, bucket, truncate, year/month/day/hour), **sort order**, **table properties** (format version, file format, compression, write modes) |
+| **Types** | MySQL types | PostgreSQL types | Iceberg types: decimal, timestamp(tz), uuid, fixed, binary, struct, list, map; v3 adds nanosecond timestamps, variant, geometry, geography; column defaults from v3 |
+| **Views** | `CREATE VIEW` | views and materialized views | **versioned views**, one SQL text per engine dialect (Spark, Trino) |
+| **Export** | `.sql` | `.sql` | Spark SQL DDL (`USING iceberg`), Trino DDL, or table metadata (schema with field IDs, partition spec, sort order, properties) |
+
+Moving a schema between targets is a conversion the agent and the rules check: from MySQL to Iceberg,
+foreign keys become logical relationships and primary keys become identifier fields; types map, and any
+type without an equivalent is reported, never dropped.
 
 ## How it is built
 
@@ -55,17 +74,18 @@ browser. Then you prompt Claude Code in the same folder: "design an order system
 | Crate | Job |
 |---|---|
 | `sf-core` | the schema model, operations, rules, versions |
-| `sf-dialects` | reading and writing MySQL and PostgreSQL |
+| `sf-dialects` | reading and writing MySQL, PostgreSQL and Iceberg |
 | `sf-mcp` | the MCP the agent works through |
 | `sf` | the command: `sf serve`, `sf import`, `sf export` |
 
 ## Roadmap
 
-1. Import a dump and see it in the diagram, list and definition views; export SQL.
+1. Import a MySQL or PostgreSQL dump and see it in the diagram, list and definition views; export SQL.
 2. Build with the agent: the MCP, the rules, every change live.
-3. Categories and custom views; editing by hand.
-4. Locked versions and migrations.
-5. **Deploy:** apply a version to a destination database directly, or through the exported SQL file.
+3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets.
+4. Categories and custom views; editing by hand.
+5. Locked versions and migrations.
+6. **Deploy:** apply a version to a destination database or Iceberg catalog directly, or through the exported SQL file.
 
 ## License
 
