@@ -321,3 +321,69 @@ fn hard_means_hard_on_every_table_a_change_touches() {
         .change("lake", &[Op::AddColumn { table: "items".into(), column: col("sku"), after: None }], false, "agent")
         .expect("items keeps its rules");
 }
+
+#[test]
+fn a_turn_groups_the_agents_changes_to_accept_or_reject_whole() {
+    use schema_forge_core::DataType;
+    use schema_forge_core::ops::{NewColumn, Op};
+    use schema_forge_store::TurnStatus;
+    let dir = tempfile::tempdir().expect("dir");
+    let store = Store::open(&dir.path().join("store.redb")).expect("open");
+    store.create_schema("lake", Target::Iceberg).expect("create");
+    let col = |name: &str| NewColumn {
+        name: name.into(),
+        data_type: DataType::named("string"),
+        nullable: true,
+        default: None,
+        comment: None,
+    };
+    let table = |name: &str| Op::AddTable {
+        namespace: "shop".into(),
+        name: name.into(),
+        comment: None,
+        columns: vec![col("id")],
+        primary_key: vec![],
+    };
+    let one = store.start_turn("lake", "make a shop", "agent").expect("turn");
+    store
+        .change_in(
+            "lake",
+            &[Op::AddNamespace { name: "shop".into(), parent: None, comment: None }, table("orders")],
+            false,
+            "agent",
+            Some(one.id),
+        )
+        .expect("one");
+    store.accept_turn("lake", one.id, "you").expect("accepted");
+    assert!(
+        store.change_in("lake", &[table("late")], false, "agent", Some(one.id)).is_err(),
+        "a decided turn takes no more changes"
+    );
+
+    let two = store.start_turn("lake", "add items and refunds", "agent").expect("turn");
+    store.change_in("lake", &[table("items")], false, "agent", Some(two.id)).expect("items");
+    store
+        .change_in(
+            "lake",
+            &[Op::AddColumn { table: "items".into(), column: col("sku"), after: None }],
+            false,
+            "agent",
+            Some(two.id),
+        )
+        .expect("sku");
+    store.change_in("lake", &[table("refunds")], false, "agent", Some(two.id)).expect("refunds");
+    assert_eq!(store.turns("lake").expect("turns")[1].changes.len(), 3);
+    let rejected = store.reject_turn("lake", two.id, "you").expect("rejected");
+    assert_eq!(rejected.status, TurnStatus::Rejected);
+    let names: Vec<String> = store.model("lake").expect("model").tables.into_iter().map(|t| t.name).collect();
+    assert_eq!(names, ["orders"], "the whole turn is taken back");
+
+    // Something it touched changed since: refused, and nothing taken back.
+    let three = store.start_turn("lake", "notes", "agent").expect("turn");
+    store.change_in("lake", &[table("notes")], false, "agent", Some(three.id)).expect("notes");
+    store
+        .change("lake", &[Op::SetTableComment { table: "notes".into(), comment: Some("by you".into()) }], false, "you")
+        .expect("you");
+    assert!(matches!(store.reject_turn("lake", three.id, "you"), Err(Error::Refused(_))));
+    assert_eq!(store.model("lake").expect("model").tables.len(), 2, "notes stays");
+}

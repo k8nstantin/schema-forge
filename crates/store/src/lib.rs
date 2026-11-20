@@ -25,6 +25,8 @@ const OPERATIONS: TableDefinition<&str, &str> = TableDefinition::new("operations
 const RULES: TableDefinition<&str, &str> = TableDefinition::new("rules");
 /// The workspace's own rules, written by the agent and approved, by id (`custom.<n>`).
 const CUSTOM: TableDefinition<&str, &str> = TableDefinition::new("custom_rules");
+/// The agent's turns, by `<schema>/<n>`: the changes it made for one prompt, accepted or rejected together.
+const TURNS: TableDefinition<&str, &str> = TableDefinition::new("turns");
 /// Rules the agent proposed, by `<schema>/<n>`.
 const PROPOSALS: TableDefinition<&str, &str> = TableDefinition::new("proposals");
 
@@ -103,6 +105,27 @@ pub struct Changed {
     pub operation: Operation,
     pub summaries: Vec<String>,
     pub soft: Vec<Finding>,
+}
+
+/// One turn of the agent: what it was asked, as it says it, and the changes it made for it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Turn {
+    pub id: u64,
+    pub by: String,
+    pub summary: String,
+    pub status: TurnStatus,
+    /// The changes made in it, by their place in the log.
+    pub changes: Vec<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decided_by: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TurnStatus {
+    Open,
+    Accepted,
+    Rejected,
 }
 
 /// What subscribers hear after each commit.
@@ -190,6 +213,7 @@ impl Store {
             txn.open_table(RULES)?;
             txn.open_table(CUSTOM)?;
             txn.open_table(PROPOSALS)?;
+            txn.open_table(TURNS)?;
         }
         txn.commit()?;
         let (changes, _) = broadcast::channel(1024);
@@ -690,6 +714,24 @@ impl Store {
     /// [`Error::Refused`] with the operation and the reason, or when there is no such schema or the store fails.
     /// Hard rules hold for everyone, the agent and you alike: to go ahead, a rule is turned soft first.
     pub fn change(&self, name: &str, ops: &[Op], confirmed: bool, by: &str) -> Result<Changed> {
+        self.change_in(name, ops, confirmed, by, None)
+    }
+
+    /// As [`Store::change`], kept in turn `turn` when one is given.
+    ///
+    /// # Errors
+    /// As [`Store::change`], and when the turn is not open.
+    pub fn change_in(&self, name: &str, ops: &[Op], confirmed: bool, by: &str, turn: Option<u64>) -> Result<Changed> {
+        if let Some(n) = turn {
+            let t = self
+                .turns(name)?
+                .into_iter()
+                .find(|t| t.id == n)
+                .ok_or_else(|| Error::Refused(format!("there is no turn {n}")))?;
+            if t.status != TurnStatus::Open {
+                return Err(Error::Refused(format!("turn {n} is {:?}: start a new one", t.status).to_lowercase()));
+            }
+        }
         if ops.is_empty() {
             return Err(Error::Refused("no operations".to_string()));
         }
@@ -756,8 +798,11 @@ impl Store {
                 after.insert(id.to_string(), Value::Null);
             }
         }
-        let change = serde_json::json!({ "ops": ops, "summaries": summaries, "before": before, "after": after });
-        let operation = self.write_records(name, "change", by, change, &after)?;
+        let mut change = serde_json::json!({ "ops": ops, "summaries": summaries, "before": before, "after": after });
+        if let Some(n) = turn {
+            change["turn"] = Value::from(n);
+        }
+        let operation = self.write_records(name, "change", by, change, &after, turn)?;
         Ok(Changed { operation, summaries, soft })
     }
 
@@ -767,8 +812,7 @@ impl Store {
     /// When there is nothing to undo, the records changed since, there is no such schema, or the store fails.
     pub fn undo(&self, name: &str, by: &str) -> Result<Operation> {
         let log = self.operations(name)?;
-        let undone: Vec<u64> =
-            log.iter().filter(|o| o.kind == "undo").filter_map(|o| o.change["undoes"].as_u64()).collect();
+        let undone = Self::undone(&log);
         let last = log
             .iter()
             .rev()
@@ -794,7 +838,169 @@ impl Store {
             }
         }
         let change = serde_json::json!({ "undoes": last.sequence, "summaries": last.change["summaries"] });
-        self.write_records(name, "undo", by, change, before)
+        self.write_records(name, "undo", by, change, before, None)
+    }
+
+    /// The changes of the log that an undo or a rejected turn took back.
+    fn undone(log: &[Operation]) -> Vec<u64> {
+        let mut out = Vec::new();
+        for o in log {
+            if let Some(n) = o.change["undoes"].as_u64() {
+                out.push(n);
+            }
+            if let Some(all) = o.change["undoes_all"].as_array() {
+                out.extend(all.iter().filter_map(Value::as_u64));
+            }
+        }
+        out
+    }
+
+    /// Opens a turn: the agent's changes for one prompt, summarised as it understood it.
+    ///
+    /// # Errors
+    /// When there is no such schema, or the store fails.
+    pub fn start_turn(&self, name: &str, summary: &str, by: &str) -> Result<Turn> {
+        let txn = self.db.begin_write()?;
+        let turn;
+        {
+            schema_info(&txn.open_table(SCHEMAS)?, name)?;
+            let mut table = txn.open_table(TURNS)?;
+            let (lo, hi) = prefix_range(name);
+            let last = match table.range(lo.as_str()..hi.as_str())?.next_back().transpose()? {
+                Some((_, v)) => serde_json::from_str::<Turn>(v.value())?.id,
+                None => 0,
+            };
+            turn = Turn {
+                id: last + 1,
+                by: by.to_string(),
+                summary: summary.to_string(),
+                status: TurnStatus::Open,
+                changes: Vec::new(),
+                decided_by: None,
+            };
+            table.insert(proposal_key(name, turn.id).as_str(), serde_json::to_string(&turn)?.as_str())?;
+        }
+        txn.commit()?;
+        Ok(turn)
+    }
+
+    /// The schema's turns, oldest first.
+    ///
+    /// # Errors
+    /// When there is no such schema, the store fails or a record is not valid.
+    pub fn turns(&self, name: &str) -> Result<Vec<Turn>> {
+        let txn = self.db.begin_read()?;
+        schema_info(&txn.open_table(SCHEMAS)?, name)?;
+        let table = txn.open_table(TURNS)?;
+        let (lo, hi) = prefix_range(name);
+        let mut out = Vec::new();
+        for entry in table.range(lo.as_str()..hi.as_str())? {
+            let (_, v) = entry?;
+            out.push(serde_json::from_str(v.value())?);
+        }
+        Ok(out)
+    }
+
+    /// Accepts an open turn: its changes stay, reviewed.
+    ///
+    /// # Errors
+    /// When there is no such open turn, or the store fails.
+    pub fn accept_turn(&self, name: &str, n: u64, by: &str) -> Result<Turn> {
+        let txn = self.db.begin_write()?;
+        let turn;
+        let operation;
+        {
+            let mut table = txn.open_table(TURNS)?;
+            let mut t = open_turn(&table, name, n)?;
+            t.status = TurnStatus::Accepted;
+            t.decided_by = Some(by.to_string());
+            table.insert(proposal_key(name, n).as_str(), serde_json::to_string(&t)?.as_str())?;
+            let mut ops = txn.open_table(OPERATIONS)?;
+            let sequence = last_sequence(&ops, name)? + 1;
+            operation = Operation {
+                sequence,
+                kind: "accept_turn".to_string(),
+                by: by.to_string(),
+                change: serde_json::json!({ "turn": n }),
+            };
+            ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
+            turn = t;
+        }
+        txn.commit()?;
+        let _ = self.changes.send(Change { schema: name.to_string(), operation });
+        Ok(turn)
+    }
+
+    /// Rejects an open turn: every change of it is taken back, newest first, in one transaction; refused, and
+    /// nothing taken back, when anything it touched changed since.
+    ///
+    /// # Errors
+    /// When there is no such open turn, its records changed since, or the store fails.
+    pub fn reject_turn(&self, name: &str, n: u64, by: &str) -> Result<Turn> {
+        let log = self.operations(name)?;
+        let undone = Self::undone(&log);
+        let turn = self
+            .turns(name)?
+            .into_iter()
+            .find(|t| t.id == n)
+            .ok_or_else(|| Error::Refused(format!("there is no turn {n}")))?;
+        if turn.status != TurnStatus::Open {
+            return Err(Error::Refused(format!("turn {n} is {:?}", turn.status).to_lowercase()));
+        }
+        let changes: Vec<&Operation> = turn
+            .changes
+            .iter()
+            .rev()
+            .filter(|s| !undone.contains(s))
+            .filter_map(|s| log.iter().find(|o| o.sequence == *s))
+            .collect();
+        // Walk back from what is there now: each change must find what it left, then gives back what it found.
+        let mut now: std::collections::HashMap<String, Value> = std::collections::HashMap::new();
+        {
+            let txn = self.db.begin_read()?;
+            let objects = txn.open_table(OBJECTS)?;
+            for c in &changes {
+                for id in c.change["after"].as_object().into_iter().flatten().map(|(k, _)| k) {
+                    if !now.contains_key(id) {
+                        let v = match objects.get(format!("{name}/{id}").as_str())? {
+                            Some(v) => serde_json::from_str(v.value())?,
+                            None => Value::Null,
+                        };
+                        now.insert(id.clone(), v);
+                    }
+                }
+            }
+        }
+        for c in &changes {
+            let (Some(before), Some(after)) = (c.change["before"].as_object(), c.change["after"].as_object()) else {
+                return Err(Error::Refused(format!("change #{} cannot be taken back", c.sequence)));
+            };
+            for (id, want) in after {
+                if now.get(id) != Some(want) {
+                    return Err(Error::Refused(format!(
+                        "`{id}` changed after change #{} of turn {n}: nothing was taken back",
+                        c.sequence
+                    )));
+                }
+            }
+            for (id, was) in before {
+                now.insert(id.clone(), was.clone());
+            }
+        }
+        let records: serde_json::Map<String, Value> = now.into_iter().collect();
+        let seqs: Vec<u64> = changes.iter().map(|c| c.sequence).collect();
+        let change = serde_json::json!({ "turn": n, "undoes_all": seqs, "summaries": [format!("rejected turn {n}: {}", turn.summary)] });
+        self.write_records(name, "reject_turn", by, change, &records, None)?;
+        let txn = self.db.begin_write()?;
+        let mut t = turn;
+        {
+            let mut table = txn.open_table(TURNS)?;
+            t.status = TurnStatus::Rejected;
+            t.decided_by = Some(by.to_string());
+            table.insert(proposal_key(name, n).as_str(), serde_json::to_string(&t)?.as_str())?;
+        }
+        txn.commit()?;
+        Ok(t)
     }
 
     /// Writes record values (null takes the record away) and logs the change, in one transaction.
@@ -805,6 +1011,7 @@ impl Store {
         by: &str,
         change: Value,
         records: &serde_json::Map<String, Value>,
+        turn: Option<u64>,
     ) -> Result<Operation> {
         let txn = self.db.begin_write()?;
         let operation;
@@ -823,6 +1030,12 @@ impl Store {
             let sequence = last_sequence(&ops, name)? + 1;
             operation = Operation { sequence, kind: kind.to_string(), by: by.to_string(), change };
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
+            if let Some(n) = turn {
+                let mut turns = txn.open_table(TURNS)?;
+                let mut t = open_turn(&turns, name, n)?;
+                t.changes.push(sequence);
+                turns.insert(proposal_key(name, n).as_str(), serde_json::to_string(&t)?.as_str())?;
+            }
         }
         txn.commit()?;
         let _ = self.changes.send(Change { schema: name.to_string(), operation: operation.clone() });
@@ -857,6 +1070,18 @@ impl Store {
         txn.commit()?;
         let _ = self.changes.send(Change { schema: key, operation: operation.clone() });
         Ok(operation)
+    }
+}
+
+fn open_turn(table: &impl ReadableTable<&'static str, &'static str>, name: &str, n: u64) -> Result<Turn> {
+    let t: Turn = match table.get(proposal_key(name, n).as_str())? {
+        Some(v) => serde_json::from_str(v.value())?,
+        None => return Err(Error::Refused(format!("there is no turn {n}"))),
+    };
+    if t.status == TurnStatus::Open {
+        Ok(t)
+    } else {
+        Err(Error::Refused(format!("turn {n} is {:?}", t.status).to_lowercase()))
     }
 }
 

@@ -273,6 +273,10 @@ to, is checked, applied, written to `operations.jsonl`, and carries what is need
 | Sequences, types | `add_sequence`, `alter_sequence`, `drop_sequence`; `add_type`, `alter_type`, `drop_type` |
 | Patterns | `apply_pattern` (e.g. SCD Type 2 on a table: adds what is missing, as the operations above) |
 
+**Turns:** the agent's changes for one request of yours are one turn (`start_turn` with what you asked; a change
+without one opens one). Its changes land live; you accept the turn, or reject it, which takes every change of it
+back, newest first, in one transaction, refused (nothing taken back) when anything it touched changed since.
+
 Built so far (`crates/core/src/ops.rs`, applied by the store as one change, all or none, through the MCP's
 `change`): `add_namespace`, `rename_namespace`, `drop_namespace`, `add_table`, `rename_table`, `drop_table`,
 `set_table_comment`, `add_column`, `rename_column`, `alter_column`, `drop_column`, `set_primary_key`,

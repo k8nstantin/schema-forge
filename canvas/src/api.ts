@@ -77,3 +77,11 @@ export const changeByHand = (name: string, operations: unknown[], yes: { destruc
   })
 export const newSchema = (name: string, target: string) => send('POST', '/api/schemas', { name, target })
 export const undo = (name: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/undo`)
+export interface TurnItem {
+  turn: { id: number; by: string; summary: string; status: 'open' | 'accepted' | 'rejected'; changes: number[]; decided_by?: string }
+  changes: { sequence: number; summaries: string[] }[]
+}
+const turnsOf = (name: string) => `/api/schemas/${encodeURIComponent(name)}/turns`
+export const turns = (name: string) => json<TurnItem[]>(turnsOf(name))
+export const acceptTurn = (name: string, n: number) => send('POST', `${turnsOf(name)}/${n}/accept`)
+export const rejectTurn = (name: string, n: number) => send('POST', `${turnsOf(name)}/${n}/reject`)

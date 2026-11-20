@@ -24,18 +24,45 @@ pub fn service(store: Arc<Store>) -> StreamableHttpService<Forge, LocalSessionMa
     )
 }
 
-/// The tools.
+/// The tools, one per session: a session keeps its turn on each schema.
 #[derive(Clone)]
 pub struct Forge {
     store: Arc<Store>,
+    turns: Arc<std::sync::Mutex<std::collections::HashMap<String, u64>>>,
     tool_router: ToolRouter<Self>,
 }
 
 impl Forge {
     #[must_use]
     pub fn new(store: Arc<Store>) -> Self {
-        Self { store, tool_router: Self::tool_router() }
+        Self { store, turns: Arc::default(), tool_router: Self::tool_router() }
     }
+
+    /// The session's open turn on `schema`, opened when there is none.
+    fn turn(&self, schema: &str) -> Result<u64, String> {
+        let mine = self.turns.lock().map_err(|e| e.to_string())?.get(schema).copied();
+        if let Some(n) = mine
+            && self
+                .store
+                .turns(schema)
+                .map_err(|e| e.to_string())?
+                .iter()
+                .any(|t| t.id == n && t.status == schema_forge_store::TurnStatus::Open)
+        {
+            return Ok(n);
+        }
+        let t =
+            self.store.start_turn(schema, "changes made without a stated turn", "agent").map_err(|e| e.to_string())?;
+        self.turns.lock().map_err(|e| e.to_string())?.insert(schema.to_string(), t.id);
+        Ok(t.id)
+    }
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TurnArg {
+    pub schema: String,
+    /// What the person asked for, in a sentence: they review the turn's changes under it.
+    pub summary: String,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -226,6 +253,15 @@ pub fn operation(target: Target, mut v: serde_json::Value) -> Result<schema_forg
 #[tool_router]
 impl Forge {
     #[tool(
+        description = "Starts a turn on a schema: the changes you make for one request of the person, which they accept or reject together. Start one per request, with what they asked in a sentence; your `change` calls land in it."
+    )]
+    fn start_turn(&self, Parameters(a): Parameters<TurnArg>) -> Result<String, String> {
+        let t = self.store.start_turn(&a.schema, &a.summary, "agent").map_err(|e| e.to_string())?;
+        self.turns.lock().map_err(|e| e.to_string())?.insert(a.schema.clone(), t.id);
+        Ok(format!("Turn {} started on {}: the person will accept or reject its changes together.", t.id, a.schema))
+    }
+
+    #[tool(
         description = "Makes an empty schema: a name and a type (mysql, postgres or iceberg). The person may link rules to it before you design."
     )]
     fn new_schema(&self, Parameters(a): Parameters<NewSchemaArg>) -> Result<String, String> {
@@ -260,8 +296,9 @@ Operations, as JSON objects with "op". Tables are named `orders` or `namespace.o
             .enumerate()
             .map(|(i, v)| operation(target, v).map_err(|m| format!("operation {}: {m}", i + 1)))
             .collect::<Result<Vec<_>, _>>()?;
-        let changed = self.store.change(&a.schema, &ops, a.confirm_destructive, "agent").map_err(e)?;
-        let mut out = format!("Change #{} landed:\n", changed.operation.sequence);
+        let turn = self.turn(&a.schema)?;
+        let changed = self.store.change_in(&a.schema, &ops, a.confirm_destructive, "agent", Some(turn)).map_err(e)?;
+        let mut out = format!("Change #{} landed, in turn {turn}:\n", changed.operation.sequence);
         for s in &changed.summaries {
             let _ = writeln!(out, "- {s}");
         }
