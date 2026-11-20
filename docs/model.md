@@ -96,7 +96,7 @@ Where objects live: a PostgreSQL schema (`public`, `billing`), a MySQL database,
 | Field | |
 |---|---|
 | `id`, `namespace`, `name` | |
-| `partition_of` | PostgreSQL: the parent table and this partition's bounds (`FOR VALUES …`, or `DEFAULT`) |
+| `partition_of` | PostgreSQL, a designed partition only: the parent table and its bounds (`FOR VALUES …`, or `DEFAULT`) |
 | `comment`, `tags`, `area` | `tags` are free words (`fact`, `dimension`); `area` groups tables in the perspectives |
 | `columns` | ordered |
 | `primary_key` | `{ name, columns }`; Iceberg: see `identifier_fields` |
@@ -110,7 +110,7 @@ Where objects live: a PostgreSQL schema (`public`, `billing`), a MySQL database,
 
 | MySQL | PostgreSQL | Iceberg |
 |---|---|---|
-| `engine`, `charset`, `collation`, `row_format`, `auto_increment` (next value), `partitioning` (kept as written) | `tablespace`, `unlogged`, `partition_by` (`range`/`list`/`hash`, keys), `inherits`, `storage` parameters | `format_version` (1–3), `identifier_fields`, `partition_spec`, `sort_order`, `properties`, `location` |
+| `engine`, `charset`, `collation`, `row_format`, `auto_increment` (next value), `partitioning` (kept as written) | `tablespace`, `unlogged`, `partition_by` (`range`/`list`/`hash`, keys), `partition_policy` (`interval` such as `1 day` or `1 month`, `retention`, `premake`, `managed_by`: `pg_partman`, the application, or `schema-forge`; and any imported `series`: interval, first and last bound, count, the statements kept verbatim), `inherits`, `storage` parameters | `format_version` (1–3), `identifier_fields`, `partition_spec`, `sort_order`, `properties`, `location` |
 
 Iceberg's own parts:
 
@@ -249,7 +249,7 @@ to, is checked, applied, written to `operations.jsonl`, and carries what is need
 | Area | Operations |
 |---|---|
 | Namespaces, areas | `add_namespace`, `rename_namespace`, `drop_namespace`; `add_area`, `set_area` |
-| Tables | `add_table`, `rename_table`, `drop_table`, `add_partition`, `detach_partition`, `split_partition`, `move_table` (namespace), `set_table_comment`, `set_table_option`, `tag`, `untag` |
+| Tables | `add_table`, `rename_table`, `drop_table`, `set_partition_policy`, `add_partition`, `detach_partition`, `split_partition` (designed partitions), `move_table` (namespace), `set_table_comment`, `set_table_option`, `tag`, `untag` |
 | Columns | `add_column` (at a position), `rename_column`, `alter_column` (type, nullable, default, generated, identity, collation, comment), `move_column`, `drop_column` |
 | Keys | `set_primary_key`, `add_unique`, `drop_unique`, `add_check`, `drop_check`, `set_identifier_fields` |
 | Indexes | `add_index`, `drop_index` |
@@ -345,6 +345,11 @@ and Trino `representations`.
 - **Functions, procedures and triggers: verbatim now, objects later** (operator, 2026-11-20): version 1
   carries them through exactly, in place, knowing which tables they name; a later version makes them
   objects the agent can write and edit.
-- **PostgreSQL partitions are tables** (operator, 2026-11-20): each partition is a table with
-  `partition_of` (its parent) and its bounds, shown folded under the parent; the agent adds, splits and
-  detaches partitions as operations, and rules and migrations cover them.
+- **PostgreSQL partitions: a policy, plus designed partitions** (operator, 2026-11-20). Daily partitions
+  would mean hundreds of tables a year, made at runtime rather than designed, so:
+  - the partitioned table holds its **partitioning policy**: key, strategy, interval, retention, and who
+    creates the partitions;
+  - only **designed partitions** are tables (`partition_of` and bounds): a few named ones such as list
+    partitions, `DEFAULT`, an archive;
+  - an imported **series** (daily, monthly) is recognised, shown as one badge ("1,096 daily partitions,
+    2023-01-01 → 2025-12-31"), and its statements kept verbatim, so nothing is lost.
