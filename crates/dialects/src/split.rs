@@ -22,6 +22,8 @@ pub struct Statement {
     pub text: String,
     pub tokens: Vec<Tok>,
     pub line: usize,
+    /// The comments right before it, exactly as written (`-- …` lines, `/* … */`).
+    pub leading: String,
     /// A psql meta-command (`\restrict …`): a line of its own, not SQL, never tokenized.
     pub meta: bool,
 }
@@ -61,6 +63,7 @@ pub fn split(dialect: &dyn Dialect, text: &str) -> Result<Split, SplitError> {
                 text: line.trim_end().to_string(),
                 tokens: Vec::new(),
                 line: i + 1,
+                leading: String::new(),
                 meta: true,
             });
             i += 1;
@@ -128,13 +131,20 @@ fn split_segment(dialect: &dyn Dialect, text: &str, first_line: usize, out: &mut
 
     let mut current: Vec<Tok> = Vec::new();
     let mut atomic_depth = 0usize;
+    let mut comments = String::new();
+    let mut leading = String::new();
     for t in tokens {
         let start = to_offset(t.span.start.line, t.span.start.column);
         let end = to_offset(t.span.end.line, t.span.end.column);
         match &t.token {
+            tok if is_comment(tok) && current.is_empty() => {
+                comments.push_str(text[start..end].trim_end_matches(['\n', '\r']));
+                comments.push('\n');
+                continue;
+            }
             Token::Whitespace(_) | Token::EOF => continue,
             Token::SemiColon if atomic_depth == 0 => {
-                finish(text, &mut current, &starts, first_line, out);
+                finish(text, &mut current, &starts, first_line, std::mem::take(&mut leading), out);
                 continue;
             }
             Token::Word(w) if w.keyword == Keyword::ATOMIC && is_word(current.last(), Keyword::BEGIN) => {
@@ -143,9 +153,12 @@ fn split_segment(dialect: &dyn Dialect, text: &str, first_line: usize, out: &mut
             Token::Word(w) if w.keyword == Keyword::END && atomic_depth > 0 => atomic_depth -= 1,
             _ => {}
         }
+        if current.is_empty() {
+            leading = std::mem::take(&mut comments).trim_end().to_string();
+        }
         current.push(Tok { token: t.token, start, end });
     }
-    finish(text, &mut current, &starts, first_line, out);
+    finish(text, &mut current, &starts, first_line, leading, out);
     Ok(())
 }
 
@@ -159,7 +172,7 @@ fn line_starts(text: &str) -> Vec<usize> {
     v
 }
 
-fn finish(text: &str, current: &mut Vec<Tok>, starts: &[usize], first_line: usize, out: &mut Split) {
+fn finish(text: &str, current: &mut Vec<Tok>, starts: &[usize], first_line: usize, leading: String, out: &mut Split) {
     if current.is_empty() {
         return;
     }
@@ -167,7 +180,7 @@ fn finish(text: &str, current: &mut Vec<Tok>, starts: &[usize], first_line: usiz
     let end = current.last().map_or(start, |t| t.end);
     let line = first_line + starts.partition_point(|s| *s <= start) - 1;
     let tokens = current.drain(..).map(|t| Tok { start: t.start - start, end: t.end - start, ..t }).collect();
-    out.statements.push(Statement { text: text[start..end].to_string(), tokens, line, meta: false });
+    out.statements.push(Statement { text: text[start..end].to_string(), tokens, line, leading, meta: false });
 }
 
 /// Whether a token is a comment (kept with the text, never parsed).
@@ -204,6 +217,7 @@ mod tests {
         );
         assert_eq!((s.copy_blocks, s.copy_rows), (1, 2));
         assert_eq!(s.statements.iter().map(|s| s.line).collect::<Vec<_>>(), [1, 2, 4, 10, 11, 12]);
+        assert_eq!(s.statements[2].leading, "-- a comment; with a semicolon");
         let create = &s.statements[2];
         let default = create.tokens.iter().find(|t| matches!(t.token, Token::SingleQuotedString(_))).expect("tok");
         assert_eq!(&create.text[default.start..default.end], "'a;b'");

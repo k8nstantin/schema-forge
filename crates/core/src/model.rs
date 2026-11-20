@@ -92,6 +92,9 @@ pub struct Table {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    /// Design notes kept with it, written as comment lines before it (why it is shaped as it is).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -311,6 +314,9 @@ pub struct View {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    /// Design notes kept with it, written as comment lines before it (why it is shaped as it is).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
