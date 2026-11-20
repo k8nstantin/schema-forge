@@ -280,9 +280,22 @@ impl Checker<'_> {
             if r.from.columns.len() != r.to.columns.len() || r.from.columns.is_empty() {
                 self.problem(&r.id, "both ends need the same number of columns, at least one");
             }
-            let key_of_to = to.primary_key.as_ref().is_some_and(|pk| pk.columns == r.to.columns)
-                || to.uniques.iter().any(|u| u.columns == r.to.columns)
-                || to.options.iceberg.as_ref().is_some_and(|i| i.identifier_fields == r.to.columns);
+            // The same columns in any order, as PostgreSQL and MySQL take them; a unique index is a key too.
+            let same = |cols: &[Id]| {
+                let (mut a, mut b) = (cols.to_vec(), r.to.columns.clone());
+                a.sort();
+                b.sort();
+                a == b
+            };
+            let key_of_to = to.primary_key.as_ref().is_some_and(|pk| same(&pk.columns))
+                || to.uniques.iter().any(|u| same(&u.columns))
+                || to.indexes.iter().any(|ix| {
+                    ix.unique
+                        && ix.predicate.is_none()
+                        && ix.parts.iter().all(|p| p.column.is_some())
+                        && same(&ix.parts.iter().filter_map(|p| p.column.clone()).collect::<Vec<_>>())
+                })
+                || to.options.iceberg.as_ref().is_some_and(|i| same(&i.identifier_fields));
             if !key_of_to {
                 self.problem(&r.id, format!("it must point at a primary or unique key of `{}`", to.name));
             }
