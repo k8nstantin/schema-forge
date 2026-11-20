@@ -29,7 +29,8 @@ Each is a redb table of text keys to JSON values.
 | Table | Key | Value |
 |---|---|---|
 | `meta` | `format` | the store's format version |
-| `schemas` | `<schema>` | name, type, rule collection (ordered packs and overrides), linked definitions folder, created, last opened |
+| `schemas` | `<schema>` | name, type, linked definitions folder, created, last opened |
+| `rules` | `<schema>`, and `*` for every schema | the rules linked on the schema's hierarchy, its exceptions and its groups of tables (docs/rules.md); `*` holds the global links |
 | `objects` | `<schema>/<id>` | one top-level object of the model: a namespace, area, table (with its columns, keys, checks, indexes, options), relationship, view, sequence, type or kept statement |
 | `layout` | `<schema>/<id>` | where a card sits; apart from the model, so moving a card never changes it |
 | `operations` | `<schema>/<sequence>` | one change, appended, never edited: turn, kind (`add_table`, …), the change, its inverse (for undo), who (`agent`, `import`, `file`), when, state (`applied`, `rejected`, `undone`) |

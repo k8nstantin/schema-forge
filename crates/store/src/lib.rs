@@ -5,6 +5,7 @@
 use std::path::Path;
 
 use redb::{Database, ReadableDatabase, ReadableTable, TableDefinition};
+use schema_forge_core::rules::{self, Group, Link, RuleSet, Scope};
 use schema_forge_core::{Id, Schema, Target};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -17,6 +18,11 @@ const META: TableDefinition<&str, u64> = TableDefinition::new("meta");
 const SCHEMAS: TableDefinition<&str, &str> = TableDefinition::new("schemas");
 const OBJECTS: TableDefinition<&str, &str> = TableDefinition::new("objects");
 const OPERATIONS: TableDefinition<&str, &str> = TableDefinition::new("operations");
+/// A schema's links and groups by its name; the workspace's global links under [`GLOBAL`].
+const RULES: TableDefinition<&str, &str> = TableDefinition::new("rules");
+
+/// The key of the global links, and the log they are recorded in: not a schema name, so never one's.
+pub const GLOBAL: &str = "*";
 
 /// What can go wrong with the store.
 #[derive(Debug, thiserror::Error)]
@@ -33,6 +39,8 @@ pub enum Error {
     SchemaExists(String),
     #[error("`{0}` is not a schema name: use lowercase letters, digits, `-` and `_`, starting with a letter")]
     BadName(String),
+    #[error("{0}")]
+    Rule(String),
     #[error("schema `{name}` is {schema:?}; the model given is {model:?}")]
     WrongTarget { name: String, schema: Target, model: Target },
 }
@@ -160,6 +168,7 @@ impl Store {
             txn.open_table(SCHEMAS)?;
             txn.open_table(OBJECTS)?;
             txn.open_table(OPERATIONS)?;
+            txn.open_table(RULES)?;
         }
         txn.commit()?;
         let (changes, _) = broadcast::channel(1024);
@@ -212,25 +221,7 @@ impl Store {
     /// When there is no such schema, the store fails or a record is not valid.
     pub fn model(&self, name: &str) -> Result<Schema> {
         let txn = self.db.begin_read()?;
-        let info = schema_info(&txn.open_table(SCHEMAS)?, name)?;
-        let objects = txn.open_table(OBJECTS)?;
-        let (lo, hi) = prefix_range(name);
-        let mut records: Vec<Record> = Vec::new();
-        for entry in objects.range(lo.as_str()..hi.as_str())? {
-            let (_, v) = entry?;
-            records.push(serde_json::from_str(v.value())?);
-        }
-        records.sort_by_key(|r| (r.section, r.position));
-        let mut doc = serde_json::Map::new();
-        doc.insert("format".to_string(), Value::from(info.format));
-        doc.insert("target".to_string(), serde_json::to_value(info.target)?);
-        for section in SECTIONS {
-            let items: Vec<Value> = records.iter().filter(|r| r.section == section).map(|r| r.object.clone()).collect();
-            if !items.is_empty() {
-                doc.insert(section.key().to_string(), Value::Array(items));
-            }
-        }
-        Ok(serde_json::from_value(Value::Object(doc))?)
+        read_model(&txn.open_table(SCHEMAS)?, &txn.open_table(OBJECTS)?, name)
     }
 
     /// Replaces the schema's whole model with `model` in one transaction, logs it as one operation of `kind`
@@ -288,6 +279,265 @@ impl Store {
             out.push(serde_json::from_str(v.value())?);
         }
         Ok(out)
+    }
+}
+
+/// Where a rule change goes: one schema's rules, or every schema's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Rules<'a> {
+    Global,
+    Schema(&'a str),
+}
+
+impl Rules<'_> {
+    fn key(self) -> String {
+        match self {
+            Self::Global => GLOBAL.to_string(),
+            Self::Schema(name) => name.to_string(),
+        }
+    }
+}
+
+impl Store {
+    /// The schema's links and groups.
+    ///
+    /// # Errors
+    /// When there is no such schema, the store fails or a record is not valid.
+    pub fn rules(&self, name: &str) -> Result<RuleSet> {
+        let txn = self.db.begin_read()?;
+        schema_info(&txn.open_table(SCHEMAS)?, name)?;
+        read_rules(&txn.open_table(RULES)?, name)
+    }
+
+    /// The links every schema of the workspace has.
+    ///
+    /// # Errors
+    /// When the store fails or the record is not valid.
+    pub fn global_rules(&self) -> Result<Vec<Link>> {
+        let txn = self.db.begin_read()?;
+        Ok(read_rules(&txn.open_table(RULES)?, GLOBAL)?.links)
+    }
+
+    /// Links a rule, or an exception, after checking it holds: against this schema, or for global links against
+    /// every schema of the workspace.
+    ///
+    /// # Errors
+    /// When the link does not hold ([`Error::Rule`]), there is no such schema, or the store fails.
+    pub fn link_rule(&self, to: Rules<'_>, link: Link, by: &str) -> Result<Operation> {
+        rules::well_formed(rules::catalog(), &link).map_err(Error::Rule)?;
+        match to {
+            Rules::Schema(_) if link.at == Scope::Global => {
+                return Err(Error::Rule("a global link goes to every schema, not one".to_string()));
+            }
+            Rules::Global if link.at != Scope::Global => {
+                return Err(Error::Rule("a link for every schema is at the global level".to_string()));
+            }
+            _ => {}
+        }
+        let change = serde_json::to_value(&link)?;
+        self.change_rules(to, "link_rule", by, change, |set, look| {
+            look.admit(to, set, &link)?;
+            set.links.push(link);
+            Ok(())
+        })
+    }
+
+    /// Links each of `packs` to the whole schema in one change, all or none. A pack already linked there or to
+    /// every schema is left as it is, and so is one the schema switches off: that was the operator's choice.
+    /// Returns the change, or `None` when every pack was in place.
+    ///
+    /// # Errors
+    /// When a pack does not hold ([`Error::Rule`]), there is no such schema, or the store fails.
+    pub fn link_packs(&self, name: &str, packs: &[&str], by: &str) -> Result<Option<Operation>> {
+        let global = self.global_rules()?;
+        let set = self.rules(name)?;
+        let todo: Vec<&str> = packs.iter().copied().filter(|p| rules::pack_open(&global, &set, p)).collect();
+        if todo.is_empty() {
+            return Ok(None);
+        }
+        let change = serde_json::json!({ "packs": todo });
+        self.change_rules(Rules::Schema(name), "link_packs", by, change, |set, look| {
+            for p in &todo {
+                let link = Link { rule: (*p).to_string(), at: Scope::Schema, off: false, locked: false, reason: None };
+                look.admit(Rules::Schema(name), set, &link)?;
+                set.links.push(link);
+            }
+            Ok(())
+        })
+        .map(Some)
+    }
+
+    /// Takes away the link or exception of `rule` at `at`.
+    ///
+    /// # Errors
+    /// When there is none, there is no such schema, or the store fails.
+    pub fn unlink_rule(&self, to: Rules<'_>, rule: &str, at: &Scope, by: &str) -> Result<Operation> {
+        let change = serde_json::json!({ "rule": rule, "at": at });
+        self.change_rules(to, "unlink_rule", by, change, |set, _| {
+            let before = set.links.len();
+            set.links.retain(|l| !(l.rule == rule && &l.at == at));
+            if set.links.len() == before {
+                return Err(Error::Rule(format!("`{rule}` is not linked at {}", rules::describe(at))));
+            }
+            Ok(())
+        })
+    }
+
+    /// Makes a group of tables (`new`), or changes the tables of one there is. The exceptions linked to the group
+    /// are checked again against its new tables.
+    ///
+    /// # Errors
+    /// When a table is not in the schema, a new group's name is taken or a changed one is not there, an
+    /// exception no longer holds, there is no such schema, or the store fails.
+    pub fn set_group(&self, name: &str, group: Group, new: bool, by: &str) -> Result<Operation> {
+        if group.name.trim().is_empty() {
+            return Err(Error::Rule("a group needs a name".to_string()));
+        }
+        let change = serde_json::to_value(&group)?;
+        self.change_rules(Rules::Schema(name), "set_group", by, change, |set, look| {
+            let model = look.model(name)?;
+            if let Some(t) = group.tables.iter().find(|t| !model.tables.iter().any(|m| &m.id == *t)) {
+                return Err(Error::Rule(format!("there is no table `{t}` in `{name}`")));
+            }
+            let there = set.groups.iter().any(|g| g.name == group.name);
+            if new && there {
+                return Err(Error::Rule(format!("there is a group `{}` already", group.name)));
+            }
+            if !new && !there {
+                return Err(Error::Rule(format!("there is no group `{}`", group.name)));
+            }
+            let at = Scope::Group { group: group.name.clone() };
+            set.groups.retain(|g| g.name != group.name);
+            set.groups.push(group);
+            let off: Vec<Link> = set.links.iter().filter(|l| l.at == at && l.off).cloned().collect();
+            for l in &off {
+                let mut rest = set.clone();
+                rest.links.retain(|x| !(x.rule == l.rule && x.at == l.at));
+                look.admit(Rules::Schema(name), &rest, l)?;
+            }
+            Ok(())
+        })
+    }
+
+    /// Takes away a group no rule is linked to.
+    ///
+    /// # Errors
+    /// When rules are linked to it, there is no such group or schema, or the store fails.
+    pub fn remove_group(&self, name: &str, group: &str, by: &str) -> Result<Operation> {
+        let change = serde_json::json!({ "group": group });
+        self.change_rules(Rules::Schema(name), "remove_group", by, change, |set, _| {
+            let at = Scope::Group { group: group.to_string() };
+            if set.links.iter().any(|l| l.at == at) {
+                return Err(Error::Rule(format!("rules are linked to group `{group}`: take them away first")));
+            }
+            let before = set.groups.len();
+            set.groups.retain(|g| g.name != group);
+            if set.groups.len() == before {
+                return Err(Error::Rule(format!("there is no group `{group}`")));
+            }
+            Ok(())
+        })
+    }
+
+    /// Reads the rules of `to`, applies `edit`, writes them back and logs the change, in one transaction.
+    fn change_rules(
+        &self,
+        to: Rules<'_>,
+        kind: &str,
+        by: &str,
+        change: Value,
+        edit: impl FnOnce(&mut RuleSet, &Look<'_, '_>) -> Result<()>,
+    ) -> Result<Operation> {
+        let key = to.key();
+        let txn = self.db.begin_write()?;
+        let operation;
+        {
+            let schemas = txn.open_table(SCHEMAS)?;
+            if let Rules::Schema(name) = to {
+                schema_info(&schemas, name)?;
+            }
+            let objects = txn.open_table(OBJECTS)?;
+            let mut table = txn.open_table(RULES)?;
+            let mut set = read_rules(&table, &key)?;
+            edit(&mut set, &Look { schemas: &schemas, objects: &objects, rules: &table })?;
+            table.insert(key.as_str(), serde_json::to_string(&set)?.as_str())?;
+            let mut ops = txn.open_table(OPERATIONS)?;
+            let sequence = last_sequence(&ops, &key)? + 1;
+            operation = Operation { sequence, kind: kind.to_string(), by: by.to_string(), change };
+            ops.insert(operation_key(&key, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
+        }
+        txn.commit()?;
+        let _ = self.changes.send(Change { schema: key, operation: operation.clone() });
+        Ok(operation)
+    }
+}
+
+/// The schema `name`'s model, read back from its records in `objects`.
+fn read_model(
+    schemas: &impl ReadableTable<&'static str, &'static str>,
+    objects: &impl ReadableTable<&'static str, &'static str>,
+    name: &str,
+) -> Result<Schema> {
+    let info = schema_info(schemas, name)?;
+    let (lo, hi) = prefix_range(name);
+    let mut records: Vec<Record> = Vec::new();
+    for entry in objects.range(lo.as_str()..hi.as_str())? {
+        let (_, v) = entry?;
+        records.push(serde_json::from_str(v.value())?);
+    }
+    records.sort_by_key(|r| (r.section, r.position));
+    let mut doc = serde_json::Map::new();
+    doc.insert("format".to_string(), Value::from(info.format));
+    doc.insert("target".to_string(), serde_json::to_value(info.target)?);
+    for section in SECTIONS {
+        let items: Vec<Value> = records.iter().filter(|r| r.section == section).map(|r| r.object.clone()).collect();
+        if !items.is_empty() {
+            doc.insert(section.key().to_string(), Value::Array(items));
+        }
+    }
+    Ok(serde_json::from_value(Value::Object(doc))?)
+}
+
+/// What a rules change reads, inside its own write transaction, so a check and the write it allows see the
+/// same store.
+struct Look<'a, 't> {
+    schemas: &'a redb::Table<'t, &'static str, &'static str>,
+    objects: &'a redb::Table<'t, &'static str, &'static str>,
+    rules: &'a redb::Table<'t, &'static str, &'static str>,
+}
+
+impl Look<'_, '_> {
+    fn model(&self, name: &str) -> Result<Schema> {
+        read_model(self.schemas, self.objects, name)
+    }
+
+    /// Checks `link` may be added to `set`, the rules of `to`: against that schema, or for a global link
+    /// against every schema of the workspace.
+    fn admit(&self, to: Rules<'_>, set: &RuleSet, link: &Link) -> Result<()> {
+        let cat = rules::catalog();
+        match to {
+            Rules::Schema(name) => {
+                let global = read_rules(self.rules, GLOBAL)?.links;
+                rules::admit(cat, &self.model(name)?, &global, set, link).map_err(Error::Rule)
+            }
+            Rules::Global => {
+                for entry in self.schemas.iter()? {
+                    let (k, _) = entry?;
+                    let name = k.value();
+                    let own = read_rules(self.rules, name)?;
+                    rules::admit(cat, &self.model(name)?, &set.links, &own, link)
+                        .map_err(|e| Error::Rule(format!("{name}: {e}")))?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+fn read_rules(table: &impl ReadableTable<&'static str, &'static str>, key: &str) -> Result<RuleSet> {
+    match table.get(key)? {
+        Some(v) => Ok(serde_json::from_str(v.value())?),
+        None => Ok(RuleSet::default()),
     }
 }
 

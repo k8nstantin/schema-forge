@@ -10,10 +10,11 @@ use axum::extract::{Path, State};
 use axum::http::{StatusCode, Uri, header};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{delete, get, post, put};
 use rust_embed::RustEmbed;
+use schema_forge_core::rules::{self, Group, Link, Scope};
 use schema_forge_core::{Id, Target};
-use schema_forge_store::Store;
+use schema_forge_store::{Rules, Store};
 use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::BroadcastStream;
 
@@ -30,6 +31,16 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/schemas/{name}", get(model))
         .route("/api/schemas/{name}/definition/{id}", get(definition))
         .route("/api/schemas/{name}/shape", get(shape))
+        .route("/api/rules", get(catalog))
+        .route("/api/rules/global/links", post(link_global))
+        .route("/api/rules/global/unlink", post(unlink_global))
+        .route("/api/schemas/{name}/rules", get(schema_rules))
+        .route("/api/schemas/{name}/rules/links", post(link))
+        .route("/api/schemas/{name}/rules/preview", post(preview))
+        .route("/api/schemas/{name}/rules/unlink", post(unlink))
+        .route("/api/schemas/{name}/rules/groups", put(set_group).post(new_group))
+        .route("/api/schemas/{name}/rules/groups/{group}", delete(remove_group))
+        .route("/api/schemas/{name}/goals/{goal}", post(goal))
         .route("/api/events", get(events))
         .fallback(canvas)
         .with_state(store)
@@ -57,10 +68,12 @@ async fn schemas(State(store): State<Arc<Store>>) -> Response {
     }
 }
 
-/// A store error as a response: an unknown schema is not found, anything else is the server's failure.
+/// A store error as a response: an unknown schema is not found, a rule change that does not hold is the
+/// request's fault, anything else is the server's failure.
 fn store_failed(e: schema_forge_store::Error) -> Response {
     match e {
         schema_forge_store::Error::NoSchema(_) => failed(StatusCode::NOT_FOUND, e),
+        schema_forge_store::Error::Rule(_) => failed(StatusCode::BAD_REQUEST, e),
         e => failed(StatusCode::INTERNAL_SERVER_ERROR, e),
     }
 }
@@ -76,6 +89,124 @@ async fn model(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Res
 async fn shape(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Response {
     match store.model(&name) {
         Ok(m) => axum::Json(schema_forge_core::shape(&m)).into_response(),
+        Err(e) => store_failed(e),
+    }
+}
+
+/// Who a change made through the perspectives is recorded as.
+const BY: &str = "you";
+
+/// Every built-in rule, goal and type map.
+async fn catalog() -> Response {
+    axum::Json(rules::catalog()).into_response()
+}
+
+/// The schema's rules: the global links, its own links and groups, and the schema checked against them.
+async fn schema_rules(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Response {
+    let read = || -> schema_forge_store::Result<serde_json::Value> {
+        let model = store.model(&name)?;
+        let global = store.global_rules()?;
+        let set = store.rules(&name)?;
+        let report = rules::check(&model, &global, &set);
+        Ok(serde_json::json!({ "global": global, "links": set.links, "groups": set.groups, "report": report }))
+    };
+    match read() {
+        Ok(v) => axum::Json(v).into_response(),
+        Err(e) => store_failed(e),
+    }
+}
+
+/// What the schema would break if `links` were added to its own: nothing is stored.
+async fn preview(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::Json(links): axum::Json<Vec<Link>>,
+) -> Response {
+    let read = || -> schema_forge_store::Result<rules::Report> {
+        let model = store.model(&name)?;
+        let global = store.global_rules()?;
+        let mut set = store.rules(&name)?;
+        set.links.extend(links);
+        Ok(rules::check(&model, &global, &set))
+    };
+    match read() {
+        Ok(r) => axum::Json(r).into_response(),
+        Err(e) => store_failed(e),
+    }
+}
+
+fn done(r: schema_forge_store::Result<schema_forge_store::Operation>) -> Response {
+    match r {
+        Ok(op) => axum::Json(op).into_response(),
+        Err(e) => store_failed(e),
+    }
+}
+
+/// A link or exception for one schema.
+async fn link(State(store): State<Arc<Store>>, Path(name): Path<String>, axum::Json(l): axum::Json<Link>) -> Response {
+    done(store.link_rule(Rules::Schema(&name), l, BY))
+}
+
+/// What to take away: the rule and the level it is linked at.
+#[derive(serde::Deserialize)]
+struct Unlink {
+    rule: String,
+    at: Scope,
+}
+
+async fn unlink(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::Json(u): axum::Json<Unlink>,
+) -> Response {
+    done(store.unlink_rule(Rules::Schema(&name), &u.rule, &u.at, BY))
+}
+
+async fn link_global(State(store): State<Arc<Store>>, axum::Json(l): axum::Json<Link>) -> Response {
+    done(store.link_rule(Rules::Global, l, BY))
+}
+
+async fn unlink_global(State(store): State<Arc<Store>>, axum::Json(u): axum::Json<Unlink>) -> Response {
+    done(store.unlink_rule(Rules::Global, &u.rule, &u.at, BY))
+}
+
+async fn set_group(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::Json(g): axum::Json<Group>,
+) -> Response {
+    done(store.set_group(&name, g, false, BY))
+}
+
+async fn new_group(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::Json(g): axum::Json<Group>,
+) -> Response {
+    done(store.set_group(&name, g, true, BY))
+}
+
+async fn remove_group(State(store): State<Arc<Store>>, Path((name, group)): Path<(String, String)>) -> Response {
+    done(store.remove_group(&name, &group, BY))
+}
+
+/// Links a goal's packs to the whole schema, those not in place yet, all or none.
+async fn goal(State(store): State<Arc<Store>>, Path((name, goal)): Path<(String, String)>) -> Response {
+    let Some(g) = rules::catalog().goals.iter().find(|g| g.id == goal) else {
+        return failed(StatusCode::NOT_FOUND, format!("there is no goal `{goal}`"));
+    };
+    let target = match store.schemas() {
+        Ok(list) => match list.into_iter().find(|s| s.name == name) {
+            Some(s) => s.target,
+            None => return failed(StatusCode::NOT_FOUND, format!("there is no schema `{name}`")),
+        },
+        Err(e) => return store_failed(e),
+    };
+    let Some((_, packs)) = g.packs.iter().find(|(t, _)| *t == target) else {
+        return failed(StatusCode::BAD_REQUEST, format!("`{}` is not for a {target:?} schema", g.title));
+    };
+    match store.link_packs(&name, packs, BY) {
+        Ok(op) => axum::Json(op.into_iter().collect::<Vec<_>>()).into_response(),
         Err(e) => store_failed(e),
     }
 }

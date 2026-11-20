@@ -215,3 +215,52 @@ export interface Shape {
   families: { namespace: string; name: string; tables: number; copies: number }[]
   links: { from: string; column: string; to: string; declared: boolean; shared: boolean }[]
 }
+
+/// The rules (crates/core/src/rules): a level of the hierarchy a rule is linked at.
+export type Scope =
+  | { level: 'global' }
+  | { level: 'schema' }
+  | { level: 'namespace'; namespace: string }
+  | { level: 'family'; namespace: string; family: string }
+  | { level: 'group'; group: string }
+  | { level: 'table'; table: string }
+
+/// Where a rule applies: every database, one of them, or between two.
+export type Lane = 'shared' | 'mysql' | 'postgres' | 'iceberg' | 'between'
+
+export interface Rule {
+  id: string
+  title: string
+  strength: 'must' | 'should'
+  why: string
+  rules?: string[]
+  lane: Lane
+  topic: string
+  targets?: Target[]
+}
+
+export interface Goal {
+  id: string
+  title: string
+  about: string
+  packs: [Target, string[]][]
+  outside: [Target, [string, string][]][]
+}
+
+export interface MapRow { from: string; to: string; grade: 'exact' | 'widened' | 'decide' | 'lossy' | 'none'; why: string }
+export interface TypeMap { id: string; from: Target; to: Target; rows: MapRow[] }
+export interface Catalog { rules: Rule[]; goals: Goal[]; maps: TypeMap[] }
+
+export interface RuleLink { rule: string; at: Scope; off?: boolean; locked?: boolean; reason?: string }
+export interface RuleGroup { name: string; tables: string[] }
+export interface Applied { rule: string; from: Scope; locked?: boolean }
+export interface Excepted { rule: string; at: Scope; reason: string }
+export interface Finding { rule: string; table: string; column?: string; message: string }
+export interface Tally { checked: number; breaks: number }
+export interface Report {
+  tallies: Record<string, Tally>
+  findings: Finding[]
+  tables: Record<string, { applied: Applied[]; excepted?: Excepted[] }>
+  problems: string[]
+}
+export interface SchemaRules { global: RuleLink[]; links: RuleLink[]; groups: RuleGroup[]; report: Report }

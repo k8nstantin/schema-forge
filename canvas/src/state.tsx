@@ -3,9 +3,9 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 
-import { typeLabel, type Column, type Schema, type Shape, type Table } from './model'
+import { typeLabel, type Catalog, type Column, type Schema, type SchemaRules, type Shape, type Table } from './model'
 
-export type Perspective = 'tables' | 'categories' | 'table' | 'map'
+export type Perspective = 'tables' | 'categories' | 'table' | 'map' | 'rules'
 
 /// What you point at: a table, or one of its columns.
 export type Pointer = { kind: 'table'; table: string } | { kind: 'column'; table: string; column: string } | null
@@ -18,6 +18,12 @@ export interface Workbench {
   go: (perspective: Perspective, arg?: string) => void
   pointer: Pointer
   point: (p: Pointer) => void
+  /// Every built-in rule, goal and type map.
+  catalog: Catalog
+  /// The schema's links, groups, and the schema checked against them.
+  rules: SchemaRules
+  /// Reads the rules again, after a change made here (the change also arrives live).
+  reloadRules: () => void
 }
 
 const Context = createContext<Workbench | null>(null)

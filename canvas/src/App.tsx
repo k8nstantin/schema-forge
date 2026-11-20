@@ -6,10 +6,11 @@ import { useHotkeys } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { changes, model as fetchModel, shape as fetchShape, type Change } from './api'
-import type { Schema, Shape } from './model'
+import { catalog as fetchCatalog, changes, model as fetchModel, schemaRules, shape as fetchShape, type Change } from './api'
+import type { Catalog, Schema, SchemaRules, Shape } from './model'
 import { Categories } from './perspectives/Categories'
 import { Home } from './perspectives/Home'
+import { RulesView } from './rules/RulesView'
 import { MapView } from './perspectives/MapView'
 import { Tables } from './perspectives/Tables'
 import { TableView } from './perspectives/TableView'
@@ -20,6 +21,7 @@ const PERSPECTIVES: { value: Perspective; label: string }[] = [
   { value: 'categories', label: 'Categories' },
   { value: 'table', label: 'Table' },
   { value: 'map', label: 'Map' },
+  { value: 'rules', label: 'Rules' },
 ]
 const TARGET = { postgres: 'PostgreSQL', mysql: 'MySQL', iceberg: 'Iceberg' } as const
 
@@ -39,7 +41,8 @@ function writeHash(p: Place) {
 export default function App() {
   const [place, setPlace] = useState(readHash)
   const { schema, perspective, arg } = place
-  const [loaded, setLoaded] = useState<{ name: string; model: Schema; shape: Shape } | null>(null)
+  const [loaded, setLoaded] = useState<{ name: string; model: Schema; shape: Shape; rules: SchemaRules } | null>(null)
+  const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [pointer, point] = useState<Pointer>(null)
   const [activity, setActivity] = useState<Change[]>([])
   const [homeVersion, setHomeVersion] = useState(0)
@@ -58,13 +61,24 @@ export default function App() {
   }, [])
 
   const load = useCallback((name: string) => {
-    Promise.all([fetchModel(name), fetchShape(name)]).then(
-      ([model, shape]) => {
-        setLoaded({ name, model, shape })
+    Promise.all([fetchModel(name), fetchShape(name), schemaRules(name)]).then(
+      ([model, shape, rules]) => {
+        setLoaded({ name, model, shape, rules })
         setError(null)
       },
       (e) => setError(String(e.message ?? e)),
     )
+  }, [])
+
+  const reloadRules = useCallback((name: string) => {
+    schemaRules(name).then(
+      (rules) => setLoaded((l) => (l && l.name === name ? { ...l, rules } : l)),
+      (e) => notifications.show({ color: 'red', message: String(e.message ?? e) }),
+    )
+  }, [])
+
+  useEffect(() => {
+    fetchCatalog().then(setCatalog, (e) => setError(String(e.message ?? e)))
   }, [])
 
   useEffect(() => {
@@ -78,9 +92,12 @@ export default function App() {
       changes((c) => {
         setActivity((a) => [c, ...a].slice(0, 30))
         setHomeVersion((v) => v + 1)
-        if (c.schema === schema) load(c.schema)
+        if (c.schema === schema) {
+          if (c.kind.endsWith('_rule') || c.kind.endsWith('_group')) reloadRules(c.schema)
+          else load(c.schema)
+        } else if (c.schema === '*' && schema) reloadRules(schema)
       }),
-    [schema, load],
+    [schema, load, reloadRules],
   )
 
   const current = loaded && loaded.name === schema ? loaded : null
@@ -103,6 +120,7 @@ export default function App() {
     ['2', () => go('categories')],
     ['3', () => go('table', pointer?.table)],
     ['4', () => go('map')],
+    ['5', () => go('rules')],
     ['Escape', () => point(null)],
   ])
 
@@ -149,13 +167,14 @@ export default function App() {
       <main className="sf-main">
         {!schema && <Home open={(n) => open({ schema: n, perspective: 'tables' })} version={homeVersion} />}
         {schema && error && <Text c="red" p="lg">{error}</Text>}
-        {schema && !error && !current && <Text c="dimmed" p="lg">Opening {schema}…</Text>}
-        {schema && current && (
-          <WorkbenchProvider value={{ name: schema, model: current.model, shape: current.shape, go, pointer, point }}>
+        {schema && !error && (!current || !catalog) && <Text c="dimmed" p="lg">Opening {schema}…</Text>}
+        {schema && current && catalog && (
+          <WorkbenchProvider value={{ name: schema, model: current.model, shape: current.shape, go, pointer, point, catalog, rules: current.rules, reloadRules: () => reloadRules(schema) }}>
             {perspective === 'tables' && <Tables />}
             {perspective === 'categories' && <Categories />}
             {perspective === 'table' && <TableView id={arg} />}
             {perspective === 'map' && <MapView family={arg} />}
+            {perspective === 'rules' && <RulesView arg={arg} />}
           </WorkbenchProvider>
         )}
       </main>

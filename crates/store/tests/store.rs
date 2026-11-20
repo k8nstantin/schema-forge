@@ -79,3 +79,77 @@ fn what_is_refused() {
     let iceberg = fixture("orders_iceberg.json");
     assert!(matches!(store.replace_model("orders", &iceberg, "import", "import"), Err(Error::WrongTarget { .. })));
 }
+
+#[test]
+fn rules_are_linked_checked_logged_and_kept() {
+    use schema_forge_core::rules::{Group, Link, Scope};
+    use schema_forge_store::Rules;
+    let dir = tempfile::tempdir().expect("dir");
+    let path = dir.path().join("store.redb");
+    let model = fixture("orders_iceberg.json");
+    let table = model.tables[0].id.clone();
+    let link = |rule: &str, at: Scope| Link { rule: rule.to_string(), at, off: false, locked: false, reason: None };
+    {
+        let store = Store::open(&path).expect("open");
+        store.create_schema("lake", Target::Iceberg).expect("create");
+        store.replace_model("lake", &model, "import", "import").expect("save");
+        let mut heard = store.subscribe();
+        store.link_rule(Rules::Global, Link { locked: true, ..link("pk", Scope::Global) }, "you").expect("global");
+        assert_eq!(heard.try_recv().expect("announced").schema, "*");
+        store.link_rule(Rules::Schema("lake"), link("norm", Scope::Schema), "you").expect("link");
+        let op = store
+            .set_group("lake", Group { name: "hot".to_string(), tables: vec![table.clone()] }, true, "you")
+            .expect("group");
+        let again = Group { name: "hot".to_string(), tables: vec![] };
+        assert!(store.set_group("lake", again.clone(), true, "you").is_err(), "a new group never replaces one");
+        let cold = Group { name: "cold".to_string(), ..again };
+        assert!(store.set_group("lake", cold, false, "you").is_err(), "only a group there is can change");
+        assert_eq!(op.kind, "set_group");
+        store
+            .link_rule(Rules::Schema("lake"), link("cdc", Scope::Group { group: "hot".to_string() }), "you")
+            .expect("on the group");
+        // Refused: an unknown rule, a missing level, a locked rule switched off, an exception without a reason.
+        let refused = |l: Link| matches!(store.link_rule(Rules::Schema("lake"), l, "you"), Err(Error::Rule(_)));
+        assert!(refused(link("nope", Scope::Schema)));
+        assert!(refused(link("norm", Scope::Group { group: "cold".to_string() })));
+        assert!(refused(Link { off: true, reason: Some("no".to_string()), ..link("pk.ident", Scope::Schema) }));
+        assert!(refused(Link { off: true, ..link("norm", Scope::Table { table: table.clone() }) }));
+        assert!(refused(link("norm", Scope::Global)), "a global link goes through Rules::Global");
+        assert!(matches!(store.remove_group("lake", "hot", "you"), Err(Error::Rule(_))), "rules are linked to it");
+        store
+            .link_rule(
+                Rules::Schema("lake"),
+                Link {
+                    off: true,
+                    reason: Some("kept as the source sends it".to_string()),
+                    ..link("norm.copies", Scope::Table { table: table.clone() })
+                },
+                "you",
+            )
+            .expect("an exception with a reason");
+        let kinds: Vec<String> = store.operations("lake").expect("log").into_iter().map(|o| o.kind).collect();
+        assert_eq!(kinds, ["import", "link_rule", "set_group", "link_rule", "link_rule"]);
+    }
+    let store = Store::open(&path).expect("reopen");
+    let set = store.rules("lake").expect("rules");
+    assert_eq!(set.links.len(), 3);
+    assert_eq!(set.groups[0].tables, std::slice::from_ref(&table));
+    assert_eq!(store.global_rules().expect("global").len(), 1);
+    store.unlink_rule(Rules::Schema("lake"), "cdc", &Scope::Group { group: "hot".to_string() }, "you").expect("unlink");
+    store.remove_group("lake", "hot", "you").expect("now it can go");
+    assert!(store.unlink_rule(Rules::Schema("lake"), "cdc", &Scope::Schema, "you").is_err(), "nothing linked there");
+    assert!(matches!(store.rules("nowhere"), Err(Error::NoSchema(_))));
+    // A goal links what is not in place, all at once; `pk` is linked to every schema already.
+    let op = store.link_packs("lake", &["norm", "pk", "cdc"], "you").expect("packs").expect("a change");
+    assert_eq!(op.change, serde_json::json!({ "packs": ["cdc"] }));
+    assert!(store.link_packs("lake", &["norm", "cdc"], "you").expect("packs").is_none(), "nothing left to link");
+    // Every rule switched off for every schema: `*` is no catalog rule, but it is a link; without a reason it is not.
+    let all = Link {
+        off: true,
+        reason: Some("a scratch workspace".to_string()),
+        ..link(schema_forge_core::rules::ALL, Scope::Global)
+    };
+    let bare = Link { reason: None, ..all.clone() };
+    assert!(matches!(store.link_rule(Rules::Global, bare, "you"), Err(Error::Rule(_))));
+    store.link_rule(Rules::Global, all, "you").expect("every rule off");
+}

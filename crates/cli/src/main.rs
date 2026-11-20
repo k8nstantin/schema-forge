@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use schema_forge_core::Target;
+use schema_forge_core::rules::{self, Strength};
+use schema_forge_core::{Id, Target};
 use schema_forge_dialects::{Imported, iceberg, postgres};
 use schema_forge_store::Store;
 
@@ -41,6 +42,11 @@ enum Command {
     },
     /// List the workspace's schemas.
     Schemas,
+    /// Check a schema against the rules linked to it in the perspectives; fails when a Must rule breaks.
+    Check {
+        #[arg(long)]
+        schema: String,
+    },
     /// Serve the perspectives of the workspace, and open them.
     Serve {
         #[arg(long, default_value_t = 7410)]
@@ -120,6 +126,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 }
             }))
         }
+        Command::Check { schema } => check(&store, &schema),
         Command::Schemas => {
             for s in store.schemas().map_err(|e| e.to_string())? {
                 println!("{}\t{}", s.name, target_name(s.target));
@@ -127,6 +134,35 @@ fn run(cli: Cli) -> Result<(), String> {
             Ok(())
         }
     }
+}
+
+fn check(store: &Store, schema: &str) -> Result<(), String> {
+    let model = store.model(schema).map_err(|e| e.to_string())?;
+    let global = store.global_rules().map_err(|e| e.to_string())?;
+    let set = store.rules(schema).map_err(|e| e.to_string())?;
+    let report = rules::check(&model, &global, &set);
+    let cat = rules::catalog();
+    for p in &report.problems {
+        println!("problem: {p}");
+    }
+    if report.tallies.is_empty() {
+        println!("no rules are linked to `{schema}`: link them in the Rules perspective");
+        return Ok(());
+    }
+    let mut must = 0;
+    for (id, t) in &report.tallies {
+        let Some(rule) = cat.rule(id).filter(|r| r.rules.is_empty()) else { continue };
+        let strength = if rule.strength == Strength::Must { "must  " } else { "should" };
+        println!("{strength} {id:<32} {:>6} checked {:>6} break   {}", t.checked, t.breaks, rule.title);
+        if rule.strength == Strength::Must {
+            must += t.breaks;
+        }
+    }
+    let names: std::collections::HashMap<&Id, &str> = model.tables.iter().map(|t| (&t.id, t.name.as_str())).collect();
+    for f in &report.findings {
+        println!("  {} @{}: {}", f.rule, names.get(&f.table).copied().unwrap_or(f.table.as_str()), f.message);
+    }
+    if must > 0 { Err(format!("{must} break a Must rule")) } else { Ok(()) }
 }
 
 /// Opens `url` in the default browser; a failure is only reported, the server runs on.

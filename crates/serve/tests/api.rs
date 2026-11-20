@@ -70,6 +70,7 @@ async fn what_is_missing_is_not_found_and_never_the_app() {
         "/api/schemas/nowhere",
         "/api/schemas/nowhere/definition/t_orders",
         "/api/schemas/nowhere/shape",
+        "/api/schemas/nowhere/rules",
         "/api/schemas/orders/definition/t_nothing",
         "/api/nothing",
     ] {
@@ -81,4 +82,109 @@ async fn what_is_missing_is_not_found_and_never_the_app() {
     }
     let (status, _) = get(&store, "/api/schemas/orders/definition/Not%20an%20id").await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+async fn send(store: &Arc<Store>, method: &str, uri: &str, body: serde_json::Value) -> (StatusCode, serde_json::Value) {
+    let request = Request::builder()
+        .method(method)
+        .uri(uri)
+        .header("content-type", "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("request");
+    let response = schema_forge_serve::app(store.clone()).oneshot(request).await.expect("response");
+    let status = response.status();
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.expect("body");
+    (status, serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null))
+}
+
+#[tokio::test]
+async fn rules_are_read_linked_and_refused_with_a_reason() {
+    let dir = tempfile::tempdir().expect("dir");
+    let store = store(&dir);
+
+    let (status, body) = get(&store, "/api/rules").await;
+    assert_eq!(status, StatusCode::OK);
+    let catalog: serde_json::Value = serde_json::from_str(&body).expect("json");
+    assert!(catalog["rules"].as_array().is_some_and(|r| r.iter().any(|x| x["id"] == "cdc")));
+    assert_eq!(catalog["maps"].as_array().map(Vec::len), Some(6));
+
+    let (status, op) = send(
+        &store,
+        "POST",
+        "/api/schemas/orders/rules/links",
+        serde_json::json!({ "rule": "docs", "at": { "level": "schema" } }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{op}");
+    assert_eq!(op["kind"], "link_rule");
+    let (status, err) = send(
+        &store,
+        "POST",
+        "/api/schemas/orders/rules/links",
+        serde_json::json!({ "rule": "docs", "at": { "level": "table", "table": "t_orders" }, "off": true }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "an exception needs a reason");
+    assert!(err["error"].as_str().is_some_and(|e| e.contains("reason")), "{err}");
+    let hot = serde_json::json!({ "name": "hot", "tables": ["t_orders"] });
+    let (status, _) = send(&store, "PUT", "/api/schemas/orders/rules/groups", hot.clone()).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "only a group there is can change");
+    let (status, _) = send(&store, "POST", "/api/schemas/orders/rules/groups", hot.clone()).await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _) = send(&store, "POST", "/api/schemas/orders/rules/groups", hot.clone()).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "a new group never replaces one");
+    let (status, _) = send(&store, "PUT", "/api/schemas/orders/rules/groups", hot).await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, ops) = send(&store, "POST", "/api/schemas/orders/goals/postgres-iceberg", serde_json::json!({})).await;
+    assert_eq!(status, StatusCode::OK, "{ops}");
+    assert_eq!(ops.as_array().map(Vec::len), Some(1), "the goal links its packs in one change");
+    assert_eq!(ops[0]["change"]["packs"].as_array().map(Vec::len), Some(2), "{ops}");
+    let (_, again) = send(&store, "POST", "/api/schemas/orders/goals/postgres-iceberg", serde_json::json!({})).await;
+    assert_eq!(again, serde_json::json!([]), "nothing left to link");
+    let (status, _) = send(&store, "POST", "/api/schemas/orders/goals/nothing", serde_json::json!({})).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    let (status, preview) = send(
+        &store,
+        "POST",
+        "/api/schemas/orders/rules/preview",
+        serde_json::json!([{ "rule": "scd2", "at": { "level": "schema" } }]),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(preview["tallies"]["scd2.columns"]["checked"].as_u64().is_some_and(|n| n > 0), "{preview}");
+    let (status, body) = get(&store, "/api/schemas/orders/rules").await;
+    assert_eq!(status, StatusCode::OK);
+    let rules: serde_json::Value = serde_json::from_str(&body).expect("json");
+    assert_eq!(rules["links"].as_array().map(Vec::len), Some(3), "the preview stored nothing");
+    assert_eq!(rules["groups"][0]["name"], "hot");
+    assert!(rules["report"]["tallies"]["docs"]["checked"].as_u64().is_some_and(|n| n > 0));
+    assert!(rules["report"]["tables"]["t_orders"]["applied"].as_array().is_some_and(|a| a.len() == 3));
+
+    let (status, _) = send(
+        &store,
+        "POST",
+        "/api/schemas/orders/rules/unlink",
+        serde_json::json!({ "rule": "docs", "at": { "level": "schema" } }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _) = send(&store, "DELETE", "/api/schemas/orders/rules/groups/hot", serde_json::json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _) = send(
+        &store,
+        "POST",
+        "/api/rules/global/links",
+        serde_json::json!({ "rule": "pk", "at": { "level": "global" }, "locked": true }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _) = send(
+        &store,
+        "POST",
+        "/api/schemas/orders/rules/links",
+        serde_json::json!({ "rule": "pk.present", "at": { "level": "schema" }, "off": true, "reason": "no" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "pk is locked for every schema");
 }

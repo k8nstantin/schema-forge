@@ -1,6 +1,6 @@
 // The server's API: the workspace's schemas, a schema's model, an object's SQL, and every change as it lands.
 
-import type { Schema, SchemaInfo, Shape } from './model'
+import type { Catalog, Report, RuleGroup, RuleLink, Schema, SchemaInfo, SchemaRules, Scope, Shape } from './model'
 
 async function json<T>(path: string): Promise<T> {
   const r = await fetch(path)
@@ -34,3 +34,25 @@ export function changes(on: (c: Change) => void): () => void {
   source.addEventListener('change', (e) => on(JSON.parse((e as MessageEvent).data)))
   return () => source.close()
 }
+
+async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const r = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
+  if (!r.ok) {
+    const b = await r.json().catch(() => ({ error: r.statusText }))
+    throw new Error(b.error ?? r.statusText)
+  }
+  return r.json() as Promise<T>
+}
+
+const rulesOf = (name: string) => `/api/schemas/${encodeURIComponent(name)}/rules`
+export const catalog = () => json<Catalog>('/api/rules')
+export const schemaRules = (name: string) => json<SchemaRules>(rulesOf(name))
+export const preview = (name: string, links: RuleLink[]) => send<Report>('POST', `${rulesOf(name)}/preview`, links)
+export const linkRule = (name: string | null, link: RuleLink) =>
+  send('POST', name === null ? '/api/rules/global/links' : `${rulesOf(name)}/links`, link)
+export const unlinkRule = (name: string | null, rule: string, at: Scope) =>
+  send('POST', name === null ? '/api/rules/global/unlink' : `${rulesOf(name)}/unlink`, { rule, at })
+export const setGroup = (name: string, group: RuleGroup) => send('PUT', `${rulesOf(name)}/groups`, group)
+export const newGroup = (name: string, group: RuleGroup) => send('POST', `${rulesOf(name)}/groups`, group)
+export const removeGroup = (name: string, group: string) => send('DELETE', `${rulesOf(name)}/groups/${encodeURIComponent(group)}`)
+export const applyGoal = (name: string, goal: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/goals/${encodeURIComponent(goal)}`)
