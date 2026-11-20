@@ -129,6 +129,26 @@ What a table tagged with a pattern must have; the agent applies the pattern on r
 - **Append-only / event tables:** no update columns, an event time, partitioned by it on Iceberg
 - **Bridge tables:** exactly two relationships, their pair unique
 
+### Debezium (a rule pack)
+
+For a MySQL schema whose changes are captured by Debezium. Add the pack in Standards, to a template or one
+schema; a [CDC pipeline](cdc.md) adds it to its source for you.
+
+- **Keys:** every captured table has a primary key, or a key Debezium is told to use
+  (`message.key.columns`); without one there are no reliable updates or deletes downstream.
+- **Types Debezium carries badly:** `BIGINT UNSIGNED` only with `bigint.unsigned.handling.mode=precise`;
+  no `FLOAT` or `DOUBLE` for money; `DECIMAL` only with `decimal.handling.mode=precise`; `TIME` within one
+  day; no zero dates in `NOT NULL` date and time columns.
+- **Booleans:** `TINYINT(1)` used as a boolean is marked so the TinyInt-to-boolean converter covers it, and
+  `TINYINT(1)` used as a number is not.
+- **Time:** one type for points in time (`TIMESTAMP` arrives zoned in UTC, `DATETIME` without a zone);
+  mixing them is flagged.
+- **Names:** column names valid for Avro (`[A-Za-z_][A-Za-z0-9_]*`) when the pipeline uses Avro, or the
+  name adjustment noted; no source column named like a CDC field (`__op`, `__deleted`, `__source_ts_ms`).
+- **Enums:** a change to `ENUM` or `SET` values flagged, since it changes what consumers receive.
+- **Schema changes:** renames and type changes on captured tables flagged as changes every downstream
+  consumer must take; additions pass.
+
 ### Documentation
 
 - a comment on every table, view and column (or only on tables, or on keys)

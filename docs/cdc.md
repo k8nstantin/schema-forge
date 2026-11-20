@@ -15,6 +15,8 @@ first.
                                                                                      + Debezium settings
 ```
 
+- The source follows the **Debezium rule pack** ([rules.md](rules.md#debezium-a-rule-pack)), which a
+  pipeline adds to it.
 - A **pipeline** links two schemas in Schema Forge: a MySQL source and an Iceberg target. It carries the
   rules for the mapping and the Debezium profile.
 - The Iceberg tables are generated from the source by those rules; you and the agent then refine them
