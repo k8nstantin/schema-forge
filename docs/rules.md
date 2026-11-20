@@ -120,9 +120,12 @@ system enforces them.
    proposal; not contradicting a linked rule (a rule that columns could keep only by breaking a linked type rule
    is a conflict); and what it would break if approved. Proposals for every schema are refused: global rules are
    yours.
-4. **You approve** in the Rules perspective's Review: hard or soft, approve or reject. A conflict is approved only
-   with the contradicted rule switched off there, with a reason. An approved new rule joins the workspace's
-   catalog (`custom.<n>`), linked where it was proposed, with who proposed and approved it.
+4. **You approve** in the Rules perspective's Review: hard or soft, approve or reject. Approving a conflict switches
+   each contradicted rule off there in the same change: its link at that level is taken away, otherwise an
+   exception records that the proposal replaced it (refused if it is locked). An approved new rule joins the
+   workspace's catalog under the next free `custom.<n>`, linked where it was proposed, with who proposed and
+   approved it; one that names types or transforms holds only on schemas of that target. The check and the write
+   are one transaction, and the log records the rule, the link and what was switched off.
 5. **The system enforces**: the agent reads the rules in force (`rules`, `check`) and designs within them; when
    its operations land, a change that breaks a hard rule is refused. The agent can never approve, link or switch
    off a rule itself: that comes back as a proposal.
