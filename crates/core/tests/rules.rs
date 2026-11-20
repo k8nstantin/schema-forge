@@ -205,6 +205,48 @@ fn rules_are_optional_for_a_schema_or_a_group_even_when_locked() {
     );
 }
 
+#[test]
+fn an_exception_never_reaches_a_pack_linked_on_its_own_and_a_lock_never_hides_one() {
+    let cat = rules::catalog();
+    let global = [Link { locked: true, ..link("pk", Scope::Global) }];
+    // `cdc` holds `pk`; switching `cdc` off for the ledger leaves the locked `pk` running there.
+    let set = RuleSet { links: vec![link("cdc", Scope::Schema)], groups: vec![] };
+    let exception = off("cdc", ns("n_ledger"), "not streamed");
+    rules::admit(cat, &schema(), &global, &set, &exception).expect("cdc itself is not locked");
+    let with = RuleSet { links: vec![link("cdc", Scope::Schema), exception], groups: vec![] };
+    let r = rules::check(&schema(), &global, &with);
+    let checks = r.tables[&id("t_entries")].checks(cat);
+    assert!(cat.checks("pk").iter().all(|c| checks.contains(c)), "pk still runs: {checks:?}");
+    assert!(!checks.contains(&"cdc.position"), "the rest of cdc is off: {checks:?}");
+    // Locking `cdc` above that exception is refused: the exception would stop working while still stored.
+    let lock = Link { locked: true, ..link("cdc", Scope::Global) };
+    let err = rules::admit(cat, &schema(), &[], &with, &lock).unwrap_err();
+    assert!(err.contains("remove that exception"), "{err}");
+}
+
+#[test]
+fn a_tie_has_no_agreed_type_and_copies_count_per_column() {
+    let s: Schema = serde_json::from_value(json!({
+        "format": 1,
+        "target": "iceberg",
+        "namespaces": [{ "id": "n_a", "name": "a" }],
+        "tables": [
+            { "id": "t_x", "namespace": "n_a", "name": "x", "columns": [column("x", "amount", "long", true)] },
+            { "id": "t_y", "namespace": "n_a", "name": "y", "columns": [column("y", "amount", "double", true)] }
+        ]
+    }))
+    .expect("a schema");
+    let set = RuleSet { links: vec![link("types.drift", Scope::Schema)], groups: vec![] };
+    let r = rules::check(&s, &[], &set);
+    assert_eq!(found(&r, "types.drift").len(), 2, "both sides are named: {:?}", found(&r, "types.drift"));
+    let set = RuleSet { links: vec![link("norm", Scope::Schema)], groups: vec![] };
+    let r = rules::check(&schema(), &[], &set);
+    for c in ["norm.copies", "norm.repeat"] {
+        let t = &r.tallies[c];
+        assert!(t.breaks <= t.checked, "{c}: {} breaks of {} checked", t.breaks, t.checked);
+    }
+}
+
 mod review {
     use super::*;
     use schema_forge_core::rules::custom::{ColumnMust, CustomRule, Pattern, Provenance, Sentence};
@@ -369,4 +411,18 @@ fn index_rules_find_unindexed_joins_and_repeats() {
         "no indexes on Iceberg"
     );
     assert_eq!(rules::catalog().rule("idx.related").map(|r| r.lane), Some(rules::Lane::Shared));
+}
+
+#[test]
+fn sentences_name_types_as_their_target_reports_them_and_hold_on_it() {
+    use schema_forge_core::Target;
+    use schema_forge_core::rules::custom::{ColumnMust, Pattern, Sentence};
+    let zoned = Sentence::Columns {
+        name: Pattern::EndsWith("_at".into()),
+        must: ColumnMust::OfType(vec!["timestamptz".into()]),
+    };
+    assert!(zoned.valid(Target::Postgres).is_ok(), "PostgreSQL's zoned timestamp is named timestamptz");
+    assert_eq!(zoned.targets(&[], Target::Postgres), [Target::Postgres], "a type rule holds on its target");
+    let has = Sentence::HasColumn { column: "id".into(), required: true, types: vec![] };
+    assert!(has.targets(&[], Target::Iceberg).is_empty(), "no types named: it holds everywhere");
 }

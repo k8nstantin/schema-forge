@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react'
 
-import { approve, linkRule, proposalEnforce, proposals as fetchProposals, reject } from '../api'
+import { approve, proposalEnforce, proposals as fetchProposals, reject } from '../api'
 import type { Proposal, Verdict } from '../model'
 import { useWorkbench } from '../state'
 import { EnforceToggle, Findings, TallyBar } from './parts'
@@ -84,11 +84,11 @@ export function ReviewView() {
 function ProposalCard({ item, act }: { item: Item; act: (p: Promise<unknown>) => void }) {
   const { name, ix, catalog } = useWorkbench()
   const { proposal: p, verdict: v } = item
-  const [reason, setReason] = useState('')
   if (!v) return null
   const conflict = v.state === 'conflict'
   const blocked = v.state === 'invalid' || v.state === 'duplicate'
-  const other = v.conflicts?.[0]
+  const others = v.conflicts ?? []
+  const named = (id: string) => catalog.rules.find((r) => r.id === id)?.title ?? id
   const where = p.at.level === 'global' ? 'every schema' : scopeTitle(ix, name, p.at)
   return (
     <article className={`sf-proposal sf-proposal-${v.state}`}>
@@ -115,20 +115,16 @@ function ProposalCard({ item, act }: { item: Item; act: (p: Promise<unknown>) =>
         </div>
       </div>
       {v.breaks.length > 0 && <Findings findings={v.breaks} limit={5} />}
-      {conflict && other && (
+      {conflict && others.length > 0 && (
         <div className="sf-conflict">
-          <span className="sf-strong">The system will not take it alone: "{catalog.rules.find((r) => r.id === other)?.title}" says otherwise.</span>
-          <span className="sf-muted sf-small">Approve it with that rule switched off at {where} (the reason is kept and the agent reads it), or reject it.</span>
-          <input className="sf-input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={`Why ${other} gives way here`} aria-label="Why the other rule gives way" />
+          <span className="sf-strong">The system will not take it alone: {others.map((o) => `"${named(o)}"`).join(' and ')} {others.length === 1 ? 'says' : 'say'} otherwise.</span>
+          <span className="sf-muted sf-small">Approving switches {others.length === 1 ? 'it' : 'them'} off at {where}, in the same change: a link there is taken away, otherwise an exception says this proposal replaced it. Or reject it.</span>
         </div>
       )}
       <div className="sf-row-gap">
         {p.what.kind !== 'off' && <EnforceToggle value={p.enforce} onChange={(e) => act(proposalEnforce(name, p.id, e))} />}
-        <button type="button" className="sf-button" disabled={blocked || (conflict && !reason.trim())}
-          onClick={() => act(conflict && other
-            ? linkRule(name, { rule: other, at: p.at, off: true, reason }).then(() => approve(name, p.id))
-            : approve(name, p.id))}>
-          {conflict ? `Approve, and switch ${other} off here` : 'Approve'}
+        <button type="button" className="sf-button" disabled={blocked} onClick={() => act(approve(name, p.id))}>
+          {conflict ? `Approve, and switch ${others.join(', ')} off here` : 'Approve'}
         </button>
         <button type="button" className="sf-chip" onClick={() => act(reject(name, p.id))}>Reject</button>
       </div>

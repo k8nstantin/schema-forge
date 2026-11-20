@@ -123,8 +123,7 @@ impl Sentence {
     /// # Errors
     /// What does not hold, in a sentence.
     pub fn valid(&self, target: Target) -> Result<(), String> {
-        let types = |t: &[String]| match t.iter().find(|n| !crate::types::known(target, n) || n.as_str() == "verbatim")
-        {
+        let types = |t: &[String]| match t.iter().find(|n| !type_known(target, n)) {
             Some(n) => Err(format!(
                 "`{n}` is not {} type",
                 match target {
@@ -170,6 +169,23 @@ impl Sentence {
                 Ok(())
             }
         }
+    }
+
+    /// Whether it names types or transforms of one target, so it holds only on schemas of that target.
+    #[must_use]
+    pub fn bound(&self) -> bool {
+        match self {
+            Self::Columns { must, .. } => matches!(must, ColumnMust::OfType(_)),
+            Self::HasColumn { types, .. } => !types.is_empty(),
+            Self::PartitionedBy { .. } => true,
+        }
+    }
+
+    /// The targets a rule of this sentence holds on: those it says, or, when it says none but names a target's
+    /// types or transforms, the target of the schema it was written on.
+    #[must_use]
+    pub fn targets(&self, said: &[Target], written_on: Target) -> Vec<Target> {
+        if said.is_empty() && self.bound() { vec![written_on] } else { said.to_vec() }
     }
 
     /// Whether column `name` of type `t` keeps the sentence; `None` when the sentence does not cover it.
@@ -239,6 +255,12 @@ impl Sentence {
         }
         o
     }
+}
+
+/// Whether a sentence may name type `n` on a `target` schema: the target's own names, and `timestamptz` for
+/// PostgreSQL's zoned timestamp, as [`type_name`] reports it.
+fn type_known(target: Target, n: &str) -> bool {
+    n != "verbatim" && (crate::types::known(target, n) || target == Target::Postgres && n == "timestamptz")
 }
 
 /// A type by the name the sentence compares: its name, `timestamptz` for PostgreSQL's zoned timestamp.

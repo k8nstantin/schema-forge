@@ -586,31 +586,21 @@ Reuse a catalog rule (kind link) before writing a new one."#
 impl Forge {
     /// Proposals `ids` with their status and, while open, the system's verdict.
     fn verdicts(&self, schema: &str, ids: &[u64]) -> Result<String, String> {
-        let e = |e: schema_forge_store::Error| e.to_string();
-        let model = self.store.model(schema).map_err(e)?;
-        let global = self.store.global_rules().map_err(e)?;
-        let set = self.store.rules(schema).map_err(e)?;
-        let custom = self.store.custom_rules().map_err(e)?;
-        let cat = rules::catalog().with(&custom);
-        let all = self.store.proposals(schema).map_err(e)?;
-        let cx =
-            review::Context { cat: &cat, custom: &custom, schema: &model, global: &global, set: &set, proposals: &all };
+        let (model, all) = self.store.reviewed(schema).map_err(|e| e.to_string())?;
         let mut out = String::new();
-        for p in all.iter().filter(|p| ids.contains(&p.id)) {
-            let v = review::verify(&cx, p);
-            let status = match p.status {
-                review::Status::Proposed => format!("{:?}", v.state).to_lowercase(),
-                review::Status::Approved => {
+        for r in all.iter().filter(|r| ids.contains(&r.proposal.id)) {
+            let p = &r.proposal;
+            let status = match (&r.verdict, p.status) {
+                (Some(v), _) => format!("{:?}", v.state).to_lowercase(),
+                (None, review::Status::Approved) => {
                     format!("approved{}", p.rule.as_deref().map(|r| format!(" as @rule:{r}")).unwrap_or_default())
                 }
-                review::Status::Rejected => "rejected".to_string(),
+                (None, _) => "rejected".to_string(),
             };
             let how = if p.enforce == Enforce::Hard { "hard" } else { "soft" };
-            let _ = writeln!(out, "#{} {} at {} ({how}): {status}", p.id, v.title, level(&model, &p.at));
-            if p.status == review::Status::Proposed {
-                for n in &v.notes {
-                    let _ = writeln!(out, "  {}: {}", format!("{:?}", n.mark).to_lowercase(), n.text);
-                }
+            let _ = writeln!(out, "#{} {} at {} ({how}): {status}", p.id, r.title, level(&model, &p.at));
+            for n in r.verdict.iter().flat_map(|v| &v.notes) {
+                let _ = writeln!(out, "  {}: {}", format!("{:?}", n.mark).to_lowercase(), n.text);
             }
         }
         Ok(out)

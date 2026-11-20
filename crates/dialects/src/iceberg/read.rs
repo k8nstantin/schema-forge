@@ -297,6 +297,9 @@ impl Reader {
             let (a, b) = if c.is(&Token::LParen) { c.group().ok_or(Fallback)? } else { (c.i, c.toks().len()) };
             let mut order = Vec::new();
             for (x, y) in c.commas(a, b) {
+                if x >= y {
+                    return Err(Fallback);
+                }
                 let mut item = Cur { i: x, ..Cur::new(c.st, Case::Keep) };
                 let (transform, col) = if item.toks()[x + 1..y].first().is_some_and(|t| t.token == Token::LParen) {
                     let close = item.matching(x + 1).ok_or(Fallback)?;

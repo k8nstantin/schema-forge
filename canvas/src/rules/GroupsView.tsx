@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 
-import { removeGroup, setGroup } from '../api'
+import { newGroup, removeGroup, setGroup } from '../api'
 import { useWorkbench } from '../state'
 
 export function GroupsView() {
@@ -58,7 +58,7 @@ export function GroupsView() {
             ))}
           </div>
           <span className="sf-row-gap">
-            <button type="button" className="sf-button" disabled={!title.trim() || picked.size === 0} onClick={() => act(setGroup(name, { name: title.trim(), tables: [...picked] }), () => setEditing(null))}>Keep the group</button>
+            <button type="button" className="sf-button" disabled={!title.trim() || picked.size === 0} onClick={() => act((editing === '' ? newGroup : setGroup)(name, { name: title.trim(), tables: [...picked] }), () => setEditing(null))}>Keep the group</button>
             <button type="button" className="sf-chip" onClick={() => setEditing(null)}>Cancel</button>
           </span>
           {error && <span className="sf-error" role="alert">{error}</span>}

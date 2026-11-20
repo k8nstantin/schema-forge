@@ -39,7 +39,7 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/schemas/{name}/rules/links", post(link))
         .route("/api/schemas/{name}/rules/preview", post(preview))
         .route("/api/schemas/{name}/rules/unlink", post(unlink))
-        .route("/api/schemas/{name}/rules/groups", put(set_group))
+        .route("/api/schemas/{name}/rules/groups", put(set_group).post(new_group))
         .route("/api/schemas/{name}/rules/groups/{group}", delete(remove_group))
         .route("/api/schemas/{name}/goals/{goal}", post(goal))
         .route("/api/schemas/{name}/rules/enforce", post(enforce))
@@ -189,7 +189,15 @@ async fn set_group(
     Path(name): Path<String>,
     axum::Json(g): axum::Json<Group>,
 ) -> Response {
-    done(store.set_group(&name, g, BY))
+    done(store.set_group(&name, g, false, BY))
+}
+
+async fn new_group(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::Json(g): axum::Json<Group>,
+) -> Response {
+    done(store.set_group(&name, g, true, BY))
 }
 
 async fn remove_group(State(store): State<Arc<Store>>, Path((name, group)): Path<(String, String)>) -> Response {
@@ -279,32 +287,13 @@ async fn enforce_global(State(store): State<Arc<Store>>, axum::Json(e): axum::Js
 
 /// The schema's proposals, each still open with the system's verdict on it.
 async fn proposals(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Response {
-    let read = || -> schema_forge_store::Result<serde_json::Value> {
-        let model = store.model(&name)?;
-        let global = store.global_rules()?;
-        let set = store.rules(&name)?;
-        let custom = store.custom_rules()?;
-        let cat = rules::catalog().with(&custom);
-        let all = store.proposals(&name)?;
-        let cx = rules::review::Context {
-            cat: &cat,
-            custom: &custom,
-            schema: &model,
-            global: &global,
-            set: &set,
-            proposals: &all,
-        };
-        let out: Vec<serde_json::Value> = all
-            .iter()
-            .map(|p| {
-                let verdict = (p.status == rules::review::Status::Proposed).then(|| rules::review::verify(&cx, p));
-                serde_json::json!({ "proposal": p, "verdict": verdict })
-            })
-            .collect();
-        Ok(serde_json::Value::Array(out))
-    };
-    match read() {
-        Ok(v) => axum::Json(v).into_response(),
+    match store.reviewed(&name) {
+        Ok((_, all)) => axum::Json(
+            all.into_iter()
+                .map(|r| serde_json::json!({ "proposal": r.proposal, "verdict": r.verdict }))
+                .collect::<Vec<_>>(),
+        )
+        .into_response(),
         Err(e) => store_failed(e),
     }
 }
@@ -337,7 +326,7 @@ async fn proposal_enforce(
     decided(store.set_proposal_enforce(&name, id, e.enforce, BY))
 }
 
-/// Links a goal's packs to the whole schema, those not linked there yet.
+/// Links a goal's packs to the whole schema, those not in place yet, all or none.
 /// How a goal's packs hold: `{enforce}`; each rule's default when left out.
 #[derive(serde::Deserialize, Default)]
 struct GoalHow {
@@ -364,26 +353,10 @@ async fn goal(
     let Some((_, packs)) = g.packs.iter().find(|(t, _)| *t == target) else {
         return failed(StatusCode::BAD_REQUEST, format!("`{}` is not for a {target:?} schema", g.title));
     };
-    let linked = match store.rules(&name) {
-        Ok(set) => set.links,
-        Err(e) => return store_failed(e),
-    };
-    let mut ops = Vec::new();
-    for p in packs.iter().filter(|p| !linked.iter().any(|l| l.rule == **p && l.at == Scope::Schema)) {
-        let l = Link {
-            rule: (*p).to_string(),
-            at: Scope::Schema,
-            off: false,
-            locked: false,
-            reason: None,
-            enforce: how.enforce,
-        };
-        match store.link_rule(Rules::Schema(&name), l, BY) {
-            Ok(op) => ops.push(op),
-            Err(e) => return store_failed(e),
-        }
+    match store.link_packs(&name, packs, how.enforce, BY) {
+        Ok(op) => axum::Json(op.into_iter().collect::<Vec<_>>()).into_response(),
+        Err(e) => store_failed(e),
     }
-    axum::Json(ops).into_response()
 }
 
 /// One object's SQL, as its target writes it.
