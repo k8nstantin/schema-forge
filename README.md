@@ -155,14 +155,20 @@ The model behind it all: [docs/model.md](docs/model.md).
 ## How it is built
 
 - **One model, one owner.** `sf serve` holds the schema. Every change is an operation from the agent,
-  through the MCP, in one queue; it is saved to `schema.json` and appears in every perspective at once.
-- **Plain files, in git.** `schema.json` (the draft), `versions/` (locked versions, never edited),
+  through the MCP, in one queue; it is stored and appears in every perspective at once.
+- **Stored in an embedded SurrealDB.** `sf` carries its own database (SurrealDB on SurrealKV, its
+  pure-Rust storage engine): schemas, operations and history, versions, findings, standards, pipelines.
+  Relationships and view dependencies are a graph it queries directly, and its live queries push every
+  change to the perspectives. Nothing to install or run beside `sf`.
+- **Plain files for git.** `sf export` writes, and `sf import` reads, the shareable form: `schema.json`
+  (the draft), `versions/` (locked versions, never edited),
   `sf.toml` (name and type), `rules.toml` (the rules), `perspectives/` (custom perspectives), `export/` (the SQL).
 - **Rust** throughout where it can be; the perspectives in SuperX's purple theme, their technology still open (below).
 
 | Crate | Job |
 |---|---|
 | `sf-core` | the schema model, operations, rules, versions |
+| `sf-store` | the embedded SurrealDB: storing, querying and live changes |
 | `sf-dialects` | reading and writing MySQL, PostgreSQL and Iceberg |
 | `sf-mcp` | the MCP the agent works through |
 | `sf` | the command: `sf serve`, `sf new`, `sf import`, `sf export` |
@@ -178,9 +184,9 @@ still open (below).
 | Iceberg | **iceberg** (Apache iceberg-rust, the official crate): table metadata, partition specs, sort orders, catalogs |
 | MCP | **rmcp**, the official Rust SDK, over streamable HTTP |
 | Server and live push | **tokio**, **axum**, **tower-http** (static files, server-sent events) |
+| Storage | **surrealdb**, embedded, on **SurrealKV** (pure Rust) |
 | Files and formats | **serde**, **serde_json**, **toml**, **schemars** (JSON Schema for `schema.json` and the MCP tools) |
 | Command line | **clap** |
-| Watching `schema.json` | **notify** |
 | View dependencies | **petgraph** (dependency order, cycle detection) |
 | Version hashes | **blake3** |
 | Errors | **thiserror** |
@@ -189,14 +195,6 @@ still open (below).
 
 ### Open decisions
 
-- **Storage.** Proposed: an embedded **SurrealDB** inside `sf`, on its pure-Rust storage engine
-  **SurrealKV**, so everything is stored and queried easily: schemas, operations and history, versions,
-  findings, standards. Relationships and view dependencies are a graph it queries natively, and its live
-  queries can push each change to the perspectives. Plain files stay the shareable form for git
-  (`sf export` / `sf import` of `schema.json`, versions and rules). To weigh: SurrealKV is Apache-2.0, but
-  SurrealDB's core is under BSL 1.1 (free to use and ship inside an application; not to offer as a
-  database service; each release becomes Apache-2.0 after four years), so `sf` binaries would include
-  BSL-licensed code while Schema Forge's own code stays MIT or Apache-2.0.
 - **The perspectives (the UI).** A solid, elegant design users like, not a quick UI. Browser perspectives (React Flow) give the
   richest diagrams today; Rust UI (Leptos or Dioxus in the browser; egui, Iced or Slint as a native app)
   keeps one language. Decided before any perspective is built, from a design of the perspectives themselves.
@@ -219,3 +217,6 @@ still open (below).
 Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT), at your option.
 Unless you state otherwise, any contribution you submit for inclusion is dual licensed as above, without any
 additional terms or conditions.
+
+`sf` binaries include SurrealDB, whose core is licensed under the Business Source License 1.1 (each release
+becomes Apache-2.0 four years after it is published); SurrealKV is Apache-2.0.
