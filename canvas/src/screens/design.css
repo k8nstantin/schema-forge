@@ -1419,3 +1419,264 @@ a.d-btn {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Rules and Rule */
+
+.d-act {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--d-accent);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.d-act-line {
+  background: transparent;
+  border: 1px solid var(--d-accent);
+  color: var(--d-bright);
+}
+
+.d-rrow {
+  display: grid;
+  grid-template-columns: minmax(0, 2.6fr) 90px minmax(0, 1.6fr) 110px;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--d-text);
+  text-align: left;
+}
+
+.d-rhead {
+  padding: 10px 16px;
+  background: var(--d-bar);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--d-soft);
+}
+
+.d-rline {
+  border-top: 1px solid var(--d-card);
+  cursor: pointer;
+}
+
+.d-rline:hover {
+  background: var(--d-card);
+}
+
+.d-rpack {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 16px 8px;
+  border-top: 1px solid var(--d-line);
+  background: var(--d-side);
+}
+
+.d-rpack-name {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--d-head);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--d-violet);
+}
+
+.d-held {
+  justify-self: start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.d-held-hard {
+  background: var(--d-gold-bg);
+  color: var(--d-gold);
+}
+
+.d-held-soft {
+  background: var(--d-line);
+  color: var(--d-lilac);
+}
+
+.d-bar2 {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--d-card);
+}
+
+.d-tnode {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  background: transparent;
+}
+
+.d-tnode:hover {
+  background: var(--d-card);
+}
+
+.d-tnode-pack {
+  font-family: var(--d-head);
+  font-weight: 700;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.d-tnode-leaf {
+  font-family: var(--d-mono);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.d-tbadge {
+  flex-shrink: 0;
+  min-width: 22px;
+  text-align: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #123d2b;
+  color: #3fc98a;
+}
+
+.d-tbadge-bad {
+  background: #3d1418;
+  color: #ff7a7a;
+}
+
+.d-kind {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.d-kind-root {
+  background: var(--d-accent);
+  color: #ffffff;
+}
+
+.d-kind-pack {
+  background: var(--d-line);
+  color: var(--d-lilac);
+}
+
+.d-kind-leaf {
+  border: 1px solid var(--d-input);
+  color: var(--d-text);
+}
+
+.d-ruleref {
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px dashed rgba(255, 210, 138, 0.6);
+  background: transparent;
+  color: var(--d-gold);
+  font-family: var(--d-mono);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.d-rnode {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: 1px solid;
+  background: var(--d-card);
+  cursor: pointer;
+  text-align: left;
+}
+
+.d-rnode:hover {
+  background: var(--d-on);
+}
+
+.d-rnode-pack {
+  font-family: var(--d-head);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--d-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.d-rnode-leaf {
+  font-family: var(--d-mono);
+  font-size: 13px;
+  color: var(--d-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.d-rcenter {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 2px solid var(--d-violet);
+  background: var(--d-on);
+  overflow: hidden;
+}
+
+.d-rcrow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 14px;
+  font-size: 13px;
+}
+
+.d-brow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 16px;
+  border: 0;
+  border-top: 1px solid var(--d-card);
+  cursor: pointer;
+  text-align: left;
+  background: transparent;
+  color: var(--d-text);
+}
+
+.d-brow:first-child {
+  border-top: 0;
+}
+
+.d-brow:hover {
+  background: var(--d-card);
+}

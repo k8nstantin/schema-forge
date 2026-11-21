@@ -15,6 +15,7 @@ import { Home } from './screens/Home'
 import { NewSchema } from './screens/NewSchema'
 import { Locate } from './screens/Locate'
 import { RulesView } from './rules/RulesView'
+import { RuleScreen, RulesHome } from './screens/Rules'
 import { MapScreen as MapView } from './screens/Map'
 import { SchemaBar } from './screens/SchemaBar'
 import { Table } from './screens/Table'
@@ -223,7 +224,7 @@ export default function App() {
             {perspective === 'categories' && <Categories />}
             {perspective === 'table' && <Table id={arg} />}
             {perspective === 'map' && <MapView family={arg} />}
-            {perspective === 'rules' && <RulesView arg={arg} />}
+            {perspective === 'rules' && (!arg ? <RulesHome /> : arg.startsWith('rule:') ? <RuleScreen id={arg.slice(5)} /> : <RulesView arg={arg} />)}
           </WorkbenchProvider>
         )}
       </div>
