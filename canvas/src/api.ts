@@ -28,13 +28,53 @@ export interface Change {
   by: string
   /// For a design change or its undo: what each operation did.
   summary?: string | null
+  at?: number
+}
+
+// Live changes, without holding a connection open: a browser keeps at most six connections to one host, and a
+// stream held per tab soon leaves new pages waiting forever. So each page asks the server what changed, once a
+// second, with a short request that ends at once.
+const listeners = new Set<(c: Change) => void>()
+let started = false
+
+function startPolling() {
+  if (started) return
+  started = true
+  // Unset until the server first answers: then only its newest number comes back, and changes after it follow.
+  let after: number | null = null
+  let boot: number | null = null
+  let timer = 0
+  const ask = async () => {
+    window.clearTimeout(timer)
+    try {
+      const r = await fetch(after === null ? '/api/changes' : `/api/changes?after=${after}`)
+      if (r.ok) {
+        const f = (await r.json()) as { boot: number; last: number; first: number; changes: Change[] }
+        // The server started again, or this page is behind what it keeps: what is shown may be stale, so
+        // everything is read again.
+        if ((boot !== null && f.boot !== boot) || (after !== null && f.first > after + 1)) {
+          listeners.forEach((on) => on({ schema: '*', sequence: 0, kind: 'reload', by: '' }))
+        } else {
+          for (const c of f.changes) listeners.forEach((on) => on(c))
+        }
+        boot = f.boot
+        after = f.last
+      }
+    } catch {
+      // The server is away; ask again.
+    }
+    // A hidden tab does not ask; it asks again as soon as it is shown.
+    if (document.visibilityState === 'visible') timer = window.setTimeout(ask, 1000)
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') ask() })
+  ask()
 }
 
 /// Calls `on` with every change committed while the page is open; returns the way to stop listening.
 export function changes(on: (c: Change) => void): () => void {
-  const source = new EventSource('/api/events')
-  source.addEventListener('change', (e) => on(JSON.parse((e as MessageEvent).data)))
-  return () => source.close()
+  listeners.add(on)
+  startPolling()
+  return () => { listeners.delete(on) }
 }
 
 /// A refusal from the server: its words, and what kind it is (`destructive`: needs a yes; `hard`: breaks the hard
@@ -83,7 +123,11 @@ export const changeByHand = (name: string, operations: unknown[], yes: { destruc
     operations,
     confirm_destructive: !!yes.destructive,
   })
-export const newSchema = (name: string, target: string) => send('POST', '/api/schemas', { name, target })
+export const newSchema = (name: string, target: string, about?: string, icebergFormat?: number) =>
+  send('POST', '/api/schemas', { name, target, about: about || undefined, iceberg_format: icebergFormat })
+/// One change in a schema's log.
+export interface Operation { sequence: number; kind: string; by: string; change: Record<string, unknown>; at?: number }
+export const recent = (name: string, last = 10) => json<Operation[]>(`/api/schemas/${encodeURIComponent(name)}/operations?last=${last}`)
 export const undo = (name: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/undo`)
 export interface TurnItem {
   turn: { id: number; by: string; summary: string; status: 'open' | 'accepted' | 'rejected'; changes: number[]; decided_by?: string }
@@ -93,3 +137,11 @@ const turnsOf = (name: string) => `/api/schemas/${encodeURIComponent(name)}/turn
 export const turns = (name: string) => json<TurnItem[]>(turnsOf(name))
 export const acceptTurn = (name: string, n: number) => send('POST', `${turnsOf(name)}/${n}/accept`)
 export const rejectTurn = (name: string, n: number) => send('POST', `${turnsOf(name)}/${n}/reject`)
+/// The workspace folder, and when the agent last reached the MCP.
+export interface Workspace { folder: string; agent_seen?: number; now: number }
+export const workspace = () => json<Workspace>('/api/workspace')
+/// A folder on this machine.
+export interface Listing { path: string; parent?: string; entries: { name: string; dir: boolean; size?: number | null; hidden: boolean }[] }
+export const browse = (path: string) => json<Listing>(`/api/browse?path=${encodeURIComponent(path)}`)
+export const importPath = (path: string, schema: string, target?: string, replace = false) =>
+  send<{ schema: string; tables: number; report: string; findings: string[] }>('POST', '/api/import', { path, schema, target, replace })

@@ -20,11 +20,11 @@ fn a_saved_model_comes_back_identical_and_survives_reopening() {
         {
             let store = Store::open(&path).expect("open");
             store.create_schema(name, target).expect("create");
-            let mut heard = store.subscribe();
+            let start = store.changes_since(None).last;
             let op = store.replace_model(name, &model, "import", "import").expect("save");
             assert_eq!(op.sequence, 1);
             assert_eq!(store.model(name).expect("load"), model, "{name} comes back identical");
-            let change = heard.try_recv().expect("the change is announced");
+            let change = store.changes_since(Some(start)).changes.pop().expect("the change is announced").1;
             assert_eq!((change.schema.as_str(), change.operation), (name, op));
         }
         let store = Store::open(&path).expect("reopen");
@@ -100,9 +100,9 @@ fn rules_are_linked_checked_logged_and_kept() {
         let store = Store::open(&path).expect("open");
         store.create_schema("lake", Target::Iceberg).expect("create");
         store.replace_model("lake", &model, "import", "import").expect("save");
-        let mut heard = store.subscribe();
+        let start = store.changes_since(None).last;
         store.link_rule(Rules::Global, Link { locked: true, ..link("pk", Scope::Global) }, "you").expect("global");
-        assert_eq!(heard.try_recv().expect("announced").schema, "*");
+        assert_eq!(store.changes_since(Some(start)).changes[0].1.schema, "*", "announced");
         store.link_rule(Rules::Schema("lake"), link("norm", Scope::Schema), "you").expect("link");
         let op = store
             .set_group("lake", Group { name: "hot".to_string(), tables: vec![table.clone()] }, true, "you")

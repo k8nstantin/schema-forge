@@ -1,6 +1,6 @@
 //! The embedded store (docs/store.md): one redb file of text keys to JSON values. The current model is kept
 //! as one record per top-level object beside an append-only log of operations; every committed change is
-//! announced to subscribers.
+//! numbered into a feed that pages ask of.
 
 use std::path::Path;
 
@@ -12,7 +12,6 @@ use schema_forge_core::rules::{self, Catalog, Enforce, Finding, Group, Link, Rul
 use schema_forge_core::{Id, Schema, Target};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::broadcast;
 
 /// The format of the store file this crate reads and writes.
 pub const FORMAT: u64 = 1;
@@ -92,6 +91,12 @@ pub struct SchemaInfo {
     pub name: String,
     pub target: Target,
     pub format: u32,
+    /// What the schema is for, in your words; the agent reads it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub about: Option<String>,
+    /// For an Iceberg schema, the table format version new tables take (2 or 3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub iceberg_format: Option<u32>,
 }
 
 /// One change, as appended to the log.
@@ -105,6 +110,19 @@ pub struct Operation {
     pub by: String,
     /// The change, as the kind defines it.
     pub change: Value,
+    /// When it was made, in milliseconds since the Unix epoch; older logs have none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<u64>,
+}
+
+impl Operation {
+    fn new(sequence: u64, kind: &str, by: &str, change: Value) -> Self {
+        let at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()
+            .and_then(|d| u64::try_from(d.as_millis()).ok());
+        Self { sequence, kind: kind.to_string(), by: by.to_string(), change, at }
+    }
 }
 
 /// A change made: its place in the log, what each operation did, and the soft rules it now breaks (highlighted, not
@@ -150,17 +168,48 @@ pub enum TurnStatus {
     Rejected,
 }
 
-/// What subscribers hear after each commit.
+/// A committed change, as the feed keeps it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Change {
     pub schema: String,
     pub operation: Operation,
 }
 
+/// How many of the last changes the feed keeps.
+const FEED_KEEPS: usize = 2000;
+
+/// The last changes, each with its number in the workspace.
+#[derive(Default)]
+struct Feed {
+    /// Marks this run of the store: a page that sees it change knows the numbers started again.
+    boot: u64,
+    last: u64,
+    items: std::collections::VecDeque<(u64, Change)>,
+}
+
+/// What a page asks of the feed: the run, the newest number, the oldest still kept, and the changes after its own.
+#[derive(Debug, Clone)]
+pub struct FeedView {
+    pub boot: u64,
+    pub last: u64,
+    pub first: u64,
+    pub changes: Vec<(u64, Change)>,
+}
+
+fn boot_mark() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|d| u64::try_from(d.as_nanos() % u128::from(u64::MAX)).ok())
+        .unwrap_or(1)
+}
+
 /// The store.
 pub struct Store {
     db: Database,
-    changes: broadcast::Sender<Change>,
+    /// The last changes, numbered across the workspace, for pages that ask what is new since a number.
+    feed: std::sync::Mutex<Feed>,
+    path: std::path::PathBuf,
 }
 
 /// One top-level object of the model, as stored: its section, its place there, and the object itself.
@@ -217,6 +266,7 @@ impl Store {
     /// # Errors
     /// When the file cannot be opened, or holds a format this version does not read.
     pub fn open(path: &Path) -> Result<Self> {
+        let path = &std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
         let db = Database::create(path)?;
         let txn = db.begin_write()?;
         {
@@ -238,14 +288,41 @@ impl Store {
             txn.open_table(TURNS)?;
         }
         txn.commit()?;
-        let (changes, _) = broadcast::channel(1024);
-        Ok(Self { db, changes })
+        Ok(Self {
+            db,
+            feed: std::sync::Mutex::new(Feed { boot: boot_mark(), ..Feed::default() }),
+            path: path.to_path_buf(),
+        })
     }
 
-    /// Hear every change committed from now on.
+    /// The changes numbered after `after`, oldest first, with the run and the newest and oldest numbers kept;
+    /// without `after`, none: a page starts from now. A page behind the oldest kept, or on another run, reloads.
     #[must_use]
-    pub fn subscribe(&self) -> broadcast::Receiver<Change> {
-        self.changes.subscribe()
+    pub fn changes_since(&self, after: Option<u64>) -> FeedView {
+        let feed = self.feed.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let changes = match after {
+            None => Vec::new(),
+            Some(after) => feed.items.iter().filter(|(n, _)| *n > after).cloned().collect(),
+        };
+        FeedView {
+            boot: feed.boot,
+            last: feed.last,
+            first: feed.items.front().map_or(feed.last + 1, |(n, _)| *n),
+            changes,
+        }
+    }
+
+    /// Numbers a committed change into the feed.
+    fn announce(&self, change: Change) {
+        {
+            let mut feed = self.feed.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            feed.last += 1;
+            let n = feed.last;
+            feed.items.push_back((n, change.clone()));
+            while feed.items.len() > FEED_KEEPS {
+                feed.items.pop_front();
+            }
+        }
     }
 
     /// Makes an empty schema called `name`.
@@ -253,8 +330,27 @@ impl Store {
     /// # Errors
     /// When the name is taken or not a valid name, or the store fails.
     pub fn create_schema(&self, name: &str, target: Target) -> Result<SchemaInfo> {
+        self.create_schema_with(name, target, None, None)
+    }
+
+    /// Makes an empty schema `name` of `target`, with what it is for and, for Iceberg, its format version.
+    ///
+    /// # Errors
+    /// When the name is not valid or taken, the format version is not 2 or 3, or the store fails.
+    pub fn create_schema_with(
+        &self,
+        name: &str,
+        target: Target,
+        about: Option<String>,
+        iceberg_format: Option<u32>,
+    ) -> Result<SchemaInfo> {
         valid_name(name)?;
-        let info = SchemaInfo { name: name.to_string(), target, format: schema_forge_core::FORMAT };
+        if iceberg_format.is_some_and(|v| target != Target::Iceberg || !(2..=3).contains(&v)) {
+            return Err(Error::Rule("an Iceberg format version is 2 or 3, and only for an Iceberg schema".to_string()));
+        }
+        let about = about.map(|a| a.trim().to_string()).filter(|a| !a.is_empty());
+        let info =
+            SchemaInfo { name: name.to_string(), target, format: schema_forge_core::FORMAT, about, iceberg_format };
         let txn = self.db.begin_write()?;
         {
             let mut schemas = txn.open_table(SCHEMAS)?;
@@ -265,6 +361,12 @@ impl Store {
         }
         txn.commit()?;
         Ok(info)
+    }
+
+    /// The workspace folder: where the store is kept.
+    #[must_use]
+    pub fn folder(&self) -> &Path {
+        self.path.parent().unwrap_or(&self.path)
     }
 
     /// Every schema, by name.
@@ -318,21 +420,99 @@ impl Store {
             }
             let mut ops = txn.open_table(OPERATIONS)?;
             let sequence = last_sequence(&ops, name)? + 1;
-            operation = Operation {
-                sequence,
-                kind: kind.to_string(),
-                by: by.to_string(),
-                change: serde_json::json!({ "hash": schema_forge_core::hash(model) }),
-            };
+            operation =
+                Operation::new(sequence, kind, by, serde_json::json!({ "hash": schema_forge_core::hash(model) }));
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
         }
         txn.commit()?;
         // Nobody listening is fine: the change is stored.
-        let _ = self.changes.send(Change { schema: name.to_string(), operation: operation.clone() });
+        self.announce(Change { schema: name.to_string(), operation: operation.clone() });
         Ok(operation)
     }
 
-    /// The schema's log, oldest first.
+    /// Reads `model` into schema `name` in one transaction: made when it is not there (with what it is for),
+    /// replaced only when `replace` says so. Nothing is left behind when it fails.
+    ///
+    /// # Errors
+    /// When the name is not valid, the schema exists and `replace` is false, its type differs, or the store fails.
+    pub fn import_schema(
+        &self,
+        name: &str,
+        model: &Schema,
+        about: Option<String>,
+        replace: bool,
+        by: &str,
+    ) -> Result<Operation> {
+        valid_name(name)?;
+        let txn = self.db.begin_write()?;
+        let operation;
+        {
+            let mut schemas = txn.open_table(SCHEMAS)?;
+            let there = schemas.get(name)?.map(|v| serde_json::from_str::<SchemaInfo>(v.value())).transpose()?;
+            match there {
+                Some(_) if !replace => return Err(Error::SchemaExists(name.to_string())),
+                Some(info) if info.target != model.target => {
+                    return Err(Error::WrongTarget {
+                        name: name.to_string(),
+                        schema: info.target,
+                        model: model.target,
+                    });
+                }
+                Some(_) => {}
+                None => {
+                    let about = about.map(|a| a.trim().to_string()).filter(|a| !a.is_empty());
+                    let info = SchemaInfo {
+                        name: name.to_string(),
+                        target: model.target,
+                        format: schema_forge_core::FORMAT,
+                        about,
+                        iceberg_format: None,
+                    };
+                    schemas.insert(name, serde_json::to_string(&info)?.as_str())?;
+                }
+            }
+            let mut objects = txn.open_table(OBJECTS)?;
+            let (lo, hi) = prefix_range(name);
+            let old: Vec<String> = objects
+                .range(lo.as_str()..hi.as_str())?
+                .map(|e| e.map(|(k, _)| k.value().to_string()))
+                .collect::<std::result::Result<_, _>>()?;
+            for key in old {
+                objects.remove(key.as_str())?;
+            }
+            for (id, record) in records(model)? {
+                objects.insert(format!("{name}/{id}").as_str(), serde_json::to_string(&record)?.as_str())?;
+            }
+            operation = log(
+                &mut txn.open_table(OPERATIONS)?,
+                name,
+                "import",
+                by,
+                serde_json::json!({ "hash": schema_forge_core::hash(model) }),
+            )?;
+        }
+        txn.commit()?;
+        self.announce(Change { schema: name.to_string(), operation: operation.clone() });
+        Ok(operation)
+    }
+
+    /// The schema's last `n` changes, newest first.
+    ///
+    /// # Errors
+    /// When the store fails or a record is not valid.
+    pub fn recent(&self, name: &str, n: usize) -> Result<Vec<Operation>> {
+        let txn = self.db.begin_read()?;
+        let ops = txn.open_table(OPERATIONS)?;
+        let (lo, hi) = prefix_range(name);
+        let mut out = Vec::new();
+        for entry in ops.range(lo.as_str()..hi.as_str())?.rev().take(n) {
+            let (_, v) = entry?;
+            out.push(serde_json::from_str(v.value())?);
+        }
+        Ok(out)
+    }
+
+    /// The schema's whole log, oldest first.
     ///
     /// # Errors
     /// When the store fails or a record is not valid.
@@ -630,16 +810,11 @@ impl Store {
             let mut ops = txn.open_table(OPERATIONS)?;
             let sequence = last_sequence(&ops, name)? + 1;
             let ids: Vec<u64> = kept.iter().map(|p| p.id).collect();
-            operation = Operation {
-                sequence,
-                kind: "propose_rules".to_string(),
-                by: by.to_string(),
-                change: serde_json::json!({ "proposals": ids }),
-            };
+            operation = Operation::new(sequence, "propose_rules", by, serde_json::json!({ "proposals": ids }));
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: name.to_string(), operation });
+        self.announce(Change { schema: name.to_string(), operation });
         Ok(kept)
     }
 
@@ -763,12 +938,12 @@ impl Store {
                 Decision::Reject => "reject_rule",
                 Decision::Enforce(_) => "change_proposal",
             };
-            operation = Operation { sequence, kind: kind.to_string(), by: by.to_string(), change };
+            operation = Operation::new(sequence, kind, by, change);
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
             proposal = p;
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: name.to_string(), operation });
+        self.announce(Change { schema: name.to_string(), operation });
         Ok(proposal)
     }
 
@@ -861,7 +1036,7 @@ impl Store {
             kept_in = in_turn.map(|t| t.id);
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: name.to_string(), operation: operation.clone() });
+        self.announce(Change { schema: name.to_string(), operation: operation.clone() });
         Ok(Changed { operation, summaries, soft, turn: kept_in })
     }
 
@@ -900,7 +1075,7 @@ impl Store {
             operation = log(&mut ops, name, "undo", by, change)?;
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: name.to_string(), operation: operation.clone() });
+        self.announce(Change { schema: name.to_string(), operation: operation.clone() });
         Ok(operation)
     }
 
@@ -979,7 +1154,7 @@ impl Store {
             turn = t;
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: name.to_string(), operation });
+        self.announce(Change { schema: name.to_string(), operation });
         Ok(turn)
     }
 
@@ -1016,7 +1191,7 @@ impl Store {
             turn = t;
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: name.to_string(), operation });
+        self.announce(Change { schema: name.to_string(), operation });
         Ok(turn)
     }
 
@@ -1073,11 +1248,11 @@ impl Store {
             table.insert(key.as_str(), serde_json::to_string(&set)?.as_str())?;
             let mut ops = txn.open_table(OPERATIONS)?;
             let sequence = last_sequence(&ops, &key)? + 1;
-            operation = Operation { sequence, kind: kind.to_string(), by: by.to_string(), change };
+            operation = Operation::new(sequence, kind, by, change);
             ops.insert(operation_key(&key, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: key, operation: operation.clone() });
+        self.announce(Change { schema: key, operation: operation.clone() });
         Ok(operation)
     }
 }
@@ -1252,7 +1427,7 @@ fn log(
     change: Value,
 ) -> Result<Operation> {
     let sequence = last_sequence(ops, name)? + 1;
-    let operation = Operation { sequence, kind: kind.to_string(), by: by.to_string(), change };
+    let operation = Operation::new(sequence, kind, by, change);
     ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
     Ok(operation)
 }

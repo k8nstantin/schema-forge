@@ -1,22 +1,26 @@
 // The app: Home, and a schema seen from its perspectives (Tables, Categories, Table, Map), with what you point at
 // ready to copy for the agent, and the live Activity under them.
 
-import { Anchor, Badge, Kbd, Text } from '@mantine/core'
+import { Text } from '@mantine/core'
 import { useHotkeys } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { Refusal, catalog as fetchCatalog, changeByHand, changes, model as fetchModel, schemaRules, setEnforce, shape as fetchShape, undo, type Change } from './api'
-import type { Catalog, RuleLink, Schema, SchemaRules, Shape } from './model'
+import { Refusal, schemas as fetchSchemas, catalog as fetchCatalog, changeByHand, changes, model as fetchModel, schemaRules, setEnforce, shape as fetchShape, undo, type Change } from './api'
+import type { Catalog, RuleLink, Schema, SchemaInfo, SchemaRules, Shape } from './model'
 import { holdsRule } from './rules/parts'
 import { scopeTitle } from './rules/scope'
-import { Categories } from './perspectives/Categories'
+import { Categories } from './screens/Categories'
 import { Turns } from './components/Turns'
-import { Home } from './perspectives/Home'
+import { Home } from './screens/Home'
+import { NewSchema } from './screens/NewSchema'
+import { Locate } from './screens/Locate'
+import { RulesCatalog } from './screens/RulesCatalog'
 import { RulesView } from './rules/RulesView'
-import { MapView } from './perspectives/MapView'
-import { Tables } from './perspectives/Tables'
-import { TableView } from './perspectives/TableView'
+import { RuleScreen, RulesHome } from './screens/Rules'
+import { MapScreen as MapView } from './screens/Map'
+import { SchemaBar } from './screens/SchemaBar'
+import { Table } from './screens/Table'
 import { WorkbenchProvider, indexOf, reference, referenceWithContext, type Perspective, type Pointer } from './state'
 
 const PERSPECTIVES: { value: Perspective; label: string }[] = [
@@ -26,14 +30,14 @@ const PERSPECTIVES: { value: Perspective; label: string }[] = [
   { value: 'map', label: 'Map' },
   { value: 'rules', label: 'Rules' },
 ]
-const TARGET = { postgres: 'PostgreSQL', mysql: 'MySQL', iceberg: 'Iceberg' } as const
 
 interface Place { schema: string | null; perspective: Perspective; arg?: string }
 
 /// `#/<schema>/<perspective>/<table or family>`: where you are survives a reload and can be sent.
 function readHash(): Place {
   const [, schema, p, arg] = window.location.hash.split('/')
-  const perspective = PERSPECTIVES.some((x) => x.value === p) ? (p as Perspective) : 'tables'
+  // The schema opens on its tables, the picker and the open table; the old `tables` list address lands there too.
+  const perspective = p === 'tables' || !PERSPECTIVES.some((x) => x.value === p) ? 'table' : (p as Perspective)
   return { schema: schema ? decodeURIComponent(schema) : null, perspective, arg: arg ? decodeURIComponent(arg) : undefined }
 }
 
@@ -44,7 +48,7 @@ function writeHash(p: Place) {
 export default function App() {
   const [place, setPlace] = useState(readHash)
   const { schema, perspective, arg } = place
-  const [loaded, setLoaded] = useState<{ name: string; model: Schema; shape: Shape; rules: SchemaRules } | null>(null)
+  const [loaded, setLoaded] = useState<{ name: string; model: Schema; shape: Shape; rules: SchemaRules; info: SchemaInfo | null; all: SchemaInfo[] } | null>(null)
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [pointer, point] = useState<Pointer>(null)
   const [activity, setActivity] = useState<Change[]>([])
@@ -72,9 +76,9 @@ export default function App() {
   }, [])
 
   const load = useCallback((name: string) => {
-    Promise.all([fetchModel(name), fetchShape(name), schemaRules(name)]).then(
-      ([model, shape, rules]) => {
-        setLoaded({ name, model, shape, rules })
+    Promise.all([fetchModel(name), fetchShape(name), schemaRules(name), fetchSchemas()]).then(
+      ([model, shape, rules, infos]) => {
+        setLoaded({ name, model, shape, rules, info: infos.find((i) => i.name === name) ?? null, all: infos })
         setError(null)
       },
       (e) => setError(String(e.message ?? e)),
@@ -94,15 +98,21 @@ export default function App() {
 
   useEffect(() => {
     point(null)
-    if (schema) load(schema)
+    if (schema && !schema.startsWith('_')) load(schema)
   }, [schema, load])
 
   // Every change, as it lands: the open schema reloads, Home recounts, Activity shows it.
   useEffect(
     () =>
       changes((c) => {
-        setActivity((a) => [c, ...a].slice(0, 30))
         setHomeVersion((v) => v + 1)
+        // The server started again or this page fell behind: read everything again.
+        if (c.kind === 'reload') {
+          fetchCatalog().then(setCatalog, () => undefined)
+          if (schema && !schema.startsWith('_')) load(schema)
+          return
+        }
+        setActivity((a) => [c, ...a].slice(0, 30))
         // An approved new rule joins the catalog: read it again so its sentence shows everywhere.
         if (c.kind === 'approve_rule') fetchCatalog().then(setCatalog, () => undefined)
         if (c.schema === schema) {
@@ -129,11 +139,10 @@ export default function App() {
   useHotkeys([
     ['c', () => copy(false)],
     ['shift+c', () => copy(true)],
-    ['1', () => go('tables')],
+    ['1', () => go('table', pointer?.table)],
     ['2', () => go('categories')],
-    ['3', () => go('table', pointer?.table)],
-    ['4', () => go('map')],
-    ['5', () => go('rules')],
+    ['3', () => go('map')],
+    ['4', () => go('rules')],
     ['Escape', () => point(null)],
   ])
 
@@ -197,59 +206,42 @@ export default function App() {
   }
 
   const pointed = ix && pointer ? reference(ix, pointer) : null
+  // What the perspective you are on counts, in the bar's right corner, as the boards put it.
+  const counts = (): string | undefined => {
+    if (!current || !ix) return undefined
+    const tables = (current.model.tables ?? []).filter((t) => !ix.isCopy(t.id))
+    const families = ix.families.size
+    if (perspective === 'table') return `${tables.length} tables · ${tables.reduce((n, t) => n + t.columns.length, 0).toLocaleString()} columns`
+    if (perspective === 'categories') return `${ix.namespaces.size} namespaces · ${families} families`
+    if (perspective === 'map') return `${tables.length} tables · ${families} families · ${current.shape.links.length} links`
+    if (perspective === 'rules') return `${current.rules.links.filter((l) => !l.off).length} rules linked`
+    return undefined
+  }
+  // Home and New schema are whole screens of their own, as their boards draw them.
+  if (!schema) {
+    return <Home catalog={catalog} version={homeVersion} open={(n) => open({ schema: n, perspective: 'table' })}
+      newSchema={() => open({ schema: '_new', perspective: 'table' })} rules={() => open({ schema: '_rules', perspective: 'table' })} />
+  }
+  if (schema === '_new') return <NewSchema catalog={catalog} open={(n) => open({ schema: n, perspective: 'table' })} />
+  if (schema === '_open') return <Locate open={(n) => open({ schema: n, perspective: 'table' })} />
+  if (schema === '_rules') return <RulesCatalog catalog={catalog} />
   return (
-    <div className="sf-app">
-      <header className="sf-header">
-        <div className="sf-head-left">
-          <Anchor className="sf-brand" onClick={() => open({ schema: null, perspective: 'tables' })} underline="never">
-            Schema Forge
-          </Anchor>
-          {schema && (
-            <div className="sf-schemaname">
-              <span className="sf-caption">schema</span>
-              <span className="sf-schema-title">{schema}</span>
-              {current && <Badge variant="light">{TARGET[current.model.target]}</Badge>}
-            </div>
-          )}
-        </div>
-        {schema && (
-          <nav className="sf-perspectives" role="tablist" aria-label="Perspectives">
-            {PERSPECTIVES.map((p, i) => (
-              <button key={p.value} type="button" role="tab" aria-selected={perspective === p.value} title={`${p.label} (${i + 1})`}
-                onClick={() => go(p.value, p.value === 'table' ? pointer?.table : undefined)}>
-                {p.label}
-              </button>
-            ))}
-          </nav>
-        )}
-        <div className="sf-pointer">
-          {pointed ? (
-            <>
-              <span className="sf-caption">pointing at</span>
-              <code className="sf-ref">{pointed}</code>
-              <button type="button" className="sf-chip" onClick={() => copy(false)} title="Copy the reference (C)">Copy</button>
-              <button type="button" className="sf-chip" onClick={() => copy(true)} title="Copy it with what it is (Shift+C)">Copy with context</button>
-              <button type="button" className="sf-chip" onClick={() => point(null)} title="Stop pointing (Esc)" aria-label="Stop pointing">×</button>
-            </>
-          ) : (
-            schema && <span className="sf-muted sf-small">Click a table's title or a column to point at it; <Kbd size="xs">C</Kbd> copies it for your agent.</span>
-          )}
-        </div>
-      </header>
-      <main className="sf-main">
-        {!schema && <Home open={(n) => open({ schema: n, perspective: 'tables' })} version={homeVersion} />}
+    <div className="d-page d-shell">
+      <SchemaBar name={schema} info={current?.info ?? null} all={current?.all ?? []} on={perspective} count={counts()}
+        go={(p) => go(p, p === 'table' ? pointer?.table : undefined)}
+        switchTo={(n) => open({ schema: n, perspective: perspective === 'map' || perspective === 'categories' || perspective === 'rules' ? perspective : 'table' })} />
+      <div className="d-shell-body">
         {schema && error && <Text c="red" p="lg">{error}</Text>}
         {schema && !error && (!current || !catalog) && <Text c="dimmed" p="lg">Opening {schema}…</Text>}
         {schema && current && catalog && (
           <WorkbenchProvider value={{ name: schema, model: current.model, shape: current.shape, go, pointer, point, catalog, rules: current.rules, reloadRules: () => reloadRules(schema), edit }}>
-            {perspective === 'tables' && <Tables />}
             {perspective === 'categories' && <Categories />}
-            {perspective === 'table' && <TableView id={arg} />}
+            {perspective === 'table' && <Table id={arg} />}
             {perspective === 'map' && <MapView family={arg} />}
-            {perspective === 'rules' && <RulesView arg={arg} />}
+            {perspective === 'rules' && (!arg ? <RulesHome /> : arg.startsWith('rule:') ? <RuleScreen id={arg.slice(5)} /> : <RulesView arg={arg} />)}
           </WorkbenchProvider>
         )}
-      </main>
+      </div>
       {ask && (
         <div className="sf-ask" role="alertdialog" aria-label="Your decision">
           <span className="sf-strong">{ask.soften.length ? 'This breaks hard rules. Hard is not overridden: turn them soft to go ahead.' : ask.why.includes('hard rules') ? 'This breaks hard rules.' : 'This is destructive.'}</span>
@@ -269,24 +261,27 @@ export default function App() {
         </div>
       )}
       {schema && current && <Turns schema={schema} onError={(m) => notifications.show({ color: 'red', message: m })} />}
-      <footer className="sf-activity">
-        <Text size="xs" c="dimmed" fw={600}>Activity</Text>
-        {schema && activity.some((a) => a.schema === schema && a.kind === 'change') && (
-          <button type="button" className="sf-chip" title="Undo the latest design change"
-            onClick={() => undo(schema).catch((e) => notifications.show({ color: 'red', message: String(e.message ?? e) }))}>
-            Undo
-          </button>
-        )}
-        {activity.length === 0 ? (
-          <Text size="xs" c="dimmed">Changes appear here as they land.</Text>
+      <footer className="d-foot">
+        {pointed ? (
+          <span className="d-row d-gap-8">
+            <span>Pointing at</span>
+            <code className="d-ref">{pointed}</code>
+            <button type="button" className="d-mini d-mini-on" onClick={() => copy(false)} title="Copy the reference (C)">Copy</button>
+            <button type="button" className="d-mini" onClick={() => copy(true)} title="Copy it with what it is (Shift+C)">Copy with context</button>
+            <button type="button" className="d-mini" onClick={() => point(null)} aria-label="Stop pointing (Esc)">×</button>
+          </span>
         ) : (
-          activity.slice(0, 4).map((a) => (
-            <Text key={`${a.schema}-${a.sequence}`} size="xs" className="sf-ellipsis" title={a.summary ?? undefined}>
-              <Text span c="pelican.3">{a.schema}</Text> #{a.sequence} {a.kind === 'change' ? '' : `${a.kind} `}by {a.by}
-              {a.summary ? `: ${a.summary}` : ''}
-            </Text>
-          ))
+          <span>Click anything, then press <span className="d-key">C</span> to copy its reference for the agent</span>
         )}
+        <span className="d-row d-gap-8" style={{ marginLeft: 'auto', minWidth: 0 }}>
+          {activity.filter((a) => a.schema === schema).slice(0, 1).map((a) => (
+            <span key={a.sequence} className="d-ellipsis" title={a.summary ?? undefined}>{a.by === 'agent' ? 'Agent' : a.by === 'you' ? 'You' : a.by}: {a.summary ?? a.kind}</span>
+          ))}
+          {schema && activity.some((a) => a.schema === schema && a.kind === 'change') && (
+            <button type="button" className="d-mini" title="Undo the latest design change"
+              onClick={() => undo(schema).catch((e) => notifications.show({ color: 'red', message: String(e.message ?? e) }))}>Undo</button>
+          )}
+        </span>
       </footer>
     </div>
   )

@@ -77,6 +77,46 @@ fn words(text: &str) -> Vec<String> {
     out
 }
 
+/// What a dump file or a folder holds: a folder is Iceberg definitions; a file says what it is (pg_dump's header,
+/// or `USING iceberg`).
+///
+/// # Errors
+/// When it cannot be read, or does not say what it is.
+pub fn detect(path: &std::path::Path) -> Result<Target, String> {
+    if path.is_dir() {
+        return Ok(Target::Iceberg);
+    }
+    // The start of the file says what it is: no need to read a dump of gigabytes to find out.
+    let mut head = Vec::with_capacity(64 * 1024);
+    std::io::Read::read_to_end(
+        &mut std::io::Read::take(std::fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?, 64 * 1024),
+        &mut head,
+    )
+    .map_err(|e| format!("{}: {e}", path.display()))?;
+    let text = String::from_utf8_lossy(&head);
+    if text.contains("PostgreSQL database dump") {
+        Ok(Target::Postgres)
+    } else if text.to_ascii_lowercase().contains("using iceberg") {
+        Ok(Target::Iceberg)
+    } else {
+        Err(format!("{}: not a pg_dump or Iceberg Spark SQL; say which type it is", path.display()))
+    }
+}
+
+/// Reads a dump file or a folder of definitions as `target`.
+///
+/// # Errors
+/// When it cannot be read or parsed, or `target` has no reader yet.
+pub fn read_path(path: &std::path::Path, target: Target) -> Result<Imported, String> {
+    let file = || std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()));
+    match target {
+        Target::Postgres => postgres::import(&file()?).map_err(|e| e.to_string()),
+        Target::Iceberg if path.is_dir() => iceberg::import_folder(path).map_err(|e| e.to_string()),
+        Target::Iceberg => iceberg::import(&file()?).map_err(|e| e.to_string()),
+        Target::Mysql => Err("reading a MySQL dump is not built yet".to_string()),
+    }
+}
+
 /// The views, each after the views it reads (a cycle, which the model refuses, keeps the rest in model order).
 pub(crate) fn views_in_order(schema: &schema_forge_core::Schema) -> Vec<&schema_forge_core::View> {
     let mut done: std::collections::HashSet<&schema_forge_core::Id> = std::collections::HashSet::new();

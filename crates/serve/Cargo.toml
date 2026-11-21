@@ -15,7 +15,6 @@ serde.workspace = true
 serde_json.workspace = true
 axum = "0.8.9"
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "net", "sync"] }
-tokio-stream = { version = "0.1", features = ["sync"] }
 rust-embed = "8.14.0"
 mime_guess = "2.0.5"
 

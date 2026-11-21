@@ -4,6 +4,7 @@ import '@fontsource/space-grotesk/700.css'
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 import './app.css'
+import './screens/design.css'
 
 import { MantineProvider, createTheme } from '@mantine/core'
 import { Notifications } from '@mantine/notifications'

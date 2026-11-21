@@ -1,22 +1,18 @@
 //! `schema-forge serve`: one local process that holds the workspace's store and serves the perspectives, their
 //! data, and every change as it lands.
 
-use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::{StatusCode, Uri, header};
-use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use rust_embed::RustEmbed;
 use schema_forge_core::rules::{self, Group, Link, Scope};
 use schema_forge_core::{Id, Target};
 use schema_forge_store::{Rules, Store};
-use tokio_stream::StreamExt as _;
-use tokio_stream::wrappers::BroadcastStream;
 
 /// The perspectives, built (`canvas/dist`) and carried inside the binary.
 #[derive(RustEmbed)]
@@ -46,16 +42,175 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/rules/global/enforce", post(enforce_global))
         .route("/api/schemas/{name}/proposals", get(proposals))
         .route("/api/schemas/{name}/undo", post(undo))
+        .route("/api/schemas/{name}/operations", get(recent))
         .route("/api/schemas/{name}/turns", get(turns))
         .route("/api/schemas/{name}/turns/{n}/accept", post(accept_turn))
         .route("/api/schemas/{name}/turns/{n}/reject", post(reject_turn))
         .route("/api/schemas/{name}/proposals/{id}/approve", post(approve))
         .route("/api/schemas/{name}/proposals/{id}/reject", post(reject))
         .route("/api/schemas/{name}/proposals/{id}/enforce", post(proposal_enforce))
-        .nest_service("/mcp", schema_forge_mcp::service(store.clone()))
-        .route("/api/events", get(events))
+        .merge(
+            Router::new()
+                .nest_service("/mcp", schema_forge_mcp::service(store.clone()))
+                .layer(axum::middleware::from_fn(agent_seen)),
+        )
+        .route("/api/workspace", get(workspace))
+        .route("/api/browse", get(browse))
+        .route("/api/import", post(import))
+        .route("/api/changes", get(changes))
         .fallback(canvas)
+        .layer(axum::middleware::from_fn(local_only))
         .with_state(store)
+}
+
+/// Only this machine's own pages: a request whose Host is not the loopback address (a DNS-rebound page) or that a
+/// page of another site sent (its Origin) is refused, so nothing on the web can list files, read them, or change a
+/// schema through this server.
+async fn local_only(req: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    let local = |h: &str| {
+        let host = h.rsplit_once(':').filter(|(_, p)| p.chars().all(|c| c.is_ascii_digit())).map_or(h, |(h, _)| h);
+        matches!(host, "127.0.0.1" | "localhost" | "[::1]")
+    };
+    let host_ok = req.headers().get(header::HOST).and_then(|v| v.to_str().ok()).is_none_or(local);
+    let origin_ok = req
+        .headers()
+        .get(header::ORIGIN)
+        .and_then(|v| v.to_str().ok())
+        .is_none_or(|o| o.strip_prefix("http://").is_some_and(local));
+    if host_ok && origin_ok {
+        next.run(req).await
+    } else {
+        failed(StatusCode::FORBIDDEN, "only pages of this machine may use Schema Forge")
+    }
+}
+
+/// When the agent last reached the MCP, in milliseconds since the Unix epoch; 0 when it has not this run.
+static AGENT_SEEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|d| u64::try_from(d.as_millis()).ok())
+        .unwrap_or(0)
+}
+
+async fn agent_seen(req: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    AGENT_SEEN.store(now_ms(), std::sync::atomic::Ordering::Relaxed);
+    next.run(req).await
+}
+
+/// The workspace: its folder (`~` for your home), and when the agent last reached the MCP.
+async fn workspace(State(store): State<Arc<Store>>) -> Response {
+    let folder = store.folder();
+    let shown = std::env::var_os("HOME")
+        .and_then(|h| folder.strip_prefix(h).ok().map(|rest| format!("~/{}", rest.display())))
+        .unwrap_or_else(|| folder.display().to_string());
+    let seen = AGENT_SEEN.load(std::sync::atomic::Ordering::Relaxed);
+    axum::Json(serde_json::json!({ "folder": shown, "agent_seen": (seen > 0).then_some(seen), "now": now_ms() }))
+        .into_response()
+}
+
+#[derive(serde::Deserialize)]
+struct Browse {
+    #[serde(default)]
+    path: Option<String>,
+}
+
+/// A folder on this machine, to locate a dump file or an Iceberg folder: its entries, folders first; `~` is your
+/// home and the default.
+async fn browse(axum::extract::Query(b): axum::extract::Query<Browse>) -> Response {
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from).unwrap_or_else(|| "/".into());
+    let path = match b.path.as_deref() {
+        None | Some("" | "~") => home.clone(),
+        Some(p) if p.starts_with("~/") => home.join(&p[2..]),
+        Some(p) => std::path::PathBuf::from(p),
+    };
+    let read = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, String> {
+        let mut entries = Vec::new();
+        for e in std::fs::read_dir(&path).map_err(|e| format!("{}: {e}", path.display()))? {
+            let Ok(e) = e else { continue };
+            let name = e.file_name().to_string_lossy().to_string();
+            let Ok(meta) = std::fs::metadata(e.path()) else { continue };
+            entries.push(serde_json::json!({
+                "name": name,
+                "dir": meta.is_dir(),
+                "size": (!meta.is_dir()).then_some(meta.len()),
+                "hidden": name.starts_with('.'),
+            }));
+        }
+        entries.sort_by(|a, b| {
+            (!a["dir"].as_bool().unwrap_or(false), a["name"].as_str().unwrap_or("").to_lowercase())
+                .cmp(&(!b["dir"].as_bool().unwrap_or(false), b["name"].as_str().unwrap_or("").to_lowercase()))
+        });
+        Ok(serde_json::json!({
+            "path": path.display().to_string(),
+            "parent": path.parent().map(|p| p.display().to_string()),
+            "entries": entries,
+        }))
+    })
+    .await;
+    match read {
+        Ok(Ok(v)) => axum::Json(v).into_response(),
+        Ok(Err(e)) => failed(StatusCode::BAD_REQUEST, e),
+        Err(e) => failed(StatusCode::INTERNAL_SERVER_ERROR, e),
+    }
+}
+
+/// An import: the file or folder, the schema it goes into (made when it is not there), and its type when the file
+/// cannot say.
+#[derive(serde::Deserialize)]
+struct Import {
+    path: String,
+    schema: String,
+    #[serde(default)]
+    target: Option<Target>,
+    #[serde(default)]
+    about: Option<String>,
+    /// Replace the model of a schema of that name; without it an existing name is refused.
+    #[serde(default)]
+    replace: bool,
+}
+
+/// Reads a dump file or an Iceberg folder into a schema; answers what it read.
+async fn import(State(store): State<Arc<Store>>, axum::Json(i): axum::Json<Import>) -> Response {
+    let path = std::path::PathBuf::from(&i.path);
+    let read = tokio::task::spawn_blocking(move || -> Result<(Target, schema_forge_dialects::Imported), String> {
+        let target = match i.target {
+            Some(t) => t,
+            None => schema_forge_dialects::detect(&path)?,
+        };
+        Ok((target, schema_forge_dialects::read_path(&path, target)?))
+    })
+    .await;
+    let (target, imported) = match read {
+        Ok(Ok(r)) => r,
+        Ok(Err(e)) => return failed(StatusCode::BAD_REQUEST, e),
+        Err(e) => return failed(StatusCode::INTERNAL_SERVER_ERROR, e),
+    };
+    match store.import_schema(&i.schema, &imported.schema, i.about, i.replace, BY) {
+        Ok(_) => {}
+        Err(schema_forge_store::Error::SchemaExists(_)) => {
+            return failed(
+                StatusCode::CONFLICT,
+                format!("there is a schema `{}` already: pick another name, or replace it", i.schema),
+            );
+        }
+        Err(e @ (schema_forge_store::Error::BadName(_) | schema_forge_store::Error::WrongTarget { .. })) => {
+            return failed(StatusCode::BAD_REQUEST, e);
+        }
+        Err(e) => return store_failed(e),
+    }
+    let findings: Vec<String> = schema_forge_core::check(&imported.schema).iter().map(ToString::to_string).collect();
+    axum::Json(serde_json::json!({
+        "schema": i.schema,
+        "target": target,
+        "tables": imported.schema.tables.len(),
+        "views": imported.schema.views.len(),
+        "report": imported.report.to_string(),
+        "findings": findings,
+    }))
+    .into_response()
 }
 
 /// Serves on `127.0.0.1:port` until the process ends; `ready` hears the address once it is listening.
@@ -219,15 +374,21 @@ async fn remove_group(State(store): State<Arc<Store>>, Path((name, group)): Path
 struct NewSchema {
     name: String,
     target: Target,
+    #[serde(default)]
+    about: Option<String>,
+    #[serde(default)]
+    iceberg_format: Option<u32>,
 }
 
 /// Makes an empty schema of a type.
 async fn new_schema(State(store): State<Arc<Store>>, axum::Json(n): axum::Json<NewSchema>) -> Response {
-    match store.create_schema(&n.name, n.target) {
+    match store.create_schema_with(&n.name, n.target, n.about, n.iceberg_format) {
         Ok(info) => axum::Json(info).into_response(),
-        Err(e @ (schema_forge_store::Error::SchemaExists(_) | schema_forge_store::Error::BadName(_))) => {
-            failed(StatusCode::BAD_REQUEST, e)
-        }
+        Err(
+            e @ (schema_forge_store::Error::SchemaExists(_)
+            | schema_forge_store::Error::BadName(_)
+            | schema_forge_store::Error::Rule(_)),
+        ) => failed(StatusCode::BAD_REQUEST, e),
         Err(e) => store_failed(e),
     }
 }
@@ -415,22 +576,62 @@ async fn definition(State(store): State<Arc<Store>>, Path((name, id)): Path<(Str
     }
 }
 
-/// Every change, as it is committed: `{schema, sequence, kind, by}`.
-async fn events(State(store): State<Arc<Store>>) -> Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>> {
-    let stream = BroadcastStream::new(store.subscribe()).filter_map(|change| {
-        let change = change.ok()?;
-        let data = serde_json::json!({
-            "schema": change.schema,
-            "sequence": change.operation.sequence,
-            "kind": change.operation.kind,
-            "by": change.operation.by,
-            "summary": change.operation.change["summaries"].as_array().map(|s| {
-                s.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>().join("; ")
-            }),
-        });
-        Some(Ok(Event::default().event("change").data(data.to_string())))
-    });
-    Sse::new(stream).keep_alive(KeepAlive::default())
+#[derive(serde::Deserialize)]
+struct Since {
+    #[serde(default)]
+    after: Option<u64>,
+}
+
+/// What changed after change number `after` (without it, nothing: only the newest number, to start from), across
+/// the workspace: `{boot, last, first, changes: [{n, schema, sequence, kind, by, at, summary}]}`. A page that sees
+/// `boot` change, or is behind `first`, reloads. A page asks again every second or so; nothing is held open, so no page ever waits on
+/// another for a connection.
+async fn changes(State(store): State<Arc<Store>>, axum::extract::Query(q): axum::extract::Query<Since>) -> Response {
+    let feed = store.changes_since(q.after);
+    let changes: Vec<serde_json::Value> = feed
+        .changes
+        .into_iter()
+        .map(|(n, c)| {
+            serde_json::json!({
+                "n": n,
+                "schema": c.schema,
+                "sequence": c.operation.sequence,
+                "kind": c.operation.kind,
+                "by": c.operation.by,
+                "at": c.operation.at,
+                "summary": c.operation.change["summaries"].as_array().map(|s| {
+                    s.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>().join("; ")
+                }),
+            })
+        })
+        .collect();
+    axum::Json(serde_json::json!({ "boot": feed.boot, "last": feed.last, "first": feed.first, "changes": changes }))
+        .into_response()
+}
+
+#[derive(serde::Deserialize)]
+struct Last {
+    #[serde(default = "ten")]
+    last: usize,
+}
+
+const fn ten() -> usize {
+    10
+}
+
+/// The schema's last changes, newest first: `?last=<n>`, ten by default.
+async fn recent(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::extract::Query(q): axum::extract::Query<Last>,
+) -> Response {
+    if let Err(e) = store.rules(&name) {
+        return store_failed(e);
+    }
+    match store.recent(&name, q.last.min(500)) {
+        Ok(ops) => axum::Json(ops).into_response(),
+        Err(e) => store_failed(e),
+    }
 }
 
 /// The built perspectives; any path that is not a file is the app itself, except under `/api`, where a path no
