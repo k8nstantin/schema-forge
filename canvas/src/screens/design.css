@@ -711,3 +711,272 @@ a.d-btn {
   font-size: 13px;
   cursor: pointer;
 }
+
+/* A schema's bar and its perspectives ("Perspective · …" boards) */
+
+.d-brand-text {
+  font-family: var(--d-head);
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.d-page a.d-brand-text {
+  color: var(--d-bright);
+}
+
+.d-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--d-soft);
+}
+
+.d-schema-name {
+  font-family: var(--d-head);
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--d-bright);
+}
+
+.d-persp {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--d-card);
+  border: 1px solid var(--d-line);
+}
+
+.d-persp button {
+  padding: 8px 16px;
+  border-radius: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--d-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.d-persp button.d-persp-on {
+  background: var(--d-accent);
+  color: #ffffff;
+}
+
+.d-persp-main {
+  max-width: 1320px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 24px 48px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.d-find {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--d-input);
+  background: var(--d-bar);
+  color: var(--d-bright);
+  font-size: 15px;
+  font-family: var(--d-body);
+}
+
+.d-nschip {
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--d-input);
+  background: transparent;
+  color: var(--d-text);
+}
+
+.d-nschip-on {
+  border-color: var(--d-accent);
+  background: var(--d-accent);
+  color: #ffffff;
+}
+
+.d-tbl {
+  border: 1px solid var(--d-line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.d-tbl-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr) 90px 90px minmax(0, 1.2fr) 110px;
+  gap: 12px;
+  align-items: baseline;
+  padding: 9px 16px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--d-text);
+  font-size: 14px;
+}
+
+.d-tbl-head {
+  padding: 10px 16px;
+  background: var(--d-bar);
+}
+
+.d-tbl-line {
+  border-top: 1px solid var(--d-card);
+  cursor: pointer;
+}
+
+.d-tbl-line:hover {
+  background: var(--d-card);
+}
+
+.d-sort {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--d-soft);
+}
+
+.d-sort-on {
+  color: var(--d-bright);
+}
+
+.d-nshead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 16px 16px 10px;
+  border-top: 2px solid var(--d-input);
+  background: var(--d-side);
+}
+
+.d-nsname {
+  font-family: var(--d-head);
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--d-violet);
+}
+
+.d-tname {
+  font-family: var(--d-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--d-bright);
+  overflow-wrap: anywhere;
+}
+
+.d-tnote {
+  font-size: 13px;
+  color: var(--d-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.d-fam {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.d-famdot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.d-famdot-view {
+  background: transparent;
+  border: 2px dashed var(--d-faint);
+  box-sizing: border-box;
+}
+
+.d-cnum {
+  font-family: var(--d-mono);
+  text-align: right;
+}
+
+.d-nested {
+  color: var(--d-blue);
+}
+
+.d-part {
+  font-family: var(--d-mono);
+  font-size: 13px;
+  color: var(--d-lilac);
+}
+
+.d-links {
+  font-size: 13px;
+  color: var(--d-soft);
+  text-align: right;
+}
+
+/* Under every perspective: what you point at, and what just landed */
+
+.d-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 24px;
+  border-top: 1px solid var(--d-line);
+  background: var(--d-bar);
+  font-size: 13px;
+  color: var(--d-soft);
+}
+
+.d-key {
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--d-input);
+  color: var(--d-text);
+}
+
+.d-mini {
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--d-input);
+  background: transparent;
+  color: var(--d-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.d-mini-on {
+  border: 0;
+  background: var(--d-accent);
+  color: #ffffff;
+}
+
+.d-shell {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+
+.d-shell-body {
+  overflow: auto;
+  min-height: 0;
+}
+
+.d-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 560px;
+}

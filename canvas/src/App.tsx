@@ -1,13 +1,13 @@
 // The app: Home, and a schema seen from its perspectives (Tables, Categories, Table, Map), with what you point at
 // ready to copy for the agent, and the live Activity under them.
 
-import { Anchor, Badge, Kbd, Text } from '@mantine/core'
+import { Text } from '@mantine/core'
 import { useHotkeys } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { catalog as fetchCatalog, changeByHand, changes, model as fetchModel, schemaRules, setEnforce, shape as fetchShape, undo, type Change } from './api'
-import type { Catalog, RuleLink, Schema, SchemaRules, Shape } from './model'
+import { schemas as fetchSchemas, catalog as fetchCatalog, changeByHand, changes, model as fetchModel, schemaRules, setEnforce, shape as fetchShape, undo, type Change } from './api'
+import type { Catalog, RuleLink, Schema, SchemaInfo, SchemaRules, Shape } from './model'
 import { scopeTitle } from './rules/scope'
 import { Categories } from './perspectives/Categories'
 import { Turns } from './components/Turns'
@@ -16,7 +16,8 @@ import { NewSchema } from './screens/NewSchema'
 import { Locate } from './screens/Locate'
 import { RulesView } from './rules/RulesView'
 import { MapView } from './perspectives/MapView'
-import { Tables } from './perspectives/Tables'
+import { Tables } from './screens/Tables'
+import { SchemaBar } from './screens/SchemaBar'
 import { TableView } from './perspectives/TableView'
 import { WorkbenchProvider, indexOf, reference, referenceWithContext, type Perspective, type Pointer } from './state'
 
@@ -27,7 +28,6 @@ const PERSPECTIVES: { value: Perspective; label: string }[] = [
   { value: 'map', label: 'Map' },
   { value: 'rules', label: 'Rules' },
 ]
-const TARGET = { postgres: 'PostgreSQL', mysql: 'MySQL', iceberg: 'Iceberg' } as const
 
 interface Place { schema: string | null; perspective: Perspective; arg?: string }
 
@@ -45,7 +45,7 @@ function writeHash(p: Place) {
 export default function App() {
   const [place, setPlace] = useState(readHash)
   const { schema, perspective, arg } = place
-  const [loaded, setLoaded] = useState<{ name: string; model: Schema; shape: Shape; rules: SchemaRules } | null>(null)
+  const [loaded, setLoaded] = useState<{ name: string; model: Schema; shape: Shape; rules: SchemaRules; info: SchemaInfo | null } | null>(null)
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [pointer, point] = useState<Pointer>(null)
   const [activity, setActivity] = useState<Change[]>([])
@@ -73,9 +73,9 @@ export default function App() {
   }, [])
 
   const load = useCallback((name: string) => {
-    Promise.all([fetchModel(name), fetchShape(name), schemaRules(name)]).then(
-      ([model, shape, rules]) => {
-        setLoaded({ name, model, shape, rules })
+    Promise.all([fetchModel(name), fetchShape(name), schemaRules(name), fetchSchemas()]).then(
+      ([model, shape, rules, infos]) => {
+        setLoaded({ name, model, shape, rules, info: infos.find((i) => i.name === name) ?? null })
         setError(null)
       },
       (e) => setError(String(e.message ?? e)),
@@ -193,6 +193,17 @@ export default function App() {
   }
 
   const pointed = ix && pointer ? reference(ix, pointer) : null
+  // What the perspective you are on counts, in the bar's right corner, as the boards put it.
+  const counts = (): string | undefined => {
+    if (!current || !ix) return undefined
+    const tables = (current.model.tables ?? []).filter((t) => !ix.isCopy(t.id))
+    const families = ix.families.size
+    if (perspective === 'tables') return `${tables.length} tables · ${tables.reduce((n, t) => n + t.columns.length, 0).toLocaleString()} columns`
+    if (perspective === 'categories') return `${ix.namespaces.size} namespaces · ${families} families`
+    if (perspective === 'map') return `${tables.length} tables · ${families} families · ${current.shape.links.length} links`
+    if (perspective === 'rules') return `${current.rules.links.filter((l) => !l.off).length} rules linked`
+    return undefined
+  }
   // Home and New schema are whole screens of their own, as their boards draw them.
   if (!schema) {
     return <Home catalog={catalog} version={homeVersion} open={(n) => open({ schema: n, perspective: 'tables' })}
@@ -201,45 +212,10 @@ export default function App() {
   if (schema === '_new') return <NewSchema catalog={catalog} open={(n) => open({ schema: n, perspective: 'tables' })} />
   if (schema === '_open') return <Locate open={(n) => open({ schema: n, perspective: 'tables' })} />
   return (
-    <div className="sf-app">
-      <header className="sf-header">
-        <div className="sf-head-left">
-          <Anchor className="sf-brand" onClick={() => open({ schema: null, perspective: 'tables' })} underline="never">
-            Schema Forge
-          </Anchor>
-          {schema && (
-            <div className="sf-schemaname">
-              <span className="sf-caption">schema</span>
-              <span className="sf-schema-title">{schema}</span>
-              {current && <Badge variant="light">{TARGET[current.model.target]}</Badge>}
-            </div>
-          )}
-        </div>
-        {schema && (
-          <nav className="sf-perspectives" role="tablist" aria-label="Perspectives">
-            {PERSPECTIVES.map((p, i) => (
-              <button key={p.value} type="button" role="tab" aria-selected={perspective === p.value} title={`${p.label} (${i + 1})`}
-                onClick={() => go(p.value, p.value === 'table' ? pointer?.table : undefined)}>
-                {p.label}
-              </button>
-            ))}
-          </nav>
-        )}
-        <div className="sf-pointer">
-          {pointed ? (
-            <>
-              <span className="sf-caption">pointing at</span>
-              <code className="sf-ref">{pointed}</code>
-              <button type="button" className="sf-chip" onClick={() => copy(false)} title="Copy the reference (C)">Copy</button>
-              <button type="button" className="sf-chip" onClick={() => copy(true)} title="Copy it with what it is (Shift+C)">Copy with context</button>
-              <button type="button" className="sf-chip" onClick={() => point(null)} title="Stop pointing (Esc)" aria-label="Stop pointing">×</button>
-            </>
-          ) : (
-            schema && <span className="sf-muted sf-small">Click a table's title or a column to point at it; <Kbd size="xs">C</Kbd> copies it for your agent.</span>
-          )}
-        </div>
-      </header>
-      <main className="sf-main">
+    <div className="d-page d-shell">
+      <SchemaBar name={schema} info={current?.info ?? null} on={perspective} count={counts()}
+        go={(p) => go(p, p === 'table' ? pointer?.table : undefined)} />
+      <div className="d-shell-body">
         {schema && error && <Text c="red" p="lg">{error}</Text>}
         {schema && !error && (!current || !catalog) && <Text c="dimmed" p="lg">Opening {schema}…</Text>}
         {schema && current && catalog && (
@@ -251,7 +227,7 @@ export default function App() {
             {perspective === 'rules' && <RulesView arg={arg} />}
           </WorkbenchProvider>
         )}
-      </main>
+      </div>
       {ask && (
         <div className="sf-ask" role="alertdialog" aria-label="Your decision">
           <span className="sf-strong">{ask.soften.length ? 'This breaks hard rules. Hard is not overridden: turn them soft to go ahead.' : ask.why.includes('hard rules') ? 'This breaks hard rules.' : 'This is destructive.'}</span>
@@ -271,24 +247,27 @@ export default function App() {
         </div>
       )}
       {schema && current && <Turns schema={schema} onError={(m) => notifications.show({ color: 'red', message: m })} />}
-      <footer className="sf-activity">
-        <Text size="xs" c="dimmed" fw={600}>Activity</Text>
-        {schema && activity.some((a) => a.schema === schema && a.kind === 'change') && (
-          <button type="button" className="sf-chip" title="Undo the latest design change"
-            onClick={() => undo(schema).catch((e) => notifications.show({ color: 'red', message: String(e.message ?? e) }))}>
-            Undo
-          </button>
-        )}
-        {activity.length === 0 ? (
-          <Text size="xs" c="dimmed">Changes appear here as they land.</Text>
+      <footer className="d-foot">
+        {pointed ? (
+          <span className="d-row d-gap-8">
+            <span>Pointing at</span>
+            <code className="d-ref">{pointed}</code>
+            <button type="button" className="d-mini d-mini-on" onClick={() => copy(false)} title="Copy the reference (C)">Copy</button>
+            <button type="button" className="d-mini" onClick={() => copy(true)} title="Copy it with what it is (Shift+C)">Copy with context</button>
+            <button type="button" className="d-mini" onClick={() => point(null)} aria-label="Stop pointing (Esc)">×</button>
+          </span>
         ) : (
-          activity.slice(0, 4).map((a) => (
-            <Text key={`${a.schema}-${a.sequence}`} size="xs" className="sf-ellipsis" title={a.summary ?? undefined}>
-              <Text span c="pelican.3">{a.schema}</Text> #{a.sequence} {a.kind === 'change' ? '' : `${a.kind} `}by {a.by}
-              {a.summary ? `: ${a.summary}` : ''}
-            </Text>
-          ))
+          <span>Click anything, then press <span className="d-key">C</span> to copy its reference for the agent</span>
         )}
+        <span className="d-row d-gap-8" style={{ marginLeft: 'auto', minWidth: 0 }}>
+          {activity.filter((a) => a.schema === schema).slice(0, 1).map((a) => (
+            <span key={a.sequence} className="d-ellipsis" title={a.summary ?? undefined}>{a.by === 'agent' ? 'Agent' : a.by === 'you' ? 'You' : a.by}: {a.summary ?? a.kind}</span>
+          ))}
+          {schema && activity.some((a) => a.schema === schema && a.kind === 'change') && (
+            <button type="button" className="d-mini" title="Undo the latest design change"
+              onClick={() => undo(schema).catch((e) => notifications.show({ color: 'red', message: String(e.message ?? e) }))}>Undo</button>
+          )}
+        </span>
       </footer>
     </div>
   )
