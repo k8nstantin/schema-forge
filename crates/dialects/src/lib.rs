@@ -86,7 +86,14 @@ pub fn detect(path: &std::path::Path) -> Result<Target, String> {
     if path.is_dir() {
         return Ok(Target::Iceberg);
     }
-    let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    // The start of the file says what it is: no need to read a dump of gigabytes to find out.
+    let mut head = Vec::with_capacity(64 * 1024);
+    std::io::Read::read_to_end(
+        &mut std::io::Read::take(std::fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?, 64 * 1024),
+        &mut head,
+    )
+    .map_err(|e| format!("{}: {e}", path.display()))?;
+    let text = String::from_utf8_lossy(&head);
     if text.contains("PostgreSQL database dump") {
         Ok(Target::Postgres)
     } else if text.to_ascii_lowercase().contains("using iceberg") {

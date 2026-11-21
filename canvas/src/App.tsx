@@ -15,6 +15,7 @@ import { Turns } from './components/Turns'
 import { Home } from './screens/Home'
 import { NewSchema } from './screens/NewSchema'
 import { Locate } from './screens/Locate'
+import { RulesCatalog } from './screens/RulesCatalog'
 import { RulesView } from './rules/RulesView'
 import { RuleScreen, RulesHome } from './screens/Rules'
 import { MapScreen as MapView } from './screens/Map'
@@ -104,8 +105,14 @@ export default function App() {
   useEffect(
     () =>
       changes((c) => {
-        setActivity((a) => [c, ...a].slice(0, 30))
         setHomeVersion((v) => v + 1)
+        // The server started again or this page fell behind: read everything again.
+        if (c.kind === 'reload') {
+          fetchCatalog().then(setCatalog, () => undefined)
+          if (schema && !schema.startsWith('_')) load(schema)
+          return
+        }
+        setActivity((a) => [c, ...a].slice(0, 30))
         // An approved new rule joins the catalog: read it again so its sentence shows everywhere.
         if (c.kind === 'approve_rule') fetchCatalog().then(setCatalog, () => undefined)
         if (c.schema === schema) {
@@ -217,6 +224,7 @@ export default function App() {
   }
   if (schema === '_new') return <NewSchema catalog={catalog} open={(n) => open({ schema: n, perspective: 'table' })} />
   if (schema === '_open') return <Locate open={(n) => open({ schema: n, perspective: 'table' })} />
+  if (schema === '_rules') return <RulesCatalog catalog={catalog} />
   return (
     <div className="d-page d-shell">
       <SchemaBar name={schema} info={current?.info ?? null} all={current?.all ?? []} on={perspective} count={counts()}

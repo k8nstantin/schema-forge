@@ -162,7 +162,7 @@ function summary(r: Row): string {
   parts.push(r.packs ? `${r.packs} rule ${r.packs === 1 ? 'pack' : 'packs'}` : 'no rules')
   if (r.last) {
     const when = r.last.at ? ` ${ago(r.last.at)}` : ''
-    parts.push(r.last.by === 'import' ? `imported${when}` : r.last.at ? `${who(r.last.by)} changed it${when}` : `last changed by ${who(r.last.by)}`)
+    parts.push(r.last.kind === 'import' ? `imported${when}` : r.last.at ? `${who(r.last.by)} changed it${when}` : `last changed by ${who(r.last.by)}`)
   }
   return parts.join(' · ')
 }

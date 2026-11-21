@@ -42,23 +42,31 @@ function startPolling() {
   started = true
   // Unset until the server first answers: then only its newest number comes back, and changes after it follow.
   let after: number | null = null
+  let boot: number | null = null
+  let timer = 0
   const ask = async () => {
+    window.clearTimeout(timer)
     try {
       const r = await fetch(after === null ? '/api/changes' : `/api/changes?after=${after}`)
       if (r.ok) {
-        const { last, changes } = (await r.json()) as { last: number; changes: Change[] }
-        // The server started again and numbers from 1 again: take everything it has.
-        if (after !== null && last < after) after = 0
-        else {
-          for (const c of changes) listeners.forEach((on) => on(c))
-          after = last
+        const f = (await r.json()) as { boot: number; last: number; first: number; changes: Change[] }
+        // The server started again, or this page is behind what it keeps: what is shown may be stale, so
+        // everything is read again.
+        if ((boot !== null && f.boot !== boot) || (after !== null && f.first > after + 1)) {
+          listeners.forEach((on) => on({ schema: '*', sequence: 0, kind: 'reload', by: '' }))
+        } else {
+          for (const c of f.changes) listeners.forEach((on) => on(c))
         }
+        boot = f.boot
+        after = f.last
       }
     } catch {
       // The server is away; ask again.
     }
-    window.setTimeout(ask, 1000)
+    // A hidden tab does not ask; it asks again as soon as it is shown.
+    if (document.visibilityState === 'visible') timer = window.setTimeout(ask, 1000)
   }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') ask() })
   ask()
 }
 

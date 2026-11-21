@@ -41,12 +41,22 @@ export function NewSchema({ catalog, open }: { catalog: Catalog | null; open: (n
   const ruleCount = new Set(chosen.flatMap((p) => checksOf(p.id).filter(fits))).size
   const prompt = `Design @${name || 'name'}: `
 
+  // Made once; the packs are linked one by one after it, and a try again links only those not linked yet.
+  const [created, setCreated] = useState<string | null>(null)
+  const [linked, setLinked] = useState<Set<string>>(new Set())
   const create = () => {
     setBusy(true)
     setError(null)
-    newSchema(name, type, about, type === 'iceberg' ? version : undefined)
-      .then(() => Promise.all(chosen.map((p) => linkRule(name, { rule: p.id, at: { level: 'schema' }, enforce: on[p.id] }))))
-      .then(() => { setMade(true); setStep(3) }, (e) => setError(String(e.message ?? e)))
+    let schemaMade = created === name
+    const made = schemaMade ? Promise.resolve() : newSchema(name, type, about, type === 'iceberg' ? version : undefined).then(() => { schemaMade = true; setCreated(name) })
+    made
+      .then(async () => {
+        for (const p of chosen.filter((x) => !linked.has(x.id))) {
+          await linkRule(name, { rule: p.id, at: { level: 'schema' }, enforce: on[p.id] })
+          setLinked((l) => new Set([...l, p.id]))
+        }
+      })
+      .then(() => { setMade(true); setStep(3) }, (e) => setError(`${String(e.message ?? e)}${schemaMade ? ' The schema is made; try again to link the rest, or change the packs.' : ''}`))
       .finally(() => setBusy(false))
   }
 
@@ -94,7 +104,7 @@ export function NewSchema({ catalog, open }: { catalog: Catalog | null; open: (n
             </label>
             <div className="d-row">
               <button type="button" className="d-btn" disabled={!valid} onClick={() => setStep(1)}>Next: pick its type</button>
-              <span className="d-soft d-small">Or <a href="#/_open">import a pg_dump, a MySQL dump or an Iceberg folder</a> instead.</span>
+              <span className="d-soft d-small">Or <a href="#/_open">import a pg_dump or an Iceberg folder</a> instead.</span>
             </div>
           </section>
         )}
@@ -191,7 +201,7 @@ export function NewSchema({ catalog, open }: { catalog: Catalog | null; open: (n
             {error && <span className="d-error">{error}</span>}
             <div className="d-row">
               <button type="button" className="d-btn d-btn-line" onClick={() => setStep(1)}>Back</button>
-              <button type="button" className="d-btn" disabled={busy || !valid} onClick={create}>{busy ? 'Creating…' : 'Create the schema'}</button>
+              <button type="button" className="d-btn" disabled={busy || !valid} onClick={create}>{busy ? 'Creating…' : created === name ? 'Link the packs' : 'Create the schema'}</button>
             </div>
           </section>
         )}

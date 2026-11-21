@@ -1,5 +1,5 @@
 // Open a file or folder: browse this machine to a pg_dump or an Iceberg folder (or Spark SQL file), and read it into
-// a schema. In the look of the "1 · Home" and "2 · New schema" boards.
+// a schema. A MySQL dump is offered once its reader is built. In the look of the "1 · Home" and "2 · New schema" boards.
 
 import { useEffect, useState } from 'react'
 
@@ -10,7 +10,6 @@ import { Brand } from './parts'
 const TYPES: { id: Target | 'auto'; label: string }[] = [
   { id: 'auto', label: 'Tell from the file' },
   { id: 'postgres', label: 'PostgreSQL' },
-  { id: 'mysql', label: 'MySQL' },
   { id: 'iceberg', label: 'Iceberg' },
 ]
 

@@ -1680,3 +1680,69 @@ a.d-btn {
 .d-brow:hover {
   background: var(--d-card);
 }
+
+/* Rules of the workspace ("3 · Rules") */
+
+.d-rc-side {
+  flex: 1 1 300px;
+  max-width: 360px;
+  padding: 24px 20px;
+  border-right: 1px solid var(--d-line);
+  background: var(--d-side);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+.d-rc-pack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--d-text);
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.d-rc-pack-on {
+  border-color: var(--d-accent);
+  background: var(--d-on);
+}
+
+.d-rc-main {
+  flex: 999 1 560px;
+  min-width: 0;
+  padding: 32px 40px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.d-rc-used {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--d-line);
+  background: var(--d-card);
+  min-width: 220px;
+}
+
+.d-rc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 16px;
+  padding: 16px 20px;
+  align-items: start;
+}
+
+.d-rc-line {
+  border-top: 1px solid var(--d-line);
+  background: var(--d-card);
+}

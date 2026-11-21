@@ -59,7 +59,29 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/import", post(import))
         .route("/api/changes", get(changes))
         .fallback(canvas)
+        .layer(axum::middleware::from_fn(local_only))
         .with_state(store)
+}
+
+/// Only this machine's own pages: a request whose Host is not the loopback address (a DNS-rebound page) or that a
+/// page of another site sent (its Origin) is refused, so nothing on the web can list files, read them, or change a
+/// schema through this server.
+async fn local_only(req: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    let local = |h: &str| {
+        let host = h.rsplit_once(':').filter(|(_, p)| p.chars().all(|c| c.is_ascii_digit())).map_or(h, |(h, _)| h);
+        matches!(host, "127.0.0.1" | "localhost" | "[::1]")
+    };
+    let host_ok = req.headers().get(header::HOST).and_then(|v| v.to_str().ok()).is_none_or(local);
+    let origin_ok = req
+        .headers()
+        .get(header::ORIGIN)
+        .and_then(|v| v.to_str().ok())
+        .is_none_or(|o| o.strip_prefix("http://").is_some_and(local));
+    if host_ok && origin_ok {
+        next.run(req).await
+    } else {
+        failed(StatusCode::FORBIDDEN, "only pages of this machine may use Schema Forge")
+    }
 }
 
 /// When the agent last reached the MCP, in milliseconds since the Unix epoch; 0 when it has not this run.
@@ -166,21 +188,18 @@ async fn import(State(store): State<Arc<Store>>, axum::Json(i): axum::Json<Impor
         Ok(Err(e)) => return failed(StatusCode::BAD_REQUEST, e),
         Err(e) => return failed(StatusCode::INTERNAL_SERVER_ERROR, e),
     };
-    let exists = match store.schemas() {
-        Ok(list) => list.iter().any(|s| s.name == i.schema),
+    match store.import_schema(&i.schema, &imported.schema, i.about, i.replace, BY) {
+        Ok(_) => {}
+        Err(schema_forge_store::Error::SchemaExists(_)) => {
+            return failed(
+                StatusCode::CONFLICT,
+                format!("there is a schema `{}` already: pick another name, or replace it", i.schema),
+            );
+        }
+        Err(e @ (schema_forge_store::Error::BadName(_) | schema_forge_store::Error::WrongTarget { .. })) => {
+            return failed(StatusCode::BAD_REQUEST, e);
+        }
         Err(e) => return store_failed(e),
-    };
-    if exists && !i.replace {
-        return failed(
-            StatusCode::CONFLICT,
-            format!("there is a schema `{}` already: pick another name, or replace it", i.schema),
-        );
-    }
-    if !exists && let Err(e) = store.create_schema_with(&i.schema, target, i.about, None) {
-        return failed(StatusCode::BAD_REQUEST, e);
-    }
-    if let Err(e) = store.replace_model(&i.schema, &imported.schema, "import", BY) {
-        return failed(StatusCode::BAD_REQUEST, e);
     }
     let findings: Vec<String> = schema_forge_core::check(&imported.schema).iter().map(ToString::to_string).collect();
     axum::Json(serde_json::json!({
@@ -564,12 +583,13 @@ struct Since {
 }
 
 /// What changed after change number `after` (without it, nothing: only the newest number, to start from), across
-/// the workspace: `{last, changes: [{n, schema, sequence, kind,
-/// by, at, summary}]}`. A page asks again every second or so; nothing is held open, so no page ever waits on
+/// the workspace: `{boot, last, first, changes: [{n, schema, sequence, kind, by, at, summary}]}`. A page that sees
+/// `boot` change, or is behind `first`, reloads. A page asks again every second or so; nothing is held open, so no page ever waits on
 /// another for a connection.
 async fn changes(State(store): State<Arc<Store>>, axum::extract::Query(q): axum::extract::Query<Since>) -> Response {
-    let (last, newer) = store.changes_since(q.after);
-    let changes: Vec<serde_json::Value> = newer
+    let feed = store.changes_since(q.after);
+    let changes: Vec<serde_json::Value> = feed
+        .changes
         .into_iter()
         .map(|(n, c)| {
             serde_json::json!({
@@ -585,7 +605,8 @@ async fn changes(State(store): State<Arc<Store>>, axum::extract::Query(q): axum:
             })
         })
         .collect();
-    axum::Json(serde_json::json!({ "last": last, "changes": changes })).into_response()
+    axum::Json(serde_json::json!({ "boot": feed.boot, "last": feed.last, "first": feed.first, "changes": changes }))
+        .into_response()
 }
 
 #[derive(serde::Deserialize)]
