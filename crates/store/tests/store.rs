@@ -256,7 +256,8 @@ fn changes_apply_whole_are_refused_by_hard_rules_and_undo() {
         false,
         "agent",
     );
-    let Err(Error::Refused(why)) = refused else { panic!("refused, not {refused:?}") };
+    let Err(Error::Hard { message: why, rules }) = refused else { panic!("refused, not {refused:?}") };
+    assert_eq!(rules, ["docs.table"]);
     assert!(why.contains("docs.table") && why.contains("items"), "{why}");
     assert_eq!(store.model("lake").expect("model").tables[0].name, "orders", "all or nothing");
 
@@ -267,7 +268,7 @@ fn changes_apply_whole_are_refused_by_hard_rules_and_undo() {
 
     // Destructive needs a yes; undo takes the latest change back, and only while it is still there.
     let drop = [Op::DropTable { table: "items".into() }];
-    assert!(matches!(store.change("lake", &drop, false, "agent"), Err(Error::Refused(_))));
+    assert!(matches!(store.change("lake", &drop, false, "agent"), Err(Error::Destructive(_))));
     store.change("lake", &drop, true, "agent").expect("dropped");
     assert_eq!(store.model("lake").expect("model").tables.len(), 1);
     store.undo("lake", "you").expect("undone");
@@ -326,7 +327,9 @@ fn hard_means_hard_on_every_table_a_change_touches() {
     // Then hard: touching a table that breaks it is refused until the change fixes it.
     store.set_enforce(Rules::Schema("lake"), "docs.table", &Scope::Schema, Enforce::Hard, "you").expect("hard");
     let rename = [Op::RenameTable { table: "lines".into(), name: "items".into() }];
-    let Err(Error::Refused(why)) = store.change("lake", &rename, false, "agent") else { panic!("refused") };
+    let Err(Error::Hard { message: why, .. }) = store.change("lake", &rename, false, "agent") else {
+        panic!("refused")
+    };
     assert!(why.contains("docs.table") && why.contains("has no description"), "{why}");
     let fixed = [
         Op::SetTableComment { table: "lines".into(), comment: Some("one line of an order".into()) },

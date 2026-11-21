@@ -37,11 +37,19 @@ export function changes(on: (c: Change) => void): () => void {
   return () => source.close()
 }
 
+/// A refusal from the server: its words, and what kind it is (`destructive`: needs a yes; `hard`: breaks the hard
+/// rules named), so the canvas asks the right question without reading the words.
+export class Refusal extends Error {
+  constructor(message: string, readonly kind?: 'destructive' | 'hard', readonly rules: string[] = []) {
+    super(message)
+  }
+}
+
 async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
   const r = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
   if (!r.ok) {
     const b = await r.json().catch(() => ({ error: r.statusText }))
-    throw new Error(b.error ?? r.statusText)
+    throw new Refusal(b.error ?? r.statusText, b.kind, b.rules ?? [])
   }
   return r.json() as Promise<T>
 }
@@ -70,11 +78,10 @@ export const proposalEnforce = (name: string, id: number, enforce: Enforce) =>
   send<Proposal>('POST', `${proposalsOf(name)}/${id}/enforce`, { enforce })
 /// A change by hand: operations as the agent writes them. Refused with the reason when it is destructive or breaks a
 /// hard rule, until it is sent again with the yes.
-export const changeByHand = (name: string, operations: unknown[], yes: { destructive?: boolean; hard?: boolean } = {}) =>
-  send<{ sequence: number; summaries: string[]; soft: Finding[]; hard: Finding[] }>('POST', `/api/schemas/${encodeURIComponent(name)}/change`, {
+export const changeByHand = (name: string, operations: unknown[], yes: { destructive?: boolean } = {}) =>
+  send<{ sequence: number; summaries: string[]; soft: Finding[] }>('POST', `/api/schemas/${encodeURIComponent(name)}/change`, {
     operations,
     confirm_destructive: !!yes.destructive,
-    override_hard: !!yes.hard,
   })
 export const newSchema = (name: string, target: string) => send('POST', '/api/schemas', { name, target })
 export const undo = (name: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/undo`)

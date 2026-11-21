@@ -1,10 +1,15 @@
 // Pieces the rules views share: a rule's strength, a pass/break bar, the findings as references, a type map.
 
-import type { Enforce, Finding, Lane, Rule, Tally, TypeMap } from '../model'
+import type { Catalog, Enforce, Finding, Lane, Rule, Tally, TypeMap } from '../model'
 import { tableRef, useWorkbench } from '../state'
 
 /// The exception that switches every rule off: rules are optional, for a schema, a group, any level.
 export const ALL = '*'
+
+/// Whether rule `outer` is `inner` or holds it, at any depth of packs.
+export function holdsRule(catalog: Catalog, outer: string, inner: string): boolean {
+  return outer === inner || (catalog.rules.find((r) => r.id === outer)?.rules ?? []).some((c) => holdsRule(catalog, c, inner))
+}
 
 /// The lanes, in the order the catalog shows them.
 export const LANES: [Lane, string][] = [
