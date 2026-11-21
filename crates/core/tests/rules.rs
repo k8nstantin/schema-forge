@@ -426,3 +426,44 @@ fn sentences_name_types_as_their_target_reports_them_and_hold_on_it() {
     let has = Sentence::HasColumn { column: "id".into(), required: true, types: vec![] };
     assert!(has.targets(&[], Target::Iceberg).is_empty(), "no types named: it holds everywhere");
 }
+
+#[test]
+fn a_unique_index_is_never_called_a_repeat_of_a_longer_one() {
+    use schema_forge_core::DataType;
+    use schema_forge_core::ops::{self, NewColumn, Op};
+    let col = |name: &str| NewColumn {
+        name: name.into(),
+        data_type: DataType::named("bigint"),
+        nullable: false,
+        default: None,
+        comment: None,
+    };
+    let mut s = Schema::new(schema_forge_core::Target::Postgres);
+    ops::apply(&mut s, &Op::AddNamespace { name: "public".into(), parent: None, comment: None }, false).expect("ns");
+    let users = Op::AddTable {
+        namespace: "public".into(),
+        name: "users".into(),
+        comment: None,
+        columns: vec![col("id"), col("email"), col("created")],
+        primary_key: vec!["id".into()],
+    };
+    ops::apply(&mut s, &users, false).expect("users");
+    let index = |cols: &[&str], unique: bool, name: &str| Op::AddIndex {
+        table: "users".into(),
+        columns: cols.iter().map(|c| (*c).to_string()).collect(),
+        unique,
+        name: Some(name.into()),
+    };
+    ops::apply(&mut s, &index(&["email"], true, "ux_email"), false).expect("unique");
+    ops::apply(&mut s, &index(&["email", "created"], false, "ix_email_created"), false).expect("longer");
+    let set = RuleSet { links: vec![link("idx.redundant", Scope::Schema)], groups: vec![] };
+    assert!(
+        found(&rules::check(&s, &[], &set), "idx.redundant").is_empty(),
+        "the longer index does not keep email unique"
+    );
+    ops::apply(&mut s, &index(&["email"], false, "ix_email"), false).expect("plain");
+    assert_eq!(
+        found(&rules::check(&s, &[], &set), "idx.redundant"),
+        ["index `ix_email` on `users` repeats the start of ux_email"]
+    );
+}
