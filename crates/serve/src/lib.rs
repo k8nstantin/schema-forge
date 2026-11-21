@@ -53,10 +53,42 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/schemas/{name}/proposals/{id}/approve", post(approve))
         .route("/api/schemas/{name}/proposals/{id}/reject", post(reject))
         .route("/api/schemas/{name}/proposals/{id}/enforce", post(proposal_enforce))
-        .nest_service("/mcp", schema_forge_mcp::service(store.clone()))
+        .merge(
+            Router::new()
+                .nest_service("/mcp", schema_forge_mcp::service(store.clone()))
+                .layer(axum::middleware::from_fn(agent_seen)),
+        )
+        .route("/api/workspace", get(workspace))
         .route("/api/events", get(events))
         .fallback(canvas)
         .with_state(store)
+}
+
+/// When the agent last reached the MCP, in milliseconds since the Unix epoch; 0 when it has not this run.
+static AGENT_SEEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|d| u64::try_from(d.as_millis()).ok())
+        .unwrap_or(0)
+}
+
+async fn agent_seen(req: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    AGENT_SEEN.store(now_ms(), std::sync::atomic::Ordering::Relaxed);
+    next.run(req).await
+}
+
+/// The workspace: its folder (`~` for your home), and when the agent last reached the MCP.
+async fn workspace(State(store): State<Arc<Store>>) -> Response {
+    let folder = store.folder();
+    let shown = std::env::var_os("HOME")
+        .and_then(|h| folder.strip_prefix(h).ok().map(|rest| format!("~/{}", rest.display())))
+        .unwrap_or_else(|| folder.display().to_string());
+    let seen = AGENT_SEEN.load(std::sync::atomic::Ordering::Relaxed);
+    axum::Json(serde_json::json!({ "folder": shown, "agent_seen": (seen > 0).then_some(seen), "now": now_ms() }))
+        .into_response()
 }
 
 /// Serves on `127.0.0.1:port` until the process ends; `ready` hears the address once it is listening.

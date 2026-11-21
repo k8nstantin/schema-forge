@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react'
 
-import { recent, schemaRules, schemas as fetchSchemas, model as fetchModel, type Operation } from '../api'
+import { recent, schemaRules, schemas as fetchSchemas, model as fetchModel, workspace as fetchWorkspace, type Operation, type Workspace } from '../api'
 import type { Catalog, SchemaInfo } from '../model'
 import { Brand, ago, targetLabel, who } from './parts'
 
@@ -24,6 +24,13 @@ export function Home({ catalog, version, open, newSchema, rules }: {
 }) {
   const [rows, setRows] = useState<Row[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [ws, setWs] = useState<Workspace | null>(null)
+  useEffect(() => {
+    const read = () => fetchWorkspace().then(setWs, () => undefined)
+    read()
+    const t = window.setInterval(read, 15000)
+    return () => window.clearInterval(t)
+  }, [version])
   useEffect(() => {
     const isPack = (id: string) => !!catalog?.rules.find((r) => r.id === id)?.rules?.length
     fetchSchemas()
@@ -46,13 +53,15 @@ export function Home({ catalog, version, open, newSchema, rules }: {
   const packs = catalog?.rules.filter((r) => r.rules?.length) ?? []
   const checks = catalog?.rules.filter((r) => !r.rules?.length) ?? []
   const using = rows?.filter((r) => r.packs > 0).length ?? 0
+  // Connected: the agent reached the MCP in the last ten minutes.
+  const connected = !!ws?.agent_seen && ws.now - ws.agent_seen < 10 * 60 * 1000
   return (
     <div className="d-page">
       <header className="d-bar">
         <Brand />
         <div className="d-pill">
-          <span className="d-dot" />
-          <span>Claude Code connects through the MCP at <span className="d-ref">/mcp</span></span>
+          <span className={`d-dot${connected ? '' : ' d-dot-idle'}`} />
+          <span>{connected ? 'Claude Code is connected through the MCP' : <>Waiting for Claude Code on the MCP at <span className="d-ref">/mcp</span></>}</span>
         </div>
       </header>
 
@@ -107,7 +116,7 @@ export function Home({ catalog, version, open, newSchema, rules }: {
             </div>
             {rows && rows.length > 0 && (
               <span className="d-soft d-small" style={{ marginTop: 'auto' }}>
-                {rows.length === 1 ? 'The one schema' : `All ${rows.length} schemas`} of this workspace
+                {rows.length === 1 ? 'The schema is' : `All ${rows.length} schemas are`} in <span className="d-ref">{ws?.folder ?? 'this workspace'}</span>
               </span>
             )}
           </div>
@@ -150,6 +159,9 @@ function summary(r: Row): string {
   const parts = [`${r.tables} ${r.tables === 1 ? 'table' : 'tables'}`]
   if (r.views) parts.push(`${r.views} ${r.views === 1 ? 'view' : 'views'}`)
   parts.push(r.packs ? `${r.packs} rule ${r.packs === 1 ? 'pack' : 'packs'}` : 'no rules')
-  if (r.last) parts.push(r.last.by === 'import' ? `imported ${ago(r.last.at)}` : `${who(r.last.by)} changed it ${ago(r.last.at)}`)
+  if (r.last) {
+    const when = r.last.at ? ` ${ago(r.last.at)}` : ''
+    parts.push(r.last.by === 'import' ? `imported${when}` : r.last.at ? `${who(r.last.by)} changed it${when}` : `last changed by ${who(r.last.by)}`)
+  }
   return parts.join(' · ')
 }

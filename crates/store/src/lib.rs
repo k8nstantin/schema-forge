@@ -158,6 +158,7 @@ pub struct Change {
 pub struct Store {
     db: Database,
     changes: broadcast::Sender<Change>,
+    path: std::path::PathBuf,
 }
 
 /// One top-level object of the model, as stored: its section, its place there, and the object itself.
@@ -214,6 +215,7 @@ impl Store {
     /// # Errors
     /// When the file cannot be opened, or holds a format this version does not read.
     pub fn open(path: &Path) -> Result<Self> {
+        let path = &std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
         let db = Database::create(path)?;
         let txn = db.begin_write()?;
         {
@@ -236,7 +238,7 @@ impl Store {
         }
         txn.commit()?;
         let (changes, _) = broadcast::channel(1024);
-        Ok(Self { db, changes })
+        Ok(Self { db, changes, path: path.to_path_buf() })
     }
 
     /// Hear every change committed from now on.
@@ -281,6 +283,12 @@ impl Store {
         }
         txn.commit()?;
         Ok(info)
+    }
+
+    /// The workspace folder: where the store is kept.
+    #[must_use]
+    pub fn folder(&self) -> &Path {
+        self.path.parent().unwrap_or(&self.path)
     }
 
     /// Every schema, by name.

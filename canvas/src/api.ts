@@ -90,3 +90,6 @@ const turnsOf = (name: string) => `/api/schemas/${encodeURIComponent(name)}/turn
 export const turns = (name: string) => json<TurnItem[]>(turnsOf(name))
 export const acceptTurn = (name: string, n: number) => send('POST', `${turnsOf(name)}/${n}/accept`)
 export const rejectTurn = (name: string, n: number) => send('POST', `${turnsOf(name)}/${n}/reject`)
+/// The workspace folder, and when the agent last reached the MCP.
+export interface Workspace { folder: string; agent_seen?: number; now: number }
+export const workspace = () => json<Workspace>('/api/workspace')
