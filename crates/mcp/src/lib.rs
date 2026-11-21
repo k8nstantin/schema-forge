@@ -13,7 +13,7 @@ use rmcp::{ServerHandler, schemars, tool, tool_handler, tool_router};
 use schema_forge_core::rules::review::{self, Proposed};
 use schema_forge_core::rules::{self, Enforce, Scope};
 use schema_forge_core::{Id, Schema, Target};
-use schema_forge_store::Store;
+use schema_forge_store::{Store, TurnTo};
 
 /// The MCP service over `store`, for `axum::Router::nest_service("/mcp", …)`.
 pub fn service(store: Arc<Store>) -> StreamableHttpService<Forge, LocalSessionManager> {
@@ -39,22 +39,28 @@ impl Forge {
     }
 
     /// The session's open turn on `schema`, opened when there is none.
-    fn turn(&self, schema: &str) -> Result<u64, String> {
-        let mine = self.turns.lock().map_err(|e| e.to_string())?.get(schema).copied();
-        if let Some(n) = mine
-            && self
-                .store
-                .turns(schema)
-                .map_err(|e| e.to_string())?
-                .iter()
-                .any(|t| t.id == n && t.status == schema_forge_store::TurnStatus::Open)
-        {
-            return Ok(n);
+    /// Makes a change in the session's turn on `schema`: the one it has, or, with none, one this change opens,
+    /// only if it lands. A turn decided meanwhile is replaced by a new one. The session's turns are held for the
+    /// whole of it, so changes sent at once never split one request across turns.
+    fn change_in_turn(
+        &self,
+        schema: &str,
+        operations: Vec<serde_json::Value>,
+        confirmed: bool,
+    ) -> Result<schema_forge_store::Changed, schema_forge_store::Error> {
+        let mut turns = self.turns.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let fresh = || TurnTo::New("changes made without a stated turn".to_string());
+        let to = turns.get(schema).map_or_else(fresh, |n| TurnTo::Open(*n));
+        let changed = match change_from_json(&self.store, schema, operations.clone(), confirmed, "agent", to.clone()) {
+            Err(schema_forge_store::Error::TurnClosed(_)) if matches!(to, TurnTo::Open(_)) => {
+                change_from_json(&self.store, schema, operations, confirmed, "agent", fresh())?
+            }
+            other => other?,
+        };
+        if let Some(n) = changed.turn {
+            turns.insert(schema.to_string(), n);
         }
-        let t =
-            self.store.start_turn(schema, "changes made without a stated turn", "agent").map_err(|e| e.to_string())?;
-        self.turns.lock().map_err(|e| e.to_string())?.insert(schema.to_string(), t.id);
-        Ok(t.id)
+        Ok(changed)
     }
 }
 
@@ -224,7 +230,7 @@ pub fn change_from_json(
     operations: Vec<serde_json::Value>,
     confirmed: bool,
     by: &str,
-    turn: Option<u64>,
+    turn: TurnTo,
 ) -> Result<schema_forge_store::Changed, schema_forge_store::Error> {
     let model = store.model(schema)?;
     let ops = operations
@@ -234,7 +240,7 @@ pub fn change_from_json(
         .collect::<Result<Vec<_>, _>>()
         .map_err(schema_forge_store::Error::Refused)?;
     views_still_read(&model, &ops, confirmed).map_err(schema_forge_store::Error::Refused)?;
-    store.change_in(schema, &ops, confirmed, by, turn)
+    store.change_to(schema, &ops, confirmed, by, turn)
 }
 
 /// Refuses a change that leaves a view's query naming what is no longer there, or reading something other than
@@ -363,10 +369,8 @@ Operations, as JSON objects with "op". Tables are named `orders` or `namespace.o
     )]
     fn change(&self, Parameters(a): Parameters<ChangeArg>) -> Result<String, String> {
         let e = |e: schema_forge_store::Error| e.to_string();
-        let turn = self.turn(&a.schema)?;
-        let changed =
-            change_from_json(&self.store, &a.schema, a.operations, a.confirm_destructive, "agent", Some(turn))
-                .map_err(e)?;
+        let changed = self.change_in_turn(&a.schema, a.operations, a.confirm_destructive).map_err(e)?;
+        let turn = changed.turn.unwrap_or_default();
         let mut out = format!("Change #{} landed, in turn {turn}:\n", changed.operation.sequence);
         for s in &changed.summaries {
             let _ = writeln!(out, "- {s}");
