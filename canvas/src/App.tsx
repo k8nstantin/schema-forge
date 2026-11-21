@@ -11,6 +11,7 @@ import type { Catalog, RuleLink, Schema, SchemaRules, Shape } from './model'
 import { holdsRule } from './rules/parts'
 import { scopeTitle } from './rules/scope'
 import { Categories } from './perspectives/Categories'
+import { Turns } from './components/Turns'
 import { Home } from './perspectives/Home'
 import { RulesView } from './rules/RulesView'
 import { MapView } from './perspectives/MapView'
@@ -267,6 +268,7 @@ export default function App() {
           </span>
         </div>
       )}
+      {schema && current && <Turns schema={schema} onError={(m) => notifications.show({ color: 'red', message: m })} />}
       <footer className="sf-activity">
         <Text size="xs" c="dimmed" fw={600}>Activity</Text>
         {schema && activity.some((a) => a.schema === schema && a.kind === 'change') && (

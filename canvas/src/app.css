@@ -46,7 +46,7 @@ button {
 
 .sf-app {
   display: grid;
-  grid-template-rows: auto 1fr 34px;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   height: 100vh;
   color: var(--sf-text);
 }
@@ -160,6 +160,7 @@ button {
 }
 
 .sf-activity {
+  min-height: 34px;
   display: flex;
   align-items: center;
   gap: 18px;
@@ -1642,3 +1643,43 @@ button {
   .sf-editrow { grid-template-columns: 1fr 1fr; }
 }
 .sf-danger-chip { border-color: #a3352f; color: #ff9a9a; }
+
+/* The agent's turns, to accept or reject whole */
+
+.sf-turns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 40vh;
+  overflow: auto;
+  padding: 8px 16px;
+  border-top: 1px solid var(--sf-accent);
+  background: var(--sf-surface);
+}
+
+.sf-turn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+}
+
+.sf-turn-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sf-turn-list {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-left: 22px;
+  font-size: 13px;
+  color: var(--sf-soft);
+}

@@ -46,6 +46,9 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/rules/global/enforce", post(enforce_global))
         .route("/api/schemas/{name}/proposals", get(proposals))
         .route("/api/schemas/{name}/undo", post(undo))
+        .route("/api/schemas/{name}/turns", get(turns))
+        .route("/api/schemas/{name}/turns/{n}/accept", post(accept_turn))
+        .route("/api/schemas/{name}/turns/{n}/reject", post(reject_turn))
         .route("/api/schemas/{name}/proposals/{id}/approve", post(approve))
         .route("/api/schemas/{name}/proposals/{id}/reject", post(reject))
         .route("/api/schemas/{name}/proposals/{id}/enforce", post(proposal_enforce))
@@ -90,9 +93,9 @@ fn store_failed(e: schema_forge_store::Error) -> Response {
             (StatusCode::CONFLICT, axum::Json(serde_json::json!({ "error": message, "kind": "hard", "rules": rules })))
                 .into_response()
         }
-        schema_forge_store::Error::Rule(_) | schema_forge_store::Error::Refused(_) => {
-            failed(StatusCode::BAD_REQUEST, e)
-        }
+        schema_forge_store::Error::Rule(_)
+        | schema_forge_store::Error::Refused(_)
+        | schema_forge_store::Error::TurnClosed(_) => failed(StatusCode::BAD_REQUEST, e),
         e => failed(StatusCode::INTERNAL_SERVER_ERROR, e),
     }
 }
@@ -244,13 +247,53 @@ async fn change(
     Path(name): Path<String>,
     axum::Json(c): axum::Json<ByHand>,
 ) -> Response {
-    match schema_forge_mcp::change_from_json(&store, &name, c.operations, c.confirm_destructive, BY) {
+    match schema_forge_mcp::change_from_json(
+        &store,
+        &name,
+        c.operations,
+        c.confirm_destructive,
+        BY,
+        schema_forge_store::TurnTo::None,
+    ) {
         Ok(ch) => axum::Json(serde_json::json!({
             "sequence": ch.operation.sequence,
             "summaries": ch.summaries,
             "soft": ch.soft,
         }))
         .into_response(),
+        Err(e) => store_failed(e),
+    }
+}
+
+/// The schema's turns, newest first, each with what its changes did.
+async fn turns(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Response {
+    match store.turns_with_changes(&name) {
+        Ok(all) => axum::Json(
+            all.into_iter()
+                .map(|(t, live)| {
+                    let changes: Vec<serde_json::Value> = live
+                        .iter()
+                        .map(|o| serde_json::json!({ "sequence": o.sequence, "summaries": o.change["summaries"] }))
+                        .collect();
+                    serde_json::json!({ "turn": t, "changes": changes })
+                })
+                .collect::<Vec<_>>(),
+        )
+        .into_response(),
+        Err(e) => store_failed(e),
+    }
+}
+
+async fn accept_turn(State(store): State<Arc<Store>>, Path((name, n)): Path<(String, u64)>) -> Response {
+    match store.accept_turn(&name, n, BY) {
+        Ok(t) => axum::Json(t).into_response(),
+        Err(e) => store_failed(e),
+    }
+}
+
+async fn reject_turn(State(store): State<Arc<Store>>, Path((name, n)): Path<(String, u64)>) -> Response {
+    match store.reject_turn(&name, n, BY) {
+        Ok(t) => axum::Json(t).into_response(),
         Err(e) => store_failed(e),
     }
 }

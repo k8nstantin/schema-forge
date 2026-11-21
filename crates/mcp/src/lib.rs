@@ -13,7 +13,7 @@ use rmcp::{ServerHandler, schemars, tool, tool_handler, tool_router};
 use schema_forge_core::rules::review::{self, Proposed};
 use schema_forge_core::rules::{self, Enforce, Scope};
 use schema_forge_core::{Id, Schema, Target};
-use schema_forge_store::Store;
+use schema_forge_store::{Store, TurnTo};
 
 /// The MCP service over `store`, for `axum::Router::nest_service("/mcp", …)`.
 pub fn service(store: Arc<Store>) -> StreamableHttpService<Forge, LocalSessionManager> {
@@ -24,18 +24,51 @@ pub fn service(store: Arc<Store>) -> StreamableHttpService<Forge, LocalSessionMa
     )
 }
 
-/// The tools.
+/// The tools, one per session: a session keeps its turn on each schema.
 #[derive(Clone)]
 pub struct Forge {
     store: Arc<Store>,
+    turns: Arc<std::sync::Mutex<std::collections::HashMap<String, u64>>>,
     tool_router: ToolRouter<Self>,
 }
 
 impl Forge {
     #[must_use]
     pub fn new(store: Arc<Store>) -> Self {
-        Self { store, tool_router: Self::tool_router() }
+        Self { store, turns: Arc::default(), tool_router: Self::tool_router() }
     }
+
+    /// The session's open turn on `schema`, opened when there is none.
+    /// Makes a change in the session's turn on `schema`: the one it has, or, with none, one this change opens,
+    /// only if it lands. A turn decided meanwhile is replaced by a new one. The session's turns are held for the
+    /// whole of it, so changes sent at once never split one request across turns.
+    fn change_in_turn(
+        &self,
+        schema: &str,
+        operations: Vec<serde_json::Value>,
+        confirmed: bool,
+    ) -> Result<schema_forge_store::Changed, schema_forge_store::Error> {
+        let mut turns = self.turns.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let fresh = || TurnTo::New("changes made without a stated turn".to_string());
+        let to = turns.get(schema).map_or_else(fresh, |n| TurnTo::Open(*n));
+        let changed = match change_from_json(&self.store, schema, operations.clone(), confirmed, "agent", to.clone()) {
+            Err(schema_forge_store::Error::TurnClosed(_)) if matches!(to, TurnTo::Open(_)) => {
+                change_from_json(&self.store, schema, operations, confirmed, "agent", fresh())?
+            }
+            other => other?,
+        };
+        if let Some(n) = changed.turn {
+            turns.insert(schema.to_string(), n);
+        }
+        Ok(changed)
+    }
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TurnArg {
+    pub schema: String,
+    /// What the person asked for, in a sentence: they review the turn's changes under it.
+    pub summary: String,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -186,7 +219,7 @@ Reuse a rule of the catalog with kind "link" before writing a new one."#;
 
 /// An operation as the agent writes it, with its types read from text for `target`.
 /// A change as the agent and the canvas send it: operations as JSON (types as text), checked for stale views, then
-/// made in the store as one change. The one path both take.
+/// made in the store as one change, in the agent's turn when it has one. The one path both take.
 ///
 /// # Errors
 /// An operation that does not read, a view left stale ([`schema_forge_store::Error::Refused`]), or what the store
@@ -197,6 +230,7 @@ pub fn change_from_json(
     operations: Vec<serde_json::Value>,
     confirmed: bool,
     by: &str,
+    turn: TurnTo,
 ) -> Result<schema_forge_store::Changed, schema_forge_store::Error> {
     let model = store.model(schema)?;
     let ops = operations
@@ -206,7 +240,7 @@ pub fn change_from_json(
         .collect::<Result<Vec<_>, _>>()
         .map_err(schema_forge_store::Error::Refused)?;
     views_still_read(&model, &ops, confirmed).map_err(schema_forge_store::Error::Refused)?;
-    store.change(schema, &ops, confirmed, by)
+    store.change_to(schema, &ops, confirmed, by, turn)
 }
 
 /// Refuses a change that leaves a view's query naming what is no longer there, or reading something other than
@@ -299,6 +333,15 @@ pub fn operation(target: Target, mut v: serde_json::Value) -> Result<schema_forg
 #[tool_router]
 impl Forge {
     #[tool(
+        description = "Starts a turn on a schema: the changes you make for one request of the person, which they accept or reject together. Start one per request, with what they asked in a sentence; your `change` calls land in it."
+    )]
+    fn start_turn(&self, Parameters(a): Parameters<TurnArg>) -> Result<String, String> {
+        let t = self.store.start_turn(&a.schema, &a.summary, "agent").map_err(|e| e.to_string())?;
+        self.turns.lock().map_err(|e| e.to_string())?.insert(a.schema.clone(), t.id);
+        Ok(format!("Turn {} started on {}: the person will accept or reject its changes together.", t.id, a.schema))
+    }
+
+    #[tool(
         description = "Makes an empty schema: a name and a type (mysql, postgres or iceberg). The person may link rules to it before you design."
     )]
     fn new_schema(&self, Parameters(a): Parameters<NewSchemaArg>) -> Result<String, String> {
@@ -326,9 +369,9 @@ Operations, as JSON objects with "op". Tables are named `orders` or `namespace.o
     )]
     fn change(&self, Parameters(a): Parameters<ChangeArg>) -> Result<String, String> {
         let e = |e: schema_forge_store::Error| e.to_string();
-        let changed =
-            change_from_json(&self.store, &a.schema, a.operations, a.confirm_destructive, "agent").map_err(e)?;
-        let mut out = format!("Change #{} landed:\n", changed.operation.sequence);
+        let changed = self.change_in_turn(&a.schema, a.operations, a.confirm_destructive).map_err(e)?;
+        let turn = changed.turn.unwrap_or_default();
+        let mut out = format!("Change #{} landed, in turn {turn}:\n", changed.operation.sequence);
         for s in &changed.summaries {
             let _ = writeln!(out, "- {s}");
         }
