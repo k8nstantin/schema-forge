@@ -139,11 +139,13 @@ export interface View {
   comment?: string
   notes?: string
   tags?: string[]
+  /// Its fields, when they are written out; otherwise what its query selects.
+  columns?: { name: string; type?: DataType; comment?: string }[]
   definition: string
   reads?: string[]
   options?: {
     postgres?: { materialized?: boolean; with_data?: boolean; indexes?: Index[] }
-    iceberg?: { dialect?: string; representations?: Record<string, string> }
+    iceberg?: { dialect?: string; representations?: Record<string, string>; version?: number }
     mysql?: Record<string, unknown>
   }
 }

@@ -277,7 +277,11 @@ Built so far (`crates/core/src/ops.rs`, applied by the store as one change, all 
 `change`): `add_namespace`, `rename_namespace`, `drop_namespace`, `add_table`, `rename_table`, `drop_table`,
 `set_table_comment`, `add_column`, `rename_column`, `alter_column`, `drop_column`, `set_primary_key`,
 `set_identifier_fields`, `relate`, `unrelate`, `add_index`, `drop_index`, `set_partition_spec`, `set_property`,
-`unset_property`. Each change keeps the records it touched as they were, so it can be undone, and each operation
+`unset_property`, `add_view`, `alter_view`, `rename_view`, `drop_view`, `add_view_dialect`. A view is like a table:
+its fields, its full SQL, and its links, the tables and views it is composed from, found by parsing its query in
+the target's dialect (a query that does not parse, or reads something not in the schema, is refused). A table or
+view other views read cannot be dropped, and renaming it needs those views altered in the same change; on Iceberg,
+altering a view's query makes a new version. Each change keeps the records it touched as they were, so it can be undone, and each operation
 is what the migration script will be written from: `CREATE TABLE` or `ALTER TABLE` in the target's own SQL.
 
 **Destructive** operations (dropping a table, column, key or view; narrowing a type; making a column not

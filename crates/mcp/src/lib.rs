@@ -185,6 +185,55 @@ const GRAMMAR: &str = r#"A new rule is a sentence, as JSON. Three forms:
 Reuse a rule of the catalog with kind "link" before writing a new one."#;
 
 /// An operation as the agent writes it, with its types read from text for `target`.
+/// Refuses a change that leaves a view's query naming what is no longer there, or reading something other than
+/// what the view records: after a rename, the views that read it must be altered in the same change.
+///
+/// # Errors
+/// The views whose queries no longer read what they record.
+pub fn views_still_read(
+    model: &schema_forge_core::Schema,
+    ops: &[schema_forge_core::ops::Op],
+    confirmed: bool,
+) -> Result<(), String> {
+    let mut after = model.clone();
+    for op in ops {
+        // A wrong operation is refused by the store, with its reason; here only the views are looked at.
+        if schema_forge_core::ops::apply(&mut after, op, confirmed).is_err() {
+            return Ok(());
+        }
+    }
+    let reads_as_recorded = |s: &schema_forge_core::Schema, v: &schema_forge_core::View| {
+        let names = schema_forge_dialects::view_relations(s.target, &v.definition)
+            .map(|rs| rs.into_iter().map(|parts| parts.join(".")).collect::<Vec<_>>());
+        names.and_then(|n| schema_forge_core::ops::resolve_reads(s, &n)).is_ok_and(|mut ids| {
+            let mut want = v.reads.clone();
+            ids.sort();
+            want.sort();
+            ids == want
+        })
+    };
+    // Only what this change makes stale: a view already off before (an import that skipped a name) is not held
+    // against it.
+    let was_ok: Vec<&schema_forge_core::Id> =
+        model.views.iter().filter(|v| reads_as_recorded(model, v)).map(|v| &v.id).collect();
+    let stale: Vec<String> = after
+        .views
+        .iter()
+        .filter(|v| {
+            (was_ok.contains(&&v.id) || !model.views.iter().any(|o| o.id == v.id)) && !reads_as_recorded(&after, v)
+        })
+        .map(|v| format!("`{}`", v.name))
+        .collect();
+    if stale.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "views {} would read by names that are gone: alter them (alter_view) in the same change",
+            stale.join(", ")
+        ))
+    }
+}
+
 fn operation(target: Target, mut v: serde_json::Value) -> Result<schema_forge_core::ops::Op, String> {
     let parse = |t: &mut serde_json::Value| -> Result<(), String> {
         if let Some(text) = t.as_str() {
@@ -206,6 +255,19 @@ fn operation(target: Target, mut v: serde_json::Value) -> Result<schema_forge_co
         && let Some(t) = v.get_mut("type")
     {
         parse(t)?;
+    }
+    // A view reads what its query names: found here, from the query, never taken from the caller.
+    let op = v.get("op").and_then(|o| o.as_str()).unwrap_or("");
+    if matches!(op, "add_view" | "alter_view")
+        && let Some(definition) = v.get("definition").and_then(|d| d.as_str()).map(str::to_string)
+    {
+        let reads: Vec<String> = schema_forge_dialects::view_relations(target, &definition)?
+            .into_iter()
+            .map(|parts| parts.join("."))
+            .collect();
+        v["reads"] = serde_json::json!(reads);
+    } else if let Some(o) = v.as_object_mut() {
+        o.remove("reads");
     }
     serde_json::from_value(v).map_err(|e| format!("not an operation: {e}"))
 }
@@ -231,19 +293,24 @@ Operations, as JSON objects with "op". Tables are named `orders` or `namespace.o
 - rename_table {table, name}; rename_column {column, name}; rename_namespace {namespace, name}; set_table_comment {table, comment}
 - set_primary_key {table, columns}; set_identifier_fields {table, columns} (Iceberg)
 - add_index {table, columns, unique?, name?}; drop_index {table, index} (MySQL, PostgreSQL)
+- add_view {namespace, name, definition (one SELECT in the target's SQL: Spark SQL on Iceberg), columns?: [{name, type?, comment?}], comment?, materialized? (PostgreSQL)}; what it reads is found from the query
+- alter_view {view, definition?, columns?, comment?} (on Iceberg a new version); rename_view {view, name}; add_view_dialect {view, dialect, definition} (Iceberg: the same query for another engine, e.g. trino)
+- drop_view {view}: destructive; a table or view other views read cannot be dropped, and renaming one needs those views altered in the same change
 - relate {from, columns, to, to_columns, name?}; unrelate {relationship}
 - set_partition_spec {table, fields: [{column, transform}]}; set_property {table, key, value}; unset_property {table, key} (Iceberg)
 - drop_table {table}; drop_column {column}; drop_namespace {namespace}: destructive."#
     )]
     fn change(&self, Parameters(a): Parameters<ChangeArg>) -> Result<String, String> {
         let e = |e: schema_forge_store::Error| e.to_string();
-        let target = self.store.model(&a.schema).map_err(e)?.target;
+        let model = self.store.model(&a.schema).map_err(e)?;
+        let target = model.target;
         let ops = a
             .operations
             .into_iter()
             .enumerate()
             .map(|(i, v)| operation(target, v).map_err(|m| format!("operation {}: {m}", i + 1)))
             .collect::<Result<Vec<_>, _>>()?;
+        views_still_read(&model, &ops, a.confirm_destructive)?;
         let changed = self.store.change(&a.schema, &ops, a.confirm_destructive, "agent").map_err(e)?;
         let mut out = format!("Change #{} landed:\n", changed.operation.sequence);
         for s in &changed.summaries {
@@ -317,8 +384,36 @@ Operations, as JSON objects with "op". Tables are named `orders` or `namespace.o
                 }
             }
         }
+        for v in &model.views {
+            if a.table.as_deref().is_some_and(|n| n != v.name) || only_ns.as_ref().is_some_and(|n| n != &v.namespace) {
+                continue;
+            }
+            let ns = model.namespaces.iter().find(|n| n.id == v.namespace).map_or("", |n| n.name.as_str());
+            let reads: Vec<&str> = v
+                .reads
+                .iter()
+                .filter_map(|r| {
+                    model
+                        .tables
+                        .iter()
+                        .find(|t| &t.id == r)
+                        .map(|t| t.name.as_str())
+                        .or_else(|| model.views.iter().find(|x| &x.id == r).map(|x| x.name.as_str()))
+                })
+                .collect();
+            let _ = writeln!(
+                out,
+                "{ns}.{} (view, reads {}){}",
+                v.name,
+                reads.join(", "),
+                v.comment.as_deref().map(|c| format!(": {c}")).unwrap_or_default()
+            );
+            if a.table.is_some() {
+                let _ = writeln!(out, "  {}", v.definition.replace('\n', "\n  "));
+            }
+        }
         if out.is_empty() {
-            return Err("no table matches".to_string());
+            return Err("no table or view matches".to_string());
         }
         Ok(out)
     }

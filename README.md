@@ -55,7 +55,8 @@ The MCP is served at `http://127.0.0.1:7410/mcp` while `schema-forge serve` runs
 | rules | `rules` (what holds, in plain words, on the schema or one table), `check` (what breaks, hard or soft), `catalog` (every rule and the grammar new ones are written in) |
 | proposing rules | `propose_rules` (new rules as sentences, catalog rules to link, exceptions), `proposals` (status and the system's verdict) |
 | design | `new_schema`; `change`: operations (`add_table`, `add_column`, `alter_column`, `relate`, `add_index`, `set_identifier_fields`, `set_partition_spec`, `set_property`, renames, drops, …) applied as one change, all or none; refused, with the rule and the reason, when it breaks a hard rule; destructive ones need a yes; every change undoable |
-| next | views, `render` |
+| views | `add_view` (one query in the target's SQL; what it reads is found from it), `alter_view`, `rename_view`, `drop_view`, `add_view_dialect` (Iceberg) |
+| next | `render` |
 
 The agent proposes rules and the system verifies them; only you approve them, in the Rules perspective.
 

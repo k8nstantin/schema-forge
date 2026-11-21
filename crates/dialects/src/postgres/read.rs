@@ -1,7 +1,6 @@
 //! Reading PostgreSQL DDL into the model.
 
 use std::collections::{HashMap, HashSet};
-use std::ops::ControlFlow;
 
 use schema_forge_core::{
     Action, Check, Column, CompositeField, Direction, Ends, Generated, Id, Identity, Index, IndexPart, Kept, KeptKind,
@@ -1035,19 +1034,8 @@ impl<'s> Reader<'s> {
             let Ok(parsed) = sqlparser::parser::Parser::parse_sql(&PostgreSqlDialect {}, &definition) else {
                 continue;
             };
-            let mut names: Vec<(String, String)> = Vec::new();
-            let _ = sqlparser::ast::visit_relations(&parsed, |name| {
-                let parts: Vec<String> = name
-                    .0
-                    .iter()
-                    .filter_map(|p| p.as_ident())
-                    .map(|i| if i.quote_style.is_some() { i.value.clone() } else { i.value.to_lowercase() })
-                    .collect();
-                if let Ok(key) = Self::split_name(&parts) {
-                    names.push(key);
-                }
-                ControlFlow::<()>::Continue(())
-            });
+            let names: Vec<(String, String)> =
+                crate::relations_in(&parsed, true).iter().filter_map(|parts| Self::split_name(parts).ok()).collect();
             let mut reads = Vec::new();
             for key in names {
                 let id = match self.relations.get(&key) {

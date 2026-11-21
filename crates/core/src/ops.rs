@@ -29,6 +29,17 @@ const fn yes() -> bool {
     true
 }
 
+/// A view's column as an operation gives it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NewViewColumn {
+    pub name: String,
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
+    pub data_type: Option<DataType>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
 /// A partition field as an operation gives it: a column and a transform.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -138,6 +149,47 @@ pub enum Op {
         table: String,
         index: String,
     },
+    /// A view: its query, the tables and views it reads (found from the query by whoever builds the operation), and
+    /// its columns when they are given.
+    AddView {
+        namespace: String,
+        name: String,
+        definition: String,
+        #[serde(default)]
+        reads: Vec<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        columns: Vec<NewViewColumn>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        comment: Option<String>,
+        /// PostgreSQL: a materialized view.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        materialized: bool,
+    },
+    /// A view's new query (its reads with it), columns or description; on Iceberg a new version.
+    AlterView {
+        view: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        definition: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reads: Option<Vec<String>>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        columns: Option<Vec<NewViewColumn>>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        comment: Option<String>,
+    },
+    RenameView {
+        view: String,
+        name: String,
+    },
+    DropView {
+        view: String,
+    },
+    /// Iceberg: the same view's query in another engine's dialect (`trino`).
+    AddViewDialect {
+        view: String,
+        dialect: String,
+        definition: String,
+    },
     /// Iceberg: the partition spec, replacing the one there is.
     SetPartitionSpec {
         table: String,
@@ -201,9 +253,28 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
         }
         Op::RenameNamespace { namespace: n, name } => {
             let id = namespace(s, n)?;
+            // Views that read what is in it may name it: their queries must change in the same change.
+            let inside: Vec<&Id> = s
+                .tables
+                .iter()
+                .filter(|t| t.namespace == id)
+                .map(|t| &t.id)
+                .chain(s.views.iter().filter(|v| v.namespace == id).map(|v| &v.id))
+                .collect();
+            let readers: Vec<String> = s
+                .views
+                .iter()
+                .filter(|v| v.reads.iter().any(|r| inside.contains(&r)))
+                .map(|v| format!("`{}`", v.name))
+                .collect();
             let ns = s.namespaces.iter_mut().find(|x| x.id == id).expect("found");
             let old = std::mem::replace(&mut ns.name, name.clone());
-            ok(format!("renamed namespace `{old}` to `{name}`"))
+            Ok(Done {
+                summary: format!("renamed namespace `{old}` to `{name}`"),
+                destructive: (!readers.is_empty()).then(|| {
+                    format!("views {} read from it and may name it: alter them in the same change", readers.join(", "))
+                }),
+            })
         }
         Op::DropNamespace { namespace: n } => {
             let id = namespace(s, n)?;
@@ -261,8 +332,16 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
             if s.tables.iter().any(|t| t.namespace == ns && t.name == *name) {
                 return Err(format!("`{name}` is already in its namespace"));
             }
+            let id = s.tables[i].id.clone();
             let old = std::mem::replace(&mut s.tables[i].name, name.clone());
-            ok(format!("renamed table `{old}` to `{name}`"))
+            let readers: Vec<String> =
+                s.views.iter().filter(|v| v.reads.contains(&id)).map(|v| format!("`{}`", v.name)).collect();
+            Ok(Done {
+                summary: format!("renamed table `{old}` to `{name}`"),
+                destructive: (!readers.is_empty()).then(|| {
+                    format!("views {} read it by its old name: alter them in the same change", readers.join(", "))
+                }),
+            })
         }
         Op::DropTable { table } => {
             let i = table_at(s, table)?;
@@ -507,6 +586,130 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
                 destructive: Some("reads that used it get slower".to_string()),
             })
         }
+        Op::AddView { namespace: n, name, definition, reads, columns, comment, materialized } => {
+            let ns = namespace(s, n)?;
+            if s.tables.iter().any(|t| t.namespace == ns && t.name == *name)
+                || s.views.iter().any(|v| v.namespace == ns && v.name == *name)
+            {
+                return Err(format!("`{name}` is already in `{n}`"));
+            }
+            if *materialized && s.target != Target::Postgres {
+                return Err("materialized views are PostgreSQL's".to_string());
+            }
+            let reads = resolve_reads(s, reads)?;
+            let id = fresh(s, Id::from_name(Kind::View, &[name]));
+            let mut options = crate::ViewOptions::default();
+            match s.target {
+                Target::Iceberg => {
+                    options.iceberg = Some(crate::IcebergView {
+                        dialect: Some("spark".to_string()),
+                        version: Some(1),
+                        ..Default::default()
+                    })
+                }
+                Target::Postgres if *materialized => {
+                    options.postgres =
+                        Some(crate::PostgresView { materialized: true, with_data: true, ..Default::default() })
+                }
+                _ => {}
+            }
+            s.views.push(crate::View {
+                id,
+                namespace: ns,
+                name: name.clone(),
+                comment: comment.clone(),
+                notes: None,
+                tags: Vec::new(),
+                area: None,
+                columns: columns.iter().map(view_column).collect(),
+                definition: definition.trim().trim_end_matches(';').to_string(),
+                reads,
+                options,
+            });
+            ok(format!("added view `{name}`"))
+        }
+        Op::AlterView { view, definition, reads, columns, comment } => {
+            let i = view_at(s, view)?;
+            if definition.is_some() && reads.is_none() {
+                return Err("a new query comes with what it reads".to_string());
+            }
+            let reads = reads.as_ref().map(|r| resolve_reads(s, r)).transpose()?;
+            let v = &mut s.views[i];
+            let mut what = Vec::new();
+            let mut destructive = None;
+            if let Some(d) = definition {
+                v.definition = d.trim().trim_end_matches(';').to_string();
+                what.push("its query");
+                // The same query in other dialects described the old one: they go, and you are told.
+                if let Some(ice) = v.options.iceberg.as_mut().filter(|i| !i.representations.is_empty()) {
+                    let gone: Vec<String> = std::mem::take(&mut ice.representations).into_keys().collect();
+                    destructive =
+                        Some(format!("its {} query was the old one and is dropped: add it again", gone.join(", ")));
+                }
+            }
+            if let Some(r) = reads {
+                v.reads = r;
+            }
+            if let Some(c) = columns {
+                v.columns = c.iter().map(view_column).collect();
+                what.push("its columns");
+            }
+            if let Some(cm) = comment {
+                v.comment = Some(cm.clone()).filter(|c| !c.trim().is_empty());
+                what.push("its description");
+            }
+            if what.is_empty() {
+                return Err(format!("nothing to change on `{view}`"));
+            }
+            if let Some(ice) = v.options.iceberg.as_mut().filter(|_| definition.is_some() || columns.is_some()) {
+                ice.version = Some(ice.version.unwrap_or(1) + 1);
+            }
+            Ok(Done { summary: format!("changed view `{}`: {}", v.name, what.join(", ")), destructive })
+        }
+        Op::RenameView { view, name } => {
+            let i = view_at(s, view)?;
+            let ns = s.views[i].namespace.clone();
+            if s.tables.iter().any(|t| t.namespace == ns && t.name == *name)
+                || s.views.iter().any(|v| v.namespace == ns && v.name == *name)
+            {
+                return Err(format!("`{name}` is already in its namespace"));
+            }
+            let id = s.views[i].id.clone();
+            let old = std::mem::replace(&mut s.views[i].name, name.clone());
+            let readers: Vec<String> =
+                s.views.iter().filter(|v| v.reads.contains(&id)).map(|v| format!("`{}`", v.name)).collect();
+            Ok(Done {
+                summary: format!("renamed view `{old}` to `{name}`"),
+                destructive: (!readers.is_empty()).then(|| {
+                    format!("views {} read it by its old name: alter them in the same change", readers.join(", "))
+                }),
+            })
+        }
+        Op::DropView { view } => {
+            let i = view_at(s, view)?;
+            let id = s.views[i].id.clone();
+            let readers: Vec<String> =
+                s.views.iter().filter(|v| v.reads.contains(&id)).map(|v| format!("`{}`", v.name)).collect();
+            if !readers.is_empty() {
+                return Err(format!("views read `{view}`: {}; change them first", readers.join(", ")));
+            }
+            let name = s.views.remove(i).name;
+            Ok(Done {
+                summary: format!("dropped view `{name}`"),
+                destructive: Some("whatever queries it stops working".to_string()),
+            })
+        }
+        Op::AddViewDialect { view, dialect, definition } => {
+            iceberg_only(s.target)?;
+            let i = view_at(s, view)?;
+            let v = &mut s.views[i];
+            let ice = v.options.iceberg.get_or_insert_with(Default::default);
+            if ice.dialect.as_deref() == Some(dialect.as_str()) {
+                return Err(format!("`{dialect}` is the view's own dialect: alter the view instead"));
+            }
+            ice.representations.insert(dialect.clone(), definition.trim().trim_end_matches(';').to_string());
+            ok(format!("added the `{dialect}` query of view `{}`", v.name))
+        }
         Op::SetPartitionSpec { table, fields } => {
             iceberg_only(s.target)?;
             let i = table_at(s, table)?;
@@ -618,6 +821,97 @@ fn table_at(s: &Schema, text: &str) -> Result<usize, String> {
         [] => Err(format!("there is no table `{text}`")),
         _ => Err(format!("`{text}` is in more than one namespace: write `namespace.{text}`")),
     }
+}
+
+/// A view by name, `namespace.name` or id: its place in the schema.
+fn view_at(s: &Schema, text: &str) -> Result<usize, String> {
+    let hits: Vec<usize> = s
+        .views
+        .iter()
+        .enumerate()
+        .filter(|(_, v)| {
+            v.name == text
+                || v.id.as_str() == text
+                || text
+                    .rsplit_once('.')
+                    .is_some_and(|(ns, name)| name == v.name && namespace(s, ns).is_ok_and(|n| n == v.namespace))
+        })
+        .map(|(i, _)| i)
+        .collect();
+    match hits.as_slice() {
+        [one] => Ok(*one),
+        [] => Err(format!("there is no view `{text}`")),
+        _ => Err(format!("`{text}` is in more than one namespace: write `namespace.{text}`")),
+    }
+}
+
+/// What a view reads, by the names its query writes (`orders`, `shop.orders`, `catalog.shop.orders`): the tables
+/// and views of this schema.
+/// The tables and views a query's names read, by name, `namespace.name` (a nested namespace by its path), or with a
+/// catalog or database in front. Exact: a namespace that is named must be there, and a name in two namespaces must
+/// be qualified. PostgreSQL names come already folded; Iceberg and MySQL names match whatever their case.
+pub fn resolve_reads(s: &Schema, names: &[String]) -> Result<Vec<Id>, String> {
+    let same = |a: &str, b: &str| if s.target == Target::Postgres { a == b } else { a.eq_ignore_ascii_case(b) };
+    let ns_path = |id: &Id| {
+        let mut names = Vec::new();
+        let mut at = Some(id);
+        while let Some(i) = at {
+            let Some(n) = s.namespaces.iter().find(|n| &n.id == i) else { break };
+            names.push(n.name.clone());
+            at = n.parent.as_ref();
+            if names.len() > s.namespaces.len() {
+                break;
+            }
+        }
+        names.reverse();
+        names
+    };
+    // Whether the qualifier `q` (its parts) names the namespace `ns`: the end of its path, after any catalog.
+    let in_ns = |q: &[&str], ns: &Id| {
+        let path = ns_path(ns);
+        q.len() <= path.len() && path[path.len() - q.len()..].iter().zip(q).all(|(a, b)| same(a, b))
+    };
+    let mut out = Vec::new();
+    for n in names {
+        let parts: Vec<&str> = n.split('.').collect();
+        let (name, q) = parts.split_last().expect("a name");
+        let objects = s
+            .tables
+            .iter()
+            .map(|t| (&t.id, &t.name, &t.namespace))
+            .chain(s.views.iter().map(|v| (&v.id, &v.name, &v.namespace)));
+        let mut hits: Vec<&Id> = objects
+            .clone()
+            .filter(|(_, nm, ns)| same(nm, name) && (q.is_empty() || in_ns(q, ns)))
+            .map(|(id, ..)| id)
+            .collect();
+        // With a catalog or database in front the namespace may be named in full or in part: drop leading parts
+        // only while nothing matches, never past the namespace itself.
+        let mut skip = 0;
+        while hits.is_empty() && skip + 1 < q.len() {
+            skip += 1;
+            hits = objects
+                .clone()
+                .filter(|(_, nm, ns)| same(nm, name) && in_ns(&q[skip..], ns))
+                .map(|(id, ..)| id)
+                .collect();
+        }
+        match hits.as_slice() {
+            [one] => {
+                if !out.contains(*one) {
+                    out.push((*one).clone());
+                }
+            }
+            [] if q.is_empty() => return Err(format!("the query reads `{n}`, which is not in this schema")),
+            [] => return Err(format!("the query reads `{n}`: there is no `{name}` in `{}`", q.join("."))),
+            _ => return Err(format!("the query reads `{n}`, which is in more than one namespace: qualify it")),
+        }
+    }
+    Ok(out)
+}
+
+fn view_column(c: &NewViewColumn) -> crate::ViewColumn {
+    crate::ViewColumn { name: c.name.clone(), data_type: c.data_type.clone(), comment: c.comment.clone() }
 }
 
 /// A column by `table.column` (the table as `table_at` reads it) or id.
@@ -882,6 +1176,63 @@ mod tests {
     }
 
     #[test]
+    fn views_read_what_their_query_names_and_hold_their_readers() {
+        let mut s = lake();
+        let t = Op::AddTable {
+            namespace: "shop".into(),
+            name: "orders".into(),
+            comment: None,
+            columns: vec![col("id", "string"), col("total", "long")],
+            primary_key: vec![],
+        };
+        apply(&mut s, &t, false).expect("orders");
+        let view = |name: &str, reads: &[&str]| Op::AddView {
+            namespace: "shop".into(),
+            name: name.into(),
+            definition: format!("SELECT * FROM {}", reads.join(", ")),
+            reads: reads.iter().map(|r| (*r).to_string()).collect(),
+            columns: vec![],
+            comment: None,
+            materialized: false,
+        };
+        apply(&mut s, &view("big_orders", &["spark_catalog.shop.orders"]), false).expect("a catalog prefix resolves");
+        apply(&mut s, &view("biggest", &["big_orders"]), false).expect("a view on a view");
+        assert_eq!(s.views[1].reads, [s.views[0].id.clone()]);
+        assert!(apply(&mut s, &view("lost", &["nowhere"]), false).unwrap_err().contains("not in this schema"));
+        let alter = Op::AlterView {
+            view: "big_orders".into(),
+            definition: Some("SELECT * FROM biggest".into()),
+            reads: Some(vec!["biggest".into()]),
+            columns: None,
+            comment: None,
+        };
+        assert!(apply(&mut s, &alter, false).is_err(), "a cycle between views is refused");
+        let alter = Op::AlterView {
+            view: "big_orders".into(),
+            definition: Some("SELECT id FROM orders WHERE total > 100".into()),
+            reads: Some(vec!["orders".into()]),
+            columns: None,
+            comment: None,
+        };
+        apply(&mut s, &alter, false).expect("a new query");
+        assert_eq!(s.views[0].options.iceberg.as_ref().and_then(|i| i.version), Some(2), "a new Iceberg view version");
+        assert!(apply(&mut s, &Op::DropTable { table: "orders".into() }, true).unwrap_err().contains("views read"));
+        assert!(
+            apply(&mut s, &Op::RenameTable { table: "orders".into(), name: "sales".into() }, false)
+                .unwrap_err()
+                .contains("old name")
+        );
+        assert!(apply(&mut s, &Op::DropView { view: "big_orders".into() }, true).unwrap_err().contains("biggest"));
+        let trino = Op::AddViewDialect {
+            view: "big_orders".into(),
+            dialect: "trino".into(),
+            definition: "SELECT id FROM orders WHERE total > 100".into(),
+        };
+        apply(&mut s, &trino, false).expect("a second dialect");
+        apply(&mut s, &Op::DropView { view: "biggest".into() }, true).expect("dropped with a yes");
+    }
+
+    #[test]
     fn what_is_wrong_or_destructive_is_refused() {
         let mut s = lake();
         let t = Op::AddTable {
@@ -1012,5 +1363,68 @@ mod tests {
         apply(&mut s, &t("orders", vec![col("code", "string")]), false).expect("a new orders");
         assert_ne!(s.tables[0].columns[0].id, s.tables[1].columns[0].id);
         assert!(crate::check(&s).is_empty(), "{:?}", crate::check(&s));
+    }
+
+    #[test]
+    fn view_reads_are_exact_and_a_new_query_resets_its_other_dialects() {
+        let mut s = lake();
+        let t = |ns: &str, name: &str| Op::AddTable {
+            namespace: ns.into(),
+            name: name.into(),
+            comment: None,
+            columns: vec![col("id", "string")],
+            primary_key: vec![],
+        };
+        apply(&mut s, &t("shop", "orders"), false).expect("orders");
+        apply(&mut s, &Op::AddNamespace { name: "billing".into(), parent: None, comment: None }, false)
+            .expect("billing");
+        assert!(
+            resolve_reads(&s, &["billing.orders".into()]).unwrap_err().contains("no `orders` in `billing`"),
+            "no fallback to shop.orders"
+        );
+        assert_eq!(
+            resolve_reads(&s, &["SHOP.Orders".into()]).map(|r| r.len()),
+            Ok(1),
+            "Iceberg names match whatever their case"
+        );
+        apply(&mut s, &t("billing", "orders"), false).expect("billing.orders");
+        assert!(resolve_reads(&s, &["orders".into()]).unwrap_err().contains("more than one"));
+        let view = Op::AddView {
+            namespace: "shop".into(),
+            name: "big".into(),
+            definition: "SELECT id FROM shop.orders".into(),
+            reads: vec!["shop.orders".into()],
+            columns: vec![],
+            comment: None,
+            materialized: false,
+        };
+        apply(&mut s, &view, false).expect("view");
+        let trino = Op::AddViewDialect {
+            view: "big".into(),
+            dialect: "trino".into(),
+            definition: "SELECT id FROM shop.orders".into(),
+        };
+        apply(&mut s, &trino, false).expect("trino");
+        let bare = Op::AlterView {
+            view: "big".into(),
+            definition: Some("SELECT 1".into()),
+            reads: None,
+            columns: None,
+            comment: None,
+        };
+        assert!(apply(&mut s, &bare, true).unwrap_err().contains("what it reads"));
+        let alter = Op::AlterView {
+            view: "big".into(),
+            definition: Some("SELECT id FROM billing.orders".into()),
+            reads: Some(vec!["billing.orders".into()]),
+            columns: None,
+            comment: None,
+        };
+        assert!(
+            apply(&mut s.clone(), &alter, false).unwrap_err().contains("trino"),
+            "dropping the trino query needs a yes"
+        );
+        apply(&mut s, &alter, true).expect("with a yes");
+        assert!(s.views[0].options.iceberg.as_ref().is_none_or(|i| i.representations.is_empty()));
     }
 }

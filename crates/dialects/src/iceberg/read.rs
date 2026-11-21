@@ -120,11 +120,7 @@ impl Reader {
             else {
                 continue;
             };
-            let mut names: Vec<Vec<String>> = Vec::new();
-            let _ = sqlparser::ast::visit_relations(&parsed, |name| {
-                names.push(name.0.iter().filter_map(|p| p.as_ident()).map(|i| i.value.clone()).collect());
-                std::ops::ControlFlow::<()>::Continue(())
-            });
+            let names = crate::relations_in(&parsed, false);
             let mut reads = Vec::new();
             for n in names {
                 let id = match self.relations.get(&n) {
@@ -371,8 +367,26 @@ impl Reader {
     fn create_view(&mut self, c: &mut Cur<'_>, st: &Statement) -> Step<()> {
         c.kws(&["IF", "NOT", "EXISTS"]);
         let name = c.qualified().ok_or(Fallback)?;
-        if name.len() < 2 || c.is(&Token::LParen) {
+        if name.len() < 2 {
             return Err(Fallback);
+        }
+        // Its fields, when written out: names with an optional comment (their types come from the query).
+        let mut columns = Vec::new();
+        if c.is(&Token::LParen) {
+            let (from, to) = c.group().ok_or(Fallback)?;
+            for (a, b) in commas(c, from, to) {
+                let field = ident_of(&c.toks().get(a).ok_or(Fallback)?.token, Case::Keep).ok_or(Fallback)?;
+                let mut cur = Cur { i: a + 1, ..Cur::new(c.st, Case::Keep) };
+                let comment = if cur.kw("COMMENT") {
+                    Some(string_of(&cur.bump().ok_or(Fallback)?.token).ok_or(Fallback)?)
+                } else {
+                    None
+                };
+                if cur.i != b {
+                    return Err(Fallback);
+                }
+                columns.push(schema_forge_core::ViewColumn { name: field, data_type: None, comment });
+            }
         }
         let comment =
             if c.kw("COMMENT") { Some(string_of(&c.bump().ok_or(Fallback)?.token).ok_or(Fallback)?) } else { None };
@@ -391,7 +405,7 @@ impl Reader {
             notes: notes(&st.leading),
             tags: Vec::new(),
             area: None,
-            columns: Vec::new(),
+            columns,
             definition,
             reads: Vec::new(),
             options: ViewOptions {
