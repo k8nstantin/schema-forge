@@ -297,7 +297,8 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
                 t.options.iceberg = Some(IcebergTable::default());
             }
             for c in columns {
-                push_column(s.target, &mut t, c, None)?;
+                let cid = column_id(s, &t, &c.name);
+                push_column(s.target, &mut t, c, None, cid)?;
             }
             if !primary_key.is_empty() {
                 let cols = primary_key.iter().map(|c| column_in(&t, c)).collect::<Result<Vec<_>, _>>()?;
@@ -357,7 +358,8 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
                 ),
                 None => None,
             };
-            push_column(target, &mut s.tables[i], column, at)?;
+            let cid = column_id(s, &s.tables[i], &column.name);
+            push_column(target, &mut s.tables[i], column, at, cid)?;
             let destructive = (!column.nullable && column.default.is_none())
                 .then(|| "a required column with no default: existing rows have no value for it".to_string());
             Ok(Done { summary: format!("added column `{}.{}`", s.tables[i].name, column.name), destructive })
@@ -386,8 +388,10 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
                 }
                 let mut t = t.clone();
                 if target == Target::Iceberg {
-                    let mut next = max_field_id(&s.tables[i]) + 1;
-                    t.assign_field_ids(&mut next);
+                    // Fields there before keep their ids, so the data written under them still reads.
+                    let mut next = next_field_id(&s.tables[i]);
+                    keep_field_ids(&s.tables[i].columns[c].data_type, &mut t, &mut next);
+                    gave_out(&mut s.tables[i], next);
                 }
                 let col = &mut s.tables[i].columns[c];
                 col.data_type = t;
@@ -452,10 +456,15 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
             let cols = columns.iter().map(|c| column_in(t, c)).collect::<Result<Vec<_>, _>>()?;
             let had = t.primary_key.is_some()
                 || t.options.iceberg.as_ref().is_some_and(|ice| !ice.identifier_fields.is_empty());
+            let mut why = Vec::new();
+            if had {
+                why.push("it replaces the key there is".to_string());
+            }
+            why.extend(made_required(t, &cols));
             set_key(target, t, cols);
             Ok(Done {
                 summary: format!("keyed `{}` by {}", t.name, columns.join(", ")),
-                destructive: had.then(|| "it replaces the key there is".to_string()),
+                destructive: (!why.is_empty()).then(|| why.join("; ")),
             })
         }
         Op::SetIdentifierFields { table, columns } => {
@@ -463,8 +472,18 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
             let i = table_at(s, table)?;
             let t = &mut s.tables[i];
             let cols = columns.iter().map(|c| column_in(t, c)).collect::<Result<Vec<_>, _>>()?;
-            t.options.iceberg.get_or_insert_with(IcebergTable::default).identifier_fields = cols;
-            ok(format!("`{}` is identified by {}", t.name, columns.join(", ")))
+            // Like a key: identifier fields are required, and replacing them, or making a column required, is
+            // destructive.
+            let mut why = Vec::new();
+            if t.options.iceberg.as_ref().is_some_and(|ice| !ice.identifier_fields.is_empty()) {
+                why.push("it replaces the identifier fields there are".to_string());
+            }
+            why.extend(made_required(t, &cols));
+            set_key(Target::Iceberg, t, cols);
+            Ok(Done {
+                summary: format!("`{}` is identified by {}", t.name, columns.join(", ")),
+                destructive: (!why.is_empty()).then(|| why.join("; ")),
+            })
         }
         Op::Relate { from, columns, to, to_columns, name } => {
             let (fi, ti) = (table_at(s, from)?, table_at(s, to)?);
@@ -513,10 +532,7 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
             if s.tables.iter().any(|x| x.indexes.iter().any(|ix| ix.name == name)) {
                 return Err(format!("an index `{name}` is already there"));
             }
-            let base = Id::from_name(Kind::Index, &[&t.name, &columns.join("_")]);
-            let taken = |x: &Id| s.tables.iter().any(|t| t.indexes.iter().any(|ix| &ix.id == x));
-            let id =
-                if taken(&base) { (2..).map(|n| base.numbered(n)).find(|x| !taken(x)).expect("free") } else { base };
+            let id = fresh(s, Id::from_name(Kind::Index, &[&t.name, &columns.join("_")]));
             let t = &mut s.tables[i];
             t.indexes.push(crate::Index {
                 id,
@@ -711,9 +727,17 @@ fn iceberg_only(target: Target) -> Result<(), String> {
 
 /// `id`, or the first numbered one free (`t_orders_2`).
 fn fresh(s: &Schema, id: Id) -> Id {
+    fresh_beside(s, id, |_| false)
+}
+
+/// `id`, or the first numbered one free in the schema and not `also` taken: ids are unique across the schema.
+fn fresh_beside(s: &Schema, id: Id, also: impl Fn(&Id) -> bool) -> Id {
     let taken = |x: &Id| {
-        s.namespaces.iter().any(|n| &n.id == x)
-            || s.tables.iter().any(|t| &t.id == x || t.columns.iter().any(|c| &c.id == x))
+        also(x)
+            || s.namespaces.iter().any(|n| &n.id == x)
+            || s.tables
+                .iter()
+                .any(|t| &t.id == x || t.columns.iter().any(|c| &c.id == x) || t.indexes.iter().any(|ix| &ix.id == x))
             || s.views.iter().any(|v| &v.id == x)
             || s.relationships.iter().any(|r| &r.id == x)
     };
@@ -845,6 +869,13 @@ fn column_in(t: &Table, text: &str) -> Result<Id, String> {
         .ok_or_else(|| format!("`{}` has no column `{text}`", t.name))
 }
 
+/// What making `cols` a key does to columns that may be empty: they become required.
+fn made_required(t: &Table, cols: &[Id]) -> Option<String> {
+    let names: Vec<&str> =
+        t.columns.iter().filter(|c| cols.contains(&c.id) && c.nullable).map(|c| c.name.as_str()).collect();
+    (!names.is_empty()).then(|| format!("{} become required: existing empty values break it", names.join(", ")))
+}
+
 fn set_key(target: Target, t: &mut Table, cols: Vec<Id>) {
     for c in t.columns.iter_mut().filter(|c| cols.contains(&c.id)) {
         c.nullable = false;
@@ -853,6 +884,46 @@ fn set_key(target: Target, t: &mut Table, cols: Vec<Id>) {
         t.options.iceberg.get_or_insert_with(IcebergTable::default).identifier_fields = cols;
     } else {
         t.primary_key = Some(PrimaryKey { name: None, columns: cols });
+    }
+}
+
+/// Gives `new` the field ids of `old` wherever a field, element, key or value is the same one (by name, or by
+/// place for a list's element and a map's key and value); what is new gets the next ids.
+fn keep_field_ids(old: &DataType, new: &mut DataType, next: &mut i32) {
+    match (old.name.as_str(), new.name.as_str()) {
+        ("struct", "struct") => {
+            let mut fresh_fields = Vec::new();
+            for (i, f) in new.fields.iter_mut().enumerate() {
+                if let Some(o) = old.fields.iter().find(|o| o.name == f.name) {
+                    f.field_id = o.field_id;
+                    keep_field_ids(&o.data_type, &mut f.data_type, next);
+                } else {
+                    f.field_id = *next;
+                    *next += 1;
+                    fresh_fields.push(i);
+                }
+            }
+            for i in fresh_fields {
+                new.fields[i].data_type.assign_field_ids(next);
+            }
+        }
+        ("list", "list") => {
+            new.element_id = old.element_id;
+            if let (Some(o), Some(n)) = (old.of.as_deref(), new.of.as_deref_mut()) {
+                keep_field_ids(o, n, next);
+            }
+        }
+        ("map", "map") => {
+            new.key_id = old.key_id;
+            new.element_id = old.element_id;
+            if let (Some(o), Some(n)) = (old.key.as_deref(), new.key.as_deref_mut()) {
+                keep_field_ids(o, n, next);
+            }
+            if let (Some(o), Some(n)) = (old.of.as_deref(), new.of.as_deref_mut()) {
+                keep_field_ids(o, n, next);
+            }
+        }
+        _ => new.assign_field_ids(next),
     }
 }
 
@@ -877,27 +948,38 @@ fn max_field_id(t: &Table) -> i32 {
     m
 }
 
-fn push_column(target: Target, t: &mut Table, c: &NewColumn, at: Option<usize>) -> Result<(), String> {
+/// The next field id an Iceberg table gives out: past every id it holds and every id it ever gave out.
+fn next_field_id(t: &Table) -> i32 {
+    let last = t.options.iceberg.as_ref().and_then(|i| i.last_column_id).unwrap_or(0);
+    max_field_id(t).max(last) + 1
+}
+
+/// Records that `t` gave out every field id below `next`.
+fn gave_out(t: &mut Table, next: i32) {
+    let ice = t.options.iceberg.get_or_insert_with(IcebergTable::default);
+    ice.last_column_id = Some(ice.last_column_id.unwrap_or(0).max(next - 1));
+}
+
+/// A column id free across the schema, and in `t`, which may not be in the schema yet.
+fn column_id(s: &Schema, t: &Table, name: &str) -> Id {
+    fresh_beside(s, Id::from_name(Kind::Column, &[&t.name, name]), |x| t.columns.iter().any(|c| &c.id == x))
+}
+
+fn push_column(target: Target, t: &mut Table, c: &NewColumn, at: Option<usize>, id: Id) -> Result<(), String> {
     if t.columns.iter().any(|x| x.name == c.name) {
         return Err(format!("`{}` already has a column `{}`", t.name, c.name));
     }
     let mut data_type = c.data_type.clone();
     let mut field_id = None;
     if target == Target::Iceberg {
-        let mut next = max_field_id(t) + 1;
+        let mut next = next_field_id(t);
         field_id = Some(next);
         next += 1;
         data_type.assign_field_ids(&mut next);
+        gave_out(t, next);
     }
     let column = Column {
-        id: {
-            let base = Id::from_name(Kind::Column, &[&t.name, &c.name]);
-            if t.columns.iter().any(|x| x.id == base) {
-                (2..).map(|n| base.numbered(n)).find(|x| !t.columns.iter().any(|y| &y.id == x)).expect("free")
-            } else {
-                base
-            }
-        },
+        id,
         name: c.name.clone(),
         data_type,
         nullable: c.nullable,
@@ -935,6 +1017,22 @@ fn widens(target: Target, from: &DataType, to: &DataType) -> bool {
         }
         ("varchar", "varchar" | "text") | ("char", "varchar" | "text") => {
             to.name == "text" || wider(from.length, to.length)
+        }
+        // Iceberg evolves a struct safely when every field stays (each the same or wider) and new ones may be
+        // empty; a list's element or a map's value may widen too.
+        ("struct", "struct") if target == Target::Iceberg => {
+            from.fields.iter().all(|f| {
+                to.fields.iter().any(|t| {
+                    t.name == f.name && (t.data_type == f.data_type || widens(target, &f.data_type, &t.data_type))
+                })
+            }) && to.fields.iter().filter(|t| !from.fields.iter().any(|f| f.name == t.name)).all(|t| t.nullable)
+        }
+        ("list", "list") | ("map", "map") if target == Target::Iceberg => {
+            from.key == to.key
+                && match (from.of.as_deref(), to.of.as_deref()) {
+                    (Some(a), Some(b)) => a == b || widens(target, a, b),
+                    _ => false,
+                }
         }
         _ => false,
     }
@@ -1107,5 +1205,91 @@ mod tests {
                 .unwrap_err()
                 .contains("Iceberg")
         );
+    }
+
+    #[test]
+    fn iceberg_field_ids_are_never_given_out_twice_and_nested_ones_stay() {
+        let mut s = lake();
+        let table = Op::AddTable {
+            namespace: "shop".into(),
+            name: "orders".into(),
+            comment: None,
+            columns: vec![col("id", "string"), col("total", "long")],
+            primary_key: vec![],
+        };
+        apply(&mut s, &table, false).expect("orders");
+        apply(&mut s, &Op::DropColumn { column: "orders.total".into() }, true).expect("dropped");
+        apply(&mut s, &Op::AddColumn { table: "orders".into(), column: col("note", "string"), after: None }, false)
+            .expect("note");
+        let ids: Vec<Option<i32>> = s.tables[0].columns.iter().map(|c| c.field_id).collect();
+        assert_eq!(ids, [Some(1), Some(3)], "total's id 2 is not given to note");
+        // A struct grows a field: the fields there keep their ids.
+        let addr = crate::DataType {
+            fields: vec![
+                crate::StructField {
+                    field_id: 0,
+                    name: "street".into(),
+                    nullable: true,
+                    data_type: DataType::named("string"),
+                    comment: None,
+                },
+                crate::StructField {
+                    field_id: 0,
+                    name: "city".into(),
+                    nullable: true,
+                    data_type: DataType::named("string"),
+                    comment: None,
+                },
+            ],
+            ..DataType::named("struct")
+        };
+        let add = |ty: DataType| Op::AddColumn {
+            table: "orders".into(),
+            column: NewColumn { name: "addr".into(), data_type: ty, nullable: true, default: None, comment: None },
+            after: None,
+        };
+        apply(&mut s, &add(addr.clone()), false).expect("addr");
+        let before: Vec<i32> = s.tables[0].columns[2].data_type.fields.iter().map(|f| f.field_id).collect();
+        let mut wider = addr;
+        wider.fields.push(crate::StructField {
+            field_id: 0,
+            name: "zip".into(),
+            nullable: true,
+            data_type: DataType::named("string"),
+            comment: None,
+        });
+        let alter = Op::AlterColumn {
+            column: "orders.addr".into(),
+            data_type: Some(wider),
+            nullable: None,
+            default: None,
+            comment: None,
+        };
+        apply(&mut s, &alter, false).expect("wider");
+        let after: Vec<i32> = s.tables[0].columns[2].data_type.fields.iter().map(|f| f.field_id).collect();
+        assert_eq!(after[..2], before[..], "street and city keep their ids");
+        assert!(after[2] > *before.iter().max().expect("ids"), "zip gets a new one");
+    }
+
+    #[test]
+    fn keys_say_when_they_make_columns_required_and_ids_stay_unique() {
+        let mut s = lake();
+        let t = |name: &str, cols: Vec<NewColumn>| Op::AddTable {
+            namespace: "shop".into(),
+            name: name.into(),
+            comment: None,
+            columns: cols,
+            primary_key: vec![],
+        };
+        apply(&mut s, &t("orders", vec![col("code", "string")]), false).expect("orders");
+        let key = Op::SetIdentifierFields { table: "orders".into(), columns: vec!["code".into()] };
+        assert!(apply(&mut s.clone(), &key, false).is_err(), "code may be empty: making it required needs a yes");
+        apply(&mut s, &key, true).expect("with a yes");
+        assert!(!s.tables[0].columns[0].nullable, "an identifier field is required");
+        // An id is unique across the schema: a renamed table's column id does not clash with a new table's.
+        apply(&mut s, &Op::RenameTable { table: "orders".into(), name: "orders_old".into() }, false).expect("renamed");
+        apply(&mut s, &t("orders", vec![col("code", "string")]), false).expect("a new orders");
+        assert_ne!(s.tables[0].columns[0].id, s.tables[1].columns[0].id);
+        assert!(crate::check(&s).is_empty(), "{:?}", crate::check(&s));
     }
 }

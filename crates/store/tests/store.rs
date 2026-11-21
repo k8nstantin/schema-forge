@@ -474,3 +474,71 @@ fn approvals_take_their_own_ids_and_switch_off_what_they_contradict() {
     assert_eq!(last.change["switched_off"], serde_json::json!(["types.time"]));
     assert_eq!(last.change["rule"], "custom.4");
 }
+
+#[test]
+fn changes_at_the_same_time_never_overwrite_each_other_and_undo_never_breaks_the_schema() {
+    use schema_forge_core::DataType;
+    use schema_forge_core::ops::{NewColumn, Op};
+    let dir = tempfile::tempdir().expect("dir");
+    let store = std::sync::Arc::new(Store::open(&dir.path().join("store.redb")).expect("open"));
+    store.create_schema("lake", Target::Postgres).expect("create");
+    let col = |name: &str| NewColumn {
+        name: name.into(),
+        data_type: DataType::named("bigint"),
+        nullable: true,
+        default: None,
+        comment: None,
+    };
+    let table = |name: &str| Op::AddTable {
+        namespace: "public".into(),
+        name: name.into(),
+        comment: None,
+        columns: vec![col("id")],
+        primary_key: vec!["id".into()],
+    };
+    store
+        .change(
+            "lake",
+            &[Op::AddNamespace { name: "public".into(), parent: None, comment: None }, table("customers")],
+            false,
+            "you",
+        )
+        .expect("base");
+    // Ten columns added at once, from ten threads, to the same table: every one lands.
+    let handles: Vec<_> = (0..10)
+        .map(|i| {
+            let s = std::sync::Arc::clone(&store);
+            std::thread::spawn(move || {
+                s.change(
+                    "lake",
+                    &[Op::AddColumn { table: "customers".into(), column: col(&format!("c{i}")), after: None }],
+                    false,
+                    "agent",
+                )
+                .expect("added")
+            })
+        })
+        .collect();
+    for h in handles {
+        h.join().expect("joined");
+    }
+    assert_eq!(store.model("lake").expect("model").tables[0].columns.len(), 11, "no change overwrote another");
+    // A table, then a relationship onto it made by an import: undoing the table would leave the link dangling.
+    store.change("lake", &[table("orders")], false, "you").expect("orders");
+    let mut m = store.model("lake").expect("model");
+    let (c, o) = (m.tables[0].clone(), m.tables[1].clone());
+    m.relationships.push(schema_forge_core::Relationship {
+        id: schema_forge_core::Id::try_from("r_orders_customers".to_string()).expect("id"),
+        name: None,
+        from: schema_forge_core::Ends { table: c.id.clone(), columns: vec![c.columns[1].id.clone()] },
+        to: schema_forge_core::Ends { table: o.id.clone(), columns: vec![o.columns[0].id.clone()] },
+        enforced: true,
+        on_delete: None,
+        on_update: None,
+        deferrable: None,
+        match_kind: None,
+    });
+    store.replace_model("lake", &m, "import", "import").expect("relationship");
+    assert!(matches!(store.undo("lake", "you"), Err(Error::Refused(_))), "the relationship needs orders");
+    assert_eq!(store.model("lake").expect("model").tables.len(), 2, "nothing was undone");
+}

@@ -31,13 +31,20 @@ pub fn parse_type(target: Target, text: &str) -> Result<DataType, String> {
     match target {
         Target::Iceberg => {
             // The model's names, in the Spark SQL the reader takes: there TIMESTAMP is the zoned one.
-            let spark: String = words(text)
-                .into_iter()
-                .map(|w| match w.to_ascii_lowercase().as_str() {
+            // Only words in a type's place are swapped: a struct field's name (a word before `:`) stays as written.
+            let runs = words(text);
+            let named = |i: usize| {
+                runs[i + 1..].iter().find(|r| !r.trim().is_empty()).is_some_and(|r| r.trim_start().starts_with(':'))
+            };
+            let spark: String = runs
+                .iter()
+                .enumerate()
+                .map(|(i, w)| match w.to_ascii_lowercase().as_str() {
+                    _ if named(i) => w.clone(),
                     "list" => "array".to_string(),
                     "timestamptz" => "timestamp_ltz".to_string(),
                     "timestamp" => "timestamp_ntz".to_string(),
-                    _ => w,
+                    _ => w.clone(),
                 })
                 .collect();
             let st = split::split(&sqlparser::dialect::DatabricksDialect {}, &spark).map_err(|_| bad())?;
@@ -141,6 +148,10 @@ mod parse_type_tests {
             Ok((Some(18), Some(2)))
         );
         assert!(parse_type(Target::Iceberg, "varchar2 nonsense").is_err());
+        let st = parse_type(Target::Iceberg, "struct<timestamp: timestamp, list: list<string>>").expect("a struct");
+        let names: Vec<&str> = st.fields.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(names, ["timestamp", "list"], "field names are kept as written");
+        assert_eq!((st.fields[0].data_type.name.as_str(), st.fields[1].data_type.name.as_str()), ("timestamp", "list"));
         let p = parse_type(Target::Postgres, "timestamptz").expect("a type");
         assert!(p.name == "timestamp" && p.with_time_zone);
         assert_eq!(parse_type(Target::Postgres, "varchar(200)").map(|t| t.length), Ok(Some(200)));
