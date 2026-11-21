@@ -93,3 +93,8 @@ export const rejectTurn = (name: string, n: number) => send('POST', `${turnsOf(n
 /// The workspace folder, and when the agent last reached the MCP.
 export interface Workspace { folder: string; agent_seen?: number; now: number }
 export const workspace = () => json<Workspace>('/api/workspace')
+/// A folder on this machine.
+export interface Listing { path: string; parent?: string; entries: { name: string; dir: boolean; size?: number | null; hidden: boolean }[] }
+export const browse = (path: string) => json<Listing>(`/api/browse?path=${encodeURIComponent(path)}`)
+export const importPath = (path: string, schema: string, target?: string, replace = false) =>
+  send<{ schema: string; tables: number; report: string; findings: string[] }>('POST', '/api/import', { path, schema, target, replace })

@@ -59,6 +59,8 @@ pub fn app(store: Arc<Store>) -> Router {
                 .layer(axum::middleware::from_fn(agent_seen)),
         )
         .route("/api/workspace", get(workspace))
+        .route("/api/browse", get(browse))
+        .route("/api/import", post(import))
         .route("/api/events", get(events))
         .fallback(canvas)
         .with_state(store)
@@ -89,6 +91,111 @@ async fn workspace(State(store): State<Arc<Store>>) -> Response {
     let seen = AGENT_SEEN.load(std::sync::atomic::Ordering::Relaxed);
     axum::Json(serde_json::json!({ "folder": shown, "agent_seen": (seen > 0).then_some(seen), "now": now_ms() }))
         .into_response()
+}
+
+#[derive(serde::Deserialize)]
+struct Browse {
+    #[serde(default)]
+    path: Option<String>,
+}
+
+/// A folder on this machine, to locate a dump file or an Iceberg folder: its entries, folders first; `~` is your
+/// home and the default.
+async fn browse(axum::extract::Query(b): axum::extract::Query<Browse>) -> Response {
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from).unwrap_or_else(|| "/".into());
+    let path = match b.path.as_deref() {
+        None | Some("" | "~") => home.clone(),
+        Some(p) if p.starts_with("~/") => home.join(&p[2..]),
+        Some(p) => std::path::PathBuf::from(p),
+    };
+    let read = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, String> {
+        let mut entries = Vec::new();
+        for e in std::fs::read_dir(&path).map_err(|e| format!("{}: {e}", path.display()))? {
+            let Ok(e) = e else { continue };
+            let name = e.file_name().to_string_lossy().to_string();
+            let Ok(meta) = std::fs::metadata(e.path()) else { continue };
+            entries.push(serde_json::json!({
+                "name": name,
+                "dir": meta.is_dir(),
+                "size": (!meta.is_dir()).then_some(meta.len()),
+                "hidden": name.starts_with('.'),
+            }));
+        }
+        entries.sort_by(|a, b| {
+            (!a["dir"].as_bool().unwrap_or(false), a["name"].as_str().unwrap_or("").to_lowercase())
+                .cmp(&(!b["dir"].as_bool().unwrap_or(false), b["name"].as_str().unwrap_or("").to_lowercase()))
+        });
+        Ok(serde_json::json!({
+            "path": path.display().to_string(),
+            "parent": path.parent().map(|p| p.display().to_string()),
+            "entries": entries,
+        }))
+    })
+    .await;
+    match read {
+        Ok(Ok(v)) => axum::Json(v).into_response(),
+        Ok(Err(e)) => failed(StatusCode::BAD_REQUEST, e),
+        Err(e) => failed(StatusCode::INTERNAL_SERVER_ERROR, e),
+    }
+}
+
+/// An import: the file or folder, the schema it goes into (made when it is not there), and its type when the file
+/// cannot say.
+#[derive(serde::Deserialize)]
+struct Import {
+    path: String,
+    schema: String,
+    #[serde(default)]
+    target: Option<Target>,
+    #[serde(default)]
+    about: Option<String>,
+    /// Replace the model of a schema of that name; without it an existing name is refused.
+    #[serde(default)]
+    replace: bool,
+}
+
+/// Reads a dump file or an Iceberg folder into a schema; answers what it read.
+async fn import(State(store): State<Arc<Store>>, axum::Json(i): axum::Json<Import>) -> Response {
+    let path = std::path::PathBuf::from(&i.path);
+    let read = tokio::task::spawn_blocking(move || -> Result<(Target, schema_forge_dialects::Imported), String> {
+        let target = match i.target {
+            Some(t) => t,
+            None => schema_forge_dialects::detect(&path)?,
+        };
+        Ok((target, schema_forge_dialects::read_path(&path, target)?))
+    })
+    .await;
+    let (target, imported) = match read {
+        Ok(Ok(r)) => r,
+        Ok(Err(e)) => return failed(StatusCode::BAD_REQUEST, e),
+        Err(e) => return failed(StatusCode::INTERNAL_SERVER_ERROR, e),
+    };
+    let exists = match store.schemas() {
+        Ok(list) => list.iter().any(|s| s.name == i.schema),
+        Err(e) => return store_failed(e),
+    };
+    if exists && !i.replace {
+        return failed(
+            StatusCode::CONFLICT,
+            format!("there is a schema `{}` already: pick another name, or replace it", i.schema),
+        );
+    }
+    if !exists && let Err(e) = store.create_schema_with(&i.schema, target, i.about, None) {
+        return failed(StatusCode::BAD_REQUEST, e);
+    }
+    if let Err(e) = store.replace_model(&i.schema, &imported.schema, "import", BY) {
+        return failed(StatusCode::BAD_REQUEST, e);
+    }
+    let findings: Vec<String> = schema_forge_core::check(&imported.schema).iter().map(ToString::to_string).collect();
+    axum::Json(serde_json::json!({
+        "schema": i.schema,
+        "target": target,
+        "tables": imported.schema.tables.len(),
+        "views": imported.schema.views.len(),
+        "report": imported.report.to_string(),
+        "findings": findings,
+    }))
+    .into_response()
 }
 
 /// Serves on `127.0.0.1:port` until the process ends; `ready` hears the address once it is listening.

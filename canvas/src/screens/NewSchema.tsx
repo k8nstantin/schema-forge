@@ -9,7 +9,7 @@ import { Brand } from './parts'
 
 const TYPES: { id: Target; label: string; what: string; has: string }[] = [
   { id: 'postgres', label: 'PostgreSQL', what: 'Tables, views, enums, partitions, foreign keys, checks.', has: 'Reads a pg_dump · writes PostgreSQL DDL' },
-  { id: 'mysql', label: 'MySQL', what: 'Tables, views, foreign keys, InnoDB options.', has: 'Reads a mysqldump · writes MySQL DDL' },
+  { id: 'mysql', label: 'MySQL', what: 'Tables, views, foreign keys, InnoDB options.', has: 'Designed here · reading a mysqldump and writing MySQL DDL are not built yet' },
   { id: 'iceberg', label: 'Iceberg', what: 'Tables with nested types, partition transforms, sort orders and properties. No foreign keys.', has: 'Reads Spark SQL · writes Spark SQL' },
 ]
 const STEPS = ['Name', 'Type', 'Rules', 'Agent']
@@ -62,7 +62,8 @@ export function NewSchema({ catalog, open }: { catalog: Catalog | null; open: (n
 
         <nav aria-label="Steps" className="d-wizard">
           {STEPS.map((l, i) => {
-            const reach = made ? i === 3 : i <= step
+            // Every step is open from the start, so the type is never hidden behind the name; the last needs the schema.
+            const reach = made ? i === 3 : i < 3
             return (
               <button key={l} type="button" disabled={!reach} onClick={() => setStep(i)}
                 className={`d-wstep${i === step ? ' d-wstep-on' : i < step ? ' d-wstep-done' : ''}`}>
@@ -93,7 +94,7 @@ export function NewSchema({ catalog, open }: { catalog: Catalog | null; open: (n
             </label>
             <div className="d-row">
               <button type="button" className="d-btn" disabled={!valid} onClick={() => setStep(1)}>Next: pick its type</button>
-              <span className="d-soft d-small">Or import a pg_dump, a MySQL dump or an Iceberg folder: <span className="d-ref">schema-forge import &lt;file&gt; --schema {name || '<name>'}</span></span>
+              <span className="d-soft d-small">Or <a href="#/_open">import a pg_dump, a MySQL dump or an Iceberg folder</a> instead.</span>
             </div>
           </section>
         )}

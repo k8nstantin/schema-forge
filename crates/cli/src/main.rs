@@ -1,12 +1,12 @@
 //! `schema-forge`: the command line.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use schema_forge_core::rules::{self, Strength};
 use schema_forge_core::{Id, Target};
-use schema_forge_dialects::{Imported, iceberg, postgres};
+use schema_forge_dialects::{detect, iceberg, postgres, read_path};
 use schema_forge_store::Store;
 
 #[derive(Parser)]
@@ -88,7 +88,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 Some(TargetArg::Iceberg) => Target::Iceberg,
                 None => detect(&path)?,
             };
-            let imported = read(&path, target)?;
+            let imported = read_path(&path, target)?;
             if !store.schemas().map_err(|e| e.to_string())?.iter().any(|s| s.name == schema) {
                 store.create_schema(&schema, target).map_err(|e| e.to_string())?;
             }
@@ -189,30 +189,5 @@ const fn target_name(t: Target) -> &'static str {
         Target::Mysql => "mysql",
         Target::Postgres => "postgres",
         Target::Iceberg => "iceberg",
-    }
-}
-
-/// A folder is Iceberg definitions; a file says what it is (pg_dump's header, or `USING iceberg`).
-fn detect(path: &Path) -> Result<Target, String> {
-    if path.is_dir() {
-        return Ok(Target::Iceberg);
-    }
-    let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    if text.contains("PostgreSQL database dump") {
-        Ok(Target::Postgres)
-    } else if text.to_ascii_lowercase().contains("using iceberg") {
-        Ok(Target::Iceberg)
-    } else {
-        Err(format!("{}: say what it is with --target postgres or --target iceberg", path.display()))
-    }
-}
-
-fn read(path: &Path, target: Target) -> Result<Imported, String> {
-    let file = || std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()));
-    match target {
-        Target::Postgres => postgres::import(&file()?).map_err(|e| e.to_string()),
-        Target::Iceberg if path.is_dir() => iceberg::import_folder(path).map_err(|e| e.to_string()),
-        Target::Iceberg => iceberg::import(&file()?).map_err(|e| e.to_string()),
-        Target::Mysql => Err("reading MySQL comes in milestone 2".to_string()),
     }
 }

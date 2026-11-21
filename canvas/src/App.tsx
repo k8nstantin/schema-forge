@@ -13,6 +13,7 @@ import { Categories } from './perspectives/Categories'
 import { Turns } from './components/Turns'
 import { Home } from './screens/Home'
 import { NewSchema } from './screens/NewSchema'
+import { Locate } from './screens/Locate'
 import { RulesView } from './rules/RulesView'
 import { MapView } from './perspectives/MapView'
 import { Tables } from './perspectives/Tables'
@@ -198,6 +199,7 @@ export default function App() {
       newSchema={() => open({ schema: '_new', perspective: 'tables' })} rules={() => open({ schema: '_rules', perspective: 'tables' })} />
   }
   if (schema === '_new') return <NewSchema catalog={catalog} open={(n) => open({ schema: n, perspective: 'tables' })} />
+  if (schema === '_open') return <Locate open={(n) => open({ schema: n, perspective: 'tables' })} />
   return (
     <div className="sf-app">
       <header className="sf-header">

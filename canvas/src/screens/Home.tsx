@@ -114,6 +114,7 @@ export function Home({ catalog, version, open, newSchema, rules }: {
                 </button>
               ))}
             </div>
+            <a className="d-btn d-btn-line d-btn-sm" href="#/_open">Open a file or folder…</a>
             {rows && rows.length > 0 && (
               <span className="d-soft d-small" style={{ marginTop: 'auto' }}>
                 {rows.length === 1 ? 'The schema is' : `All ${rows.length} schemas are`} in <span className="d-ref">{ws?.folder ?? 'this workspace'}</span>
