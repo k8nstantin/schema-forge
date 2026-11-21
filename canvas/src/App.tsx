@@ -18,7 +18,7 @@ import { RulesView } from './rules/RulesView'
 import { MapView } from './perspectives/MapView'
 import { Tables } from './screens/Tables'
 import { SchemaBar } from './screens/SchemaBar'
-import { TableView } from './perspectives/TableView'
+import { Table } from './screens/Table'
 import { WorkbenchProvider, indexOf, reference, referenceWithContext, type Perspective, type Pointer } from './state'
 
 const PERSPECTIVES: { value: Perspective; label: string }[] = [
@@ -222,7 +222,7 @@ export default function App() {
           <WorkbenchProvider value={{ name: schema, model: current.model, shape: current.shape, go, pointer, point, catalog, rules: current.rules, reloadRules: () => reloadRules(schema), edit }}>
             {perspective === 'tables' && <Tables />}
             {perspective === 'categories' && <Categories />}
-            {perspective === 'table' && <TableView id={arg} />}
+            {perspective === 'table' && <Table id={arg} />}
             {perspective === 'map' && <MapView family={arg} />}
             {perspective === 'rules' && <RulesView arg={arg} />}
           </WorkbenchProvider>

@@ -980,3 +980,214 @@ a.d-btn {
   text-overflow: ellipsis;
   max-width: 560px;
 }
+
+/* The Table perspective: the picker and the open table */
+
+.d-split {
+  display: flex;
+  flex-wrap: wrap;
+  min-height: 100%;
+}
+
+.d-picker {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: calc(100vh - 120px);
+  flex: 1 1 240px;
+  max-width: 270px;
+  padding: 16px 12px;
+  border-right: 1px solid var(--d-line);
+  background: var(--d-side);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.d-picker-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.d-picker-ns {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px 6px;
+  margin-top: 6px;
+  border-top: 1px solid var(--d-line);
+}
+
+.d-picker-nsname {
+  font-family: var(--d-head);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--d-violet);
+  overflow-wrap: anywhere;
+}
+
+.d-pick-item {
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--d-mono);
+  font-size: 13px;
+  background: transparent;
+  color: var(--d-text);
+}
+
+.d-pick-item:hover {
+  background: var(--d-card);
+}
+
+.d-pick-on,
+.d-pick-on:hover {
+  background: var(--d-on);
+  color: var(--d-bright);
+  box-shadow: inset 3px 0 0 var(--d-violet);
+}
+
+.d-split-main {
+  flex: 999 1 640px;
+  min-width: 0;
+  padding: 24px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.d-crumbs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.d-crumb {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--d-lilac);
+  font-size: 14px;
+}
+
+.d-crumb-ns {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--d-accent);
+  background: var(--d-card);
+  font-family: var(--d-head);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--d-violet);
+  cursor: pointer;
+}
+
+.d-ttitle {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--d-head);
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--d-bright);
+  text-align: left;
+}
+
+.d-about {
+  margin: 0;
+  max-width: 860px;
+  color: var(--d-soft);
+  font-size: 15px;
+}
+
+.d-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 11px;
+  background: var(--d-card);
+  border: 1px solid var(--d-line);
+  align-self: flex-start;
+  flex-wrap: wrap;
+}
+
+.d-tabs button {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--d-text);
+}
+
+.d-tabs button.d-tab-on {
+  background: var(--d-accent);
+  color: #ffffff;
+}
+
+.d-crow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) 120px minmax(0, 2.4fr);
+  gap: 14px;
+  align-items: baseline;
+  width: 100%;
+  padding: 9px 16px;
+  box-sizing: border-box;
+  border: 0;
+  text-align: left;
+  background: transparent;
+  color: var(--d-text);
+}
+
+.d-crow.d-tbl-head {
+  padding: 10px 16px;
+  background: var(--d-bar);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--d-soft);
+}
+
+.d-crow-line {
+  border-top: 1px solid var(--d-card);
+  cursor: pointer;
+}
+
+.d-crow-line:hover {
+  background: var(--d-card);
+}
+
+.d-crow-on,
+.d-crow-on:hover {
+  background: rgba(255, 210, 138, 0.14);
+  box-shadow: inset 3px 0 0 var(--d-gold);
+}
+
+.d-sql {
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--d-line);
+  background: var(--d-bar);
+  font-size: 13px;
+  overflow: auto;
+}
+
+.d-chip-btn {
+  background: transparent;
+  color: var(--d-text);
+  cursor: pointer;
+}
