@@ -86,7 +86,7 @@ fn run(cli: Cli) -> Result<(), String> {
             let target = match target {
                 Some(TargetArg::Postgres) => Target::Postgres,
                 Some(TargetArg::Iceberg) => Target::Iceberg,
-                None => detect(&path)?,
+                None => detect(&path).map_err(|e| format!("{e}: give --target postgres or --target iceberg"))?,
             };
             let imported = read_path(&path, target)?;
             if !store.schemas().map_err(|e| e.to_string())?.iter().any(|s| s.name == schema) {
