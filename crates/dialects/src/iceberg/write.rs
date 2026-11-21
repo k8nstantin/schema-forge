@@ -170,7 +170,21 @@ fn view(paths: &HashMap<Id, Vec<String>>, v: &View) -> String {
     if let Some(comment) = &v.comment {
         let _ = write!(out, "\nCOMMENT {}", quote(comment));
     }
-    let _ = writeln!(out, " AS\n{};\n", v.definition);
+    let _ = writeln!(out, " AS\n{};", v.definition);
+    // Spark SQL holds one query: the same query for other engines, and the view's version, are written beside it
+    // as comments so an export shows them.
+    if let Some(ice) = &v.options.iceberg {
+        if let Some(version) = ice.version {
+            let _ = writeln!(out, "-- view version {version}");
+        }
+        for (dialect, sql) in &ice.representations {
+            let _ = writeln!(out, "-- in {dialect}:");
+            for line in sql.lines() {
+                let _ = writeln!(out, "--   {line}");
+            }
+        }
+    }
+    out.push('\n');
     out
 }
 

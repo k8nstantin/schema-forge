@@ -253,9 +253,28 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
         }
         Op::RenameNamespace { namespace: n, name } => {
             let id = namespace(s, n)?;
+            // Views that read what is in it may name it: their queries must change in the same change.
+            let inside: Vec<&Id> = s
+                .tables
+                .iter()
+                .filter(|t| t.namespace == id)
+                .map(|t| &t.id)
+                .chain(s.views.iter().filter(|v| v.namespace == id).map(|v| &v.id))
+                .collect();
+            let readers: Vec<String> = s
+                .views
+                .iter()
+                .filter(|v| v.reads.iter().any(|r| inside.contains(&r)))
+                .map(|v| format!("`{}`", v.name))
+                .collect();
             let ns = s.namespaces.iter_mut().find(|x| x.id == id).expect("found");
             let old = std::mem::replace(&mut ns.name, name.clone());
-            ok(format!("renamed namespace `{old}` to `{name}`"))
+            Ok(Done {
+                summary: format!("renamed namespace `{old}` to `{name}`"),
+                destructive: (!readers.is_empty()).then(|| {
+                    format!("views {} read from it and may name it: alter them in the same change", readers.join(", "))
+                }),
+            })
         }
         Op::DropNamespace { namespace: n } => {
             let id = namespace(s, n)?;
@@ -611,12 +630,22 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
         }
         Op::AlterView { view, definition, reads, columns, comment } => {
             let i = view_at(s, view)?;
+            if definition.is_some() && reads.is_none() {
+                return Err("a new query comes with what it reads".to_string());
+            }
             let reads = reads.as_ref().map(|r| resolve_reads(s, r)).transpose()?;
             let v = &mut s.views[i];
             let mut what = Vec::new();
+            let mut destructive = None;
             if let Some(d) = definition {
                 v.definition = d.trim().trim_end_matches(';').to_string();
                 what.push("its query");
+                // The same query in other dialects described the old one: they go, and you are told.
+                if let Some(ice) = v.options.iceberg.as_mut().filter(|i| !i.representations.is_empty()) {
+                    let gone: Vec<String> = std::mem::take(&mut ice.representations).into_keys().collect();
+                    destructive =
+                        Some(format!("its {} query was the old one and is dropped: add it again", gone.join(", ")));
+                }
             }
             if let Some(r) = reads {
                 v.reads = r;
@@ -635,7 +664,7 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
             if let Some(ice) = v.options.iceberg.as_mut().filter(|_| definition.is_some() || columns.is_some()) {
                 ice.version = Some(ice.version.unwrap_or(1) + 1);
             }
-            ok(format!("changed view `{}`: {}", v.name, what.join(", ")))
+            Ok(Done { summary: format!("changed view `{}`: {}", v.name, what.join(", ")), destructive })
         }
         Op::RenameView { view, name } => {
             let i = view_at(s, view)?;
@@ -818,21 +847,64 @@ fn view_at(s: &Schema, text: &str) -> Result<usize, String> {
 
 /// What a view reads, by the names its query writes (`orders`, `shop.orders`, `catalog.shop.orders`): the tables
 /// and views of this schema.
-fn resolve_reads(s: &Schema, names: &[String]) -> Result<Vec<Id>, String> {
+/// The tables and views a query's names read, by name, `namespace.name` (a nested namespace by its path), or with a
+/// catalog or database in front. Exact: a namespace that is named must be there, and a name in two namespaces must
+/// be qualified. PostgreSQL names come already folded; Iceberg and MySQL names match whatever their case.
+pub fn resolve_reads(s: &Schema, names: &[String]) -> Result<Vec<Id>, String> {
+    let same = |a: &str, b: &str| if s.target == Target::Postgres { a == b } else { a.eq_ignore_ascii_case(b) };
+    let ns_path = |id: &Id| {
+        let mut names = Vec::new();
+        let mut at = Some(id);
+        while let Some(i) = at {
+            let Some(n) = s.namespaces.iter().find(|n| &n.id == i) else { break };
+            names.push(n.name.clone());
+            at = n.parent.as_ref();
+            if names.len() > s.namespaces.len() {
+                break;
+            }
+        }
+        names.reverse();
+        names
+    };
+    // Whether the qualifier `q` (its parts) names the namespace `ns`: the end of its path, after any catalog.
+    let in_ns = |q: &[&str], ns: &Id| {
+        let path = ns_path(ns);
+        q.len() <= path.len() && path[path.len() - q.len()..].iter().zip(q).all(|(a, b)| same(a, b))
+    };
     let mut out = Vec::new();
     for n in names {
         let parts: Vec<&str> = n.split('.').collect();
-        let tries: Vec<String> = (0..parts.len()).map(|k| parts[k..].join(".")).collect();
-        let id = tries.iter().find_map(|t| {
-            table_at(s, t)
-                .ok()
-                .map(|i| s.tables[i].id.clone())
-                .or_else(|| view_at(s, t).ok().map(|i| s.views[i].id.clone()))
-        });
-        match id {
-            Some(id) if !out.contains(&id) => out.push(id),
-            Some(_) => {}
-            None => return Err(format!("the query reads `{n}`, which is not in this schema")),
+        let (name, q) = parts.split_last().expect("a name");
+        let objects = s
+            .tables
+            .iter()
+            .map(|t| (&t.id, &t.name, &t.namespace))
+            .chain(s.views.iter().map(|v| (&v.id, &v.name, &v.namespace)));
+        let mut hits: Vec<&Id> = objects
+            .clone()
+            .filter(|(_, nm, ns)| same(nm, name) && (q.is_empty() || in_ns(q, ns)))
+            .map(|(id, ..)| id)
+            .collect();
+        // With a catalog or database in front the namespace may be named in full or in part: drop leading parts
+        // only while nothing matches, never past the namespace itself.
+        let mut skip = 0;
+        while hits.is_empty() && skip + 1 < q.len() {
+            skip += 1;
+            hits = objects
+                .clone()
+                .filter(|(_, nm, ns)| same(nm, name) && in_ns(&q[skip..], ns))
+                .map(|(id, ..)| id)
+                .collect();
+        }
+        match hits.as_slice() {
+            [one] => {
+                if !out.contains(*one) {
+                    out.push((*one).clone());
+                }
+            }
+            [] if q.is_empty() => return Err(format!("the query reads `{n}`, which is not in this schema")),
+            [] => return Err(format!("the query reads `{n}`: there is no `{name}` in `{}`", q.join("."))),
+            _ => return Err(format!("the query reads `{n}`, which is in more than one namespace: qualify it")),
         }
     }
     Ok(out)
@@ -1291,5 +1363,68 @@ mod tests {
         apply(&mut s, &t("orders", vec![col("code", "string")]), false).expect("a new orders");
         assert_ne!(s.tables[0].columns[0].id, s.tables[1].columns[0].id);
         assert!(crate::check(&s).is_empty(), "{:?}", crate::check(&s));
+    }
+
+    #[test]
+    fn view_reads_are_exact_and_a_new_query_resets_its_other_dialects() {
+        let mut s = lake();
+        let t = |ns: &str, name: &str| Op::AddTable {
+            namespace: ns.into(),
+            name: name.into(),
+            comment: None,
+            columns: vec![col("id", "string")],
+            primary_key: vec![],
+        };
+        apply(&mut s, &t("shop", "orders"), false).expect("orders");
+        apply(&mut s, &Op::AddNamespace { name: "billing".into(), parent: None, comment: None }, false)
+            .expect("billing");
+        assert!(
+            resolve_reads(&s, &["billing.orders".into()]).unwrap_err().contains("no `orders` in `billing`"),
+            "no fallback to shop.orders"
+        );
+        assert_eq!(
+            resolve_reads(&s, &["SHOP.Orders".into()]).map(|r| r.len()),
+            Ok(1),
+            "Iceberg names match whatever their case"
+        );
+        apply(&mut s, &t("billing", "orders"), false).expect("billing.orders");
+        assert!(resolve_reads(&s, &["orders".into()]).unwrap_err().contains("more than one"));
+        let view = Op::AddView {
+            namespace: "shop".into(),
+            name: "big".into(),
+            definition: "SELECT id FROM shop.orders".into(),
+            reads: vec!["shop.orders".into()],
+            columns: vec![],
+            comment: None,
+            materialized: false,
+        };
+        apply(&mut s, &view, false).expect("view");
+        let trino = Op::AddViewDialect {
+            view: "big".into(),
+            dialect: "trino".into(),
+            definition: "SELECT id FROM shop.orders".into(),
+        };
+        apply(&mut s, &trino, false).expect("trino");
+        let bare = Op::AlterView {
+            view: "big".into(),
+            definition: Some("SELECT 1".into()),
+            reads: None,
+            columns: None,
+            comment: None,
+        };
+        assert!(apply(&mut s, &bare, true).unwrap_err().contains("what it reads"));
+        let alter = Op::AlterView {
+            view: "big".into(),
+            definition: Some("SELECT id FROM billing.orders".into()),
+            reads: Some(vec!["billing.orders".into()]),
+            columns: None,
+            comment: None,
+        };
+        assert!(
+            apply(&mut s.clone(), &alter, false).unwrap_err().contains("trino"),
+            "dropping the trino query needs a yes"
+        );
+        apply(&mut s, &alter, true).expect("with a yes");
+        assert!(s.views[0].options.iceberg.as_ref().is_none_or(|i| i.representations.is_empty()));
     }
 }

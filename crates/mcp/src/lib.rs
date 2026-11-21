@@ -185,6 +185,55 @@ const GRAMMAR: &str = r#"A new rule is a sentence, as JSON. Three forms:
 Reuse a rule of the catalog with kind "link" before writing a new one."#;
 
 /// An operation as the agent writes it, with its types read from text for `target`.
+/// Refuses a change that leaves a view's query naming what is no longer there, or reading something other than
+/// what the view records: after a rename, the views that read it must be altered in the same change.
+///
+/// # Errors
+/// The views whose queries no longer read what they record.
+pub fn views_still_read(
+    model: &schema_forge_core::Schema,
+    ops: &[schema_forge_core::ops::Op],
+    confirmed: bool,
+) -> Result<(), String> {
+    let mut after = model.clone();
+    for op in ops {
+        // A wrong operation is refused by the store, with its reason; here only the views are looked at.
+        if schema_forge_core::ops::apply(&mut after, op, confirmed).is_err() {
+            return Ok(());
+        }
+    }
+    let reads_as_recorded = |s: &schema_forge_core::Schema, v: &schema_forge_core::View| {
+        let names = schema_forge_dialects::view_relations(s.target, &v.definition)
+            .map(|rs| rs.into_iter().map(|parts| parts.join(".")).collect::<Vec<_>>());
+        names.and_then(|n| schema_forge_core::ops::resolve_reads(s, &n)).is_ok_and(|mut ids| {
+            let mut want = v.reads.clone();
+            ids.sort();
+            want.sort();
+            ids == want
+        })
+    };
+    // Only what this change makes stale: a view already off before (an import that skipped a name) is not held
+    // against it.
+    let was_ok: Vec<&schema_forge_core::Id> =
+        model.views.iter().filter(|v| reads_as_recorded(model, v)).map(|v| &v.id).collect();
+    let stale: Vec<String> = after
+        .views
+        .iter()
+        .filter(|v| {
+            (was_ok.contains(&&v.id) || !model.views.iter().any(|o| o.id == v.id)) && !reads_as_recorded(&after, v)
+        })
+        .map(|v| format!("`{}`", v.name))
+        .collect();
+    if stale.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "views {} would read by names that are gone: alter them (alter_view) in the same change",
+            stale.join(", ")
+        ))
+    }
+}
+
 fn operation(target: Target, mut v: serde_json::Value) -> Result<schema_forge_core::ops::Op, String> {
     let parse = |t: &mut serde_json::Value| -> Result<(), String> {
         if let Some(text) = t.as_str() {
@@ -253,13 +302,15 @@ Operations, as JSON objects with "op". Tables are named `orders` or `namespace.o
     )]
     fn change(&self, Parameters(a): Parameters<ChangeArg>) -> Result<String, String> {
         let e = |e: schema_forge_store::Error| e.to_string();
-        let target = self.store.model(&a.schema).map_err(e)?.target;
+        let model = self.store.model(&a.schema).map_err(e)?;
+        let target = model.target;
         let ops = a
             .operations
             .into_iter()
             .enumerate()
             .map(|(i, v)| operation(target, v).map_err(|m| format!("operation {}: {m}", i + 1)))
             .collect::<Result<Vec<_>, _>>()?;
+        views_still_read(&model, &ops, a.confirm_destructive)?;
         let changed = self.store.change(&a.schema, &ops, a.confirm_destructive, "agent").map_err(e)?;
         let mut out = format!("Change #{} landed:\n", changed.operation.sequence);
         for s in &changed.summaries {

@@ -114,14 +114,16 @@ export function indexOf(model: Schema, shape: Shape) {
   }
   const copiesOf = (id: string) =>
     shape.tables.filter((p) => p.copy_of === id).map((p) => tables.get(p.table)).filter((t): t is Table => !!t)
-  return { tables, namespaces, columns, typeNames, nameCount, path, placed, isCopy, families, familyOf, out, into, sharedOut, sharedIn, copiesOf }
+  const views = new Map((model.views ?? []).map((v) => [v.id, v]))
+  return { tables, views, namespaces, columns, typeNames, nameCount, path, placed, isCopy, families, familyOf, out, into, sharedOut, sharedIn, copiesOf }
 }
 
 export type Index = ReturnType<typeof indexOf>
 
 /// A table's reference: `@orders`, or `@billing.orders` when another namespace has an `orders`.
 export function tableRef(ix: Index, id: string): string {
-  const t = ix.tables.get(id)
+  // A view is pointed at like a table, by its name.
+  const t = ix.tables.get(id) ?? ix.views.get(id)
   if (!t) return `@${id}`
   return (ix.nameCount.get(t.name) ?? 0) > 1 ? `@${ix.path(t.namespace)}.${t.name}` : `@${t.name}`
 }
@@ -143,7 +145,11 @@ export function referenceWithContext(ix: Index, model: Schema, p: Pointer): stri
     if (c.comment) parts.push(c.comment)
     return `${r} (${parts.join(', ')})`
   }
-  const t = ix.tables.get(p.table)!
+  const t = ix.tables.get(p.table)
+  if (!t) {
+    const v = ix.views.get(p.table)
+    return v ? `${r} (view in ${ix.path(v.namespace)}, reads ${v.reads?.length ?? 0}${v.comment ? `: ${v.comment}` : ''})` : r
+  }
   return `${r} (table in ${ix.path(t.namespace)}, ${t.columns.length} columns${t.comment ? `: ${t.comment}` : ''})`
 }
 
