@@ -221,6 +221,14 @@ async fn schemas(State(store): State<Arc<Store>>) -> Response {
 fn store_failed(e: schema_forge_store::Error) -> Response {
     match e {
         schema_forge_store::Error::NoSchema(_) => failed(StatusCode::NOT_FOUND, e),
+        // A refusal says what kind it is, so the canvas asks the right question: a yes, or turning rules soft.
+        schema_forge_store::Error::Destructive(m) => {
+            (StatusCode::CONFLICT, axum::Json(serde_json::json!({ "error": m, "kind": "destructive" }))).into_response()
+        }
+        schema_forge_store::Error::Hard { message, rules } => {
+            (StatusCode::CONFLICT, axum::Json(serde_json::json!({ "error": message, "kind": "hard", "rules": rules })))
+                .into_response()
+        }
         schema_forge_store::Error::Rule(_) | schema_forge_store::Error::Refused(_) => {
             failed(StatusCode::BAD_REQUEST, e)
         }
@@ -369,6 +377,7 @@ async fn new_schema(State(store): State<Arc<Store>>, axum::Json(n): axum::Json<N
 /// A change made by hand: operations as the agent writes them (types as text), and a yes to destructive ones.
 /// Hard rules hold for a person too: to go ahead, the rule is turned soft first.
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ByHand {
     operations: Vec<serde_json::Value>,
     #[serde(default)]
@@ -380,26 +389,7 @@ async fn change(
     Path(name): Path<String>,
     axum::Json(c): axum::Json<ByHand>,
 ) -> Response {
-    let model = match store.model(&name) {
-        Ok(m) => m,
-        Err(e) => return store_failed(e),
-    };
-    let target = model.target;
-    let ops = match c
-        .operations
-        .into_iter()
-        .enumerate()
-        .map(|(i, v)| schema_forge_mcp::operation(target, v).map_err(|m| format!("operation {}: {m}", i + 1)))
-        .collect::<Result<Vec<_>, _>>()
-    {
-        Ok(ops) => ops,
-        Err(m) => return failed(StatusCode::BAD_REQUEST, m),
-    };
-    // Your changes are held to the same as the agent's: a view's query never left reading a name that is gone.
-    if let Err(m) = schema_forge_mcp::views_still_read(&model, &ops, c.confirm_destructive) {
-        return failed(StatusCode::CONFLICT, format!("refused: {m}"));
-    }
-    match store.change(&name, &ops, c.confirm_destructive, BY) {
+    match schema_forge_mcp::change_from_json(&store, &name, c.operations, c.confirm_destructive, BY, None) {
         Ok(ch) => axum::Json(serde_json::json!({
             "sequence": ch.operation.sequence,
             "summaries": ch.summaries,

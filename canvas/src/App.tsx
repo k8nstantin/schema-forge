@@ -6,8 +6,9 @@ import { useHotkeys } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { schemas as fetchSchemas, catalog as fetchCatalog, changeByHand, changes, model as fetchModel, schemaRules, setEnforce, shape as fetchShape, undo, type Change } from './api'
+import { Refusal, schemas as fetchSchemas, catalog as fetchCatalog, changeByHand, changes, model as fetchModel, schemaRules, setEnforce, shape as fetchShape, undo, type Change } from './api'
 import type { Catalog, RuleLink, Schema, SchemaInfo, SchemaRules, Shape } from './model'
+import { holdsRule } from './rules/parts'
 import { scopeTitle } from './rules/scope'
 import { Categories } from './screens/Categories'
 import { Turns } from './components/Turns'
@@ -141,8 +142,7 @@ export default function App() {
   // The links that hold a refused rule: the rule itself, or a pack it sits in, linked here or for every schema.
   const holding = useCallback((ruleIds: string[]) => {
     if (!current || !catalog || !ix) return []
-    const inside = (outer: string, inner: string): boolean =>
-      outer === inner || (catalog.rules.find((r) => r.id === outer)?.rules ?? []).some((c) => inside(c, inner))
+    const inside = (outer: string, inner: string) => holdsRule(catalog, outer, inner)
     const all = [...current.rules.global.map((l) => ({ link: l, global: true })), ...current.rules.links.map((l) => ({ link: l, global: false }))]
     return all
       .filter(({ link }) => !link.off && link.enforce !== 'soft' && ruleIds.some((id) => inside(link.rule, id)))
@@ -165,10 +165,12 @@ export default function App() {
       },
       (e) => {
         const why = String(e.message ?? e)
-        const isDestructive = why.includes('destructive') && !destructive
-        const isHard = why.includes('hard rules would be broken')
+        // The server says what kind of refusal it is: a yes is wanted, or hard rules are broken.
+        const kind = e instanceof Refusal ? e.kind : undefined
+        const isDestructive = kind === 'destructive' && !destructive
+        const isHard = kind === 'hard'
         if (isDestructive || isHard) {
-          const ids = [...why.matchAll(/@rule:([\w.*-]+)/g)].map((m) => m[1])
+          const ids = e instanceof Refusal ? e.rules : []
           return new Promise<boolean>((done) => setAsk({ ops, why, destructive: isDestructive || destructive, soften: isHard ? holding(ids) : [], done }))
         }
         notifications.show({ color: 'red', message: why })
@@ -182,14 +184,18 @@ export default function App() {
     const a = ask
     setAsk(null)
     if (!go) return a.done(false)
-    const softened = Promise.all(a.soften.map(({ link, global }) => setEnforce(global ? null : schema, link.rule, link.at, 'soft')))
-    softened.then(
-      () => tryChange(a.ops, a.destructive).then(a.done),
-      (e) => {
-        notifications.show({ color: 'red', message: String(e.message ?? e) })
-        a.done(false)
-      },
-    )
+    // Turned soft only for this change: if it still does not land, the rules are put back as they were.
+    const turned: typeof a.soften = []
+    const putBack = () => Promise.all(turned.map(({ link, global }) => setEnforce(global ? null : schema, link.rule, link.at, 'hard').catch(() => undefined)))
+    Promise.all(a.soften.map((h) => setEnforce(h.global ? null : schema, h.link.rule, h.link.at, 'soft').then(() => { turned.push(h) })))
+      .then(() => tryChange(a.ops, a.destructive))
+      .then(
+        (ok) => (ok ? a.done(true) : putBack().then(() => a.done(false))),
+        (e) => {
+          notifications.show({ color: 'red', message: `${String(e.message ?? e)}. The rules turned soft are hard again.` })
+          putBack().then(() => a.done(false))
+        },
+      )
   }
 
   const pointed = ix && pointer ? reference(ix, pointer) : null
