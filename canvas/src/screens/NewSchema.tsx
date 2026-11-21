@@ -5,7 +5,7 @@ import { useState } from 'react'
 
 import { linkRule, newSchema } from '../api'
 import type { Catalog, Enforce, Target } from '../model'
-import { Brand } from './parts'
+import { Brand, count } from './parts'
 
 const TYPES: { id: Target; label: string; what: string; has: string }[] = [
   { id: 'postgres', label: 'PostgreSQL', what: 'Tables, views, enums, partitions, foreign keys, checks.', has: 'Reads a pg_dump · writes PostgreSQL DDL' },
@@ -157,7 +157,7 @@ export function NewSchema({ catalog, open }: { catalog: Catalog | null; open: (n
                   Packs that fit {label} are listed. A new schema has none: turn on the ones it follows, hard or soft. You can change them later.
                 </p>
               </div>
-              <span className="d-small" style={{ color: 'var(--d-lilac)' }}>{chosen.length} packs on · {ruleCount} rules</span>
+              <span className="d-small" style={{ color: 'var(--d-lilac)' }}>{count(chosen.length, 'pack')} on · {count(ruleCount, 'rule')}</span>
             </div>
             <div className="d-col d-gap-10">
               {packs.map((p) => {
@@ -176,7 +176,7 @@ export function NewSchema({ catalog, open }: { catalog: Catalog | null; open: (n
                     <button type="button" className="d-pack-text" onClick={toggle}>
                       <span className="d-row d-gap-10" style={{ alignItems: 'baseline' }}>
                         <span className="d-strong" style={{ fontSize: 16 }}>{p.title}</span>
-                        <span className="d-soft d-xsmall">{checksOf(p.id).filter(fits).length} rules</span>
+                        <span className="d-soft d-xsmall">{count(checksOf(p.id).filter(fits).length, 'rule')}</span>
                       </span>
                       <span className="d-soft d-small">{p.why}</span>
                     </button>

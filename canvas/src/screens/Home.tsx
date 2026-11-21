@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 
 import { recent, schemaRules, schemas as fetchSchemas, model as fetchModel, workspace as fetchWorkspace, type Operation, type Workspace } from '../api'
 import type { Catalog, SchemaInfo } from '../model'
-import { Brand, ago, targetLabel, who } from './parts'
+import { Brand, ago, count, targetLabel, who } from './parts'
 
 interface Row {
   info: SchemaInfo
@@ -135,7 +135,7 @@ export function Home({ catalog, version, open, newSchema, rules }: {
             </div>
             {catalog && (
               <span className="d-soft d-small">
-                {packs.length} packs · {checks.length} rules · used by {using} {using === 1 ? 'schema' : 'schemas'}
+                {count(packs.length, 'pack')} · {count(checks.length, 'rule')} · used by {count(using, 'schema')}
               </span>
             )}
             <span className="d-btn d-btn-accent-line" style={{ marginTop: 'auto' }}>Manage rules</span>
