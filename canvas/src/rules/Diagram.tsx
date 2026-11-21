@@ -199,10 +199,10 @@ function LevelActions({ scope, under }: { scope: Scope; under: Table[] }) {
             </optgroup>
           ))}
         </select>
-        <span className="sf-row-gap"><EnforceToggle value={enforce} onChange={setHow} fallback="each rule's default" /></span>
+        <span className="sf-row-gap"><EnforceToggle value={enforce} onChange={setHow} fallback="choose how it holds" /></span>
         <label className="sf-check"><input type="checkbox" checked={locked} onChange={(e) => setLocked(e.target.checked)} /> Locked: cannot be switched off below</label>
         {scope.level === 'schema' && <label className="sf-check"><input type="checkbox" checked={everywhere} onChange={(e) => setEverywhere(e.target.checked)} /> For every schema of the workspace</label>}
-        <button type="button" className="sf-button" disabled={!pick}
+        <button type="button" className="sf-button" disabled={!pick || !enforce}
           onClick={() => act(linkRule(everywhere ? null : name, { rule: pick, at: everywhere ? { level: 'global' } : scope, locked: locked || undefined, enforce }).then(() => setPick('')))}>
           Link
         </button>

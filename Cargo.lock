@@ -990,6 +990,7 @@ dependencies = [
  "rmcp",
  "rmcp-macros",
  "schema-forge-core",
+ "schema-forge-dialects",
  "schema-forge-store",
  "schemars",
  "serde",

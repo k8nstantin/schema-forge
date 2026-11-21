@@ -181,36 +181,7 @@ impl Parser {
 /// Gives every nested field, list element and map key and value its field id, from `next`, the way Iceberg does:
 /// a struct's fields first, then into each in turn.
 pub fn assign_ids(t: &mut DataType, next: &mut i32) {
-    match t.name.as_str() {
-        "struct" => {
-            for f in &mut t.fields {
-                f.field_id = *next;
-                *next += 1;
-            }
-            for f in &mut t.fields {
-                assign_ids(&mut f.data_type, next);
-            }
-        }
-        "list" => {
-            t.element_id = Some(*next);
-            *next += 1;
-            if let Some(of) = &mut t.of {
-                assign_ids(of, next);
-            }
-        }
-        "map" => {
-            t.key_id = Some(*next);
-            t.element_id = Some(*next + 1);
-            *next += 2;
-            if let Some(k) = &mut t.key {
-                assign_ids(k, next);
-            }
-            if let Some(v) = &mut t.of {
-                assign_ids(v, next);
-            }
-        }
-        _ => {}
-    }
+    t.assign_field_ids(next);
 }
 
 /// The type as Spark SQL writes it.

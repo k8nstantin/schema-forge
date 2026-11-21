@@ -346,6 +346,74 @@ mod review {
 }
 
 #[test]
+fn index_rules_find_unindexed_joins_and_repeats() {
+    use schema_forge_core::DataType;
+    use schema_forge_core::ops::{self, NewColumn, Op};
+    let col = |name: &str| NewColumn {
+        name: name.into(),
+        data_type: DataType::named("bigint"),
+        nullable: false,
+        default: None,
+        comment: None,
+    };
+    let mut s = Schema::new(schema_forge_core::Target::Postgres);
+    let build = [
+        Op::AddNamespace { name: "public".into(), parent: None, comment: None },
+        Op::AddTable {
+            namespace: "public".into(),
+            name: "customers".into(),
+            comment: None,
+            columns: vec![col("id")],
+            primary_key: vec!["id".into()],
+        },
+        Op::AddTable {
+            namespace: "public".into(),
+            name: "orders".into(),
+            comment: None,
+            columns: vec![col("id"), col("customer_id"), col("shop_id")],
+            primary_key: vec!["id".into()],
+        },
+        Op::Relate {
+            from: "orders".into(),
+            columns: vec!["customer_id".into()],
+            to: "customers".into(),
+            to_columns: vec!["id".into()],
+            name: None,
+        },
+    ];
+    for op in &build {
+        ops::apply(&mut s, op, false).expect("built");
+    }
+    let set = RuleSet { links: vec![link("idx", Scope::Schema)], groups: vec![] };
+    let r = rules::check(&s, &[], &set);
+    assert_eq!(found(&r, "idx.related"), ["`orders` (customer_id) joins another table with no index"]);
+    let index = |cols: &[&str], name: &str| Op::AddIndex {
+        table: "orders".into(),
+        columns: cols.iter().map(|c| (*c).to_string()).collect(),
+        unique: false,
+        name: Some(name.into()),
+    };
+    ops::apply(&mut s, &index(&["customer_id", "shop_id"], "ix_orders_customer_shop"), false).expect("indexed");
+    ops::apply(&mut s, &index(&["customer_id"], "ix_orders_customer"), false).expect("indexed again");
+    let r = rules::check(&s, &[], &set);
+    assert!(found(&r, "idx.related").is_empty(), "the join leads an index now");
+    assert_eq!(
+        found(&r, "idx.redundant"),
+        ["index `ix_orders_customer` on `orders` repeats the start of ix_orders_customer_shop"]
+    );
+    assert!(
+        ops::apply(
+            &mut schema(),
+            &Op::AddIndex { table: "orders".into(), columns: vec!["id".into()], unique: false, name: None },
+            false
+        )
+        .is_err(),
+        "no indexes on Iceberg"
+    );
+    assert_eq!(rules::catalog().rule("idx.related").map(|r| r.lane), Some(rules::Lane::Shared));
+}
+
+#[test]
 fn sentences_name_types_as_their_target_reports_them_and_hold_on_it() {
     use schema_forge_core::Target;
     use schema_forge_core::rules::custom::{ColumnMust, Pattern, Sentence};
@@ -357,4 +425,45 @@ fn sentences_name_types_as_their_target_reports_them_and_hold_on_it() {
     assert_eq!(zoned.targets(&[], Target::Postgres), [Target::Postgres], "a type rule holds on its target");
     let has = Sentence::HasColumn { column: "id".into(), required: true, types: vec![] };
     assert!(has.targets(&[], Target::Iceberg).is_empty(), "no types named: it holds everywhere");
+}
+
+#[test]
+fn a_unique_index_is_never_called_a_repeat_of_a_longer_one() {
+    use schema_forge_core::DataType;
+    use schema_forge_core::ops::{self, NewColumn, Op};
+    let col = |name: &str| NewColumn {
+        name: name.into(),
+        data_type: DataType::named("bigint"),
+        nullable: false,
+        default: None,
+        comment: None,
+    };
+    let mut s = Schema::new(schema_forge_core::Target::Postgres);
+    ops::apply(&mut s, &Op::AddNamespace { name: "public".into(), parent: None, comment: None }, false).expect("ns");
+    let users = Op::AddTable {
+        namespace: "public".into(),
+        name: "users".into(),
+        comment: None,
+        columns: vec![col("id"), col("email"), col("created")],
+        primary_key: vec!["id".into()],
+    };
+    ops::apply(&mut s, &users, false).expect("users");
+    let index = |cols: &[&str], unique: bool, name: &str| Op::AddIndex {
+        table: "users".into(),
+        columns: cols.iter().map(|c| (*c).to_string()).collect(),
+        unique,
+        name: Some(name.into()),
+    };
+    ops::apply(&mut s, &index(&["email"], true, "ux_email"), false).expect("unique");
+    ops::apply(&mut s, &index(&["email", "created"], false, "ix_email_created"), false).expect("longer");
+    let set = RuleSet { links: vec![link("idx.redundant", Scope::Schema)], groups: vec![] };
+    assert!(
+        found(&rules::check(&s, &[], &set), "idx.redundant").is_empty(),
+        "the longer index does not keep email unique"
+    );
+    ops::apply(&mut s, &index(&["email"], false, "ix_email"), false).expect("plain");
+    assert_eq!(
+        found(&rules::check(&s, &[], &set), "idx.redundant"),
+        ["index `ix_email` on `users` repeats the start of ux_email"]
+    );
 }

@@ -26,6 +26,8 @@ export interface Change {
   sequence: number
   kind: string
   by: string
+  /// For a design change or its undo: what each operation did.
+  summary?: string | null
 }
 
 /// Calls `on` with every change committed while the page is open; returns the way to stop listening.
@@ -55,7 +57,8 @@ export const unlinkRule = (name: string | null, rule: string, at: Scope) =>
 export const setGroup = (name: string, group: RuleGroup) => send('PUT', `${rulesOf(name)}/groups`, group)
 export const newGroup = (name: string, group: RuleGroup) => send('POST', `${rulesOf(name)}/groups`, group)
 export const removeGroup = (name: string, group: string) => send('DELETE', `${rulesOf(name)}/groups/${encodeURIComponent(group)}`)
-export const applyGoal = (name: string, goal: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/goals/${encodeURIComponent(goal)}`)
+export const applyGoal = (name: string, goal: string, enforce: Enforce) =>
+  send('POST', `/api/schemas/${encodeURIComponent(name)}/goals/${encodeURIComponent(goal)}`, { enforce })
 export const setEnforce = (name: string | null, rule: string, at: Scope, enforce: Enforce) =>
   send('POST', name === null ? '/api/rules/global/enforce' : `${rulesOf(name)}/enforce`, { rule, at, enforce })
 
@@ -65,3 +68,4 @@ export const approve = (name: string, id: number) => send<Proposal>('POST', `${p
 export const reject = (name: string, id: number) => send<Proposal>('POST', `${proposalsOf(name)}/${id}/reject`)
 export const proposalEnforce = (name: string, id: number, enforce: Enforce) =>
   send<Proposal>('POST', `${proposalsOf(name)}/${id}/enforce`, { enforce })
+export const undo = (name: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/undo`)

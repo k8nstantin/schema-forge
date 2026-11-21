@@ -549,6 +549,10 @@ pub struct IcebergTable {
     pub properties: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub location: Option<String>,
+    /// The highest field id the table has ever given out: Iceberg never gives one out again, so a dropped
+    /// column's id is not reused by a later one (old data files still hold values under it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_column_id: Option<i32>,
 }
 
 /// A partition field: a source column and a transform (`identity`, `bucket[16]`, `day`, …).

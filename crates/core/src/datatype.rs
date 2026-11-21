@@ -83,6 +83,41 @@ impl DataType {
         Self { name: "verbatim".to_string(), text: Some(text.to_string()), ..Self::default() }
     }
 
+    /// Gives every nested field, list element and map key and value its Iceberg field id, from `next`, the way
+    /// Iceberg does: a struct's fields first, then into each in turn.
+    pub fn assign_field_ids(&mut self, next: &mut i32) {
+        match self.name.as_str() {
+            "struct" => {
+                for f in &mut self.fields {
+                    f.field_id = *next;
+                    *next += 1;
+                }
+                for f in &mut self.fields {
+                    f.data_type.assign_field_ids(next);
+                }
+            }
+            "list" => {
+                self.element_id = Some(*next);
+                *next += 1;
+                if let Some(of) = &mut self.of {
+                    of.assign_field_ids(next);
+                }
+            }
+            "map" => {
+                self.key_id = Some(*next);
+                self.element_id = Some(*next + 1);
+                *next += 2;
+                if let Some(k) = &mut self.key {
+                    k.assign_field_ids(next);
+                }
+                if let Some(v) = &mut self.of {
+                    v.assign_field_ids(next);
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// Whether this type is kept as read rather than described.
     #[must_use]
     pub fn is_verbatim(&self) -> bool {

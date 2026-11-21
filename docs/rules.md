@@ -126,9 +126,14 @@ system enforces them.
    workspace's catalog under the next free `custom.<n>`, linked where it was proposed, with who proposed and
    approved it; one that names types or transforms holds only on schemas of that target. The check and the write
    are one transaction, and the log records the rule, the link and what was switched off.
-5. **The system enforces**: the agent reads the rules in force (`rules`, `check`) and designs within them; when
-   its operations land, a change that breaks a hard rule is refused. The agent can never approve, link or switch
-   off a rule itself: that comes back as a proposal.
+5. **The system enforces**: the agent reads the rules in force (`rules`, `check`) and designs within them. Its
+   changes go through the MCP's `change`, one or more operations as one change, all or none: a change that breaks
+   a hard rule attached to what it touches is refused, with the rule and the reason, and nothing lands; what breaks
+   a soft rule lands and is reported. Hard means hard: a table the change touches must keep every hard rule on it,
+   breaks it had before included, and nothing anywhere may newly break one; untouched tables do not block it. A new
+   or imported schema has no rules; you link them as you choose, hard or soft (typically soft first, hard once the
+   schema keeps them). The
+   agent can never approve, link or switch off a rule itself: that comes back as a proposal.
 
 **What breaks what** (in the Rules perspective) shows it at a glance: hover a rule and the tables that break it
 light up, red if it is hard and amber if soft; hover a table and the rules it breaks light up, with what is wrong.
@@ -136,7 +141,6 @@ Each linked rule is set hard or soft right there.
 
 ## Next
 
-- The design operations through the MCP (`add_table`, `relate`, …), refused when they break a hard rule.
 - Rules that shape, not only check, applied by the agent as a plan you approve: SCD2 columns, a surrogate key,
   audit columns, merge-on-read properties (see below).
 - Generating the schema, and a migration script that brings a schema to its rules.

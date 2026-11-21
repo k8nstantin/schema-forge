@@ -72,6 +72,24 @@ pub struct CheckArg {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct NewSchemaArg {
+    /// Lowercase letters, digits, `-` and `_`, starting with a letter.
+    pub name: String,
+    /// `mysql`, `postgres` or `iceberg`.
+    pub target: String,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct ChangeArg {
+    pub schema: String,
+    /// The operations, applied in order as one change: all of them, or none.
+    pub operations: Vec<serde_json::Value>,
+    /// Yes to destructive operations (drops, narrowed types, required columns): say it only when the person asked.
+    #[serde(default)]
+    pub confirm_destructive: bool,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct ProposeArg {
     pub schema: String,
     /// The rules you propose; each is verified and waits for the person's approval.
@@ -166,8 +184,82 @@ const GRAMMAR: &str = r#"A new rule is a sentence, as JSON. Three forms:
 
 Reuse a rule of the catalog with kind "link" before writing a new one."#;
 
+/// An operation as the agent writes it, with its types read from text for `target`.
+fn operation(target: Target, mut v: serde_json::Value) -> Result<schema_forge_core::ops::Op, String> {
+    let parse = |t: &mut serde_json::Value| -> Result<(), String> {
+        if let Some(text) = t.as_str() {
+            *t = serde_json::to_value(schema_forge_dialects::parse_type(target, text)?).map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    };
+    if let Some(cols) = v.get_mut("columns").and_then(|c| c.as_array_mut()) {
+        for c in cols.iter_mut().filter(|c| c.is_object()) {
+            if let Some(t) = c.get_mut("type") {
+                parse(t)?;
+            }
+        }
+    }
+    if let Some(t) = v.get_mut("column").and_then(|c| c.get_mut("type")) {
+        parse(t)?;
+    }
+    if v.get("op").and_then(|o| o.as_str()) == Some("alter_column")
+        && let Some(t) = v.get_mut("type")
+    {
+        parse(t)?;
+    }
+    serde_json::from_value(v).map_err(|e| format!("not an operation: {e}"))
+}
+
 #[tool_router]
 impl Forge {
+    #[tool(
+        description = "Makes an empty schema: a name and a type (mysql, postgres or iceberg). The person may link rules to it before you design."
+    )]
+    fn new_schema(&self, Parameters(a): Parameters<NewSchemaArg>) -> Result<String, String> {
+        let info = self.store.create_schema(&a.name, target(&a.target)?).map_err(|e| e.to_string())?;
+        let target = format!("{:?}", info.target).to_lowercase();
+        Ok(format!("Made schema {} ({target}). Read its rules (`rules`) before you design it.", info.name))
+    }
+
+    #[tool(
+        description = r#"Changes a schema's design: one or more operations, applied in order as one change, all or none. Each is checked against the model's own rules; then the whole against the schema's rules: a change that breaks a hard rule is refused, with the rule and the reason; what breaks a soft rule lands and is reported. Destructive operations need confirm_destructive. Every change shows live in the perspectives, and the person can undo it.
+
+Operations, as JSON objects with "op". Tables are named `orders` or `namespace.orders`, columns `orders.total`; types as the target writes them (Iceberg: long, int, string, boolean, double, decimal(18,2), date, timestamptz, timestamp, binary, list<string>, map<string, long>, struct<a: int, b: string>; PostgreSQL: bigint, text, varchar(200), numeric(12,2), timestamptz, uuid, jsonb, text[]).
+- add_namespace {name, parent?, comment?}
+- add_table {namespace, name, comment?, columns: [{name, type, nullable?, default?, comment?}], primary_key?: [column names]} (on Iceberg the key becomes identifier fields)
+- add_column {table, column: {name, type, …}, after?}; alter_column {column, type?, nullable?, default?, comment?}
+- rename_table {table, name}; rename_column {column, name}; rename_namespace {namespace, name}; set_table_comment {table, comment}
+- set_primary_key {table, columns}; set_identifier_fields {table, columns} (Iceberg)
+- add_index {table, columns, unique?, name?}; drop_index {table, index} (MySQL, PostgreSQL)
+- relate {from, columns, to, to_columns, name?}; unrelate {relationship}
+- set_partition_spec {table, fields: [{column, transform}]}; set_property {table, key, value}; unset_property {table, key} (Iceberg)
+- drop_table {table}; drop_column {column}; drop_namespace {namespace}: destructive."#
+    )]
+    fn change(&self, Parameters(a): Parameters<ChangeArg>) -> Result<String, String> {
+        let e = |e: schema_forge_store::Error| e.to_string();
+        let target = self.store.model(&a.schema).map_err(e)?.target;
+        let ops = a
+            .operations
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| operation(target, v).map_err(|m| format!("operation {}: {m}", i + 1)))
+            .collect::<Result<Vec<_>, _>>()?;
+        let changed = self.store.change(&a.schema, &ops, a.confirm_destructive, "agent").map_err(e)?;
+        let mut out = format!("Change #{} landed:\n", changed.operation.sequence);
+        for s in &changed.summaries {
+            let _ = writeln!(out, "- {s}");
+        }
+        if !changed.soft.is_empty() {
+            let model = self.store.model(&a.schema).map_err(e)?;
+            let _ = writeln!(out, "It breaks soft rules (highlighted, not refused):");
+            for f in changed.soft.iter().take(20) {
+                let t = model.tables.iter().find(|t| t.id == f.table).map_or(f.table.as_str(), |t| t.name.as_str());
+                let _ = writeln!(out, "  {} @{t}: {}", f.rule, f.message);
+            }
+        }
+        Ok(out)
+    }
+
     #[tool(description = "The workspace's schemas: name and type (mysql, postgres, iceberg).")]
     fn schemas(&self) -> Result<String, String> {
         let list = self.store.schemas().map_err(|e| e.to_string())?;
@@ -477,9 +569,11 @@ impl ServerHandler for Forge {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("schema-forge", env!("CARGO_PKG_VERSION")))
             .with_instructions(
-            "Schema Forge: schemas designed with rules. Read `rules` for a schema before you design or change it, and stay \
-             within them: hard rules are enforced, soft ones highlighted. You may propose rules (propose_rules); the person \
-             approves them in the Rules perspective. You never approve, link or switch off a rule yourself.",
+            "Schema Forge: schemas designed with rules. Read `rules` for a schema before you design or change it, then \
+             change it with `change`, within the rules: a change that breaks a hard rule is refused, with the rule and \
+             the reason; soft rules are highlighted. Every change shows live and the person can undo it. You may propose \
+             rules (propose_rules); the person approves them. You never approve, link or switch off a rule yourself, and \
+             you confirm destructive operations only when the person asked for them.",
         )
     }
 }

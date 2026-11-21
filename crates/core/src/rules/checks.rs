@@ -330,6 +330,95 @@ pub(super) fn run(id: &str, cx: &Context<'_>, table: &Table) -> Outcome {
                 o.table(format!("`{}` is not merge-on-read for {}", table.name, off.join(", ")));
             }
         }
+        "idx.related" if target != Target::Iceberg => {
+            // Each relationship from this table: its columns lead an index or the key.
+            let leads = |cols: &[Id]| {
+                let starts = |parts: Vec<Option<&Id>>| {
+                    cols.iter().enumerate().all(|(i, c)| parts.get(i).copied().flatten() == Some(c))
+                };
+                table.primary_key.as_ref().is_some_and(|pk| starts(pk.columns.iter().map(Some).collect()))
+                    || table.indexes.iter().any(|ix| starts(ix.parts.iter().map(|p| p.column.as_ref()).collect()))
+                    || table.uniques.iter().any(|u| starts(u.columns.iter().map(Some).collect()))
+            };
+            for r in cx.schema.relationships.iter().filter(|r| r.from.table == table.id) {
+                o.look();
+                if !leads(&r.from.columns) {
+                    let names: Vec<&str> = r
+                        .from
+                        .columns
+                        .iter()
+                        .filter_map(|c| table.columns.iter().find(|x| &x.id == c))
+                        .map(|c| c.name.as_str())
+                        .collect();
+                    o.table(format!("`{}` ({}) joins another table with no index", table.name, names.join(", ")));
+                }
+            }
+        }
+        "idx.redundant" if target != Target::Iceberg => {
+            let cols = |ix: &crate::Index| ix.parts.iter().map(|p| p.column.clone()).collect::<Vec<_>>();
+            let pk: Option<Vec<Option<Id>>> =
+                table.primary_key.as_ref().map(|k| k.columns.iter().cloned().map(Some).collect());
+            for ix in
+                table.indexes.iter().filter(|ix| ix.predicate.is_none() && ix.parts.iter().all(|p| p.column.is_some()))
+            {
+                o.look();
+                let mine = cols(ix);
+                let place = |id: &Id| table.indexes.iter().position(|x| &x.id == id).unwrap_or(0);
+                // Another index (or the key) covers this one when it reads the same way (same method) and starts
+                // with its columns. A unique index is covered only by one that enforces the same uniqueness: the
+                // same columns, unique too; of two alike, the later one is the repeat.
+                let covered_by = table
+                    .indexes
+                    .iter()
+                    .filter(|other| other.id != ix.id && other.predicate.is_none() && other.method == ix.method)
+                    .map(|other| (other.name.clone(), cols(other), other.unique, place(&other.id) < place(&ix.id)))
+                    .chain(
+                        pk.clone()
+                            .filter(|_| ix.method.is_none())
+                            .map(|k| ("the primary key".to_string(), k, true, true)),
+                    )
+                    .find(|(_, other, unique, earlier)| {
+                        let starts = other.len() >= mine.len() && other[..mine.len()] == mine[..];
+                        let same = other.len() == mine.len();
+                        starts && if ix.unique { same && *unique && *earlier } else { !same || *unique || *earlier }
+                    })
+                    .map(|(name, other, ..)| (name, other));
+                if let Some((by, _)) = covered_by {
+                    o.table(format!("index `{}` on `{}` repeats the start of {by}", ix.name, table.name));
+                }
+            }
+        }
+        "idx.pk_narrow" if target == Target::Mysql => {
+            if let Some(pk) = &table.primary_key {
+                o.look();
+                let wide: Vec<&str> = pk
+                    .columns
+                    .iter()
+                    .filter_map(|c| table.columns.iter().find(|x| &x.id == c))
+                    .filter(|c| {
+                        matches!(
+                            c.data_type.name.as_str(),
+                            "tinytext"
+                                | "text"
+                                | "mediumtext"
+                                | "longtext"
+                                | "blob"
+                                | "mediumblob"
+                                | "longblob"
+                                | "json"
+                        ) || c.data_type.length.is_some_and(|l| l > 64)
+                    })
+                    .map(|c| c.name.as_str())
+                    .collect();
+                if !wide.is_empty() || pk.columns.len() > 3 {
+                    o.table(format!(
+                        "`{}`'s primary key is wide ({}): every secondary index carries it",
+                        table.name,
+                        if wide.is_empty() { format!("{} columns", pk.columns.len()) } else { wide.join(", ") }
+                    ));
+                }
+            }
+        }
         "mysql.engine" if target == Target::Mysql => {
             o.look();
             if let Some(engine) = table.options.mysql.as_ref().and_then(|m| m.engine.as_deref())

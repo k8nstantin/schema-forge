@@ -259,4 +259,26 @@ async fn the_agent_proposes_the_person_approves_and_the_rule_holds() {
     assert!(tool_text(&reply).contains("@rule:custom.1"), "the agent sees the approved rule: {reply}");
     let (_, body) = get(&store, "/api/rules").await;
     assert!(body.contains("\"provenance\""), "the catalog says who proposed and approved it");
+
+    // The approved rule is hard: a table without `id` is refused, with the rule and the reason; nothing lands.
+    let table = |name: &str, columns: serde_json::Value| serde_json::json!({ "op": "add_table", "namespace": "public", "name": name, "columns": columns });
+    let bad = serde_json::json!({ "schema": "orders", "operations": [table("notes", serde_json::json!([{ "name": "body", "type": "text" }]))] });
+    let (_, reply) = mcp(&app, Some(&session), call(5, "change", bad)).await;
+    assert_eq!(reply["result"]["isError"], true, "{reply}");
+    assert!(tool_text(&reply).contains("custom.1"), "the refusal names the rule: {reply}");
+    let good = serde_json::json!({ "schema": "orders", "operations": [
+        table("notes", serde_json::json!([{ "name": "id", "type": "bigint", "nullable": false }, { "name": "body", "type": "varchar(200)" }])),
+        { "op": "relate", "from": "notes", "columns": ["id"], "to": "orders", "to_columns": ["order_key"] }
+    ] });
+    let (_, reply) = mcp(&app, Some(&session), call(6, "change", good)).await;
+    let text = tool_text(&reply);
+    assert!(text.contains("added table `notes` with 2 columns") && text.contains("related `notes`"), "{reply}");
+    let (_, body) = get(&store, "/api/schemas/orders").await;
+    let model: Schema = serde_json::from_str(&body).expect("a model");
+    let notes = model.tables.iter().find(|t| t.name == "notes").expect("notes landed");
+    assert_eq!(notes.columns[1].data_type.length, Some(200), "the type was read as PostgreSQL writes it");
+    let (status, _) = send(&store, "POST", "/api/schemas/orders/undo", serde_json::json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    let (_, body) = get(&store, "/api/schemas/orders").await;
+    assert!(!body.contains("\"notes\""), "undone");
 }

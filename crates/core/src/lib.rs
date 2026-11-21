@@ -5,6 +5,7 @@ mod datatype;
 mod hash;
 mod id;
 mod model;
+pub mod ops;
 pub mod rules;
 pub mod shape;
 pub mod types;
