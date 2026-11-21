@@ -65,15 +65,17 @@ export function Tables() {
         </div>
         {namespaces.filter((n) => !ns || n.id === ns).map((n) => {
           const mine = rows.filter((r) => r.t.namespace === n.id)
-          if (!mine.length && !(model.views ?? []).some((v) => v.namespace === n.id)) return null
+          const q = query.trim().toLowerCase()
+          const views = (model.views ?? []).filter((v) => v.namespace === n.id && (!q || v.name.toLowerCase().includes(q)))
+          if (!mine.length && !views.length) return null
           return (
             <div key={n.id}>
               <div className="sf-nshead">
                 <span className="sf-caption">namespace</span>
                 <span className="sf-ns">{ix.path(n.id)}</span>
-                <span className="sf-muted">{mine.length} tables</span>
+                <span className="sf-muted">{mine.length} tables{views.length ? ` · ${views.length} views` : ''}</span>
               </div>
-              {(model.views ?? []).filter((v) => v.namespace === n.id && (!query.trim() || v.name.toLowerCase().includes(query.trim().toLowerCase()))).map((v) => (
+              {views.map((v) => (
                 <button key={v.id} type="button" className="sf-trow" onClick={() => go('table', v.id)}>
                   <span className="sf-tname">
                     <span className="sf-mono sf-strong">{v.name}</span>

@@ -326,6 +326,10 @@ impl Writer<'_> {
         let pg = v.options.postgres.clone().unwrap_or_default();
         let kind = if pg.materialized { "MATERIALIZED VIEW" } else { "VIEW" };
         let _ = write!(self.out, "CREATE {kind} {name}");
+        if !v.columns.is_empty() {
+            let cols: Vec<String> = v.columns.iter().map(|c| qi(&c.name)).collect();
+            let _ = write!(self.out, " ({})", cols.join(", "));
+        }
         if let Some(with) = &pg.with {
             let _ = write!(self.out, " WITH ({with})");
         }
