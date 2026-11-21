@@ -10,6 +10,7 @@ import { nested, typeLabel } from '../model'
 import { Findings } from '../rules/parts'
 import { scopeTitle } from '../rules/scope'
 import { partitioning, tableRef, useWorkbench } from '../state'
+import { TableEdit } from './TableEdit'
 
 const MAX_SIDE = 14
 
@@ -64,6 +65,7 @@ function Picker({ current }: { current: string }) {
 
 function TableOf({ id }: { id?: string }) {
   const { name, model, ix, go, pointer, point } = useWorkbench()
+  const [editing, setEditing] = useState(false)
   const [tab, setTab] = useState<'columns' | 'definition' | 'copies'>('columns')
   const [sql, setSql] = useState<string | null>(null)
   const first = (model.tables ?? []).find((t) => !ix.isCopy(t.id))
@@ -124,8 +126,11 @@ function TableOf({ id }: { id?: string }) {
           <span className="sf-muted">
             {t.columns.length} columns{nestedN ? `, ${nestedN} nested` : ''}{part ? ` · partitioned by ${part}` : ''}{writes ? ` · ${writes}` : ''}
           </span>
+          <button type="button" className={`sf-chip${editing ? ' sf-on' : ''}`} onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Edit'}</button>
         </div>
         {t.comment && <p className="sf-about">{t.comment}</p>}
+        {editing && <TableEdit t={t} />}
+        {!editing && (<>
 
         <section className="sf-col">
           <div className="sf-row-between">
@@ -178,6 +183,7 @@ function TableOf({ id }: { id?: string }) {
             ))}
           </div>
         )}
+        </>)}
       </div>
     </div>
   )
@@ -217,6 +223,7 @@ function TableRules({ id }: { id: string }) {
 /// and views it is composed from on the right.
 function ViewOf({ view: v }: { view: import('../model').View }) {
   const { name, model, ix, go, point } = useWorkbench()
+  const [editing, setEditing] = useState(false)
   const [tab, setTab] = useState<'fields' | 'definition'>('fields')
   const [sql, setSql] = useState<string | null>(null)
   useEffect(() => {
@@ -258,8 +265,10 @@ function ViewOf({ view: v }: { view: import('../model').View }) {
             {(v.columns ?? []).length} fields · composed from {(v.reads ?? []).length}{ice?.version ? ` · version ${ice.version}` : ''}
             {ice?.representations && Object.keys(ice.representations).length ? ` · also in ${Object.keys(ice.representations).join(', ')}` : ''}
           </span>
+          <button type="button" className={`sf-chip${editing ? ' sf-on' : ''}`} onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Edit'}</button>
         </div>
         {v.comment && <p className="sf-about">{v.comment}</p>}
+        {editing && <ViewEdit v={v} />}
         <section className="sf-col">
           <span className="sf-caption">How it links · read by {readers.length}, composed from {(v.reads ?? []).length}</span>
           <LinkDiagram
@@ -293,6 +302,38 @@ function ViewOf({ view: v }: { view: import('../model').View }) {
         )}
         {tab === 'definition' && <div className="sf-sqlbox">{sql === null ? <span className="sf-muted">Writing it…</span> : <Sql text={sql} target={model.target} />}</div>}
       </div>
+    </div>
+  )
+}
+
+/// Editing a view by hand: its name, description and query; what it reads follows the query.
+function ViewEdit({ v }: { v: import('../model').View }) {
+  const { edit, go } = useWorkbench()
+  const [name, setName] = useState(v.name)
+  const [about, setAbout] = useState(v.comment ?? '')
+  const [sql, setSql] = useState(v.definition)
+  useEffect(() => { setName(v.name); setAbout(v.comment ?? ''); setSql(v.definition) }, [v])
+  return (
+    <div className="sf-col sf-gap-l">
+      <section className="sf-edit-section">
+        <span className="sf-caption">Name and description</span>
+        <span className="sf-editbar">
+          <input className="sf-edit-input sf-edit-title" value={name} onChange={(e) => setName(e.target.value)} aria-label="View name" />
+          <button type="button" className="sf-chip" disabled={!name.trim() || name === v.name} onClick={() => edit([{ op: 'rename_view', view: v.id, name: name.trim() }])}>Rename</button>
+        </span>
+        <span className="sf-editbar">
+          <input className="sf-edit-input sf-flex1" value={about} onChange={(e) => setAbout(e.target.value)} placeholder="What one row of it is" aria-label="Description" />
+          <button type="button" className="sf-chip" disabled={about === (v.comment ?? '')} onClick={() => edit([{ op: 'alter_view', view: v.id, comment: about }])}>Save the description</button>
+        </span>
+      </section>
+      <section className="sf-edit-section">
+        <span className="sf-caption">Its query: what it reads is found from it</span>
+        <textarea className="sf-sql-edit" value={sql} onChange={(e) => setSql(e.target.value)} spellCheck={false} aria-label="The view's query" />
+        <span className="sf-editbar">
+          <button type="button" className="sf-chip sf-on" disabled={sql.trim() === v.definition.trim()} onClick={() => edit([{ op: 'alter_view', view: v.id, definition: sql }])}>Save the query</button>
+          <button type="button" className="sf-chip sf-danger-chip" onClick={() => edit([{ op: 'drop_view', view: v.id }]).then((ok) => ok && go('tables'))}>Drop {v.name}</button>
+        </span>
+      </section>
     </div>
   )
 }

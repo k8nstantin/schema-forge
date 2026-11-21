@@ -1,6 +1,6 @@
 // The server's API: the workspace's schemas, a schema's model, an object's SQL, and every change as it lands.
 
-import type { Catalog, Enforce, Proposal, Report, RuleGroup, RuleLink, Schema, SchemaInfo, SchemaRules, Scope, Shape, Verdict } from './model'
+import type { Catalog, Enforce, Finding, Proposal, Report, RuleGroup, RuleLink, Schema, SchemaInfo, SchemaRules, Scope, Shape, Verdict } from './model'
 
 async function json<T>(path: string): Promise<T> {
   const r = await fetch(path)
@@ -37,11 +37,19 @@ export function changes(on: (c: Change) => void): () => void {
   return () => source.close()
 }
 
+/// A refusal from the server: its words, and what kind it is (`destructive`: needs a yes; `hard`: breaks the hard
+/// rules named), so the canvas asks the right question without reading the words.
+export class Refusal extends Error {
+  constructor(message: string, readonly kind?: 'destructive' | 'hard', readonly rules: string[] = []) {
+    super(message)
+  }
+}
+
 async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
   const r = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
   if (!r.ok) {
     const b = await r.json().catch(() => ({ error: r.statusText }))
-    throw new Error(b.error ?? r.statusText)
+    throw new Refusal(b.error ?? r.statusText, b.kind, b.rules ?? [])
   }
   return r.json() as Promise<T>
 }
@@ -68,4 +76,12 @@ export const approve = (name: string, id: number) => send<Proposal>('POST', `${p
 export const reject = (name: string, id: number) => send<Proposal>('POST', `${proposalsOf(name)}/${id}/reject`)
 export const proposalEnforce = (name: string, id: number, enforce: Enforce) =>
   send<Proposal>('POST', `${proposalsOf(name)}/${id}/enforce`, { enforce })
+/// A change by hand: operations as the agent writes them. Refused with the reason when it is destructive or breaks a
+/// hard rule, until it is sent again with the yes.
+export const changeByHand = (name: string, operations: unknown[], yes: { destructive?: boolean } = {}) =>
+  send<{ sequence: number; summaries: string[]; soft: Finding[] }>('POST', `/api/schemas/${encodeURIComponent(name)}/change`, {
+    operations,
+    confirm_destructive: !!yes.destructive,
+  })
+export const newSchema = (name: string, target: string) => send('POST', '/api/schemas', { name, target })
 export const undo = (name: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/undo`)

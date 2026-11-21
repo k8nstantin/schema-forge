@@ -257,7 +257,7 @@ These are the model's own rules. Project rules (naming, SCD Type 2, custom ones)
 
 ## Operations
 
-Every change is one operation, made by the agent (you direct; you do not edit). Each names who made it and the turn it belongs
+Every change is one operation, made by the agent or by you in the perspectives, through the same checks. Each names who made it and the turn it belongs
 to, is checked, applied, written to `operations.jsonl`, and carries what is needed to undo it.
 
 | Area | Operations |

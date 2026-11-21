@@ -1543,3 +1543,102 @@ button {
 }
 
 .sf-pick-view { font-style: italic; }
+
+/* By hand */
+
+.sf-ask {
+  position: fixed;
+  left: 50%;
+  bottom: 48px;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(760px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border: 1px solid #c98500;
+  border-radius: 12px;
+  background: #2e1a0c;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.sf-ask-why {
+  font-size: 13px;
+  color: var(--sf-soft);
+  max-height: 120px;
+  overflow: auto;
+}
+
+.sf-danger { background: #a3352f; }
+
+.sf-editbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.sf-edit-input {
+  padding: 4px 8px;
+  border: 1px solid var(--sf-line);
+  border-radius: 6px;
+  background: var(--sf-bg-alt);
+  color: var(--sf-text);
+  font: inherit;
+  min-width: 0;
+}
+
+.sf-edit-input:focus { outline: none; border-color: var(--sf-accent-bright); }
+.sf-edit-input.sf-mono { font-family: var(--sf-mono); font-size: 13px; }
+.sf-edit-title { font-family: var(--sf-mono); font-size: 20px; font-weight: 700; }
+
+.sf-editrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 70px 60px minmax(0, 1.6fr) 90px;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--sf-line);
+}
+
+.sf-editrow.sf-thead {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sf-muted);
+}
+
+.sf-editrow.sf-new { background: rgba(149, 0, 191, 0.08); }
+.sf-dirty { box-shadow: inset 3px 0 0 var(--sf-gold); }
+
+.sf-edit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--sf-line);
+  border-radius: 10px;
+  background: var(--sf-surface);
+}
+
+.sf-sql-edit {
+  width: 100%;
+  min-height: 160px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--sf-line);
+  border-radius: 8px;
+  background: var(--sf-bg-alt);
+  color: var(--sf-text);
+  font-family: var(--sf-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+@media (max-width: 760px) {
+  .sf-editrow { grid-template-columns: 1fr 1fr; }
+}
+.sf-danger-chip { border-color: #a3352f; color: #ff9a9a; }

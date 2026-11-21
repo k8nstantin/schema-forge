@@ -6,8 +6,10 @@ import { useHotkeys } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { catalog as fetchCatalog, changes, model as fetchModel, schemaRules, shape as fetchShape, undo, type Change } from './api'
-import type { Catalog, Schema, SchemaRules, Shape } from './model'
+import { Refusal, catalog as fetchCatalog, changeByHand, changes, model as fetchModel, schemaRules, setEnforce, shape as fetchShape, undo, type Change } from './api'
+import type { Catalog, RuleLink, Schema, SchemaRules, Shape } from './model'
+import { holdsRule } from './rules/parts'
+import { scopeTitle } from './rules/scope'
 import { Categories } from './perspectives/Categories'
 import { Home } from './perspectives/Home'
 import { RulesView } from './rules/RulesView'
@@ -47,6 +49,14 @@ export default function App() {
   const [activity, setActivity] = useState<Change[]>([])
   const [homeVersion, setHomeVersion] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  // A change waiting for you: a yes to a destructive one, or the hard rules it breaks, to turn soft first.
+  const [ask, setAsk] = useState<{
+    ops: unknown[]
+    why: string
+    destructive: boolean
+    soften: { link: RuleLink; global: boolean; title: string; where: string }[]
+    done: (ok: boolean) => void
+  } | null>(null)
 
   const open = useCallback((p: Place) => {
     writeHash(p)
@@ -126,6 +136,65 @@ export default function App() {
     ['Escape', () => point(null)],
   ])
 
+  // The links that hold a refused rule: the rule itself, or a pack it sits in, linked here or for every schema.
+  const holding = useCallback((ruleIds: string[]) => {
+    if (!current || !catalog || !ix) return []
+    const inside = (outer: string, inner: string) => holdsRule(catalog, outer, inner)
+    const all = [...current.rules.global.map((l) => ({ link: l, global: true })), ...current.rules.links.map((l) => ({ link: l, global: false }))]
+    return all
+      .filter(({ link }) => !link.off && link.enforce !== 'soft' && ruleIds.some((id) => inside(link.rule, id)))
+      .map(({ link, global }) => ({
+        link,
+        global,
+        title: catalog.rules.find((r) => r.id === link.rule)?.title ?? link.rule,
+        where: global ? 'every schema' : scopeTitle(ix, current.name, link.at),
+      }))
+  }, [current, catalog, ix])
+
+  const tryChange = useCallback((ops: unknown[], destructive: boolean): Promise<boolean> => {
+    if (!schema) return Promise.resolve(false)
+    return changeByHand(schema, ops, { destructive }).then(
+      (r) => {
+        const said = r.summaries.join('; ')
+        if (r.soft.length) notifications.show({ color: 'yellow', message: `${said}. ${r.soft.length} soft ${r.soft.length === 1 ? 'break' : 'breaks'}, highlighted.` })
+        else notifications.show({ message: said, autoClose: 2200 })
+        return true
+      },
+      (e) => {
+        const why = String(e.message ?? e)
+        // The server says what kind of refusal it is: a yes is wanted, or hard rules are broken.
+        const kind = e instanceof Refusal ? e.kind : undefined
+        const isDestructive = kind === 'destructive' && !destructive
+        const isHard = kind === 'hard'
+        if (isDestructive || isHard) {
+          const ids = e instanceof Refusal ? e.rules : []
+          return new Promise<boolean>((done) => setAsk({ ops, why, destructive: isDestructive || destructive, soften: isHard ? holding(ids) : [], done }))
+        }
+        notifications.show({ color: 'red', message: why })
+        return false
+      },
+    )
+  }, [schema, holding])
+  const edit = useCallback((ops: unknown[]) => tryChange(ops, false), [tryChange])
+  const answer = (go: boolean) => {
+    if (!ask || !schema) return
+    const a = ask
+    setAsk(null)
+    if (!go) return a.done(false)
+    // Turned soft only for this change: if it still does not land, the rules are put back as they were.
+    const turned: typeof a.soften = []
+    const putBack = () => Promise.all(turned.map(({ link, global }) => setEnforce(global ? null : schema, link.rule, link.at, 'hard').catch(() => undefined)))
+    Promise.all(a.soften.map((h) => setEnforce(h.global ? null : schema, h.link.rule, h.link.at, 'soft').then(() => { turned.push(h) })))
+      .then(() => tryChange(a.ops, a.destructive))
+      .then(
+        (ok) => (ok ? a.done(true) : putBack().then(() => a.done(false))),
+        (e) => {
+          notifications.show({ color: 'red', message: `${String(e.message ?? e)}. The rules turned soft are hard again.` })
+          putBack().then(() => a.done(false))
+        },
+      )
+  }
+
   const pointed = ix && pointer ? reference(ix, pointer) : null
   return (
     <div className="sf-app">
@@ -171,7 +240,7 @@ export default function App() {
         {schema && error && <Text c="red" p="lg">{error}</Text>}
         {schema && !error && (!current || !catalog) && <Text c="dimmed" p="lg">Opening {schema}…</Text>}
         {schema && current && catalog && (
-          <WorkbenchProvider value={{ name: schema, model: current.model, shape: current.shape, go, pointer, point, catalog, rules: current.rules, reloadRules: () => reloadRules(schema) }}>
+          <WorkbenchProvider value={{ name: schema, model: current.model, shape: current.shape, go, pointer, point, catalog, rules: current.rules, reloadRules: () => reloadRules(schema), edit }}>
             {perspective === 'tables' && <Tables />}
             {perspective === 'categories' && <Categories />}
             {perspective === 'table' && <TableView id={arg} />}
@@ -180,6 +249,24 @@ export default function App() {
           </WorkbenchProvider>
         )}
       </main>
+      {ask && (
+        <div className="sf-ask" role="alertdialog" aria-label="Your decision">
+          <span className="sf-strong">{ask.soften.length ? 'This breaks hard rules. Hard is not overridden: turn them soft to go ahead.' : ask.why.includes('hard rules') ? 'This breaks hard rules.' : 'This is destructive.'}</span>
+          <span className="sf-ask-why">{ask.why}</span>
+          {ask.soften.length > 0 && (
+            <span className="sf-col sf-tight">
+              {ask.soften.map(({ title, where, link }) => (
+                <span key={`${link.rule}${where}`} className="sf-small">Turns soft: <b>{title}</b> at {where}</span>
+              ))}
+            </span>
+          )}
+          <span className="sf-row-gap">
+            {ask.soften.length > 0 && <button type="button" className="sf-button" onClick={() => answer(true)}>Turn them soft and make the change</button>}
+            {!ask.soften.length && !ask.why.includes('hard rules') && <button type="button" className="sf-button sf-danger" onClick={() => answer(true)}>Yes, do it</button>}
+            <button type="button" className="sf-chip" onClick={() => answer(false)}>Cancel</button>
+          </span>
+        </div>
+      )}
       <footer className="sf-activity">
         <Text size="xs" c="dimmed" fw={600}>Activity</Text>
         {schema && activity.some((a) => a.schema === schema && a.kind === 'change') && (

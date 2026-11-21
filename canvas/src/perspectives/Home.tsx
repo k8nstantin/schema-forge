@@ -4,6 +4,7 @@ import { Badge, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/cor
 import { useEffect, useState } from 'react'
 
 import { model as fetchModel, schemas as fetchSchemas } from '../api'
+import { NewSchema } from './NewObject'
 import type { Schema, SchemaInfo } from '../model'
 
 const TARGET = { postgres: 'PostgreSQL', mysql: 'MySQL', iceberg: 'Iceberg' } as const
@@ -27,6 +28,7 @@ export function Home({ open, version }: { open: (name: string) => void; version:
           Open one to see it from every side, or ask your agent to make a new one.
         </Text>
       </div>
+      <NewSchema opened={open} />
       {error && <Text c="red">{error}</Text>}
       {list && list.length === 0 && (
         <Text c="dimmed">No schemas yet. Import one: schema-forge import &lt;dump or folder&gt; --schema &lt;name&gt;</Text>

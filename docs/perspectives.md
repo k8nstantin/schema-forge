@@ -1,7 +1,7 @@
 # Perspectives
 
-What you see. You never edit the schema: the perspectives are where you look, point and direct, while the
-agent builds. They must make a schema of three tables and one of three thousand equally easy to read.
+What you see, and where you can change it by hand: the perspectives are where you look, point and direct
+while the agent builds, and where you edit a table or a view with the same operations the agent uses. They must make a schema of three tables and one of three thousand equally easy to read.
 
 ## Entering the app: Home
 

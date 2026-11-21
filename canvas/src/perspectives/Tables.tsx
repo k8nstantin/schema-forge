@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 
 import { nested } from '../model'
 import { partitioning, useWorkbench } from '../state'
+import { NewObject } from './NewObject'
 
 type Key = 'name' | 'family' | 'columns' | 'nested' | 'partition' | 'links'
 const HEADS: [Key, string][] = [['name', 'Table'], ['family', 'Family'], ['columns', 'Columns'], ['nested', 'Nested'], ['partition', 'Partitioned by'], ['links', 'Links']]
@@ -42,6 +43,7 @@ export function Tables() {
   const total = (model.tables ?? []).filter((t) => !ix.isCopy(t.id)).length
   return (
     <div className="sf-page">
+      <NewObject />
       <div className="sf-toolbar">
         <label className="sf-field">
           <span className="sf-caption">Find a table or a column</span>

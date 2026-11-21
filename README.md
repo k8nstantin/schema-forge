@@ -5,8 +5,8 @@
 An ER design tool with many useful perspectives: your coding agent builds the schema, you watch it take
 shape and direct, and Schema Forge generates it for MySQL, PostgreSQL or Apache Iceberg.
 
-**You direct; the agent builds.** You never edit the schema by hand: you look at it from every side, point
-at what you mean, and tell the agent what to do. The agent works through Schema Forge's MCP, and every
+**You direct; the agent builds; you can build by hand too.** You look at the schema from every side, point
+at what you mean, and tell the agent what to do, or make the change yourself in the perspectives. The agent works through Schema Forge's MCP, and every
 change appears at once on a rich, live perspective that you both see. When the schema is right, export it for MySQL, PostgreSQL or Apache Iceberg.
 
 **Rich visuals, agent-centric:** everything you see, you can hand to the agent. Press `C` on a table, a
@@ -71,7 +71,8 @@ Rules perspective draws them as link diagrams: [docs/rules.md](docs/rules.md).
 
 - **The agent builds; you direct.** The agent reads the schema and the rules, then changes it one
   operation at a time: add a table, a column, a relation, a view. Each operation is checked against the
-  rules before it applies. You never edit: you prompt, and you point.
+  rules before it applies. You can make the same changes by hand in the perspectives: the same operations, the
+  same rules (a hard rule holds for you too: turn it soft to go ahead), the same undo.
 - **Shows it, live, from several sides.** Every change lands in every perspective as it happens:
 
   | Perspective | Shows |

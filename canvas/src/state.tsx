@@ -24,6 +24,9 @@ export interface Workbench {
   rules: SchemaRules
   /// Reads the rules again, after a change made here (the change also arrives live).
   reloadRules: () => void
+  /// Changes the design by hand: the same operations the agent uses. Asks before a destructive one or one that breaks
+  /// a hard rule; true when it landed.
+  edit: (operations: unknown[]) => Promise<boolean>
 }
 
 const Context = createContext<Workbench | null>(null)

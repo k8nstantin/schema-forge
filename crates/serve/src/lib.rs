@@ -27,7 +27,8 @@ struct Canvas;
 /// The routes, over `store`.
 pub fn app(store: Arc<Store>) -> Router {
     Router::new()
-        .route("/api/schemas", get(schemas))
+        .route("/api/schemas", get(schemas).post(new_schema))
+        .route("/api/schemas/{name}/change", post(change))
         .route("/api/schemas/{name}", get(model))
         .route("/api/schemas/{name}/definition/{id}", get(definition))
         .route("/api/schemas/{name}/shape", get(shape))
@@ -81,6 +82,14 @@ async fn schemas(State(store): State<Arc<Store>>) -> Response {
 fn store_failed(e: schema_forge_store::Error) -> Response {
     match e {
         schema_forge_store::Error::NoSchema(_) => failed(StatusCode::NOT_FOUND, e),
+        // A refusal says what kind it is, so the canvas asks the right question: a yes, or turning rules soft.
+        schema_forge_store::Error::Destructive(m) => {
+            (StatusCode::CONFLICT, axum::Json(serde_json::json!({ "error": m, "kind": "destructive" }))).into_response()
+        }
+        schema_forge_store::Error::Hard { message, rules } => {
+            (StatusCode::CONFLICT, axum::Json(serde_json::json!({ "error": message, "kind": "hard", "rules": rules })))
+                .into_response()
+        }
         schema_forge_store::Error::Rule(_) | schema_forge_store::Error::Refused(_) => {
             failed(StatusCode::BAD_REQUEST, e)
         }
@@ -201,6 +210,49 @@ async fn new_group(
 
 async fn remove_group(State(store): State<Arc<Store>>, Path((name, group)): Path<(String, String)>) -> Response {
     done(store.remove_group(&name, &group, BY))
+}
+
+#[derive(serde::Deserialize)]
+struct NewSchema {
+    name: String,
+    target: Target,
+}
+
+/// Makes an empty schema of a type.
+async fn new_schema(State(store): State<Arc<Store>>, axum::Json(n): axum::Json<NewSchema>) -> Response {
+    match store.create_schema(&n.name, n.target) {
+        Ok(info) => axum::Json(info).into_response(),
+        Err(e @ (schema_forge_store::Error::SchemaExists(_) | schema_forge_store::Error::BadName(_))) => {
+            failed(StatusCode::BAD_REQUEST, e)
+        }
+        Err(e) => store_failed(e),
+    }
+}
+
+/// A change made by hand: operations as the agent writes them (types as text), and a yes to destructive ones.
+/// Hard rules hold for a person too: to go ahead, the rule is turned soft first.
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ByHand {
+    operations: Vec<serde_json::Value>,
+    #[serde(default)]
+    confirm_destructive: bool,
+}
+
+async fn change(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::Json(c): axum::Json<ByHand>,
+) -> Response {
+    match schema_forge_mcp::change_from_json(&store, &name, c.operations, c.confirm_destructive, BY) {
+        Ok(ch) => axum::Json(serde_json::json!({
+            "sequence": ch.operation.sequence,
+            "summaries": ch.summaries,
+            "soft": ch.soft,
+        }))
+        .into_response(),
+        Err(e) => store_failed(e),
+    }
 }
 
 /// Undoes the schema's latest design change.
