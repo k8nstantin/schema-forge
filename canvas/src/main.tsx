@@ -27,6 +27,15 @@ const theme = createTheme({
   },
 })
 
+// The screens were designed 1440 px wide: on a wider screen everything scales up with it, so a screen fills yours
+// as its board fills its frame, instead of sitting small in the middle.
+const DESIGN_WIDTH = 1440
+const fit = () => {
+  document.documentElement.style.zoom = String(Math.max(1, window.innerWidth / DESIGN_WIDTH))
+}
+fit()
+window.addEventListener('resize', fit)
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="dark">
