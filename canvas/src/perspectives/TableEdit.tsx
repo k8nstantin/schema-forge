@@ -14,7 +14,8 @@ export function TableEdit({ t }: { t: Table }) {
   const iceberg = model.target === 'iceberg'
   const [name, setName] = useState(t.name)
   const [about, setAbout] = useState(t.comment ?? '')
-  useEffect(() => { setName(t.name); setAbout(t.comment ?? '') }, [t])
+  // Reset to what the table is only when that changes: a reload with the same values keeps what you typed.
+  useEffect(() => { setName(t.name); setAbout(t.comment ?? '') }, [t.name, t.comment])
   const key = new Set(iceberg ? t.options?.iceberg?.identifier_fields ?? [] : t.primary_key?.columns ?? [])
   const rels = (model.relationships ?? []).filter((r) => r.from.table === t.id)
   const label = (id: string) => ix.columns.get(id)?.column.name ?? id
@@ -73,7 +74,7 @@ function ColumnRow({ table, id, inKey, keyCols }: { table: Table; id: string; in
   const [type, setType] = useState(shown)
   const [required, setRequired] = useState(!c.nullable)
   const [about, setAbout] = useState(c.comment ?? '')
-  useEffect(() => { setName(c.name); setType(shown); setRequired(!c.nullable); setAbout(c.comment ?? '') }, [c, shown])
+  useEffect(() => { setName(c.name); setType(shown); setRequired(!c.nullable); setAbout(c.comment ?? '') }, [c.name, shown, c.nullable, c.comment])
   const dirty = name !== c.name || type !== shown || required !== !c.nullable || about !== (c.comment ?? '')
   const save = () => {
     const ops: unknown[] = []
@@ -175,7 +176,7 @@ function Indexes({ t }: { t: Table }) {
         <span className="sf-mono sf-small">{cols.map((c) => ix.columns.get(c)?.column.name).join(', ')}</span>
         <label className="sf-check"><input type="checkbox" checked={unique} onChange={(e) => setUnique(e.target.checked)} /> unique</label>
         <button type="button" className="sf-chip sf-on" disabled={!cols.length}
-          onClick={() => edit([{ op: 'add_index', table: t.id, columns: cols, unique }]).then((ok) => ok && (setCols([]), setUnique(false)))}>Add the index</button>
+          onClick={() => edit([{ op: 'add_index', table: t.id, columns: cols.map((c) => ix.columns.get(c)?.column.name ?? c), unique }]).then((ok) => ok && (setCols([]), setUnique(false)))}>Add the index</button>
         {cols.length > 0 && <button type="button" className="sf-chip" onClick={() => setCols([])}>Clear</button>}
       </span>
     </section>
@@ -190,7 +191,10 @@ function IcebergEdit({ t }: { t: Table }) {
   const [transform, setTransform] = useState('day')
   const [k, setK] = useState('')
   const [v, setV] = useState('')
-  const fields = (list: { source: string; transform: string }[]) => list.map((p) => ({ column: p.source, transform: p.transform }))
+  // The spec as it is, each field by its column's name and with its own name, so a field added or taken away
+  // leaves the others as they were.
+  const fields = (list: { source: string; transform: string; name?: string }[]) =>
+    list.map((p) => ({ column: ix.columns.get(p.source)?.column.name ?? p.source, transform: p.transform, name: p.name }))
   const props = Object.entries(ice?.properties ?? {})
   const mor = ['write.delete.mode', 'write.update.mode', 'write.merge.mode']
   const isMor = mor.every((m) => ice?.properties?.[m] === 'merge-on-read')

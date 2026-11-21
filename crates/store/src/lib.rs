@@ -50,9 +50,15 @@ pub enum Error {
     BadName(String),
     #[error("{0}")]
     Rule(String),
-    /// A change refused: by the model's rules, a hard rule, or for want of a yes.
+    /// A change refused: by the model's rules, or a stale view.
     #[error("{0}")]
     Refused(String),
+    /// A change that is destructive, not made without a yes: what each operation would break.
+    #[error("{0}")]
+    Destructive(String),
+    /// A change that breaks hard rules: refused for everyone; the rules it breaks, by id.
+    #[error("{message}")]
+    Hard { message: String, rules: Vec<String> },
     #[error("schema `{name}` is {schema:?}; the model given is {model:?}")]
     WrongTarget { name: String, schema: Target, model: Target },
 }
@@ -783,10 +789,21 @@ impl Store {
             let set = read_rules(&rules_table, name)?;
             let mut model = old.clone();
             let mut said = Vec::new();
+            // Applied with a yes so every destructive operation is found; without one they are refused together.
+            let mut needs_yes = Vec::new();
             for (i, op) in ops.iter().enumerate() {
-                let done = ops::apply(&mut model, op, confirmed)
+                let done = ops::apply(&mut model, op, true)
                     .map_err(|e| Error::Refused(format!("operation {}: {e}", i + 1)))?;
+                if let Some(what) = &done.destructive {
+                    needs_yes.push(format!("operation {}: it would have {} ({what})", i + 1, done.summary));
+                }
                 said.push(done.summary);
+            }
+            if !confirmed && !needs_yes.is_empty() {
+                return Err(Error::Destructive(format!(
+                    "destructive, so not done without a yes: {}",
+                    needs_yes.join("; ")
+                )));
             }
             let found = hard_held(&cat, &old, &model, &global, &set)?;
             let (before, after) = diff(&old, &model)?;
@@ -1113,11 +1130,17 @@ fn hard_held(
             })
             .collect();
         let more = refusing.len().saturating_sub(hard.len());
-        return Err(Error::Refused(format!(
-            "refused: hard rules would be broken: {}{}",
-            hard.join("; "),
-            if more > 0 { format!("; and {more} more") } else { String::new() }
-        )));
+        let mut rules: Vec<String> = refusing.iter().map(|f| f.rule.clone()).collect();
+        rules.sort();
+        rules.dedup();
+        return Err(Error::Hard {
+            message: format!(
+                "refused: hard rules would be broken: {}{}",
+                hard.join("; "),
+                if more > 0 { format!("; and {more} more") } else { String::new() }
+            ),
+            rules,
+        });
     }
     Ok(after.findings.iter().filter(|f| !before.contains(&key(f))).cloned().collect())
 }

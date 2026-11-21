@@ -46,6 +46,9 @@ pub struct NewViewColumn {
 pub struct NewPartition {
     pub column: String,
     pub transform: String,
+    /// The partition field's own name; kept from the spec there is when left out.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 /// One change.
@@ -480,11 +483,20 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
                 why.push("it replaces the key there is".to_string());
             }
             why.extend(made_required(t, &cols));
+            if cols.is_empty() {
+                t.primary_key = None;
+                if let Some(ice) = t.options.iceberg.as_mut() {
+                    ice.identifier_fields.clear();
+                }
+                return Ok(Done {
+                    summary: format!("took the key off `{}`", t.name),
+                    destructive: had.then(|| "the table has no key".to_string()),
+                });
+            }
+            let names: Vec<&str> = cols.iter().map(|c| col_name(t, c)).collect();
+            let summary = format!("keyed `{}` by {}", t.name, names.join(", "));
             set_key(target, t, cols);
-            Ok(Done {
-                summary: format!("keyed `{}` by {}", t.name, columns.join(", ")),
-                destructive: (!why.is_empty()).then(|| why.join("; ")),
-            })
+            Ok(Done { summary, destructive: (!why.is_empty()).then(|| why.join("; ")) })
         }
         Op::SetIdentifierFields { table, columns } => {
             iceberg_only(s.target)?;
@@ -524,7 +536,10 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
                 deferrable: None,
                 match_kind: None,
             });
-            ok(format!("related `{fname}` ({}) to `{tname}` ({})", columns.join(", "), to_columns.join(", ")))
+            let r = s.relationships.last().expect("pushed");
+            let fnames: Vec<&str> = r.from.columns.iter().map(|c| col_name(&s.tables[fi], c)).collect();
+            let tnames: Vec<&str> = r.to.columns.iter().map(|c| col_name(&s.tables[ti], c)).collect();
+            ok(format!("related `{fname}` ({}) to `{tname}` ({})", fnames.join(", "), tnames.join(", ")))
         }
         Op::Unrelate { relationship } => {
             let before = s.relationships.len();
@@ -547,11 +562,12 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
             if cols.is_empty() {
                 return Err("an index needs at least one column".to_string());
             }
-            let name = name.clone().unwrap_or_else(|| format!("ix_{}_{}", t.name, columns.join("_")));
+            let names: Vec<&str> = cols.iter().map(|c| col_name(t, c)).collect();
+            let name = name.clone().unwrap_or_else(|| format!("ix_{}_{}", t.name, names.join("_")));
             if s.tables.iter().any(|x| x.indexes.iter().any(|ix| ix.name == name)) {
                 return Err(format!("an index `{name}` is already there"));
             }
-            let id = fresh(s, Id::from_name(Kind::Index, &[&t.name, &columns.join("_")]));
+            let id = fresh(s, Id::from_name(Kind::Index, &[&t.name, &names.join("_")]));
             let t = &mut s.tables[i];
             t.indexes.push(crate::Index {
                 id,
@@ -571,7 +587,16 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
                 include: Vec::new(),
                 predicate: None,
             });
-            ok(format!("indexed `{}` on {}{}", t.name, columns.join(", "), if *unique { ", unique" } else { "" }))
+            let names: Vec<&str> = t
+                .indexes
+                .last()
+                .expect("pushed")
+                .parts
+                .iter()
+                .filter_map(|p| p.column.as_ref())
+                .map(|c| col_name(t, c))
+                .collect();
+            ok(format!("indexed `{}` on {}{}", t.name, names.join(", "), if *unique { ", unique" } else { "" }))
         }
         Op::DropIndex { table, index } => {
             let i = table_at(s, table)?;
@@ -714,17 +739,23 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
             iceberg_only(s.target)?;
             let i = table_at(s, table)?;
             let t = &mut s.tables[i];
+            let old_spec = t.options.iceberg.as_ref().map(|ice| ice.partition_spec.clone()).unwrap_or_default();
             let mut spec = Vec::new();
+            let mut how = Vec::new();
             for f in fields {
-                spec.push(PartitionField {
-                    source: column_in(t, &f.column)?,
-                    transform: f.transform.clone(),
-                    name: None,
+                let source = column_in(t, &f.column)?;
+                // A field that was there keeps its name unless a new one is given.
+                let name = f.name.clone().or_else(|| {
+                    old_spec
+                        .iter()
+                        .find(|p| p.source == source && p.transform == f.transform)
+                        .and_then(|p| p.name.clone())
                 });
+                how.push(format!("{}({})", f.transform, col_name(t, &source)));
+                spec.push(PartitionField { source, transform: f.transform.clone(), name });
             }
-            let had = t.options.iceberg.as_ref().is_some_and(|ice| !ice.partition_spec.is_empty());
+            let had = !old_spec.is_empty();
             t.options.iceberg.get_or_insert_with(IcebergTable::default).partition_spec = spec;
-            let how: Vec<String> = fields.iter().map(|f| format!("{}({})", f.transform, f.column)).collect();
             Ok(Done {
                 summary: format!("partitioned `{}` by {}", t.name, how.join(", ")),
                 destructive: had.then(|| "it replaces the partition spec there is".to_string()),
@@ -939,6 +970,11 @@ fn column_in(t: &Table, text: &str) -> Result<Id, String> {
         .find(|c| c.name == text || c.id.as_str() == text)
         .map(|c| c.id.clone())
         .ok_or_else(|| format!("`{}` has no column `{text}`", t.name))
+}
+
+/// A column's name, by its id; the id when it is not there.
+fn col_name<'a>(t: &'a Table, id: &'a Id) -> &'a str {
+    t.columns.iter().find(|c| &c.id == id).map_or(id.as_str(), |c| c.name.as_str())
 }
 
 /// What making `cols` a key does to columns that may be empty: they become required.
@@ -1426,5 +1462,63 @@ mod tests {
         );
         apply(&mut s, &alter, true).expect("with a yes");
         assert!(s.views[0].options.iceberg.as_ref().is_none_or(|i| i.representations.is_empty()));
+    }
+
+    #[test]
+    fn names_not_ids_in_index_names_partition_names_kept_and_a_key_can_go() {
+        let mut pg = Schema::new(Target::Postgres);
+        apply(&mut pg, &Op::AddNamespace { name: "public".into(), parent: None, comment: None }, false).expect("ns");
+        let t = Op::AddTable {
+            namespace: "public".into(),
+            name: "orders".into(),
+            comment: None,
+            columns: vec![col("id", "bigint"), col("customer_id", "bigint")],
+            primary_key: vec!["id".into()],
+        };
+        apply(&mut pg, &t, true).expect("orders");
+        let ix = Op::AddIndex {
+            table: "orders".into(),
+            columns: vec!["c_orders_customer_id".into()],
+            unique: false,
+            name: None,
+        };
+        let done = apply(&mut pg, &ix, false).expect("index by id");
+        assert_eq!(pg.tables[0].indexes[0].name, "ix_orders_customer_id");
+        assert!(done.summary.ends_with("on customer_id"), "{}", done.summary);
+        let off = Op::SetPrimaryKey { table: "orders".into(), columns: vec![] };
+        assert!(apply(&mut pg.clone(), &off, false).is_err(), "taking the key off needs a yes");
+        apply(&mut pg, &off, true).expect("with a yes");
+        assert!(pg.tables[0].primary_key.is_none(), "no empty key is left behind");
+        let mut s = lake();
+        let t = Op::AddTable {
+            namespace: "shop".into(),
+            name: "events".into(),
+            comment: None,
+            columns: vec![col("id", "string"), col("at", "timestamptz")],
+            primary_key: vec![],
+        };
+        apply(&mut s, &t, false).expect("events");
+        let spec = |fields: Vec<NewPartition>| Op::SetPartitionSpec { table: "events".into(), fields };
+        apply(
+            &mut s,
+            &spec(vec![NewPartition { column: "at".into(), transform: "day".into(), name: Some("event_day".into()) }]),
+            false,
+        )
+        .expect("named");
+        let more = vec![
+            NewPartition { column: "at".into(), transform: "day".into(), name: None },
+            NewPartition { column: "id".into(), transform: "bucket[16]".into(), name: None },
+        ];
+        apply(&mut s, &spec(more), true).expect("one more");
+        let names: Vec<Option<String>> = s.tables[0]
+            .options
+            .iceberg
+            .as_ref()
+            .expect("iceberg")
+            .partition_spec
+            .iter()
+            .map(|p| p.name.clone())
+            .collect();
+        assert_eq!(names, [Some("event_day".to_string()), None], "the field there keeps its name");
     }
 }

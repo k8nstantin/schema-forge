@@ -9,7 +9,7 @@ import { LinkDiagram, type Card, type Line, type Row } from '../diagram/LinkDiag
 import type { Applied, Enforce, RuleLink, Scope, Table } from '../model'
 import { useWorkbench } from '../state'
 import { EnforceToggle, Findings, LANES, MapTable, Strength, TallyBar, mapOf } from './parts'
-import { ALL } from './parts'
+import { ALL, holdsRule } from './parts'
 import { childrenOf, holds, levelName, path, sameScope, scopeKey, scopeTitle } from './scope'
 
 const MAX_ROWS = 40
@@ -237,7 +237,7 @@ export function RuleDiagram({ id }: { id: string }) {
   const r = catalog.rules.find((x) => x.id === id)
   if (!r) return <span className="sf-muted">There is no rule `{id}`.</span>
   const parents = catalog.rules.filter((p) => p.rules?.includes(id))
-  const inside = (outer: string, inner: string): boolean => outer === inner || (catalog.rules.find((x) => x.id === outer)?.rules ?? []).some((c) => inside(c, inner))
+  const inside = (outer: string, inner: string): boolean => holdsRule(catalog, outer, inner)
   const all = [...rules.global.map((l) => ({ l, global: true })), ...rules.links.map((l) => ({ l, global: false }))]
   // Its own links and exceptions, those on rules inside it, and links of packs it sits in that bring it along.
   const mine = all.filter(({ l }) => inside(id, l.rule) || (!l.off && inside(l.rule, id) && l.rule !== id))

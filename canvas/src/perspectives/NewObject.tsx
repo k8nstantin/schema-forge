@@ -5,15 +5,27 @@ import { useState } from 'react'
 import { newSchema } from '../api'
 import { useWorkbench } from '../state'
 
-/// The id the model gives a new object: its kind's letter and its name, lowercased, other characters as `_`.
-const idOf = (prefix: string, name: string) => `${prefix}_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')}`
+/// The id the model gives a new object: its kind's letter and its name, lowercased, other characters as `_`; and,
+/// as the server does, numbered (`_2`, `_3`) when that id is taken anywhere in the schema.
+function idOf(model: import('../model').Schema, prefix: string, name: string): string {
+  const base = `${prefix}_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')}`
+  const taken = new Set<string>([
+    ...(model.namespaces ?? []).map((n) => n.id),
+    ...(model.tables ?? []).flatMap((t) => [t.id, ...t.columns.map((c) => c.id), ...(t.indexes ?? []).map((i) => i.id)]),
+    ...(model.views ?? []).map((v) => v.id),
+    ...(model.relationships ?? []).map((r) => r.id),
+  ])
+  if (!taken.has(base)) return base
+  for (let n = 2; ; n++) if (!taken.has(`${base}_${n}`)) return `${base}_${n}`
+}
 
 export function NewObject() {
   const { model, ix, edit, go } = useWorkbench()
   const [open, setOpen] = useState(false)
   const [kind, setKind] = useState<'table' | 'view'>('table')
   const namespaces = [...ix.namespaces.values()]
-  const [ns, setNs] = useState(namespaces[0]?.id ?? '')
+  // With no namespace yet, a new one is what there is to choose.
+  const [ns, setNs] = useState(namespaces[0]?.id ?? '+')
   const [newNs, setNewNs] = useState('')
   const [name, setName] = useState('')
   const [about, setAbout] = useState('')
@@ -28,12 +40,13 @@ export function NewObject() {
     } else {
       ops.push({ op: 'add_view', namespace: where, name: name.trim(), comment: about.trim() || undefined, definition: sql })
     }
+    const id = idOf(model, kind === 'table' ? 't' : 'v', name.trim())
     edit(ops).then((ok) => {
       if (!ok) return
       setOpen(false)
       setName('')
       setAbout('')
-      go('table', idOf(kind === 'table' ? 't' : 'v', name.trim()))
+      go('table', id)
     })
   }
   return (

@@ -212,6 +212,31 @@ const GRAMMAR: &str = r#"A new rule is a sentence, as JSON. Three forms:
 Reuse a rule of the catalog with kind "link" before writing a new one."#;
 
 /// An operation as the agent writes it, with its types read from text for `target`.
+/// A change as the agent and the canvas send it: operations as JSON (types as text), checked for stale views, then
+/// made in the store as one change, in the agent's turn when it has one. The one path both take.
+///
+/// # Errors
+/// An operation that does not read, a view left stale ([`schema_forge_store::Error::Refused`]), or what the store
+/// refuses.
+pub fn change_from_json(
+    store: &Store,
+    schema: &str,
+    operations: Vec<serde_json::Value>,
+    confirmed: bool,
+    by: &str,
+    turn: Option<u64>,
+) -> Result<schema_forge_store::Changed, schema_forge_store::Error> {
+    let model = store.model(schema)?;
+    let ops = operations
+        .into_iter()
+        .enumerate()
+        .map(|(i, v)| operation(model.target, v).map_err(|m| format!("operation {}: {m}", i + 1)))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(schema_forge_store::Error::Refused)?;
+    views_still_read(&model, &ops, confirmed).map_err(schema_forge_store::Error::Refused)?;
+    store.change_in(schema, &ops, confirmed, by, turn)
+}
+
 /// Refuses a change that leaves a view's query naming what is no longer there, or reading something other than
 /// what the view records: after a rename, the views that read it must be altered in the same change.
 ///
@@ -338,17 +363,10 @@ Operations, as JSON objects with "op". Tables are named `orders` or `namespace.o
     )]
     fn change(&self, Parameters(a): Parameters<ChangeArg>) -> Result<String, String> {
         let e = |e: schema_forge_store::Error| e.to_string();
-        let model = self.store.model(&a.schema).map_err(e)?;
-        let target = model.target;
-        let ops = a
-            .operations
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| operation(target, v).map_err(|m| format!("operation {}: {m}", i + 1)))
-            .collect::<Result<Vec<_>, _>>()?;
-        views_still_read(&model, &ops, a.confirm_destructive)?;
         let turn = self.turn(&a.schema)?;
-        let changed = self.store.change_in(&a.schema, &ops, a.confirm_destructive, "agent", Some(turn)).map_err(e)?;
+        let changed =
+            change_from_json(&self.store, &a.schema, a.operations, a.confirm_destructive, "agent", Some(turn))
+                .map_err(e)?;
         let mut out = format!("Change #{} landed, in turn {turn}:\n", changed.operation.sequence);
         for s in &changed.summaries {
             let _ = writeln!(out, "- {s}");

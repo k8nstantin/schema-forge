@@ -334,11 +334,12 @@ async fn by_hand_a_person_changes_the_design_and_hard_rules_hold_for_them_too() 
         "columns": [{ "name": "id", "type": "bigint", "nullable": false }] }]);
     let (status, err) =
         send(&store, "POST", "/api/schemas/orders/change", serde_json::json!({ "operations": ops })).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(err["error"].as_str().is_some_and(|e| e.contains("docs.table")), "{err}");
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(err["kind"], "hard", "{err}");
+    assert_eq!(err["rules"], serde_json::json!(["docs.table"]), "{err}");
     let overriding = serde_json::json!({ "operations": ops, "override_hard": true });
     let (status, _) = send(&store, "POST", "/api/schemas/orders/change", overriding).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST, "hard cannot be overridden");
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "there is no overriding hard: the field is not taken");
     let soft = serde_json::json!({ "rule": "docs.table", "at": { "level": "schema" }, "enforce": "soft" });
     send(&store, "POST", "/api/schemas/orders/rules/enforce", soft).await;
     let (status, done) =
@@ -348,7 +349,7 @@ async fn by_hand_a_person_changes_the_design_and_hard_rules_hold_for_them_too() 
     let drop = serde_json::json!([{ "op": "drop_column", "column": "orders.total" }]);
     let (status, _) =
         send(&store, "POST", "/api/schemas/orders/change", serde_json::json!({ "operations": drop })).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST, "a drop needs a yes, by hand too");
+    assert_eq!(status, StatusCode::CONFLICT, "a drop needs a yes, by hand too");
     let yes = serde_json::json!({ "operations": drop, "confirm_destructive": true });
     let (status, _) = send(&store, "POST", "/api/schemas/orders/change", yes).await;
     assert_eq!(status, StatusCode::OK);
