@@ -16,7 +16,6 @@ import { NewSchema } from './screens/NewSchema'
 import { Locate } from './screens/Locate'
 import { RulesView } from './rules/RulesView'
 import { MapView } from './perspectives/MapView'
-import { Tables } from './screens/Tables'
 import { SchemaBar } from './screens/SchemaBar'
 import { Table } from './screens/Table'
 import { WorkbenchProvider, indexOf, reference, referenceWithContext, type Perspective, type Pointer } from './state'
@@ -34,7 +33,8 @@ interface Place { schema: string | null; perspective: Perspective; arg?: string 
 /// `#/<schema>/<perspective>/<table or family>`: where you are survives a reload and can be sent.
 function readHash(): Place {
   const [, schema, p, arg] = window.location.hash.split('/')
-  const perspective = PERSPECTIVES.some((x) => x.value === p) ? (p as Perspective) : 'tables'
+  // The schema opens on its tables, the picker and the open table; the old `tables` list address lands there too.
+  const perspective = p === 'tables' || !PERSPECTIVES.some((x) => x.value === p) ? 'table' : (p as Perspective)
   return { schema: schema ? decodeURIComponent(schema) : null, perspective, arg: arg ? decodeURIComponent(arg) : undefined }
 }
 
@@ -45,7 +45,7 @@ function writeHash(p: Place) {
 export default function App() {
   const [place, setPlace] = useState(readHash)
   const { schema, perspective, arg } = place
-  const [loaded, setLoaded] = useState<{ name: string; model: Schema; shape: Shape; rules: SchemaRules; info: SchemaInfo | null } | null>(null)
+  const [loaded, setLoaded] = useState<{ name: string; model: Schema; shape: Shape; rules: SchemaRules; info: SchemaInfo | null; all: SchemaInfo[] } | null>(null)
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [pointer, point] = useState<Pointer>(null)
   const [activity, setActivity] = useState<Change[]>([])
@@ -75,7 +75,7 @@ export default function App() {
   const load = useCallback((name: string) => {
     Promise.all([fetchModel(name), fetchShape(name), schemaRules(name), fetchSchemas()]).then(
       ([model, shape, rules, infos]) => {
-        setLoaded({ name, model, shape, rules, info: infos.find((i) => i.name === name) ?? null })
+        setLoaded({ name, model, shape, rules, info: infos.find((i) => i.name === name) ?? null, all: infos })
         setError(null)
       },
       (e) => setError(String(e.message ?? e)),
@@ -130,11 +130,10 @@ export default function App() {
   useHotkeys([
     ['c', () => copy(false)],
     ['shift+c', () => copy(true)],
-    ['1', () => go('tables')],
+    ['1', () => go('table', pointer?.table)],
     ['2', () => go('categories')],
-    ['3', () => go('table', pointer?.table)],
-    ['4', () => go('map')],
-    ['5', () => go('rules')],
+    ['3', () => go('map')],
+    ['4', () => go('rules')],
     ['Escape', () => point(null)],
   ])
 
@@ -198,7 +197,7 @@ export default function App() {
     if (!current || !ix) return undefined
     const tables = (current.model.tables ?? []).filter((t) => !ix.isCopy(t.id))
     const families = ix.families.size
-    if (perspective === 'tables') return `${tables.length} tables · ${tables.reduce((n, t) => n + t.columns.length, 0).toLocaleString()} columns`
+    if (perspective === 'table') return `${tables.length} tables · ${tables.reduce((n, t) => n + t.columns.length, 0).toLocaleString()} columns`
     if (perspective === 'categories') return `${ix.namespaces.size} namespaces · ${families} families`
     if (perspective === 'map') return `${tables.length} tables · ${families} families · ${current.shape.links.length} links`
     if (perspective === 'rules') return `${current.rules.links.filter((l) => !l.off).length} rules linked`
@@ -206,21 +205,21 @@ export default function App() {
   }
   // Home and New schema are whole screens of their own, as their boards draw them.
   if (!schema) {
-    return <Home catalog={catalog} version={homeVersion} open={(n) => open({ schema: n, perspective: 'tables' })}
-      newSchema={() => open({ schema: '_new', perspective: 'tables' })} rules={() => open({ schema: '_rules', perspective: 'tables' })} />
+    return <Home catalog={catalog} version={homeVersion} open={(n) => open({ schema: n, perspective: 'table' })}
+      newSchema={() => open({ schema: '_new', perspective: 'table' })} rules={() => open({ schema: '_rules', perspective: 'table' })} />
   }
-  if (schema === '_new') return <NewSchema catalog={catalog} open={(n) => open({ schema: n, perspective: 'tables' })} />
-  if (schema === '_open') return <Locate open={(n) => open({ schema: n, perspective: 'tables' })} />
+  if (schema === '_new') return <NewSchema catalog={catalog} open={(n) => open({ schema: n, perspective: 'table' })} />
+  if (schema === '_open') return <Locate open={(n) => open({ schema: n, perspective: 'table' })} />
   return (
     <div className="d-page d-shell">
-      <SchemaBar name={schema} info={current?.info ?? null} on={perspective} count={counts()}
-        go={(p) => go(p, p === 'table' ? pointer?.table : undefined)} />
+      <SchemaBar name={schema} info={current?.info ?? null} all={current?.all ?? []} on={perspective} count={counts()}
+        go={(p) => go(p, p === 'table' ? pointer?.table : undefined)}
+        switchTo={(n) => open({ schema: n, perspective: perspective === 'map' || perspective === 'categories' || perspective === 'rules' ? perspective : 'table' })} />
       <div className="d-shell-body">
         {schema && error && <Text c="red" p="lg">{error}</Text>}
         {schema && !error && (!current || !catalog) && <Text c="dimmed" p="lg">Opening {schema}…</Text>}
         {schema && current && catalog && (
           <WorkbenchProvider value={{ name: schema, model: current.model, shape: current.shape, go, pointer, point, catalog, rules: current.rules, reloadRules: () => reloadRules(schema), edit }}>
-            {perspective === 'tables' && <Tables />}
             {perspective === 'categories' && <Categories />}
             {perspective === 'table' && <Table id={arg} />}
             {perspective === 'map' && <MapView family={arg} />}

@@ -1191,3 +1191,74 @@ a.d-btn {
   color: var(--d-text);
   cursor: pointer;
 }
+
+/* Switching schema from the bar */
+
+.d-switch-box {
+  position: relative;
+}
+
+.d-switcher {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 8px;
+  margin: -2px -8px;
+  border-radius: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.d-switcher:hover {
+  background: var(--d-card);
+}
+
+.d-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  min-width: 280px;
+  max-height: 420px;
+  overflow: auto;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--d-edge);
+  background: var(--d-card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.d-menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--d-text);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.d-menu-item:hover {
+  background: var(--d-on);
+}
+
+.d-menu-on {
+  background: var(--d-on);
+  box-shadow: inset 3px 0 0 var(--d-violet);
+}
+
+.d-page a.d-menu-foot {
+  color: var(--d-lilac);
+  border-top: 1px solid var(--d-line);
+  border-radius: 0 0 8px 8px;
+}
