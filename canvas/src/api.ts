@@ -28,13 +28,45 @@ export interface Change {
   by: string
   /// For a design change or its undo: what each operation did.
   summary?: string | null
+  at?: number
+}
+
+// Live changes, without holding a connection open: a browser keeps at most six connections to one host, and a
+// stream held per tab soon leaves new pages waiting forever. So each page asks the server what changed, once a
+// second, with a short request that ends at once.
+const listeners = new Set<(c: Change) => void>()
+let started = false
+
+function startPolling() {
+  if (started) return
+  started = true
+  // Unset until the server first answers: then only its newest number comes back, and changes after it follow.
+  let after: number | null = null
+  const ask = async () => {
+    try {
+      const r = await fetch(after === null ? '/api/changes' : `/api/changes?after=${after}`)
+      if (r.ok) {
+        const { last, changes } = (await r.json()) as { last: number; changes: Change[] }
+        // The server started again and numbers from 1 again: take everything it has.
+        if (after !== null && last < after) after = 0
+        else {
+          for (const c of changes) listeners.forEach((on) => on(c))
+          after = last
+        }
+      }
+    } catch {
+      // The server is away; ask again.
+    }
+    window.setTimeout(ask, 1000)
+  }
+  ask()
 }
 
 /// Calls `on` with every change committed while the page is open; returns the way to stop listening.
 export function changes(on: (c: Change) => void): () => void {
-  const source = new EventSource('/api/events')
-  source.addEventListener('change', (e) => on(JSON.parse((e as MessageEvent).data)))
-  return () => source.close()
+  listeners.add(on)
+  startPolling()
+  return () => { listeners.delete(on) }
 }
 
 async function send<T>(method: string, path: string, body?: unknown): Promise<T> {

@@ -154,10 +154,22 @@ pub struct Change {
     pub operation: Operation,
 }
 
+/// How many of the last changes the feed keeps.
+const FEED_KEEPS: usize = 2000;
+
+/// The last changes, each with its number in the workspace.
+#[derive(Default)]
+struct Feed {
+    last: u64,
+    items: std::collections::VecDeque<(u64, Change)>,
+}
+
 /// The store.
 pub struct Store {
     db: Database,
     changes: broadcast::Sender<Change>,
+    /// The last changes, numbered across the workspace, for pages that ask what is new since a number.
+    feed: std::sync::Mutex<Feed>,
     path: std::path::PathBuf,
 }
 
@@ -238,7 +250,33 @@ impl Store {
         }
         txn.commit()?;
         let (changes, _) = broadcast::channel(1024);
-        Ok(Self { db, changes, path: path.to_path_buf() })
+        Ok(Self { db, changes, feed: std::sync::Mutex::default(), path: path.to_path_buf() })
+    }
+
+    /// The changes numbered after `after`, oldest first, and the number of the newest; without `after`, only that
+    /// number, so a page starts from now.
+    #[must_use]
+    pub fn changes_since(&self, after: Option<u64>) -> (u64, Vec<(u64, Change)>) {
+        let feed = self.feed.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let newer = match after {
+            None => Vec::new(),
+            Some(after) => feed.items.iter().filter(|(n, _)| *n > after).cloned().collect(),
+        };
+        (feed.last, newer)
+    }
+
+    /// Numbers a committed change into the feed and tells every subscriber.
+    fn announce(&self, change: Change) {
+        {
+            let mut feed = self.feed.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            feed.last += 1;
+            let n = feed.last;
+            feed.items.push_back((n, change.clone()));
+            while feed.items.len() > FEED_KEEPS {
+                feed.items.pop_front();
+            }
+        }
+        let _ = self.changes.send(change);
     }
 
     /// Hear every change committed from now on.
@@ -348,7 +386,7 @@ impl Store {
         }
         txn.commit()?;
         // Nobody listening is fine: the change is stored.
-        let _ = self.changes.send(Change { schema: name.to_string(), operation: operation.clone() });
+        self.announce(Change { schema: name.to_string(), operation: operation.clone() });
         Ok(operation)
     }
 
@@ -670,7 +708,7 @@ impl Store {
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: name.to_string(), operation });
+        self.announce(Change { schema: name.to_string(), operation });
         Ok(kept)
     }
 
@@ -799,7 +837,7 @@ impl Store {
             proposal = p;
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: name.to_string(), operation });
+        self.announce(Change { schema: name.to_string(), operation });
         Ok(proposal)
     }
 
@@ -1019,7 +1057,7 @@ impl Store {
             turn = t;
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: name.to_string(), operation });
+        self.announce(Change { schema: name.to_string(), operation });
         Ok(turn)
     }
 
@@ -1130,7 +1168,7 @@ impl Store {
             }
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: name.to_string(), operation: operation.clone() });
+        self.announce(Change { schema: name.to_string(), operation: operation.clone() });
         Ok(operation)
     }
 
@@ -1163,7 +1201,7 @@ impl Store {
             ops.insert(operation_key(&key, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
         }
         txn.commit()?;
-        let _ = self.changes.send(Change { schema: key, operation: operation.clone() });
+        self.announce(Change { schema: key, operation: operation.clone() });
         Ok(operation)
     }
 }

@@ -1,22 +1,18 @@
 //! `schema-forge serve`: one local process that holds the workspace's store and serves the perspectives, their
 //! data, and every change as it lands.
 
-use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::{StatusCode, Uri, header};
-use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use rust_embed::RustEmbed;
 use schema_forge_core::rules::{self, Group, Link, Scope};
 use schema_forge_core::{Id, Target};
 use schema_forge_store::{Rules, Store};
-use tokio_stream::StreamExt as _;
-use tokio_stream::wrappers::BroadcastStream;
 
 /// The perspectives, built (`canvas/dist`) and carried inside the binary.
 #[derive(RustEmbed)]
@@ -61,7 +57,7 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/workspace", get(workspace))
         .route("/api/browse", get(browse))
         .route("/api/import", post(import))
-        .route("/api/events", get(events))
+        .route("/api/changes", get(changes))
         .fallback(canvas)
         .with_state(store)
 }
@@ -566,23 +562,35 @@ async fn definition(State(store): State<Arc<Store>>, Path((name, id)): Path<(Str
     }
 }
 
-/// Every change, as it is committed: `{schema, sequence, kind, by}`.
-async fn events(State(store): State<Arc<Store>>) -> Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>> {
-    let stream = BroadcastStream::new(store.subscribe()).filter_map(|change| {
-        let change = change.ok()?;
-        let data = serde_json::json!({
-            "schema": change.schema,
-            "sequence": change.operation.sequence,
-            "kind": change.operation.kind,
-            "by": change.operation.by,
-            "at": change.operation.at,
-            "summary": change.operation.change["summaries"].as_array().map(|s| {
-                s.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>().join("; ")
-            }),
-        });
-        Some(Ok(Event::default().event("change").data(data.to_string())))
-    });
-    Sse::new(stream).keep_alive(KeepAlive::default())
+#[derive(serde::Deserialize)]
+struct Since {
+    #[serde(default)]
+    after: Option<u64>,
+}
+
+/// What changed after change number `after` (without it, nothing: only the newest number, to start from), across
+/// the workspace: `{last, changes: [{n, schema, sequence, kind,
+/// by, at, summary}]}`. A page asks again every second or so; nothing is held open, so no page ever waits on
+/// another for a connection.
+async fn changes(State(store): State<Arc<Store>>, axum::extract::Query(q): axum::extract::Query<Since>) -> Response {
+    let (last, newer) = store.changes_since(q.after);
+    let changes: Vec<serde_json::Value> = newer
+        .into_iter()
+        .map(|(n, c)| {
+            serde_json::json!({
+                "n": n,
+                "schema": c.schema,
+                "sequence": c.operation.sequence,
+                "kind": c.operation.kind,
+                "by": c.operation.by,
+                "at": c.operation.at,
+                "summary": c.operation.change["summaries"].as_array().map(|s| {
+                    s.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>().join("; ")
+                }),
+            })
+        })
+        .collect();
+    axum::Json(serde_json::json!({ "last": last, "changes": changes })).into_response()
 }
 
 #[derive(serde::Deserialize)]
