@@ -83,6 +83,12 @@ pub struct SchemaInfo {
     pub name: String,
     pub target: Target,
     pub format: u32,
+    /// What the schema is for, in your words; the agent reads it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub about: Option<String>,
+    /// For an Iceberg schema, the table format version new tables take (2 or 3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub iceberg_format: Option<u32>,
 }
 
 /// One change, as appended to the log.
@@ -96,6 +102,19 @@ pub struct Operation {
     pub by: String,
     /// The change, as the kind defines it.
     pub change: Value,
+    /// When it was made, in milliseconds since the Unix epoch; older logs have none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<u64>,
+}
+
+impl Operation {
+    fn new(sequence: u64, kind: &str, by: &str, change: Value) -> Self {
+        let at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()
+            .and_then(|d| u64::try_from(d.as_millis()).ok());
+        Self { sequence, kind: kind.to_string(), by: by.to_string(), change, at }
+    }
 }
 
 /// A change made: its place in the log, what each operation did, and the soft rules it now breaks (highlighted, not
@@ -231,8 +250,27 @@ impl Store {
     /// # Errors
     /// When the name is taken or not a valid name, or the store fails.
     pub fn create_schema(&self, name: &str, target: Target) -> Result<SchemaInfo> {
+        self.create_schema_with(name, target, None, None)
+    }
+
+    /// Makes an empty schema `name` of `target`, with what it is for and, for Iceberg, its format version.
+    ///
+    /// # Errors
+    /// When the name is not valid or taken, the format version is not 2 or 3, or the store fails.
+    pub fn create_schema_with(
+        &self,
+        name: &str,
+        target: Target,
+        about: Option<String>,
+        iceberg_format: Option<u32>,
+    ) -> Result<SchemaInfo> {
         valid_name(name)?;
-        let info = SchemaInfo { name: name.to_string(), target, format: schema_forge_core::FORMAT };
+        if iceberg_format.is_some_and(|v| target != Target::Iceberg || !(2..=3).contains(&v)) {
+            return Err(Error::Rule("an Iceberg format version is 2 or 3, and only for an Iceberg schema".to_string()));
+        }
+        let about = about.map(|a| a.trim().to_string()).filter(|a| !a.is_empty());
+        let info =
+            SchemaInfo { name: name.to_string(), target, format: schema_forge_core::FORMAT, about, iceberg_format };
         let txn = self.db.begin_write()?;
         {
             let mut schemas = txn.open_table(SCHEMAS)?;
@@ -296,12 +334,8 @@ impl Store {
             }
             let mut ops = txn.open_table(OPERATIONS)?;
             let sequence = last_sequence(&ops, name)? + 1;
-            operation = Operation {
-                sequence,
-                kind: kind.to_string(),
-                by: by.to_string(),
-                change: serde_json::json!({ "hash": schema_forge_core::hash(model) }),
-            };
+            operation =
+                Operation::new(sequence, kind, by, serde_json::json!({ "hash": schema_forge_core::hash(model) }));
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
         }
         txn.commit()?;
@@ -310,7 +344,23 @@ impl Store {
         Ok(operation)
     }
 
-    /// The schema's log, oldest first.
+    /// The schema's last `n` changes, newest first.
+    ///
+    /// # Errors
+    /// When the store fails or a record is not valid.
+    pub fn recent(&self, name: &str, n: usize) -> Result<Vec<Operation>> {
+        let txn = self.db.begin_read()?;
+        let ops = txn.open_table(OPERATIONS)?;
+        let (lo, hi) = prefix_range(name);
+        let mut out = Vec::new();
+        for entry in ops.range(lo.as_str()..hi.as_str())?.rev().take(n) {
+            let (_, v) = entry?;
+            out.push(serde_json::from_str(v.value())?);
+        }
+        Ok(out)
+    }
+
+    /// The schema's whole log, oldest first.
     ///
     /// # Errors
     /// When the store fails or a record is not valid.
@@ -608,12 +658,7 @@ impl Store {
             let mut ops = txn.open_table(OPERATIONS)?;
             let sequence = last_sequence(&ops, name)? + 1;
             let ids: Vec<u64> = kept.iter().map(|p| p.id).collect();
-            operation = Operation {
-                sequence,
-                kind: "propose_rules".to_string(),
-                by: by.to_string(),
-                change: serde_json::json!({ "proposals": ids }),
-            };
+            operation = Operation::new(sequence, "propose_rules", by, serde_json::json!({ "proposals": ids }));
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
         }
         txn.commit()?;
@@ -741,7 +786,7 @@ impl Store {
                 Decision::Reject => "reject_rule",
                 Decision::Enforce(_) => "change_proposal",
             };
-            operation = Operation { sequence, kind: kind.to_string(), by: by.to_string(), change };
+            operation = Operation::new(sequence, kind, by, change);
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
             proposal = p;
         }
@@ -961,12 +1006,7 @@ impl Store {
             table.insert(proposal_key(name, n).as_str(), serde_json::to_string(&t)?.as_str())?;
             let mut ops = txn.open_table(OPERATIONS)?;
             let sequence = last_sequence(&ops, name)? + 1;
-            operation = Operation {
-                sequence,
-                kind: "accept_turn".to_string(),
-                by: by.to_string(),
-                change: serde_json::json!({ "turn": n }),
-            };
+            operation = Operation::new(sequence, "accept_turn", by, serde_json::json!({ "turn": n }));
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
             turn = t;
         }
@@ -1072,7 +1112,7 @@ impl Store {
             }
             let mut ops = txn.open_table(OPERATIONS)?;
             let sequence = last_sequence(&ops, name)? + 1;
-            operation = Operation { sequence, kind: kind.to_string(), by: by.to_string(), change };
+            operation = Operation::new(sequence, kind, by, change);
             ops.insert(operation_key(name, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
             if let Some(n) = turn {
                 let mut turns = txn.open_table(TURNS)?;
@@ -1111,7 +1151,7 @@ impl Store {
             table.insert(key.as_str(), serde_json::to_string(&set)?.as_str())?;
             let mut ops = txn.open_table(OPERATIONS)?;
             let sequence = last_sequence(&ops, &key)? + 1;
-            operation = Operation { sequence, kind: kind.to_string(), by: by.to_string(), change };
+            operation = Operation::new(sequence, kind, by, change);
             ops.insert(operation_key(&key, sequence).as_str(), serde_json::to_string(&operation)?.as_str())?;
         }
         txn.commit()?;

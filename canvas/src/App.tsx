@@ -11,7 +11,8 @@ import type { Catalog, RuleLink, Schema, SchemaRules, Shape } from './model'
 import { scopeTitle } from './rules/scope'
 import { Categories } from './perspectives/Categories'
 import { Turns } from './components/Turns'
-import { Home } from './perspectives/Home'
+import { Home } from './screens/Home'
+import { NewSchema } from './screens/NewSchema'
 import { RulesView } from './rules/RulesView'
 import { MapView } from './perspectives/MapView'
 import { Tables } from './perspectives/Tables'
@@ -93,7 +94,7 @@ export default function App() {
 
   useEffect(() => {
     point(null)
-    if (schema) load(schema)
+    if (schema && !schema.startsWith('_')) load(schema)
   }, [schema, load])
 
   // Every change, as it lands: the open schema reloads, Home recounts, Activity shows it.
@@ -191,6 +192,12 @@ export default function App() {
   }
 
   const pointed = ix && pointer ? reference(ix, pointer) : null
+  // Home and New schema are whole screens of their own, as their boards draw them.
+  if (!schema) {
+    return <Home catalog={catalog} version={homeVersion} open={(n) => open({ schema: n, perspective: 'tables' })}
+      newSchema={() => open({ schema: '_new', perspective: 'tables' })} rules={() => open({ schema: '_rules', perspective: 'tables' })} />
+  }
+  if (schema === '_new') return <NewSchema catalog={catalog} open={(n) => open({ schema: n, perspective: 'tables' })} />
   return (
     <div className="sf-app">
       <header className="sf-header">
@@ -231,7 +238,6 @@ export default function App() {
         </div>
       </header>
       <main className="sf-main">
-        {!schema && <Home open={(n) => open({ schema: n, perspective: 'tables' })} version={homeVersion} />}
         {schema && error && <Text c="red" p="lg">{error}</Text>}
         {schema && !error && (!current || !catalog) && <Text c="dimmed" p="lg">Opening {schema}…</Text>}
         {schema && current && catalog && (

@@ -6,6 +6,8 @@ export interface SchemaInfo {
   name: string
   target: Target
   format: number
+  about?: string
+  iceberg_format?: number
 }
 
 export interface DataType {

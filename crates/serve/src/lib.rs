@@ -46,6 +46,7 @@ pub fn app(store: Arc<Store>) -> Router {
         .route("/api/rules/global/enforce", post(enforce_global))
         .route("/api/schemas/{name}/proposals", get(proposals))
         .route("/api/schemas/{name}/undo", post(undo))
+        .route("/api/schemas/{name}/operations", get(recent))
         .route("/api/schemas/{name}/turns", get(turns))
         .route("/api/schemas/{name}/turns/{n}/accept", post(accept_turn))
         .route("/api/schemas/{name}/turns/{n}/reject", post(reject_turn))
@@ -211,15 +212,21 @@ async fn remove_group(State(store): State<Arc<Store>>, Path((name, group)): Path
 struct NewSchema {
     name: String,
     target: Target,
+    #[serde(default)]
+    about: Option<String>,
+    #[serde(default)]
+    iceberg_format: Option<u32>,
 }
 
 /// Makes an empty schema of a type.
 async fn new_schema(State(store): State<Arc<Store>>, axum::Json(n): axum::Json<NewSchema>) -> Response {
-    match store.create_schema(&n.name, n.target) {
+    match store.create_schema_with(&n.name, n.target, n.about, n.iceberg_format) {
         Ok(info) => axum::Json(info).into_response(),
-        Err(e @ (schema_forge_store::Error::SchemaExists(_) | schema_forge_store::Error::BadName(_))) => {
-            failed(StatusCode::BAD_REQUEST, e)
-        }
+        Err(
+            e @ (schema_forge_store::Error::SchemaExists(_)
+            | schema_forge_store::Error::BadName(_)
+            | schema_forge_store::Error::Rule(_)),
+        ) => failed(StatusCode::BAD_REQUEST, e),
         Err(e) => store_failed(e),
     }
 }
@@ -429,6 +436,7 @@ async fn events(State(store): State<Arc<Store>>) -> Sse<impl tokio_stream::Strea
             "sequence": change.operation.sequence,
             "kind": change.operation.kind,
             "by": change.operation.by,
+            "at": change.operation.at,
             "summary": change.operation.change["summaries"].as_array().map(|s| {
                 s.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>().join("; ")
             }),
@@ -436,6 +444,31 @@ async fn events(State(store): State<Arc<Store>>) -> Sse<impl tokio_stream::Strea
         Some(Ok(Event::default().event("change").data(data.to_string())))
     });
     Sse::new(stream).keep_alive(KeepAlive::default())
+}
+
+#[derive(serde::Deserialize)]
+struct Last {
+    #[serde(default = "ten")]
+    last: usize,
+}
+
+const fn ten() -> usize {
+    10
+}
+
+/// The schema's last changes, newest first: `?last=<n>`, ten by default.
+async fn recent(
+    State(store): State<Arc<Store>>,
+    Path(name): Path<String>,
+    axum::extract::Query(q): axum::extract::Query<Last>,
+) -> Response {
+    if let Err(e) = store.rules(&name) {
+        return store_failed(e);
+    }
+    match store.recent(&name, q.last.min(500)) {
+        Ok(ops) => axum::Json(ops).into_response(),
+        Err(e) => store_failed(e),
+    }
 }
 
 /// The built perspectives; any path that is not a file is the app itself, except under `/api`, where a path no

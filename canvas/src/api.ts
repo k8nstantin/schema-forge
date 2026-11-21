@@ -76,7 +76,11 @@ export const changeByHand = (name: string, operations: unknown[], yes: { destruc
     confirm_destructive: !!yes.destructive,
     override_hard: !!yes.hard,
   })
-export const newSchema = (name: string, target: string) => send('POST', '/api/schemas', { name, target })
+export const newSchema = (name: string, target: string, about?: string, icebergFormat?: number) =>
+  send('POST', '/api/schemas', { name, target, about: about || undefined, iceberg_format: icebergFormat })
+/// One change in a schema's log.
+export interface Operation { sequence: number; kind: string; by: string; change: Record<string, unknown>; at?: number }
+export const recent = (name: string, last = 10) => json<Operation[]>(`/api/schemas/${encodeURIComponent(name)}/operations?last=${last}`)
 export const undo = (name: string) => send('POST', `/api/schemas/${encodeURIComponent(name)}/undo`)
 export interface TurnItem {
   turn: { id: number; by: string; summary: string; status: 'open' | 'accepted' | 'rejected'; changes: number[]; decided_by?: string }
