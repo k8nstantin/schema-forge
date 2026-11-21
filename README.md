@@ -1,235 +1,139 @@
 # Schema Forge
 
-**The schema design and generation tool made for a coding agent and a human, working together.**
+**Design database schemas with your coding agent, under standards that hold.**
 
-An ER design tool with many useful perspectives: your coding agent builds the schema, you watch it take
-shape and direct, and Schema Forge generates it for MySQL, PostgreSQL or Apache Iceberg.
+Schema Forge is the first schema design tool built for an AI coding agent and a human architect to work on the
+same schema at the same time. The agent designs through **MCP**; you watch every change land on a live canvas,
+steer it, or make changes by hand. And everything is checked against **rules**: standards you can design with
+the agent, approve, and have enforced on every change, the agent's and yours.
 
-**You direct; the agent builds; you can build by hand too.** You look at the schema from every side, point
-at what you mean, and tell the agent what to do, or make the change yourself in the perspectives. The agent works through Schema Forge's MCP, and every
-change appears at once on a rich, live perspective that you both see. When the schema is right, export it for MySQL, PostgreSQL or Apache Iceberg.
+One model, three targets: **MySQL, PostgreSQL and Apache Iceberg**. It designs schemas that are **compatible
+across them**, and **CDC-ready**: MySQL or PostgreSQL streamed by **Debezium into Iceberg**, landed optimally.
 
-**Rich visuals, agent-centric:** everything you see, you can hand to the agent. Press `C` on a table, a
-column, a rule, a finding or a change, and paste the reference into your prompt (`@orders.total`,
-`@finding:14`), or drag it there.
+![Home: start a schema, open one, or manage your rules](docs/screenshots/home.jpg)
 
-It works with **any coding agent that speaks MCP** (Claude Code first). The MCP is the enforcer: every
-change goes through it and is checked against the schema's rules. More agents and more databases come
-later. How it compares with what exists: [docs/market.md](docs/market.md).
+## Why it is different
+
+Plenty of tools draw schemas. A few let an agent edit SQL. None does all of this:
+
+- **An agent and a human, on one live model.** Claude Code (or any MCP agent) changes the schema through Schema
+  Forge's MCP, one checked operation at a time. You see it land at once, in every perspective. Point at anything
+  (`@orders.customer_id`), paste it into your prompt, and the agent knows exactly what you mean.
+- **Rules designed ahead, then enforced.** Standards are not a lint pass at the end. They are linked to the schema
+  before design starts (globally, to a schema, a namespace, a family, a group of tables, or one table) and every
+  change is checked against them as it happens. **Hard** rules refuse a change that breaks them, for the agent
+  *and* for you. **Soft** rules let it land and show the break.
+- **The agent designs the rules too.** Nobody knows every rule ahead. So the agent reads your schema and proposes
+  rules with its evidence ("2 of 2 `_at` columns are already zoned"). **The system verifies** each one (is it
+  written right? does it repeat a rule? contradict one? what would it break?), **you approve** it, hard or soft,
+  and from then on **the system enforces** it.
+- **Compatibility by design.** Built-in rule packs check that a schema survives the move between engines:
+  PostgreSQL → Iceberg, MySQL → Iceberg, MySQL ↔ PostgreSQL, Iceberg → either. Every type that would be lost,
+  widened or approximated is named, with the reason.
+- **CDC as a goal, not an afterthought.** Say what the schema has to do ("feed it by CDC", "move PostgreSQL to
+  Iceberg") and Schema Forge links the packs it needs and shows the gap: keys Debezium can follow, identifier
+  fields, merge-on-read, source positions for ordering, types Debezium carries well.
+- **Turns you accept or reject whole.** The agent's changes for one prompt form a turn. Accept it, or reject it and
+  every change is taken back at once, but never when that would leave the schema broken.
+
+## Who it is for
+
+- **Data architects** designing a lakehouse: Iceberg tables with partition specs, identifier fields and
+  merge-on-read, landed from operational databases by Debezium.
+- **Application architects** who want the schema behind a service to follow the same standards every time, and to
+  know before a migration what would break.
+- **Schema designers and data engineers** working with a coding agent, who want the agent fast and the result
+  right.
+- **Platform teams** writing the standards everyone else designs under.
+
+## See it
+
+**The agent designs; you watch, then accept or reject the turn.** The agent was asked to land a shop's orders and
+customers in Iceberg through Debezium. Its tables arrived through the MCP, partitioned by day, merge-on-read, keyed
+by identifier fields, with a view on top. The turn waits at the bottom.
+
+![The agent's design, with its turn waiting](docs/screenshots/table-and-turn.jpg)
+
+**The SQL it means**, written for the target: here Spark SQL for Iceberg.
+
+![The table's definition in Spark SQL](docs/screenshots/definition.jpg)
+
+**The agent proposes rules; the system verifies them; you approve.** Each proposal carries the agent's evidence
+and the system's checks, and is approved hard or soft.
+
+![The agent's rule proposals, verified and waiting for approval](docs/screenshots/review.jpg)
+
+**The rules a schema follows, and what breaks them.** Every rule linked to the schema, how it holds, and what
+passes and fails on the schema as it is now.
+
+![The rules a schema follows, by pack](docs/screenshots/rules.jpg)
+
+**Will it survive the move?** The PostgreSQL → Iceberg pack on a PostgreSQL schema: five columns would not cross
+cleanly, each named with the reason.
+
+![PostgreSQL to Iceberg compatibility](docs/screenshots/compatibility.jpg)
+
+**Rule packs you add to any schema.** CDC-ready: Debezium → Iceberg, and what each of its rules asks.
+
+![The CDC-ready rule pack](docs/screenshots/rule-packs.jpg)
+
+**Every new schema: name, type, rules, agent.** A new schema has no rules until you add them, each pack hard or
+soft.
+
+![The new-schema wizard, choosing rule packs](docs/screenshots/new-schema-rules.jpg)
+
+## How it works
 
 ```
- you ──prompt──► coding agent ──MCP──► schema-forge ──► live perspectives (you see them, the agent can render them)
-                                        │
-                                        └──► export   (MySQL, PostgreSQL, Iceberg)
+ you ──── canvas (browser) ────┐
+                               ├──► schema-forge serve ──► the model, the rules, every change logged
+ agent ── MCP (Claude Code) ───┘          │
+                                          └──► checked on every change: the model's own rules, your hard rules
 ```
+
+You and the agent take the same path: **schema → type → rules → design**. The agent never designs before it knows
+the schema's type and has read its rules.
+
+| The agent asks for | MCP tools |
+|---|---|
+| the schema | `schemas`, `describe` |
+| its rules | `rules` (what holds, in plain words), `check` (what breaks, hard or soft), `catalog` (every rule, and the grammar new ones are written in) |
+| new rules | `propose_rules` (a new rule as a sentence, a catalog rule to link, an exception with its reason), `proposals` |
+| a design | `new_schema`; `start_turn`; `change`: operations (`add_table`, `add_column`, `alter_column`, `relate`, `add_index`, `set_identifier_fields`, `set_partition_spec`, `set_property`, views, renames, drops) applied as one change, all or none; refused with the rule and the reason when it breaks a hard rule; destructive ones need a yes |
 
 ## Start
 
-You and the agent take the same path:
-
 ```
- you    ──► Schema Forge ──┐
-                           ├──► schema ──► type ──► rules ──► design
- agent  ──► MCP ───────────┘
-```
-
-1. **Schema:** open one, or create one with a name.
-2. **Type:** MySQL, PostgreSQL or Iceberg.
-3. **Rules:** none, a template (the type's default, or your own), or its own made from a template.
-4. **Design:** together, live.
-
-```
-schema-forge serve      # the workspace opens; the MCP is added for Claude Code
+git clone https://github.com/k8nstantin/schema-forge && cd schema-forge
+(cd canvas && npm ci && npm run build)
+cargo build --release
+./target/release/schema-forge serve
+claude mcp add --transport http schema-forge http://127.0.0.1:7410/mcp
 ```
 
-The agent can take every step itself, through the MCP, while you watch: "create an Iceberg schema called
-orders, with our lakehouse rules, then design an order system; orders are SCD Type 2". It never designs
-before it knows the schema's type and has read its rules; those are its cues.
+`serve` opens the canvas at `http://localhost:7410`. Create a schema there, or read one in with
+`schema-forge import <pg_dump or Iceberg folder> --schema <name>` or **Open a file or folder** on Home. Then ask
+your agent: *"Design `@orders_lake`: orders and customers landed from the shop's PostgreSQL by Debezium."*
 
-The MCP is served at `http://127.0.0.1:7410/mcp` while `schema-forge serve` runs; add it to Claude Code with
-`claude mcp add --transport http schema-forge http://127.0.0.1:7410/mcp`.
+## What is built, and what is next
 
-| Step | The agent's MCP tools |
-|---|---|
-| schema | `schemas`, `describe` (tables, columns, types, partitions, identifier fields) |
-| rules | `rules` (what holds, in plain words, on the schema or one table), `check` (what breaks, hard or soft), `catalog` (every rule and the grammar new ones are written in) |
-| proposing rules | `propose_rules` (new rules as sentences, catalog rules to link, exceptions), `proposals` (status and the system's verdict) |
-| design | `new_schema`; `change`: operations (`add_table`, `add_column`, `alter_column`, `relate`, `add_index`, `set_identifier_fields`, `set_partition_spec`, `set_property`, renames, drops, …) applied as one change, all or none; refused, with the rule and the reason, when it breaks a hard rule; destructive ones need a yes; every change undoable |
-| views | `add_view` (one query in the target's SQL; what it reads is found from it), `alter_view`, `rename_view`, `drop_view`, `add_view_dialect` (Iceberg) |
-| turns | `start_turn` (what you asked, in a sentence): the changes for it are reviewed together; you accept or reject the turn |
-| next | `render` |
+**Built:** the canvas (Home, the new-schema wizard, opening a file or folder, Tables, Categories, Map, Rules and
+each Rule, the workspace's rule packs); the MCP; design operations, views, editing by hand, turns and undo; the
+rules engine with hard and soft, exceptions, groups, goals, compatibility and CDC packs, and agent-proposed rules
+with verification; reading pg_dumps and Iceberg Spark SQL; writing PostgreSQL and Iceberg SQL.
 
-The agent proposes rules and the system verifies them; only you approve them, in the Rules perspective.
+**Next:** the remaining rule screens from the design (applying packs, goals, where rules apply), MySQL reading and
+writing, migration scripts between versions, and versions written as SQL files you can commit.
 
-Rules are standards that keep a schema consistent and fit for what it has to do: nothing without a key, one
-type per column name, merge-on-read on Iceberg, compatible with MySQL, ready for CDC. They are rules made of
-rules, sorted by where they apply (every database, MySQL, PostgreSQL, Iceberg, between two) and what they are
-about, and linked at any level of the schema: globally, the schema, a namespace, a family, a group of tables, a
-table, with exceptions that say why. A goal ("feed it by CDC") links the packs it needs and shows the gap. The
-Rules perspective draws them as link diagrams: [docs/rules.md](docs/rules.md).
+The design behind it: [docs/rules.md](docs/rules.md) (rules), [docs/model.md](docs/model.md) (the model),
+[docs/perspectives.md](docs/perspectives.md) (the canvas), [docs/cdc.md](docs/cdc.md) (CDC to Iceberg),
+[docs/store.md](docs/store.md) (storage), [docs/market.md](docs/market.md) (how it compares).
 
-## What it does
+## Built with
 
-- **The agent builds; you direct.** The agent reads the schema and the rules, then changes it one
-  operation at a time: add a table, a column, a relation, a view. Each operation is checked against the
-  rules before it applies. You can make the same changes by hand in the perspectives: the same operations, the
-  same rules (a hard rule holds for you too: turn it soft to go ahead), the same undo.
-- **Shows it, live, from several sides.** Every change lands in every perspective as it happens:
+Rust for the engine (pure Rust, no C libraries): **sqlparser** for SQL, **rmcp** for the MCP, **axum** and
+**tokio** for the server, **redb** for storage. The canvas is React and TypeScript, served by the engine.
 
-  | Perspective | Shows |
-  |---|---|
-  | **Tables** | every table under its namespace: find, sort, open; its family, columns, nesting, partitioning and links |
-  | **Categories** | the schema by namespace, then by family, each family a card of its tables and where it links |
-  | **Table** | one table whole: every column with its type and description, its SQL, its copies, and how it links |
-  | **Map** | the families from left to right by who refers to whom; click one for its own link diagram |
-  | **Consistency** | every inconsistency: one column with different types, mismatched relationship ends, drifting lengths, mixed time types, CDC hazards; each with a fix the agent can make |
-  | **Custom** | the tables, columns and grouping you choose, saved with the project |
+## Licence
 
-- **Shows how a table links, not a tangle.** Large schemas are read through a picker and a link diagram,
-  never a zoomable map of every card and line: the table in the middle with its joining columns in gold,
-  the tables that refer to it on the left, the tables it refers to on the right, one curved line per link,
-  and a click on any of them walks there. Families come from the names (`node__`, `tbl_Orders…`); a series of
-  dated copies stacks under one table; a key nearly every table carries is noted, not drawn
-  ([docs/perspectives.md](docs/perspectives.md)).
-- **Says what things are at a glance.** One set of visual cues, the same in every perspective:
-
-  | Cue | Means |
-  |---|---|
-  | key icons | primary key, unique, foreign key, Iceberg identifier field |
-  | solid / dashed line | enforced relationship / logical one (always dashed on Iceberg) |
-  | crow's foot, ring | many, optional |
-  | dashed card | a database view; a double outline for a materialized one |
-  | badges | tags and patterns (`scd2`, `fact`, `dimension`), partitioned, sorted |
-  | a faint dot on a column | nullable |
-  | red / amber marker | a rule fails / a rule warns, with the rule's name on hover |
-  | green / amber / faded red | just added / changed / removed, as changes land |
-  | a pulsing outline | what the agent is working on right now |
-  | a lock | part of the last locked version, unchanged since |
-  | area colour | which area a table belongs to, from the whole-schema view down to the card |
-- **Makes everything easy to point at.** Pointing is how you direct, so anything you can see can be copied
-  as a short reference and pasted into your prompt; the agent resolves it through the MCP:
-
-  | You point at | Reference |
-  |---|---|
-  | a table, a view, a column | `@orders`, `@current_orders`, `@orders.total` |
-  | a key, an index, a relationship | `@orders.fk_orders_customers` |
-  | an area, a tag | `@area:billing`, `@tag:scd2` |
-  | a rule | `@rule:naming.tables`, `@rule:scd2` |
-  | a finding (an inconsistency, a failing rule) | `@finding:14` |
-  | a locked version, a change | `@v3`, `@change:42` |
-  | what you selected | `@selection` |
-
-  "Make `@tag:dimension` follow `@rule:scd2`", "fix `@finding:14`", "why did `@change:42` drop that
-  index?" The agent writes the same references back, and they are clickable in the perspectives.
-- **Keeps to the rules.** Linked on the schema's hierarchy, as above. The agent sees every rule, and is
-  told plainly, with the expected form, when an operation breaks one. Naming, for example:
-
-  ```toml
-  [naming]
-  tables       = "snake_case"     # or "PascalCase" (TableName), "camelCase" (tableName)
-  plural       = true
-  foreign_keys = "fk_{table}_{referenced_table}"
-  ```
-
-- **Treats views as objects.** Database views carry their definition and know what they read, so a change
-  that would break a view is caught.
-- **Highlights inconsistencies.** The same column with different types, relationship ends that do not
-  match, one kind of data in many types: marked on every table and column, gathered in the Consistency
-  perspective, each with a fix the agent can make.
-- **Designs CDC targets.** From a MySQL or PostgreSQL schema to Iceberg tables through Debezium: every column mapped by
-  the rules, every hazard shown, the Debezium settings written to match ([docs/cdc.md](docs/cdc.md)).
-- **Versions as definitions, with or without git.** A locked version is written as one SQL file per
-  object, at a path that says where it lives (`<node>/<database>/<schema>/tables/orders.sql`), plus a small
-  `.schema-forge/` folder for what SQL cannot say. A plain folder works; in a git repository each lock is also a
-  commit and a tag, and a plain folder can join a repository later with its history
-  ([docs/versions.md](docs/versions.md)).
-- **Exports SQL.** One file per version: the whole schema, or the migration from the last version.
-- **Reads what you have.** Import a MySQL or PostgreSQL schema dump, or Iceberg table definitions;
-  nothing in them is lost.
-
-## Three targets
-
-One model, three targets. The model holds what each target can express, and the rules and perspectives know the
-difference.
-
-| | MySQL | PostgreSQL | Apache Iceberg |
-|---|---|---|---|
-| **Keys** | primary, unique, foreign, enforced | primary, unique, foreign, enforced | no referential integrity: **identifier fields** mark the key, not enforced (enforced constraints arrive only in format v4) |
-| **Relationships** | foreign keys | foreign keys | **logical only:** drawn in the diagram and checked by the rules, never written as constraints |
-| **Table parameters** | engine, charset, collation, auto-increment | tablespaces, partitioning, storage options | **partition spec** (identity, bucket, truncate, year/month/day/hour), **sort order**, **table properties** (format version, file format, compression, write modes) |
-| **Types** | MySQL types | PostgreSQL types | Iceberg types: decimal, timestamp(tz), uuid, fixed, binary, struct, list, map; v3 adds nanosecond timestamps, variant, geometry, geography; column defaults from v3 |
-| **Views** | `CREATE VIEW` | views and materialized views | **versioned views**, one SQL text per engine dialect (Spark, Trino) |
-| **Export** | `.sql` | `.sql` | Spark SQL DDL (`USING iceberg`), Trino DDL, or table metadata (schema with field IDs, partition spec, sort order, properties) |
-
-Moving a schema between targets is a conversion the agent and the rules check: from MySQL to Iceberg,
-foreign keys become logical relationships and primary keys become identifier fields; types map, and any
-type without an equivalent is reported, never dropped.
-
-The model behind it all: [docs/model.md](docs/model.md).
-
-## How it is built
-
-- **One model, one owner.** `schema-forge serve` holds the schema. Every change is an operation from the agent,
-  through the MCP, in one queue; it is stored and appears in every perspective at once.
-- **Stored in an embedded redb.** `schema-forge` carries its own database (redb: pure Rust, one file,
-  ACID): schemas, operations and history, versions, findings, standards, pipelines. Every change is
-  announced to the open perspectives as it commits. Nothing to install or run beside `schema-forge`
-  ([docs/store.md](docs/store.md)).
-- **Definitions on disk.** `schema-forge export` writes, and `schema-forge import` reads, the shareable form: one SQL file
-  per object under `<node>/<database>/<schema>/`, and `.schema-forge/` beside them (the model's ids, tags, areas and
-  patterns, the rules, custom perspectives, versions, migrations).
-- **Rust** for the engine; the perspectives in **TypeScript** in the browser, served by
-  the engine, in SuperX's purple theme; a desktop app through Tauri later ([docs/perspectives.md](docs/perspectives.md)).
-
-| Crate | Job |
-|---|---|
-| `schema-forge-core` | the schema model, operations, rules, versions |
-| `schema-forge-store` | the embedded redb: storing, loading and announcing changes |
-| `schema-forge-dialects` | reading and writing MySQL, PostgreSQL and Iceberg |
-| `schema-forge-mcp` | the MCP the agent works through |
-| `schema-forge` | the command: `schema-forge serve`, `schema-forge new`, `schema-forge import`, `schema-forge export` |
-
-## Built on
-
-We build the schema logic; everything else comes from established libraries, pure Rust in the engine.
-
-| Need | Library |
-|---|---|
-| SQL parsing | **sqlparser** (Apache DataFusion): MySQL and PostgreSQL dialects, pure Rust |
-| Iceberg | **iceberg** (Apache iceberg-rust, the official crate): table metadata, partition specs, sort orders, catalogs |
-| MCP | **rmcp**, the official Rust SDK, over streamable HTTP |
-| Server and live push | **tokio**, **axum**, **tower-http** (static files, server-sent events) |
-| Storage | **redb**, embedded, pure Rust |
-| Files and formats | **serde**, **serde_json**, **toml**, **schemars** (JSON Schema for `schema.json` and the MCP tools) |
-| Command line | **clap** |
-| View dependencies | **petgraph** (dependency order, cycle detection) |
-| Version hashes | **blake3** |
-| Git | **gix** (gitoxide), pure Rust: history, commits, tags |
-| Errors | **thiserror** |
-| Tests against real databases | **testcontainers** (PostgreSQL, MySQL) |
-| Deploy, later | **sqlx** (PostgreSQL, MySQL), **iceberg** catalogs |
-| The perspectives | **TypeScript**, **React**, **Mantine** (theme), **CodeMirror** (SQL); the link diagrams are plain SVG |
-| `render` for the agent | a headless browser (**chromiumoxide**) screenshots the real perspective |
-
-### Open decisions
-
-- **PostgreSQL parsing.** sqlparser (pure Rust) is the default; the round-trip tests decide whether it
-  reads real `pg_dump` files exactly. `pg_query` (PostgreSQL's own parser) is exact, but links C code, so it
-  is not used unless pure Rust cannot do the job.
-
-## Roadmap
-
-1. Import a PostgreSQL dump or an Iceberg Spark SQL folder and see it in the Tables, Categories, Table and Map
-   perspectives, Iceberg's own features drawn as they are; export SQL.
-2. Build with the agent: the MCP, the rules, every change live; MySQL dumps.
-3. Iceberg: tables, partitions, sort orders, properties, versioned views; conversion between targets;
-   CDC pipelines from MySQL or PostgreSQL through Debezium.
-4. Categories and custom perspectives; references to everything.
-5. Locked versions as definitions; migrations; git when present (commits, tags, merges); CI checks.
-6. **Deploy:** apply a version to a destination database or Iceberg catalog directly, or through the exported SQL file.
-
-## License
-
-Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT), at your option.
-Unless you state otherwise, any contribution you submit for inclusion is dual licensed as above, without any
-additional terms or conditions.
+MIT or Apache-2.0, at your choice.

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { schemaRules, schemas as fetchSchemas } from '../api'
 import type { Catalog, Rule } from '../model'
 import { LANES, holdsRule } from '../rules/parts'
-import { Brand } from './parts'
+import { Brand, count } from './parts'
 
 function checksOf(cat: Catalog, id: string, seen = new Set<string>()): Rule[] {
   if (seen.has(id)) return []
@@ -70,7 +70,7 @@ export function RulesCatalog({ catalog }: { catalog: Catalog | null }) {
                   <button key={p.id} type="button" aria-pressed={pack?.id === p.id} onClick={() => setPicked(p.id)}
                     className={`d-rc-pack${pack?.id === p.id ? ' d-rc-pack-on' : ''}`}>
                     <span style={{ fontWeight: 600 }}>{p.title}</span>
-                    <span className="d-xsmall d-soft">{catalog ? checksOf(catalog, p.id).length : 0} rules · {laneOf(p)}</span>
+                    <span className="d-xsmall d-soft">{count(catalog ? checksOf(catalog, p.id).length : 0, 'rule')} · {laneOf(p)}</span>
                   </button>
                 ))}
               </div>
@@ -85,8 +85,8 @@ export function RulesCatalog({ catalog }: { catalog: Catalog | null }) {
                 <h1 className="d-h1" style={{ fontSize: 32 }}>{pack.title}</h1>
                 <p className="d-soft" style={{ margin: 0, fontSize: 16 }}>{pack.why}</p>
                 <div className="d-row d-gap-8" style={{ marginTop: 6 }}>
-                  <span className="d-tag d-tag-lg">For {laneOf(pack)}</span>
-                  <span className="d-tag d-tag-lg">{rules.length} rules</span>
+                  <span className="d-tag d-tag-lg">{pack.lane === 'between' ? 'Between databases' : pack.lane === 'shared' ? 'For every database' : `For ${laneOf(pack)}`}</span>
+                  <span className="d-tag d-tag-lg">{count(rules.length, 'rule')}</span>
                   <span className="d-tag d-tag-lg d-mono">@rule:{pack.id}</span>
                 </div>
               </div>

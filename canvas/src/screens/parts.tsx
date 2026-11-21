@@ -42,3 +42,6 @@ export function ago(at?: number): string {
   const d = Math.round(s / 86400)
   return d === 1 ? 'yesterday' : `${d} days ago`
 }
+
+/// `1 rule`, `3 rules`.
+export const count = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`
