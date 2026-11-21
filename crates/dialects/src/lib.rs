@@ -174,26 +174,66 @@ pub fn view_relations(target: Target, definition: &str) -> Result<Vec<Vec<String
     if parsed.len() != 1 || !matches!(parsed[0], sqlparser::ast::Statement::Query(_)) {
         return Err("a view's definition is one query (SELECT …)".to_string());
     }
-    let fold = target == Target::Postgres;
-    let mut names: Vec<Vec<String>> = Vec::new();
-    let _ = sqlparser::ast::visit_relations(&parsed, |name| {
-        let parts: Vec<String> = name
-            .0
-            .iter()
-            .filter_map(|p| p.as_ident())
-            .map(|i| if fold && i.quote_style.is_none() { i.value.to_lowercase() } else { i.value.clone() })
-            .collect();
-        if !names.contains(&parts) {
-            names.push(parts);
+    Ok(relations_in(&parsed, target == Target::Postgres))
+}
+
+/// The tables and views `statements` read, each name as its parts (unquoted parts lower-cased when `fold`): what a
+/// `FROM` or a `JOIN` names, not a `WITH` query's own name, nor a table function (`generate_series(…)`). The one
+/// reader of view dependencies, for the importers and the operations alike.
+#[must_use]
+pub fn relations_in(statements: &[sqlparser::ast::Statement], fold: bool) -> Vec<Vec<String>> {
+    use sqlparser::ast::{Query, TableFactor, Visit, Visitor};
+    use std::ops::ControlFlow;
+    struct Relations {
+        fold: bool,
+        ctes: Vec<String>,
+        names: Vec<Vec<String>>,
+    }
+    impl Visitor for Relations {
+        type Break = ();
+        fn pre_visit_query(&mut self, query: &Query) -> ControlFlow<()> {
+            if let Some(with) = &query.with {
+                self.ctes.extend(with.cte_tables.iter().map(|c| c.alias.name.value.to_lowercase()));
+            }
+            ControlFlow::Continue(())
         }
-        std::ops::ControlFlow::<()>::Continue(())
-    });
-    Ok(names)
+        fn pre_visit_table_factor(&mut self, factor: &TableFactor) -> ControlFlow<()> {
+            if let TableFactor::Table { name, args: None, .. } = factor {
+                let parts: Vec<String> = name
+                    .0
+                    .iter()
+                    .filter_map(|p| p.as_ident())
+                    .map(
+                        |i| if self.fold && i.quote_style.is_none() { i.value.to_lowercase() } else { i.value.clone() },
+                    )
+                    .collect();
+                let cte = parts.len() == 1 && self.ctes.contains(&parts[0].to_lowercase());
+                if !cte && !self.names.contains(&parts) {
+                    self.names.push(parts);
+                }
+            }
+            ControlFlow::Continue(())
+        }
+    }
+    let mut v = Relations { fold, ctes: Vec::new(), names: Vec::new() };
+    for st in statements {
+        let _ = st.visit(&mut v);
+    }
+    v.names
 }
 
 #[cfg(test)]
 mod view_relations_tests {
     use super::*;
+
+    #[test]
+    fn a_with_query_and_a_table_function_are_not_read() {
+        let r = view_relations(
+            Target::Postgres,
+            "WITH recent AS (SELECT * FROM orders) SELECT * FROM recent, generate_series(1, 3) g",
+        );
+        assert_eq!(r, Ok(vec![vec!["orders".to_string()]]));
+    }
 
     #[test]
     fn a_view_reads_what_its_query_names() {
