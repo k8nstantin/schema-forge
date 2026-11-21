@@ -235,10 +235,11 @@ async fn change(
     Path(name): Path<String>,
     axum::Json(c): axum::Json<ByHand>,
 ) -> Response {
-    let target = match store.model(&name) {
-        Ok(m) => m.target,
+    let model = match store.model(&name) {
+        Ok(m) => m,
         Err(e) => return store_failed(e),
     };
+    let target = model.target;
     let ops = match c
         .operations
         .into_iter()
@@ -249,6 +250,10 @@ async fn change(
         Ok(ops) => ops,
         Err(m) => return failed(StatusCode::BAD_REQUEST, m),
     };
+    // Your changes are held to the same as the agent's: a view's query never left reading a name that is gone.
+    if let Err(m) = schema_forge_mcp::views_still_read(&model, &ops, c.confirm_destructive) {
+        return failed(StatusCode::CONFLICT, format!("refused: {m}"));
+    }
     match store.change(&name, &ops, c.confirm_destructive, BY) {
         Ok(ch) => axum::Json(serde_json::json!({
             "sequence": ch.operation.sequence,

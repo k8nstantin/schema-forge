@@ -120,11 +120,7 @@ impl Reader {
             else {
                 continue;
             };
-            let mut names: Vec<Vec<String>> = Vec::new();
-            let _ = sqlparser::ast::visit_relations(&parsed, |name| {
-                names.push(name.0.iter().filter_map(|p| p.as_ident()).map(|i| i.value.clone()).collect());
-                std::ops::ControlFlow::<()>::Continue(())
-            });
+            let names = crate::relations_in(&parsed, false);
             let mut reads = Vec::new();
             for n in names {
                 let id = match self.relations.get(&n) {
