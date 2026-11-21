@@ -93,9 +93,9 @@ fn store_failed(e: schema_forge_store::Error) -> Response {
             (StatusCode::CONFLICT, axum::Json(serde_json::json!({ "error": message, "kind": "hard", "rules": rules })))
                 .into_response()
         }
-        schema_forge_store::Error::Rule(_) | schema_forge_store::Error::Refused(_) => {
-            failed(StatusCode::BAD_REQUEST, e)
-        }
+        schema_forge_store::Error::Rule(_)
+        | schema_forge_store::Error::Refused(_)
+        | schema_forge_store::Error::TurnClosed(_) => failed(StatusCode::BAD_REQUEST, e),
         e => failed(StatusCode::INTERNAL_SERVER_ERROR, e),
     }
 }
@@ -247,7 +247,14 @@ async fn change(
     Path(name): Path<String>,
     axum::Json(c): axum::Json<ByHand>,
 ) -> Response {
-    match schema_forge_mcp::change_from_json(&store, &name, c.operations, c.confirm_destructive, BY, None) {
+    match schema_forge_mcp::change_from_json(
+        &store,
+        &name,
+        c.operations,
+        c.confirm_destructive,
+        BY,
+        schema_forge_store::TurnTo::None,
+    ) {
         Ok(ch) => axum::Json(serde_json::json!({
             "sequence": ch.operation.sequence,
             "summaries": ch.summaries,
@@ -260,26 +267,19 @@ async fn change(
 
 /// The schema's turns, newest first, each with what its changes did.
 async fn turns(State(store): State<Arc<Store>>, Path(name): Path<String>) -> Response {
-    let read = || -> schema_forge_store::Result<serde_json::Value> {
-        let log = store.operations(&name)?;
-        let out: Vec<serde_json::Value> = store
-            .turns(&name)?
-            .into_iter()
-            .rev()
-            .map(|t| {
-                let changes: Vec<serde_json::Value> = t
-                    .changes
-                    .iter()
-                    .filter_map(|s| log.iter().find(|o| o.sequence == *s))
-                    .map(|o| serde_json::json!({ "sequence": o.sequence, "summaries": o.change["summaries"] }))
-                    .collect();
-                serde_json::json!({ "turn": t, "changes": changes })
-            })
-            .collect();
-        Ok(serde_json::Value::Array(out))
-    };
-    match read() {
-        Ok(v) => axum::Json(v).into_response(),
+    match store.turns_with_changes(&name) {
+        Ok(all) => axum::Json(
+            all.into_iter()
+                .map(|(t, live)| {
+                    let changes: Vec<serde_json::Value> = live
+                        .iter()
+                        .map(|o| serde_json::json!({ "sequence": o.sequence, "summaries": o.change["summaries"] }))
+                        .collect();
+                    serde_json::json!({ "turn": t, "changes": changes })
+                })
+                .collect::<Vec<_>>(),
+        )
+        .into_response(),
         Err(e) => store_failed(e),
     }
 }

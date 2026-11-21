@@ -1,14 +1,23 @@
 // The agent's open turns: what it was asked, the changes it made for it, and your accept or reject of the whole.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { acceptTurn, changes, rejectTurn, turns as fetchTurns, type TurnItem } from '../api'
 
 export function Turns({ schema, onError }: { schema: string; onError: (message: string) => void }) {
   const [items, setItems] = useState<TurnItem[]>([])
   const [open, setOpen] = useState<number | null>(null)
-  const load = useCallback(() => { fetchTurns(schema).then(setItems, () => setItems([])) }, [schema])
+  const [rejecting, setRejecting] = useState<number | null>(null)
+  // Only the schema shown now: an answer for the one before, arriving late, is dropped.
+  const shown = useRef(schema)
+  shown.current = schema
+  const load = useCallback(() => {
+    const asked = schema
+    fetchTurns(asked).then((t) => { if (shown.current === asked) setItems(t) }, () => { if (shown.current === asked) setItems([]) })
+  }, [schema])
   useEffect(() => {
+    setItems([])
+    setRejecting(null)
     load()
     return changes((c) => { if (c.schema === schema && /change|undo|turn/.test(c.kind)) load() })
   }, [schema, load])
@@ -26,7 +35,15 @@ export function Turns({ schema, onError }: { schema: string; onError: (message: 
           </button>
           <span className="sf-row-gap">
             <button type="button" className="sf-chip sf-on" onClick={() => act(acceptTurn(schema, turn.id))}>Accept</button>
-            <button type="button" className="sf-chip sf-danger-chip" onClick={() => act(rejectTurn(schema, turn.id))}>Reject</button>
+            {rejecting === turn.id ? (
+              <>
+                <span className="sf-small">Take back all {done.length} {done.length === 1 ? 'change' : 'changes'}?</span>
+                <button type="button" className="sf-chip sf-danger-chip" onClick={() => { setRejecting(null); act(rejectTurn(schema, turn.id)) }}>Yes, reject the turn</button>
+                <button type="button" className="sf-chip" onClick={() => setRejecting(null)}>Keep it</button>
+              </>
+            ) : (
+              <button type="button" className="sf-chip sf-danger-chip" onClick={() => setRejecting(turn.id)}>Reject</button>
+            )}
           </span>
           {open === turn.id && (
             <ol className="sf-turn-list">

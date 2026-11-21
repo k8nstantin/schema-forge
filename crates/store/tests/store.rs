@@ -545,3 +545,80 @@ fn changes_at_the_same_time_never_overwrite_each_other_and_undo_never_breaks_the
     assert!(matches!(store.undo("lake", "you"), Err(Error::Refused(_))), "the relationship needs orders");
     assert_eq!(store.model("lake").expect("model").tables.len(), 2, "nothing was undone");
 }
+
+#[test]
+fn a_turn_opens_only_when_its_change_lands_and_a_reject_never_breaks_the_schema() {
+    use schema_forge_core::DataType;
+    use schema_forge_core::ops::{NewColumn, Op};
+    use schema_forge_store::TurnTo;
+    let dir = tempfile::tempdir().expect("dir");
+    let store = Store::open(&dir.path().join("store.redb")).expect("open");
+    store.create_schema("lake", Target::Postgres).expect("create");
+    let col = |name: &str| NewColumn {
+        name: name.into(),
+        data_type: DataType::named("bigint"),
+        nullable: false,
+        default: None,
+        comment: None,
+    };
+    let table = |name: &str| Op::AddTable {
+        namespace: "public".into(),
+        name: name.into(),
+        comment: None,
+        columns: vec![col("id"), col("ref")],
+        primary_key: vec!["id".into()],
+    };
+    store
+        .change(
+            "lake",
+            &[Op::AddNamespace { name: "public".into(), parent: None, comment: None }, table("orders")],
+            false,
+            "you",
+        )
+        .expect("base");
+    // Refused (a drop without a yes): no turn is left behind.
+    let refused = store.change_to(
+        "lake",
+        &[Op::DropTable { table: "orders".into() }],
+        false,
+        "agent",
+        TurnTo::New("drop it".into()),
+    );
+    assert!(refused.is_err());
+    assert!(store.turns("lake").expect("turns").is_empty(), "no empty turn");
+    let made =
+        store.change_to("lake", &[table("items")], false, "agent", TurnTo::New("add items".into())).expect("lands");
+    let n = made.turn.expect("a turn");
+    assert_eq!(store.turns("lake").expect("turns").len(), 1);
+    // A link onto items made by hand, outside the turn: rejecting the turn would leave it dangling.
+    store
+        .change(
+            "lake",
+            &[Op::Relate {
+                from: "orders".into(),
+                columns: vec!["ref".into()],
+                to: "items".into(),
+                to_columns: vec!["id".into()],
+                name: None,
+            }],
+            false,
+            "you",
+        )
+        .expect("related");
+    assert!(matches!(store.reject_turn("lake", n, "you"), Err(Error::Refused(_))), "the relationship needs items");
+    assert_eq!(store.model("lake").expect("model").tables.len(), 2, "nothing was taken back");
+    // Undone one at a time, a change leaves the turn's list.
+    let second = store
+        .change_to(
+            "lake",
+            &[Op::SetTableComment { table: "items".into(), comment: Some("x".into()) }],
+            false,
+            "agent",
+            TurnTo::Open(n),
+        )
+        .expect("second");
+    assert_eq!(second.turn, Some(n));
+    store.undo("lake", "you").expect("undo the comment");
+    let listed = store.turns_with_changes("lake").expect("listed");
+    assert_eq!(listed[0].1.len(), 1, "only the live change is listed");
+}
