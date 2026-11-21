@@ -363,17 +363,26 @@ pub(super) fn run(id: &str, cx: &Context<'_>, table: &Table) -> Outcome {
             {
                 o.look();
                 let mine = cols(ix);
+                let place = |id: &Id| table.indexes.iter().position(|x| &x.id == id).unwrap_or(0);
+                // Another index (or the key) covers this one when it reads the same way (same method) and starts
+                // with its columns. A unique index is covered only by one that enforces the same uniqueness: the
+                // same columns, unique too; of two alike, the later one is the repeat.
                 let covered_by = table
                     .indexes
                     .iter()
-                    .filter(|other| other.id != ix.id && other.predicate.is_none())
-                    .map(|other| (other.name.clone(), cols(other)))
-                    .chain(pk.clone().map(|k| ("the primary key".to_string(), k)))
-                    .find(|(_, other)| {
-                        other.len() >= mine.len()
-                            && other[..mine.len()] == mine[..]
-                            && (other.len() > mine.len() || !ix.unique)
-                    });
+                    .filter(|other| other.id != ix.id && other.predicate.is_none() && other.method == ix.method)
+                    .map(|other| (other.name.clone(), cols(other), other.unique, place(&other.id) < place(&ix.id)))
+                    .chain(
+                        pk.clone()
+                            .filter(|_| ix.method.is_none())
+                            .map(|k| ("the primary key".to_string(), k, true, true)),
+                    )
+                    .find(|(_, other, unique, earlier)| {
+                        let starts = other.len() >= mine.len() && other[..mine.len()] == mine[..];
+                        let same = other.len() == mine.len();
+                        starts && if ix.unique { same && *unique && *earlier } else { !same || *unique || *earlier }
+                    })
+                    .map(|(name, other, ..)| (name, other));
                 if let Some((by, _)) = covered_by {
                     o.table(format!("index `{}` on `{}` repeats the start of {by}", ix.name, table.name));
                 }
