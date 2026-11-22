@@ -120,6 +120,12 @@ A schema is designed for one version and is offered exactly that version's featu
 version is an operation the engine checks. Iceberg format 4 is a new version in the Iceberg plugin and the features
 it brings, nothing else.
 
+**One crate per database, never one per version.** Versions of a database share nearly everything (types, ids, the
+reader, the writer), so they live in its crate, each feature marked with the version it came in. A crate per version
+would hold everything once per version, and every fix would be made once per version. A version that shares nothing
+with the ones before it gets a module of its own in the crate (`versions/v4/`); only a different database is a
+different crate. The architecture check fails the build when two crates say the same database.
+
 ### Operations
 
 The shared operations are the skeleton's: add, rename, move, drop and comment namespaces, objects and columns; set a
