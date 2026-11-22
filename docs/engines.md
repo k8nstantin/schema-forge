@@ -173,23 +173,24 @@ Each piece of work is one issue, one branch and one pull request, in the milesto
 [Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7). An engine is one piece of work, with whatever
 it needs from the interface.
 
-**Done (5):** the foundation (the prototype tagged and cleared, the architecture checked by CI); the model; the engine
+**Done (6):** the foundation (the prototype tagged and cleared, the architecture checked by CI); the model; the engine
 interface with its registry and conformance kit; the base every engine fills (the section layout, kinds and options,
-the Arrow mapping); routines, triggers and events in the layout.
+the Arrow mapping); routines, triggers and events in the layout; **the MySQL engine**, whole
+([engines/mysql](../engines/mysql/README.md)): dumps, hand-written DDL and the live database (the interface gained
+`Live`), every kind of object and clause, written back in a form that loads into MySQL 8.0, 8.4, 9.7 and 26.10.
 
-**To build (11), in order:**
+**To build (10), in order:**
 
-1. **The MySQL engine**, whole: dumps and the live database (the interface gains `Live`), every object and clause.
-2. **The PostgreSQL engine**, whole, with the add-ons it ships (PostGIS, pgvector, citext, hstore).
-3. **The Iceberg engine**, whole: Spark SQL, a warehouse of `metadata.json`, and REST catalogs.
-4. **The DataFusion layer**: a schema as a DataFusion catalog, views planned, lineage, compatibility through Arrow.
-5. **The store** on the new model: schemas, versions, turns, undo, history.
-6. **The operations**: the skeleton's and each engine's, checked against what the agent saw.
-7. **The rules**: the machinery shared, each engine's rules its own.
-8. **The server, the MCP and the command line**, with the registry crate.
-9. **Connections in the app**: profiles, secrets, the Connections page, testing ([connections.md](connections.md)).
-10. **The canvas**, built from the agreed boards on the engines; then schemas imported and checked in the browser.
-11. **The guide to writing an engine and an add-on**, finished, with template crates.
+1. **The PostgreSQL engine**, whole, with the add-ons it ships (PostGIS, pgvector, citext, hstore).
+2. **The Iceberg engine**, whole: Spark SQL, a warehouse of `metadata.json`, and REST catalogs.
+3. **The DataFusion layer**: a schema as a DataFusion catalog, views planned, lineage, compatibility through Arrow.
+4. **The store** on the new model: schemas, versions, turns, undo, history.
+5. **The operations**: the skeleton's and each engine's, checked against what the agent saw.
+6. **The rules**: the machinery shared, each engine's rules its own.
+7. **The server, the MCP and the command line**, with the registry crate.
+8. **Connections in the app**: profiles, secrets, the Connections page, testing ([connections.md](connections.md)).
+9. **The canvas**, built from the agreed boards on the engines; then schemas imported and checked in the browser.
+10. **The guide to writing an engine and an add-on**, finished, with template crates.
 
 After them: schema management (drift, migrations planned and checked, versions in git), CDC pipelines, consistency,
 deploy, branches and merges; BigQuery, kept for developers outside the core to prove the guide.

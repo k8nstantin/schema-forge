@@ -147,13 +147,42 @@ on DataFusion or the rest of Arrow.
 - **`reads()`**: what it reads, for people ("schema-only dumps").
 - **`recognises(input)`**: whether an input is yours, by what it says (a header, a folder's layout), never by its
   name. When no engine or more than one recognises an input, the person is asked which engine it is for.
-- **`read(input)`**: the schema, and a `Report` that accounts for everything read: `read = modelled + kept + data`.
-  What the model does not describe is **kept exactly as written** (in your engine section), with **where it was**,
-  and written back in its place; data is left out and counted. Spacing between units (blank lines) is not content;
-  say what your unit is (`statements`, `non-blank lines`, `files`). Something not understood is kept and listed, never an error: an error is only
-  for an input that cannot be read at all.
+- **`read(input)`**: the schema, and a `Report` that accounts for everything read:
+  `read = modelled + kept + data + machinery`. What the model does not describe is **kept exactly as written** (in
+  your engine section), with **where it was**, and written back in its place; data is left out and counted; so is what
+  a dump's own format does around the schema (saving and restoring settings, dropping before making, placeholders).
+  Spacing between units (blank lines) is not content; say what your unit is (`statements`, `non-blank lines`,
+  `files`). Something not understood is kept and listed, never an error: an error is only for an input that cannot be
+  read at all. A credential (a password in a `CREATE USER`) is never kept: keep the statement without it, or leave it
+  out and count it.
 
-## 7. Writing, queries and checks
+What the first engine learned, which yours will meet too:
+
+- The layout's types are non-exhaustive: make each from its default and set its fields (the MySQL engine's `with!`
+  macro does it in one expression), so a field added to the layout later breaks nothing.
+- Store options in the order of their keys, so a schema is the same file however its SQL ordered the clauses; and
+  remove a key with `shift_remove`, which keeps the order of the rest.
+- An object made again under the same name (a dump's placeholder view, `CREATE OR REPLACE`) keeps its id.
+- Resolve references once everything is read: a dump writes a table before the tables its foreign keys name.
+- Prove the writer against the database itself: load what it writes into a real server, dump it again with the
+  database's own tool, and read that dump as the same schema (`engines/mysql/tests/samples/shop/roundtrip.sh`).
+
+## 7. Reading the live database
+
+`Live` reads a schema from a running database (see [connections.md](connections.md)):
+
+- **`fields()`**: what a connection needs, as data (`Field::new(key, label, kind, help)`, `.required()`,
+  `.default(…)`), at most one of them the secret. The Connections page and the agent's tools are built from them.
+- **`test(profile, secret)`**: the five steps, in order, each passed, warned, failed or skipped with what happened:
+  reach, secure, sign in, version, rights. Stop at the first that fails and skip the rest; a warning (TLS not
+  checked, an account that can change things) lets the rest run.
+- **`read(profile, secret, which)`**: send only statements that read, and read what the database says through the
+  same reader as its files, so a schema read live and one read from a dump of the same database are the same model.
+
+The secret comes as a `Secret`, which never prints; never log it, never put it in an error, never store it. Test the
+live part against the real database in containers, each version you support (`engines/mysql/tests/live.rs`).
+
+## 8. Writing, queries and checks
 
 - **`Write`**: one object's definition, and the whole schema, as your SQL. What your reader keeps, your writer writes
   back. Writing returns an error rather than drop anything: a section that does not read is an error, never an empty
@@ -163,7 +192,7 @@ on DataFusion or the rest of Arrow.
 
 Each is optional: an engine without a writer simply cannot export yet.
 
-## 8. Register it
+## 9. Register it
 
 Add one line to the registry crate:
 
@@ -172,7 +201,7 @@ Registry::new()
     .with(schema_forge_yourdb::YourDb)
 ```
 
-## 9. Pass the conformance kit
+## 10. Pass the conformance kit
 
 Give your crate sample files (`tests/samples/`) and one test:
 
@@ -207,11 +236,12 @@ not conform. A part your engine does not have is not checked.
 The kit's own tests break the `example` engine on purpose, one way each, to prove it finds each mistake:
 [`crates/engine/tests/interface.rs`](../crates/engine/tests/interface.rs).
 
-## 10. Let people add onto your engine
+## 11. Let people add onto your engine
 
 Give your engine an add-on trait, so people extend it without forking it: a database extension's types, statements,
 kept statements and later rules, each from an add-on crate registered with one line (`YourDb::new().with(Extra)`).
 Build your engine's tables (types, statement handlers, kept kinds) from your built-ins and its add-ons, never as fixed
 lists. Write the extensions you ship support for as add-ons themselves, using only what your crate makes public: they
-are your add-on authors' examples. The PostgreSQL engine's `AddOn` trait and its `addons/` (PostGIS, pgvector, citext,
-hstore) are the worked example.
+are your add-on authors' examples. The MySQL engine's `AddOn` trait and its test of a compatible system's types
+(`engines/mysql/tests/addon.rs`) are the worked example; the PostgreSQL engine's add-ons (PostGIS, pgvector, citext,
+hstore) will be the next.
