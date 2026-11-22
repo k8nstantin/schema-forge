@@ -5,7 +5,7 @@
 //!
 //! ```
 //! use schema_forge_engine::options::{OptionKind, OptionSpec, Part};
-//! const FILLFACTOR: OptionSpec = OptionSpec::new(Part::Object, "fillfactor", OptionKind::Number, "How full each page is filled, in percent")
+//! const FILLFACTOR: OptionSpec = OptionSpec::new(Part::Object, "fillfactor", OptionKind::Integer, "How full each page is filled, in percent")
 //!     .for_kinds(&["table"]);
 //! assert_eq!(FILLFACTOR.key, "fillfactor");
 //! ```
@@ -32,7 +32,20 @@ pub enum Part {
     Domain,
     Field,
     Identity,
+    Generated,
     Link,
+    Deferrable,
+    OrderField,
+    PartitionOf,
+    Kept,
+}
+
+impl Part {
+    /// Whether this part belongs to an object, so an option on it may be for some kinds of object only.
+    #[must_use]
+    pub const fn within_object(self) -> bool {
+        !matches!(self, Self::Schema | Self::Namespace | Self::Link | Self::Deferrable | Self::Kept)
+    }
 }
 
 /// The kind of value an option holds.
@@ -42,7 +55,9 @@ pub enum OptionKind {
     /// True or false.
     Flag,
     /// A whole number.
-    Number,
+    Integer,
+    /// A number with a fraction (a false-positive rate, a ratio).
+    Decimal,
     /// Text.
     Text,
     /// One of these words.
@@ -95,7 +110,8 @@ impl OptionSpec {
     pub fn accepts(&self, value: &serde_json::Value) -> bool {
         match self.kind {
             OptionKind::Flag => value.is_boolean(),
-            OptionKind::Number => value.is_i64() || value.is_u64(),
+            OptionKind::Integer => value.is_i64() || value.is_u64(),
+            OptionKind::Decimal => value.is_number(),
             OptionKind::Text => value.is_string(),
             OptionKind::OneOf(words) => value.as_str().is_some_and(|v| words.contains(&v)),
             OptionKind::Json => true,

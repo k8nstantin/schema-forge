@@ -11,13 +11,14 @@
 //! }
 //! ```
 //!
-//! It checks the engine's identity and versions; every type (its example reads back as itself, exactly, in the
-//! versions that have it, and is refused as not in the version by the others); and every sample: recognised, read
-//! with a report that adds up, a sound schema of this engine at one of its versions, every section in the section
-//! layout and every id a section names in the schema, every column's type its own,
-//! every object's definition written, and, for a sample in the form the engine writes, written back as the same text
-//! (blank lines aside) and read back to the same schema. Every part the engine has needs samples that exercise it; a
-//! part it does not have is not checked.
+//! It checks the engine's identity and versions; its declared kinds of object and options (no two declarations of one
+//! option overlapping); every type (its example reads back exactly as itself in the versions that have it, and is
+//! refused as not in the version by the others) and its Arrow mapping; and every sample: recognised, read with a report
+//! that adds up, a sound schema of this engine at one of its versions, written with a layout and a storage version this
+//! build reads, every section in the layout, every object of a declared kind using only its kind's slots, every id a
+//! section names in the schema, every option declared, every column's type its own and mapped to Arrow, every object
+//! with a definition, and, for a sample in the form the engine writes, written back as the same text (blank lines
+//! aside) and read back to the same schema. Every part the engine has needs samples that exercise it.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -88,6 +89,7 @@ impl<'a> QuerySample<'a> {
 pub fn check(engine: &dyn Engine, samples: &Samples<'_>) -> Vec<String> {
     let mut out = Vec::new();
     identity(engine, &mut out);
+    declarations(engine, &mut out);
     types(engine, &mut out);
     portable(engine, &mut out);
     match (engine.read(), samples.files.is_empty()) {
@@ -148,20 +150,6 @@ pub fn assert_conforms(engine: &dyn Engine, samples: &Samples<'_>) {
 }
 
 fn identity(engine: &dyn Engine, out: &mut Vec<String>) {
-    let mut seen_options = HashSet::new();
-    for o in engine.options() {
-        if !seen_options.insert((o.part, o.key, o.kinds)) {
-            out.push(format!("the option `{}` on {:?} is declared twice", o.key, o.part));
-        }
-        if o.meaning.trim().is_empty() {
-            out.push(format!("the option `{}` says nothing about what it means", o.key));
-        }
-        for end in [o.available.since, o.available.until].into_iter().flatten() {
-            if !engine.versions().iter().any(|v| v.id == end) {
-                out.push(format!("the option `{}` names the version `{end}`, which is not one of its versions", o.key));
-            }
-        }
-    }
     let id = engine.id();
     if id.is_empty() || !id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_') {
         out.push(format!("its id `{id}` is not lowercase letters, digits and `_`"));
@@ -184,6 +172,63 @@ fn identity(engine: &dyn Engine, out: &mut Vec<String>) {
     }
     if !versions.iter().any(|v| v.id == engine.default_version()) {
         out.push(format!("its default version `{}` is not one of its versions", engine.default_version()));
+    }
+}
+
+/// Its kinds of object and its options: named, in its versions, and no two declarations of one option overlapping.
+fn declarations(engine: &dyn Engine, out: &mut Vec<String>) {
+    use crate::Availability;
+    let versions = engine.versions();
+    let unknown =
+        |a: &Availability| [a.since, a.until].into_iter().flatten().find(|v| !versions.iter().any(|x| x.id == *v));
+    let mut kinds = HashSet::new();
+    for k in engine.kinds() {
+        if !kinds.insert(k.id) {
+            out.push(format!("the kind `{}` is declared twice", k.id));
+        }
+        if k.id.trim().is_empty() || k.name.trim().is_empty() {
+            out.push(format!("a kind without an id or a name (`{}`, `{}`)", k.id, k.name));
+        }
+        if let Some(v) = unknown(&k.available) {
+            out.push(format!("the kind `{}` names the version `{v}`, which is not one of its versions", k.id));
+        }
+    }
+    if engine.read().is_some() && engine.kinds().is_empty() {
+        out.push("it reads schemas, but declares no kinds of object".to_string());
+    }
+    let opts = engine.options();
+    for (n, o) in opts.iter().enumerate() {
+        if o.meaning.trim().is_empty() {
+            out.push(format!("the option `{}` says nothing about what it means", o.key));
+        }
+        if let Some(v) = unknown(&o.available) {
+            out.push(format!("the option `{}` names the version `{v}`, which is not one of its versions", o.key));
+        }
+        if !o.kinds.is_empty() && !o.part.within_object() {
+            out.push(format!(
+                "the option `{}` on {:?} names kinds of object, which that part does not have",
+                o.key, o.part
+            ));
+        }
+        for k in o.kinds {
+            if !kinds.contains(k) {
+                out.push(format!("the option `{}` is for the kind `{k}`, which is not declared", o.key));
+            }
+        }
+        // Two declarations of one option overlap when some kind and some version have both.
+        for other in &opts[n + 1..] {
+            let kinds_meet =
+                o.kinds.is_empty() || other.kinds.is_empty() || o.kinds.iter().any(|k| other.kinds.contains(k));
+            let versions_meet = versions
+                .iter()
+                .any(|v| o.available.in_version(v.id, versions) && other.available.in_version(v.id, versions));
+            if o.part == other.part && o.key == other.key && kinds_meet && versions_meet {
+                out.push(format!(
+                    "the option `{}` on {:?} is declared twice for the same kinds and versions",
+                    o.key, o.part
+                ));
+            }
+        }
     }
 }
 
@@ -311,17 +356,28 @@ fn sample_conforms(engine: &dyn Engine, read: &dyn Read, sample: &Sample<'_>, ou
         out.push(format!("{at}: it reads as a schema for `{}`", schema.engine.id));
     }
     let version = schema.engine.version.as_str();
+    if let Ok(section) = crate::sections::read::<crate::sections::SchemaSection>(&schema.engine_section)
+        && section.format > engine.format()
+    {
+        out.push(format!(
+            "{at}: it is stored in the engine's format {}, later than the {} this engine reads",
+            section.format,
+            engine.format()
+        ));
+    }
     if !engine.versions().iter().any(|v| v.id == version) {
         out.push(format!("{at}: it reads at the version `{version}`, which is not one of the engine's"));
     }
     for p in schema_forge_model::check(schema) {
         out.push(format!("{at}: the model: {p}"));
     }
-    for f in layout(schema) {
-        out.push(format!("{at}: {f}"));
-    }
-    for f in declared(engine, schema) {
-        out.push(format!("{at}: {f}"));
+    match crate::sections::layout_of(&schema.engine_section) {
+        Ok(_) => {
+            for f in walk(engine, schema) {
+                out.push(format!("{at}: {f}"));
+            }
+        }
+        Err(e) => out.push(format!("{at}: {e}")),
     }
     if let Some(checks) = engine.checks() {
         for p in checks.check(schema) {
@@ -341,16 +397,28 @@ fn sample_conforms(engine: &dyn Engine, read: &dyn Read, sample: &Sample<'_>, ou
                 )),
                 Ok(_) => {}
             }
+            if let Some(p) = engine.portable() {
+                match p.arrow_type(&c.data_type, version) {
+                    Ok(m) if m.fidelity != crate::portable::Fidelity::Exact && m.lost.is_none() => out.push(format!(
+                        "{at}: `{}.{}` maps to Arrow `{}` with something lost, without saying what",
+                        o.name, c.name, m.to
+                    )),
+                    Ok(_) => {}
+                    Err(e) => out.push(format!("{at}: `{}.{}` does not map to Arrow: {e}", o.name, c.name)),
+                }
+            }
         }
     }
     if let Some(write) = engine.write() {
         for o in &schema.objects {
-            if write.definition(schema, &o.id).is_none_or(|d| d.trim().is_empty()) {
-                out.push(format!("{at}: `{}` has no definition", o.name));
+            match write.definition(schema, &o.id) {
+                Ok(Some(d)) if !d.trim().is_empty() => {}
+                Ok(_) => out.push(format!("{at}: `{}` has no definition", o.name)),
+                Err(e) => out.push(format!("{at}: `{}` cannot be written: {e}", o.name)),
             }
         }
         let nowhere = Ids::of(schema).next(Kind::Object, &["not", "in", "the", "schema"]);
-        if write.definition(schema, &nowhere).is_some() {
+        if !matches!(write.definition(schema, &nowhere), Ok(None)) {
             out.push(format!("{at}: an object that is not in the schema has a definition"));
         }
         if sample.written_back {
@@ -369,7 +437,10 @@ fn written_back(
     out: &mut Vec<String>,
 ) {
     let at = sample.display();
-    let text = write.schema(&first.schema);
+    let text = match write.schema(&first.schema) {
+        Ok(t) => t,
+        Err(e) => return out.push(format!("{at}: it cannot be written: {e}")),
+    };
     match std::fs::read_to_string(sample) {
         Ok(original) => {
             let lines = |t: &str| {
@@ -402,7 +473,7 @@ fn written_back(
             a.lines().nth(line).unwrap_or("(the end)").trim(),
             b.lines().nth(line).unwrap_or("(the end)").trim()
         ));
-    } else if write.schema(&again.schema) != text {
+    } else if write.schema(&again.schema).as_deref() != Ok(text.as_str()) {
         out.push(format!("{at}: the same schema is written two different ways"));
     }
 }
@@ -446,56 +517,182 @@ fn read_text(engine: &dyn Engine, read: &dyn Read, text: &str) -> Result<Importe
     }
 }
 
-/// Whether every section of `schema` follows the section layout, and every id a section names is there.
-fn layout(schema: &schema_forge_model::Schema) -> Vec<String> {
+/// Every section of `schema`, read once: in the layout, every object of a declared kind using only its kind's slots,
+/// every id a section names in the schema, nothing empty that must hold something, every option declared.
+fn walk(engine: &dyn Engine, schema: &schema_forge_model::Schema) -> Vec<String> {
+    use crate::kinds::Slot;
+    use crate::options::Part;
     use crate::sections::{
         ColumnSection, LinkSection, NamespaceSection, ObjectSection, SchemaSection, read as section,
     };
-    let mut out = Vec::new();
-    let mut bad = |part: &str, e: String| out.push(format!("the section of {part} does not follow the layout: {e}"));
+    let version = schema.engine.version.as_str();
     let ids: HashSet<&schema_forge_model::Id> = schema.ids().collect();
+    let mut out = Vec::new();
+    let off = |out: &mut Vec<String>, part: &str, e: String| {
+        out.push(format!("the section of {part} does not follow the layout: {e}"));
+    };
     match section::<SchemaSection>(&schema.engine_section) {
         Ok(s) => {
+            options(engine, version, Part::Schema, None, "the schema", &s.options, &mut out);
             for k in &s.kept {
                 if let Some(after) = &k.after
                     && !ids.contains(after)
                 {
-                    bad("the schema", format!("a kept {} goes after {after}, which is not in the schema", k.kind));
+                    out.push(format!("a kept {} goes after {after}, which is not in the schema", k.kind));
                 }
+                options(engine, version, Part::Kept, None, &format!("a kept {}", k.kind), &k.options, &mut out);
             }
         }
-        Err(e) => bad("the schema", e),
+        Err(e) => off(&mut out, "the schema", e),
     }
     for n in &schema.namespaces {
-        if let Err(e) = section::<NamespaceSection>(&n.engine) {
-            bad(&format!("namespace {}", n.id), e);
+        match section::<NamespaceSection>(&n.engine) {
+            Ok(s) => options(
+                engine,
+                version,
+                Part::Namespace,
+                None,
+                &format!("namespace `{}`", n.name),
+                &s.options,
+                &mut out,
+            ),
+            Err(e) => off(&mut out, &format!("namespace `{}`", n.name), e),
         }
     }
     for o in &schema.objects {
-        let part = format!("`{}`", o.name);
-        match section::<ObjectSection>(&o.engine) {
-            Ok(t) => {
-                for f in object_ids(schema, o, &t) {
-                    bad(&part, f);
+        let at = format!("`{}`", o.name);
+        let kind = engine.kinds().iter().find(|k| k.id == o.kind);
+        match kind {
+            None => out.push(format!("{at} is a `{}`, a kind the engine does not declare", o.kind)),
+            Some(k) if !k.available.in_version(version, engine.versions()) => {
+                out.push(format!("{at} is a `{}`, which version {version} does not have", o.kind));
+            }
+            Some(_) => {}
+        }
+        let t = match section::<ObjectSection>(&o.engine) {
+            Ok(t) => t,
+            Err(e) => {
+                off(&mut out, &at, e);
+                continue;
+            }
+        };
+        let used = [
+            (Slot::Keys, !t.keys.is_empty()),
+            (Slot::Checks, !t.checks.is_empty()),
+            (Slot::Indexes, !t.indexes.is_empty()),
+            (Slot::Partitioning, t.partitioning.is_some()),
+            (Slot::PartitionOf, t.partition_of.is_some()),
+            (Slot::Order, !t.order.is_empty()),
+            (Slot::Query, t.query.is_some()),
+            (Slot::Sequence, t.sequence.is_some()),
+            (Slot::Values, !t.values.is_empty()),
+            (Slot::Domain, t.domain.is_some()),
+            (Slot::Fields, !t.fields.is_empty()),
+        ];
+        if let Some(k) = kind {
+            for (slot, filled) in used {
+                if filled && !k.uses(slot) {
+                    out.push(format!("{at} is a `{}`, which does not use the slot {slot:?}", o.kind));
                 }
             }
-            Err(e) => bad(&part, e),
         }
+        for f in object_ids(schema, o, &t) {
+            out.push(format!("{at}: {f}"));
+        }
+        let k = Some(o.kind.as_str());
+        let mut opt = |part: Part, options_of: &crate::sections::Options| {
+            options(engine, version, part, k, &at, options_of, &mut out);
+        };
+        opt(Part::Object, &t.options);
+        for key in t.keys.primary.iter().chain(&t.keys.unique) {
+            opt(Part::Key, &key.options);
+        }
+        t.checks.iter().for_each(|c| opt(Part::Check, &c.options));
+        for i in &t.indexes {
+            opt(Part::Index, &i.options);
+            i.parts.iter().for_each(|p| opt(Part::IndexPart, &p.options));
+        }
+        if let Some(p) = &t.partitioning {
+            opt(Part::Partitioning, &p.options);
+            p.by.iter().for_each(|f| opt(Part::PartField, &f.options));
+            p.partitions.iter().for_each(|x| opt(Part::Partition, &x.options));
+        }
+        if let Some(p) = &t.partition_of {
+            opt(Part::PartitionOf, &p.options);
+        }
+        t.order.iter().for_each(|f| opt(Part::OrderField, &f.options));
+        if let Some(q) = &t.sequence {
+            opt(Part::Sequence, &q.options);
+        }
+        if let Some(d) = &t.domain {
+            opt(Part::Domain, &d.options);
+        }
+        t.fields.iter().for_each(|f| opt(Part::Field, &f.options));
         for c in &o.columns {
-            if let Err(e) = section::<ColumnSection>(&c.engine) {
-                bad(&format!("`{}.{}`", o.name, c.name), e);
+            let at = format!("`{}.{}`", o.name, c.name);
+            match section::<ColumnSection>(&c.engine) {
+                Ok(cs) => {
+                    options(engine, version, Part::Column, k, &at, &cs.options, &mut out);
+                    if let Some(i) = &cs.identity {
+                        options(engine, version, Part::Identity, k, &at, &i.options, &mut out);
+                    }
+                    if let Some(g) = &cs.generated {
+                        options(engine, version, Part::Generated, k, &at, &g.options, &mut out);
+                    }
+                }
+                Err(e) => off(&mut out, &at, e),
             }
         }
     }
     for l in &schema.links {
-        if let Err(e) = section::<LinkSection>(&l.engine) {
-            bad(&format!("link {}", l.id), e);
+        let at = format!("link {}", l.id);
+        match section::<LinkSection>(&l.engine) {
+            Ok(s) => {
+                options(engine, version, Part::Link, None, &at, &s.options, &mut out);
+                if let Some(d) = &s.deferrable {
+                    options(engine, version, Part::Deferrable, None, &at, &d.options, &mut out);
+                }
+            }
+            Err(e) => off(&mut out, &at, e),
         }
     }
     out
 }
 
-/// Every id an object's section names that is not where it should be.
+/// Every option in `held` that `engine` does not declare on `part` for `kind` in `version`, or whose value is not of
+/// its kind.
+fn options(
+    engine: &dyn Engine,
+    version: &str,
+    part: crate::options::Part,
+    kind: Option<&str>,
+    at: &str,
+    held: &crate::sections::Options,
+    out: &mut Vec<String>,
+) {
+    for (key, value) in held {
+        let declared: Vec<&crate::options::OptionSpec> = engine
+            .options()
+            .iter()
+            .filter(|o| {
+                o.part == part && o.key == key && (o.kinds.is_empty() || kind.is_some_and(|k| o.kinds.contains(&k)))
+            })
+            .collect();
+        match declared.iter().find(|o| o.available.in_version(version, engine.versions())) {
+            None if declared.is_empty() => {
+                out.push(format!("{at} holds the option `{key}`, which the engine does not declare there"));
+            }
+            None => out.push(format!("{at} holds `{key}`, which version {version} does not have")),
+            Some(o) if !o.accepts(value) => {
+                out.push(format!("{at} holds `{key}` = {value}, which is not a {:?}", o.kind));
+            }
+            Some(_) => {}
+        }
+    }
+}
+
+/// Every id an object's section names that is not where it should be, and every part that must hold something and
+/// is empty.
 fn object_ids(
     schema: &schema_forge_model::Schema,
     o: &schema_forge_model::Object,
@@ -520,9 +717,25 @@ fn object_ids(
         p.by.iter().filter_map(|f| f.column.as_ref()).for_each(|c| mine("partitioning", c));
     }
     t.order.iter().for_each(|f| mine("order", &f.column));
+    for k in t.keys.primary.iter().chain(&t.keys.unique) {
+        if k.columns.is_empty() {
+            out.push(format!("the key {} has no columns", k.name.as_deref().unwrap_or("(unnamed)")));
+        }
+    }
     for i in &t.indexes {
+        if i.parts.is_empty() {
+            out.push(format!("the index `{}` has no parts", i.name));
+        }
         if i.parts.iter().any(|p| p.column.is_some() == p.expression.is_some()) {
             out.push(format!("a part of the index `{}` is not one column or one expression", i.name));
+        }
+    }
+    if let Some(p) = &t.partitioning {
+        if p.by.is_empty() {
+            out.push("its partitioning is by nothing".to_string());
+        }
+        if p.by.iter().any(|f| f.column.is_some() == f.expression.is_some()) {
+            out.push("a field of its partitioning is not one column or one expression".to_string());
         }
     }
     if let Some(p) = &t.partition_of
@@ -538,88 +751,13 @@ fn object_ids(
     out
 }
 
-/// Every option the sections of `schema` hold that `engine` does not declare for that part and kind, or whose value
-/// is not of its kind, or that the schema's version does not have.
-fn declared(engine: &dyn Engine, schema: &schema_forge_model::Schema) -> Vec<String> {
-    use crate::options::Part;
-    use crate::sections::{
-        ColumnSection, LinkSection, NamespaceSection, ObjectSection, Options, SchemaSection, read as section,
-    };
-    let version = schema.engine.version.as_str();
-    let mut out = Vec::new();
-    let mut check = |part: Part, kind: Option<&str>, at: &str, options: &Options| {
-        for (key, value) in options {
-            let spec = engine.options().iter().find(|o| {
-                o.part == part && o.key == key && (o.kinds.is_empty() || kind.is_some_and(|k| o.kinds.contains(&k)))
-            });
-            match spec {
-                None => out.push(format!("{at} holds the option `{key}`, which the engine does not declare there")),
-                Some(o) if !o.accepts(value) => {
-                    out.push(format!("{at} holds `{key}` = {value}, which is not a {:?}", o.kind));
-                }
-                Some(o) if !o.available.in_version(version, engine.versions()) => {
-                    out.push(format!("{at} holds `{key}`, which version {version} does not have"));
-                }
-                Some(_) => {}
-            }
-        }
-    };
-    if let Ok(s) = section::<SchemaSection>(&schema.engine_section) {
-        check(Part::Schema, None, "the schema", &s.options);
-    }
-    for n in &schema.namespaces {
-        if let Ok(s) = section::<NamespaceSection>(&n.engine) {
-            check(Part::Namespace, None, &format!("namespace `{}`", n.name), &s.options);
-        }
-    }
-    for o in &schema.objects {
-        let kind = Some(o.kind.as_str());
-        let at = format!("`{}`", o.name);
-        if let Ok(t) = section::<ObjectSection>(&o.engine) {
-            check(Part::Object, kind, &at, &t.options);
-            for k in t.keys.primary.iter().chain(&t.keys.unique) {
-                check(Part::Key, kind, &at, &k.options);
-            }
-            t.checks.iter().for_each(|c| check(Part::Check, kind, &at, &c.options));
-            for i in &t.indexes {
-                check(Part::Index, kind, &at, &i.options);
-                i.parts.iter().for_each(|p| check(Part::IndexPart, kind, &at, &p.options));
-            }
-            if let Some(p) = &t.partitioning {
-                check(Part::Partitioning, kind, &at, &p.options);
-                p.by.iter().for_each(|f| check(Part::PartField, kind, &at, &f.options));
-                p.partitions.iter().for_each(|x| check(Part::Partition, kind, &at, &x.options));
-            }
-            if let Some(q) = &t.sequence {
-                check(Part::Sequence, kind, &at, &q.options);
-            }
-            if let Some(d) = &t.domain {
-                check(Part::Domain, kind, &at, &d.options);
-            }
-            t.fields.iter().for_each(|f| check(Part::Field, kind, &at, &f.options));
-        }
-        for c in &o.columns {
-            if let Ok(cs) = section::<ColumnSection>(&c.engine) {
-                let at = format!("`{}.{}`", o.name, c.name);
-                check(Part::Column, kind, &at, &cs.options);
-                if let Some(i) = &cs.identity {
-                    check(Part::Identity, kind, &at, &i.options);
-                }
-            }
-        }
-    }
-    for l in &schema.links {
-        if let Ok(s) = section::<LinkSection>(&l.engine) {
-            check(Part::Link, None, &format!("link {}", l.id), &s.options);
-        }
-    }
-    out
-}
-
-/// Every type's example maps to Arrow in every version that has it; an exact mapping comes back as the same type.
+/// Every type's example maps to Arrow in every version that has it; an exact mapping comes back as the same type, and
+/// one that is not says what it loses. Every engine maps its types: it is how it meets the others.
 fn portable(engine: &dyn Engine, out: &mut Vec<String>) {
     use crate::portable::Fidelity;
-    let Some(p) = engine.portable() else { return };
+    let Some(p) = engine.portable() else {
+        return out.push("it does not map its types to Arrow (`Engine::portable`)".to_string());
+    };
     for t in engine.types().catalog() {
         for v in engine.versions() {
             if !t.available.in_version(v.id, engine.versions()) {

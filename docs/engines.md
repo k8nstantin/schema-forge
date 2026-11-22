@@ -43,8 +43,13 @@ So that no engine grows a storage of its own, every engine's sections follow **o
 describe, exactly as written, with where it goes back) and `requires`. An engine fills the slots its database has and
 leaves the rest out. A slot the layout does not have is refused.
 
+Each engine also **declares its kinds of object** and the slots each uses (a table its keys and indexes, a view its
+query), so a view with partitioning or a table with a query is refused. The layout has a version; a schema written
+with a later one is refused whole by an older build, never read with something dropped.
+
 What belongs to one database alone has one home: each element's `options`. Each engine **declares its options as
-data** (`schema_forge_engine::options`): for each part, every key, its kind (a flag, a number, text, one of a list),
+data** (`schema_forge_engine::options`): for each part, every key, its kind (a flag, a whole number, a decimal, text,
+one of a list),
 what it means, and the versions that have it. That declaration is the engine's own schema; the conformance kit
 refuses an option it does not declare, and the canvas builds its option forms from it.
 

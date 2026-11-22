@@ -30,6 +30,31 @@ use serde::{Deserialize, Serialize};
 /// What belongs to one database alone, on the element it is about: the engine describes and checks it.
 pub type Options = serde_json::Map<String, serde_json::Value>;
 
+/// The version of this layout. A schema written with a later layout says so in its schema section, and a build that
+/// knows an earlier one refuses it whole ([`layout_of`]) instead of reading it with something dropped.
+pub const LAYOUT: u32 = 1;
+
+/// Whether this build can read the sections of a schema whose schema section is `section`.
+///
+/// # Errors
+/// When the schema was written with a later layout than this build knows.
+pub fn layout_of(section: &Section) -> Result<u32, String> {
+    let layout = match section.get("layout") {
+        None => LAYOUT,
+        Some(v) => v
+            .as_u64()
+            .and_then(|n| u32::try_from(n).ok())
+            .ok_or_else(|| format!("the section layout `{v}` is not a version"))?,
+    };
+    if layout > LAYOUT {
+        return Err(format!(
+            "this schema was written with section layout {layout}; this build of Schema Forge reads up to {LAYOUT}: \
+             open it with a newer one"
+        ));
+    }
+    Ok(layout)
+}
+
 /// Reads a part's section in the layout `T`; an empty section is `T`'s default.
 ///
 /// # Errors
@@ -66,11 +91,22 @@ fn is_zero(n: &u32) -> bool {
     *n == 0
 }
 
+const fn current_layout() -> u32 {
+    LAYOUT
+}
+
+fn is_current_layout(n: &u32) -> bool {
+    *n == LAYOUT
+}
+
 /// The schema as a whole.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct SchemaSection {
+    /// The version of this layout the schema was written with; [`LAYOUT`] when it says none.
+    #[serde(default = "current_layout", skip_serializing_if = "is_current_layout")]
+    pub layout: u32,
     /// The engine's own storage version: which version of the engine wrote the options in this schema, so a later
     /// engine reads what an earlier one wrote. Zero when the engine has never changed how it stores them.
     #[serde(default, skip_serializing_if = "is_zero")]
@@ -85,8 +121,14 @@ pub struct SchemaSection {
     pub options: Options,
 }
 
+impl Default for SchemaSection {
+    fn default() -> Self {
+        Self { layout: LAYOUT, format: 0, kept: Vec::new(), requires: Vec::new(), options: Options::new() }
+    }
+}
+
 /// Something read and kept exactly as written (a function, a trigger, a grant), and where it goes back.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct Kept {
@@ -96,6 +138,8 @@ pub struct Kept {
     /// The part it comes after when written: it goes right after that part's definition; `None` is the start.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub after: Option<Id>,
+    #[serde(default, skip_serializing_if = "Options::is_empty")]
+    pub options: Options,
 }
 
 /// A namespace.
@@ -297,6 +341,8 @@ pub struct Partition {
 pub struct PartitionOf {
     pub parent: Id,
     pub bounds: String,
+    #[serde(default, skip_serializing_if = "Options::is_empty")]
+    pub options: Options,
 }
 
 /// One field of the order rows are written in. Made with [`OrderField::new`].
@@ -311,20 +357,22 @@ pub struct OrderField {
     pub direction: Option<Direction>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nulls: Option<Nulls>,
+    #[serde(default, skip_serializing_if = "Options::is_empty")]
+    pub options: Options,
 }
 
 impl PartitionOf {
     #[must_use]
     pub fn new(parent: Id, bounds: impl Into<String>) -> Self {
-        Self { parent, bounds: bounds.into() }
+        Self { parent, bounds: bounds.into(), options: Options::new() }
     }
 }
 
 impl OrderField {
     /// By `column` as it is, ascending, nulls where the engine puts them.
     #[must_use]
-    pub const fn new(column: Id) -> Self {
-        Self { column, transform: None, direction: None, nulls: None }
+    pub fn new(column: Id) -> Self {
+        Self { column, transform: None, direction: None, nulls: None, options: Options::new() }
     }
 }
 
@@ -355,8 +403,8 @@ pub struct Sequence {
     pub options: Options,
 }
 
-/// A domain: a type narrowed by a default, a not null and checks.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+/// A domain: a type narrowed by a default, a not null and checks. By default it may hold null.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct Domain {
@@ -368,6 +416,12 @@ pub struct Domain {
     pub null: bool,
     #[serde(default, skip_serializing_if = "Options::is_empty")]
     pub options: Options,
+}
+
+impl Default for Domain {
+    fn default() -> Self {
+        Self { base: String::new(), default: None, null: true, options: Options::new() }
+    }
 }
 
 /// A field of a composite type.
@@ -409,6 +463,19 @@ pub struct Identity {
     /// Whether a value can never be given (`ALWAYS`), or only when none is (`BY DEFAULT`).
     #[serde(default, skip_serializing_if = "is_false")]
     pub always: bool,
+    /// How it numbers, as a sequence does; `None` is the engine's default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub increment: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache: Option<i64>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub cycle: bool,
     #[serde(default, skip_serializing_if = "Options::is_empty")]
     pub options: Options,
 }
@@ -423,6 +490,8 @@ pub struct Generated {
     /// Whether it is computed when written and stored, or computed when read.
     #[serde(default, skip_serializing_if = "is_false")]
     pub stored: bool,
+    #[serde(default, skip_serializing_if = "Options::is_empty")]
+    pub options: Options,
 }
 
 /// A link: how the engine holds it.
@@ -473,13 +542,15 @@ pub enum Action {
 }
 
 /// A link checked at the end of a transaction.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct Deferrable {
     /// Whether it is checked at the end of the transaction unless said otherwise.
     #[serde(default, skip_serializing_if = "is_false")]
     pub initially_deferred: bool,
+    #[serde(default, skip_serializing_if = "Options::is_empty")]
+    pub options: Options,
 }
 
 #[cfg(test)]
@@ -516,12 +587,11 @@ mod tests {
     fn a_slot_the_layout_does_not_have_is_refused() {
         let e = read::<ObjectSection>(&section(json!({ "storage_engine": "heap" }))).unwrap_err();
         assert!(e.contains("unknown field `storage_engine`"), "{e}");
-        let e = read::<ColumnSection>(&section(json!({ "identity": { "always": true, "start": 1 } }))).unwrap_err();
-        assert!(e.contains("unknown field `start`"), "what is the database's alone goes in options: {e}");
-        assert!(
-            read::<ColumnSection>(&section(json!({ "identity": { "always": true, "options": { "start": 1 } } })))
-                .is_ok()
-        );
+        let e = read::<ColumnSection>(&section(json!({ "identity": { "always": true, "seed": 1 } }))).unwrap_err();
+        assert!(e.contains("unknown field `seed`"), "what is the database's alone goes in options: {e}");
+        let c: ColumnSection =
+            read(&section(json!({ "identity": { "always": true, "start": 10, "increment": 5 } }))).expect("typed");
+        assert_eq!(c.identity.map(|i| (i.start, i.increment)), Some((Some(10), Some(5))), "numbered as a sequence is");
     }
 
     #[test]
@@ -534,5 +604,15 @@ mod tests {
         assert_eq!((not.enforced, not.on_delete), (false, Some(Action::SetNull)));
         let d: Domain = serde_json::from_value(json!({ "base": "numeric(18,2)" })).expect("a domain");
         assert!(d.null, "a domain may hold null unless it says not");
+        assert!(Domain::default().null, "built in code, the same");
+        assert_eq!(write(&SchemaSection::default()), Section::new(), "the current layout is not written out");
+    }
+
+    #[test]
+    fn a_schema_written_with_a_later_layout_is_refused_whole() {
+        assert_eq!(layout_of(&Section::new()), Ok(LAYOUT));
+        let later = section(json!({ "layout": LAYOUT + 1 }));
+        let e = layout_of(&later).unwrap_err();
+        assert!(e.contains(&format!("section layout {}", LAYOUT + 1)) && e.contains("open it with a newer one"), "{e}");
     }
 }

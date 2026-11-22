@@ -149,6 +149,35 @@ fn the_kit_finds_a_default_version_that_is_not_one() {
 }
 
 #[test]
+fn the_kit_finds_an_object_of_a_kind_the_engine_does_not_declare() {
+    let f = findings(Broken::UnknownKind);
+    assert!(has(&f, "`customers` is a `sheet`, a kind the engine does not declare"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_a_slot_its_kind_does_not_use() {
+    let f = findings(Broken::WrongSlot);
+    assert!(has(&f, "`customers` is a `table`, which does not use the slot Query"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_an_option_declared_twice_for_the_same_kinds_and_versions() {
+    let f = findings(Broken::OptionTwice);
+    assert!(has(&f, "the option `fast` on Object is declared twice for the same kinds and versions"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_an_engine_that_does_not_map_its_types_to_arrow() {
+    assert_eq!(findings(Broken::NoArrow), ["it does not map its types to Arrow (`Engine::portable`)"]);
+}
+
+#[test]
+fn the_kit_finds_a_storage_format_later_than_the_engine_reads() {
+    let f = findings(Broken::LaterFormat);
+    assert!(has(&f, "it is stored in the engine's format 2, later than the 1 this engine reads"), "{f:?}");
+}
+
+#[test]
 fn the_kit_finds_an_exact_arrow_mapping_that_does_not_come_back() {
     let f = findings(Broken::ArrowAstray);
     assert_eq!(f, ["`wide` maps to Arrow `LargeUtf8` exactly, but comes back as `text` in version `2`"]);
@@ -226,14 +255,14 @@ fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place
     assert_eq!((s.engine.id.as_str(), s.engine.version.as_str()), ("example", "2"));
     let write = e.write().expect("it writes");
     assert_eq!(
-        write.schema(s),
+        write.schema(s).expect("it writes"),
         "example 2\n-- the shop's tables\ntable sales customers\ncolumn id int not-null\ncolumn name text null\n\
          -- customers come from the web shop\ntable sales orders fast\ncolumn id int not-null\n\
          -- totals are in the shop's currency\ncolumn total decimal(10,2) null\ncolumn note wide null\n"
     );
     let orders = &s.objects[1];
     assert_eq!(
-        write.definition(s, &orders.id).as_deref(),
+        write.definition(s, &orders.id).expect("it writes").as_deref(),
         Some(
             "table sales orders fast\ncolumn id int not-null\ncolumn total decimal(10,2) null\ncolumn note wide null\n"
         )

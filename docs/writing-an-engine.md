@@ -56,12 +56,13 @@ database releases a new version, add it to `versions()` and mark the features it
 
 ## 3. Its types
 
-Everything you give the interface is made with a constructor, never field by field: `Version::new("3", "format 3")`,
+What you give the interface is made with its constructor, never by naming every field: `Version::new("3", "format 3")`,
 `TypeGroup::new("whole", "Whole numbers")`, `TypeSpec::new("decimal(P,S)", "exact", "An exact number…",
 "decimal(18,2)").since("2")`, `Parsed::new(…)`, `TypeError::not_in_version(…)`, `Report::new("statements")`,
 `Unread::new(…)`, `Imported::new(…)`, and the model's `Namespace::new`, `Object::new`, `Column::new`, `Link::new`,
-`Area::new`, with the rest set by field (`object.comment = Some(…)`). That is what lets the interface and the model
-grow without breaking your engine: a field added later gets a default, and your code still builds. For the same
+`Area::new`, with the rest set by field (`object.comment = Some(…)`). The section layout's parts are made with
+`Default` and set by field (`let mut key = Key::default(); key.columns = …`). That is what lets the interface and the
+model grow without breaking your engine: a field added later gets a default, and your code still builds. For the same
 reason, match a `TypeError` with a wildcard arm.
 
 `Types` gives the palette its groups and types, and reads a type written as text:
@@ -98,7 +99,7 @@ as data, in `Engine::options()`:
 
 ```rust
 const OPTIONS: &[OptionSpec] = &[
-    OptionSpec::new(Part::Object, "fillfactor", OptionKind::Number, "How full each page is filled, in percent")
+    OptionSpec::new(Part::Object, "fillfactor", OptionKind::Integer, "How full each page is filled, in percent")
         .for_kinds(&["table"]),
     OptionSpec::new(Part::Key, "nulls_not_distinct", OptionKind::Flag, "Nulls count as equal").since("15"),
 ];
@@ -109,8 +110,22 @@ the wrong kind, or one the schema's version does not have, and the canvas builds
 need does not fit a slot or an option, that is a finding about the layout: propose it upstream, never store it
 elsewhere.
 
-When your engine changes how it stores its options, raise `SchemaSection.format` and read what your earlier versions
-wrote.
+Declare your **kinds of object** the same way, in `Engine::kinds()`, each with the slots it uses:
+
+```rust
+const KINDS: &[ObjectKind] = &[
+    ObjectKind::new("table", "Table", &[Slot::Keys, Slot::Checks, Slot::Indexes]),
+    ObjectKind::new("view", "View", &[Slot::Query]),
+];
+```
+
+An object of a kind you do not declare, or a slot its kind does not use (a view with indexes, a table with a query),
+is refused; the canvas shows your kinds by their names.
+
+When your engine changes how it stores its options, raise `Engine::format()` and `SchemaSection.format`, and read what
+your earlier versions wrote. The layout itself has a version too (`sections::LAYOUT`): check a schema with
+`sections::layout_of` before reading it, so a schema written by a newer Schema Forge is refused whole, never read
+with something dropped.
 
 ## 4b. Your types as Arrow's
 
@@ -118,8 +133,9 @@ Implement `Portable`: `arrow_type` gives each of your types as an Apache Arrow t
 for an Arrow type, each saying how faithful it is: `Mapped::exact` when it comes back as the same type,
 `Mapped::approximate` when a detail is not kept (say which), `Mapped::lost` when nothing holds it (say what is lost).
 That mapping is how your engine meets every other engine and the DataFusion layer: compatibility, conversion,
-planned views and lineage work for your engine through it. The kit holds an exact mapping to coming back as the same
-type. Depend on `arrow-schema` only; never on DataFusion.
+planned views and lineage work for your engine through it, so every engine has one. The kit holds an exact mapping to
+coming back as the same type, and every column type in your samples to mapping. Depend on `arrow-schema` only; never
+on DataFusion or the rest of Arrow.
 
 ## 5. Reading files
 
@@ -137,7 +153,8 @@ type. Depend on `arrow-schema` only; never on DataFusion.
 ## 6. Writing, queries and checks
 
 - **`Write`**: one object's definition, and the whole schema, as your SQL. What your reader keeps, your writer writes
-  back.
+  back. Writing returns an error rather than drop anything: a section that does not read is an error, never an empty
+  one.
 - **`Queries`**: what a view's query reads, as name parts.
 - **`Checks`**: what makes a schema wrong for your database at its version, beyond the model's own checks.
 

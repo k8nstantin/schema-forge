@@ -13,6 +13,7 @@
 
 use std::fmt::Write as _;
 
+use schema_forge_engine::kinds::{ObjectKind, Slot};
 use schema_forge_engine::options::{OptionKind, OptionSpec, Part};
 use schema_forge_engine::portable::{ArrowType, Mapped, Portable};
 use schema_forge_engine::sections::{self, Kept, ObjectSection, SchemaSection};
@@ -62,6 +63,16 @@ pub enum Broken {
     OffLayout,
     /// Its exact Arrow mapping of `wide` comes back as `text`.
     ArrowAstray,
+    /// It reads its tables as `sheet`, a kind it does not declare.
+    UnknownKind,
+    /// It puts a query in a table, a slot a table does not use.
+    WrongSlot,
+    /// It declares the option `fast` twice for the same kinds and versions.
+    OptionTwice,
+    /// It does not map its types to Arrow.
+    NoArrow,
+    /// It writes its sections in a storage format later than it says it reads.
+    LaterFormat,
 }
 
 pub struct Example {
@@ -88,6 +99,17 @@ const DECIMAL: TypeSpec =
     TypeSpec::new("decimal(P,S)", "numbers", "An exact number with P digits, S after the point", "decimal(10,2)");
 const TEXT: TypeSpec = TypeSpec::new("text", "text", "Text of any length", "text");
 const WIDE: TypeSpec = TypeSpec::new("wide", "text", "Wide text", "wide").since("2");
+
+/// Its one kind of object: a table, which uses no slot of the layout but its options.
+const KINDS: &[ObjectKind] = &[ObjectKind::new("table", "Table", &[Slot::Keys])];
+
+/// The same option declared twice, to prove the kit finds it.
+const OPTIONS_TWICE: &[OptionSpec] = &[
+    OptionSpec::new(Part::Object, "fast", OptionKind::Flag, "Kept in memory for speed")
+        .for_kinds(&["table"])
+        .since("2"),
+    OptionSpec::new(Part::Object, "fast", OptionKind::Text, "Kept in memory, again").since("2"),
+];
 
 /// A table may be marked `fast`, from version 2.
 const OPTIONS: &[OptionSpec] = &[OptionSpec::new(Part::Object, "fast", OptionKind::Flag, "Kept in memory for speed")
@@ -125,8 +147,16 @@ impl Engine for Example {
         self
     }
 
+    fn kinds(&self) -> &[ObjectKind] {
+        KINDS
+    }
+
     fn options(&self) -> &[OptionSpec] {
-        OPTIONS
+        if self.broken == Broken::OptionTwice { OPTIONS_TWICE } else { OPTIONS }
+    }
+
+    fn format(&self) -> u32 {
+        1
     }
 
     fn read(&self) -> Option<&dyn Read> {
@@ -142,7 +172,7 @@ impl Engine for Example {
     }
 
     fn portable(&self) -> Option<&dyn Portable> {
-        Some(self)
+        if self.broken == Broken::NoArrow { None } else { Some(self) }
     }
 }
 
@@ -154,9 +184,18 @@ impl Portable for Example {
             "text" => Mapped::exact(ArrowType::Utf8),
             "wide" => Mapped::exact(ArrowType::LargeUtf8),
             _ => {
+                // decimal(P,S): Arrow holds up to 38 digits in Decimal128 and 76 in Decimal256.
                 let inner = p.text.trim_start_matches("decimal(").trim_end_matches(')');
                 let (pr, sc) = inner.split_once(',').unwrap_or((inner, "0"));
-                Mapped::exact(ArrowType::Decimal128(pr.parse().unwrap_or(38), sc.parse().unwrap_or(0)))
+                let (pr, sc): (u8, i8) = (pr.parse().unwrap_or(u8::MAX), sc.parse().unwrap_or(i8::MAX));
+                match pr {
+                    1..=38 => Mapped::exact(ArrowType::Decimal128(pr, sc)),
+                    39..=76 => Mapped::exact(ArrowType::Decimal256(pr, sc)),
+                    _ => Mapped::lost(
+                        ArrowType::Utf8,
+                        format!("`{}` is wider than any Arrow decimal: kept as text", p.text),
+                    ),
+                }
             }
         })
     }
@@ -169,7 +208,7 @@ impl Portable for Example {
                 Mapped::exact("wide".into())
             }
             ArrowType::LargeUtf8 => Mapped::exact("text".into()),
-            ArrowType::Decimal128(p, s) => Mapped::exact(format!("decimal({p},{s})")),
+            ArrowType::Decimal128(p, s) | ArrowType::Decimal256(p, s) => Mapped::exact(format!("decimal({p},{s})")),
             other => Mapped::lost("text".into(), format!("{other} has no type here: kept as text")),
         }
     }
@@ -240,7 +279,8 @@ impl Read for Example {
             match words.as_slice() {
                 ["table", ns, name, rest @ ..] if rest.iter().all(|w| *w == "fast") => {
                     let namespace = namespace(&mut s, &mut ids, ns);
-                    let mut o = Object::new(ids.next(Kind::Object, &[name]), "table", namespace, *name);
+                    let kind = if self.broken == Broken::UnknownKind { "sheet" } else { "table" };
+                    let mut o = Object::new(ids.next(Kind::Object, &[name]), kind, namespace, *name);
                     if !rest.is_empty() {
                         let mut t = ObjectSection::default();
                         let key = if self.broken == Broken::UndeclaredOption { "quick" } else { "fast" };
@@ -277,6 +317,16 @@ impl Read for Example {
         if self.broken == Broken::OffLayout {
             s.engine_section.insert("storage".to_string(), "heap".into());
         }
+        if self.broken == Broken::LaterFormat {
+            s.engine_section.insert("format".to_string(), 2.into());
+        }
+        if self.broken == Broken::WrongSlot
+            && let Some(o) = s.objects.first_mut()
+        {
+            let mut t: ObjectSection = sections::read(&o.engine)?;
+            t.query = Some("select 1".to_string());
+            o.engine = sections::write(&t);
+        }
         Ok(Imported::new(s, report))
     }
 }
@@ -291,18 +341,20 @@ fn namespace(s: &mut Schema, ids: &mut Ids, name: &str) -> Id {
 }
 
 impl Write for Example {
-    fn definition(&self, schema: &Schema, id: &Id) -> Option<String> {
+    fn definition(&self, schema: &Schema, id: &Id) -> Result<Option<String>, String> {
         if self.broken == Broken::NoDefinitions {
-            return None;
+            return Ok(None);
         }
-        let o = schema.object(id)?;
+        let Some(o) = schema.object(id) else { return Ok(None) };
         let mut out = String::new();
-        table(&mut out, schema, o);
-        Some(out)
+        table(&mut out, schema, o)?;
+        Ok(Some(out))
     }
 
-    fn schema(&self, schema: &Schema) -> String {
-        let section: SchemaSection = sections::read(&schema.engine_section).unwrap_or_default();
+    fn schema(&self, schema: &Schema) -> Result<String, String> {
+        // Never write with something dropped: a section this engine cannot read is an error, not an empty one.
+        sections::layout_of(&schema.engine_section)?;
+        let section: SchemaSection = sections::read(&schema.engine_section)?;
         let kept: Vec<(Option<&str>, &str)> = match self.broken {
             Broken::WriterLoses => Vec::new(),
             _ => section.kept.iter().map(|k| (k.after.as_ref().map(Id::as_str), k.text.as_str())).collect(),
@@ -315,38 +367,40 @@ impl Write for Example {
         let mut out = format!("example {}\n", schema.engine.version);
         if self.broken == Broken::KeptToEnd {
             for o in &schema.objects {
-                table(&mut out, schema, o);
+                table(&mut out, schema, o)?;
             }
             for (_, line) in &kept {
                 let _ = writeln!(out, "{line}");
             }
-            return out;
+            return Ok(out);
         }
         kept_after(None, &mut out);
         for o in &schema.objects {
-            header(&mut out, schema, o);
+            header(&mut out, schema, o)?;
             kept_after(Some(o.id.as_str()), &mut out);
             for c in &o.columns {
                 column(&mut out, c);
                 kept_after(Some(c.id.as_str()), &mut out);
             }
         }
-        out
+        Ok(out)
     }
 }
 
-fn table(out: &mut String, schema: &Schema, o: &Object) {
-    header(out, schema, o);
+fn table(out: &mut String, schema: &Schema, o: &Object) -> Result<(), String> {
+    header(out, schema, o)?;
     for c in &o.columns {
         column(out, c);
     }
+    Ok(())
 }
 
-fn header(out: &mut String, schema: &Schema, o: &Object) {
+fn header(out: &mut String, schema: &Schema, o: &Object) -> Result<(), String> {
     let ns = schema.namespace(&o.namespace).map_or("", |n| n.name.as_str());
-    let section: ObjectSection = sections::read(&o.engine).unwrap_or_default();
+    let section: ObjectSection = sections::read(&o.engine).map_err(|e| format!("`{}`: {e}", o.name))?;
     let fast = if section.options.is_empty() { "" } else { " fast" };
     let _ = writeln!(out, "table {ns} {}{fast}", o.name);
+    Ok(())
 }
 
 fn column(out: &mut String, c: &Column) {
