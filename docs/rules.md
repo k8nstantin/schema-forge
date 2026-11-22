@@ -2,8 +2,8 @@
 
 Rules are standards: they keep a schema consistent and fit for what it has to do. The architect sets them up once,
 on the schema and the levels inside it; the agent reads them before it designs anything and builds inside them, so
-neither of you repeats them. Built in milestone 2: `crates/core/src/rules`, the store's `rules` table, the API
-under `/api/rules` and `/api/schemas/<name>/rules`, and the Rules perspective.
+neither of you repeats them. The rules machinery is shared by every database; the rules about a database belong to
+its engine ([engines.md](engines.md)): a schema is offered exactly the rules its engine implements, at its version.
 
 ## Optional
 
@@ -31,7 +31,7 @@ Every rule has two labels, and the catalog is browsed by them:
 | **MySQL** | tables use InnoDB; text is utf8mb4 |
 | **PostgreSQL** | times are `timestamptz`; keys are identity columns, not `serial` |
 | **Iceberg** | identifier fields declared; merge-on-read; a format version of 2 or 3 |
-| **Between databases** | compatibility (one pack per pair of targets); CDC-ready |
+| **Between databases** | compatibility (a pack per source and destination engine); CDC-ready |
 
 Topics within a lane: keys, types, naming, documentation, normalization, history, storage, cdc, compatibility. A
 check keeps its own lane inside a pack of another: `pk.ident` is an Iceberg rule in the shared `pk` pack, and only
@@ -79,11 +79,11 @@ Before linking, the perspective shows the gap: what the schema still lacks, from
 
 ## Compatibility
 
-One **type map** per pair of targets (Iceberg, MySQL, PostgreSQL, both ways) grades how each type lands:
-**exact**, **widened** (bigger, safe), **decide** (a choice to make: `VARCHAR(n)` or `TEXT`), **lossy**, or **no
-type**. Each pair's pack has two checks: nothing lost (Must, breaks on lossy and no type) and every choice made
-(Should). The same maps will drive conversion between targets, so a check and a conversion never disagree. The
-maps are a first draft, to be checked against each database's documentation.
+Each engine maps its types to **portable types** and back, and every pair of engines is compared through them, never
+through a map written for the pair ([engines.md](engines.md), "Moving between engines"). How each type lands is
+graded **exact**, **widened** (bigger, safe), **decide** (a choice to make: `VARCHAR(n)` or `TEXT`), **lossy**, or
+**no type**. Each pair's pack has two checks: nothing lost (Must, breaks on lossy and no type) and every choice made
+(Should). The same mappings drive conversion between engines, so a check and a conversion never disagree.
 
 ## Where you work with them
 
@@ -124,7 +124,7 @@ system enforces them.
    each contradicted rule off there in the same change: its link at that level is taken away, otherwise an
    exception records that the proposal replaced it (refused if it is locked). An approved new rule joins the
    workspace's catalog under the next free `custom.<n>`, linked where it was proposed, with who proposed and
-   approved it; one that names types or transforms holds only on schemas of that target. The check and the write
+   approved it; one that names types or transforms holds only on schemas of that engine. The check and the write
    are one transaction, and the log records the rule, the link and what was switched off.
 5. **The system enforces**: the agent reads the rules in force (`rules`, `check`) and designs within them. Its
    changes go through the MCP's `change`, one or more operations as one change, all or none: a change that breaks
@@ -182,7 +182,7 @@ The heart of consistency: one type for each kind of data, used everywhere. The t
 - templates for constraint and index names: `pk_{table}`, `fk_{table}_{referenced_table}`,
   `ix_{table}_{columns}`
 - boolean columns start with `is_` or `has_`; time columns end with `_at`, dates with `_on`
-- the longest name the target allows (PostgreSQL 63, MySQL 64), reserved words refused
+- the longest name the engine allows (PostgreSQL 63, MySQL 64), reserved words refused
 - a list of approved abbreviations (`qty`, `amt`), others spelled out
 
 ### Keys and identity
@@ -316,7 +316,7 @@ Rules are a product of their own, with a rich UI:
 - **Try it on a schema:** run a template against an existing or imported schema and see every table and
   column it would pass or fail, before you adopt it.
 - **Compare:** two templates, or a template against a schema's copy, side by side.
-- **Type standards as a table:** each kind of data and its type, per target, edited like a spreadsheet.
+- **Type standards as a table:** each kind of data and its type, per engine, edited like a spreadsheet.
 - **Patterns drawn:** an SCD Type 2 or star-schema pattern shown as a small diagram of what it adds.
 - **History:** who changed a standard and when; templates are files, so git keeps them too.
 - **With the agent:** "make money `decimal(19,4)` in our PostgreSQL standard" becomes a change shown for

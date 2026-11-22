@@ -12,6 +12,6 @@ role = "interface"
 
 [dependencies]
 schema-forge-model = { path = "../model" }
-
-[dev-dependencies]
+serde.workspace = true
 serde_json.workspace = true
+arrow-schema.workspace = true

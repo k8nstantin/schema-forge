@@ -13,12 +13,15 @@
 
 use std::fmt::Write as _;
 
+use schema_forge_engine::kinds::{ObjectKind, Slot};
+use schema_forge_engine::options::{OptionKind, OptionSpec, Part};
+use schema_forge_engine::portable::{ArrowType, Mapped, Portable};
+use schema_forge_engine::sections::{self, Kept, ObjectSection, SchemaSection};
 use schema_forge_engine::{
     Availability, Engine, Imported, Input, Parsed, Queries, Read, Report, TypeError, TypeGroup, TypeSpec, Types,
     Unread, Version, Write,
 };
 use schema_forge_model::{Column, Id, Ids, Kind, Namespace, Object, Schema};
-use serde_json::{Value, json};
 
 /// What a broken copy of the engine gets wrong, to prove the kit finds it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,6 +57,22 @@ pub enum Broken {
     NoUnit,
     /// It writes, but reads nothing.
     NoReader,
+    /// It holds an option it does not declare.
+    UndeclaredOption,
+    /// It stores something in a slot the section layout does not have.
+    OffLayout,
+    /// Its exact Arrow mapping of `wide` comes back as `text`.
+    ArrowAstray,
+    /// It reads its tables as `sheet`, a kind it does not declare.
+    UnknownKind,
+    /// It puts a query in a table, a slot a table does not use.
+    WrongSlot,
+    /// It declares the option `fast` twice for the same kinds and versions.
+    OptionTwice,
+    /// It does not map its types to Arrow.
+    NoArrow,
+    /// It writes its sections in a storage format later than it says it reads.
+    LaterFormat,
 }
 
 pub struct Example {
@@ -80,6 +99,22 @@ const DECIMAL: TypeSpec =
     TypeSpec::new("decimal(P,S)", "numbers", "An exact number with P digits, S after the point", "decimal(10,2)");
 const TEXT: TypeSpec = TypeSpec::new("text", "text", "Text of any length", "text");
 const WIDE: TypeSpec = TypeSpec::new("wide", "text", "Wide text", "wide").since("2");
+
+/// Its one kind of object: a table, which uses no slot of the layout but its options.
+const KINDS: &[ObjectKind] = &[ObjectKind::new("table", "Table", &[Slot::Keys])];
+
+/// The same option declared twice, to prove the kit finds it.
+const OPTIONS_TWICE: &[OptionSpec] = &[
+    OptionSpec::new(Part::Object, "fast", OptionKind::Flag, "Kept in memory for speed")
+        .for_kinds(&["table"])
+        .since("2"),
+    OptionSpec::new(Part::Object, "fast", OptionKind::Text, "Kept in memory, again").since("2"),
+];
+
+/// A table may be marked `fast`, from version 2.
+const OPTIONS: &[OptionSpec] = &[OptionSpec::new(Part::Object, "fast", OptionKind::Flag, "Kept in memory for speed")
+    .for_kinds(&["table"])
+    .since("2")];
 
 const CATALOG: &[TypeSpec] = &[INT, DECIMAL, TEXT, WIDE];
 const TWICE: &[TypeSpec] = &[INT, INT, DECIMAL, TEXT, WIDE];
@@ -112,6 +147,18 @@ impl Engine for Example {
         self
     }
 
+    fn kinds(&self) -> &[ObjectKind] {
+        KINDS
+    }
+
+    fn options(&self) -> &[OptionSpec] {
+        if self.broken == Broken::OptionTwice { OPTIONS_TWICE } else { OPTIONS }
+    }
+
+    fn format(&self) -> u32 {
+        1
+    }
+
     fn read(&self) -> Option<&dyn Read> {
         if self.broken == Broken::NoReader { None } else { Some(self) }
     }
@@ -122,6 +169,48 @@ impl Engine for Example {
 
     fn queries(&self) -> Option<&dyn Queries> {
         Some(self)
+    }
+
+    fn portable(&self) -> Option<&dyn Portable> {
+        if self.broken == Broken::NoArrow { None } else { Some(self) }
+    }
+}
+
+impl Portable for Example {
+    fn arrow_type(&self, type_text: &str, version: &str) -> Result<Mapped<ArrowType>, TypeError> {
+        let p = self.parse(type_text, version)?;
+        Ok(match p.family {
+            "int" => Mapped::exact(ArrowType::Int64),
+            "text" => Mapped::exact(ArrowType::Utf8),
+            "wide" => Mapped::exact(ArrowType::LargeUtf8),
+            _ => {
+                // decimal(P,S): Arrow holds up to 38 digits in Decimal128 and 76 in Decimal256.
+                let inner = p.text.trim_start_matches("decimal(").trim_end_matches(')');
+                let (pr, sc) = inner.split_once(',').unwrap_or((inner, "0"));
+                let (pr, sc): (u8, i8) = (pr.parse().unwrap_or(u8::MAX), sc.parse().unwrap_or(i8::MAX));
+                match pr {
+                    1..=38 => Mapped::exact(ArrowType::Decimal128(pr, sc)),
+                    39..=76 => Mapped::exact(ArrowType::Decimal256(pr, sc)),
+                    _ => Mapped::lost(
+                        ArrowType::Utf8,
+                        format!("`{}` is wider than any Arrow decimal: kept as text", p.text),
+                    ),
+                }
+            }
+        })
+    }
+
+    fn engine_type(&self, arrow: &ArrowType, version: &str) -> Mapped<String> {
+        match arrow {
+            ArrowType::Int8 | ArrowType::Int16 | ArrowType::Int32 | ArrowType::Int64 => Mapped::exact("int".into()),
+            ArrowType::Utf8 => Mapped::exact("text".into()),
+            ArrowType::LargeUtf8 if version == "2" && self.broken != Broken::ArrowAstray => {
+                Mapped::exact("wide".into())
+            }
+            ArrowType::LargeUtf8 => Mapped::exact("text".into()),
+            ArrowType::Decimal128(p, s) | ArrowType::Decimal256(p, s) => Mapped::exact(format!("decimal({p},{s})")),
+            other => Mapped::lost("text".into(), format!("{other} has no type here: kept as text")),
+        }
     }
 }
 
@@ -188,9 +277,17 @@ impl Read for Example {
             report.read += 1;
             let words: Vec<&str> = line.split_whitespace().collect();
             match words.as_slice() {
-                ["table", ns, name] => {
+                ["table", ns, name, rest @ ..] if rest.iter().all(|w| *w == "fast") => {
                     let namespace = namespace(&mut s, &mut ids, ns);
-                    s.objects.push(Object::new(ids.next(Kind::Object, &[name]), "table", namespace, *name));
+                    let kind = if self.broken == Broken::UnknownKind { "sheet" } else { "table" };
+                    let mut o = Object::new(ids.next(Kind::Object, &[name]), kind, namespace, *name);
+                    if !rest.is_empty() {
+                        let mut t = ObjectSection::default();
+                        let key = if self.broken == Broken::UndeclaredOption { "quick" } else { "fast" };
+                        t.options.insert(key.to_string(), true.into());
+                        o.engine = sections::write(&t);
+                    }
+                    s.objects.push(o);
                     report.modelled += 1;
                 }
                 ["column", name, ty, null @ ("null" | "not-null")] if !s.objects.is_empty() => {
@@ -201,11 +298,11 @@ impl Read for Example {
                     report.modelled += 1;
                 }
                 _ => {
-                    let after = s
-                        .objects
-                        .last()
-                        .map_or(Value::Null, |o| Value::String(o.columns.last().map_or(&o.id, |c| &c.id).to_string()));
-                    kept.push(json!({ "after": after, "line": line }));
+                    let mut k = Kept::default();
+                    k.kind = "other".to_string();
+                    k.text = line.to_string();
+                    k.after = s.objects.last().map(|o| o.columns.last().map_or(&o.id, |c| &c.id).clone());
+                    kept.push(k);
                     if self.broken != Broken::ReportShort {
                         *report.kept.entry("other".to_string()).or_default() += 1;
                     }
@@ -214,8 +311,21 @@ impl Read for Example {
                 }
             }
         }
-        if !kept.is_empty() {
-            s.engine_section.insert("kept".to_string(), Value::Array(kept));
+        let mut section = SchemaSection::default();
+        section.kept = kept;
+        s.engine_section = sections::write(&section);
+        if self.broken == Broken::OffLayout {
+            s.engine_section.insert("storage".to_string(), "heap".into());
+        }
+        if self.broken == Broken::LaterFormat {
+            s.engine_section.insert("format".to_string(), 2.into());
+        }
+        if self.broken == Broken::WrongSlot
+            && let Some(o) = s.objects.first_mut()
+        {
+            let mut t: ObjectSection = sections::read(&o.engine)?;
+            t.query = Some("select 1".to_string());
+            o.engine = sections::write(&t);
         }
         Ok(Imported::new(s, report))
     }
@@ -231,25 +341,23 @@ fn namespace(s: &mut Schema, ids: &mut Ids, name: &str) -> Id {
 }
 
 impl Write for Example {
-    fn definition(&self, schema: &Schema, id: &Id) -> Option<String> {
+    fn definition(&self, schema: &Schema, id: &Id) -> Result<Option<String>, String> {
         if self.broken == Broken::NoDefinitions {
-            return None;
+            return Ok(None);
         }
-        let o = schema.object(id)?;
+        let Some(o) = schema.object(id) else { return Ok(None) };
         let mut out = String::new();
-        table(&mut out, schema, o);
-        Some(out)
+        table(&mut out, schema, o)?;
+        Ok(Some(out))
     }
 
-    fn schema(&self, schema: &Schema) -> String {
+    fn schema(&self, schema: &Schema) -> Result<String, String> {
+        // Never write with something dropped: a section this engine cannot read is an error, not an empty one.
+        sections::layout_of(&schema.engine_section)?;
+        let section: SchemaSection = sections::read(&schema.engine_section)?;
         let kept: Vec<(Option<&str>, &str)> = match self.broken {
             Broken::WriterLoses => Vec::new(),
-            _ => schema
-                .engine_section
-                .get("kept")
-                .and_then(Value::as_array)
-                .map(|k| k.iter().filter_map(|e| Some((e["after"].as_str(), e["line"].as_str()?))).collect())
-                .unwrap_or_default(),
+            _ => section.kept.iter().map(|k| (k.after.as_ref().map(Id::as_str), k.text.as_str())).collect(),
         };
         let kept_after = |after: Option<&str>, out: &mut String| {
             for (_, line) in kept.iter().filter(|(a, _)| *a == after) {
@@ -259,36 +367,40 @@ impl Write for Example {
         let mut out = format!("example {}\n", schema.engine.version);
         if self.broken == Broken::KeptToEnd {
             for o in &schema.objects {
-                table(&mut out, schema, o);
+                table(&mut out, schema, o)?;
             }
             for (_, line) in &kept {
                 let _ = writeln!(out, "{line}");
             }
-            return out;
+            return Ok(out);
         }
         kept_after(None, &mut out);
         for o in &schema.objects {
-            header(&mut out, schema, o);
+            header(&mut out, schema, o)?;
             kept_after(Some(o.id.as_str()), &mut out);
             for c in &o.columns {
                 column(&mut out, c);
                 kept_after(Some(c.id.as_str()), &mut out);
             }
         }
-        out
+        Ok(out)
     }
 }
 
-fn table(out: &mut String, schema: &Schema, o: &Object) {
-    header(out, schema, o);
+fn table(out: &mut String, schema: &Schema, o: &Object) -> Result<(), String> {
+    header(out, schema, o)?;
     for c in &o.columns {
         column(out, c);
     }
+    Ok(())
 }
 
-fn header(out: &mut String, schema: &Schema, o: &Object) {
+fn header(out: &mut String, schema: &Schema, o: &Object) -> Result<(), String> {
     let ns = schema.namespace(&o.namespace).map_or("", |n| n.name.as_str());
-    let _ = writeln!(out, "table {ns} {}", o.name);
+    let section: ObjectSection = sections::read(&o.engine).map_err(|e| format!("`{}`: {e}", o.name))?;
+    let fast = if section.options.is_empty() { "" } else { " fast" };
+    let _ = writeln!(out, "table {ns} {}{fast}", o.name);
+    Ok(())
 }
 
 fn column(out: &mut String, c: &Column) {

@@ -56,12 +56,13 @@ database releases a new version, add it to `versions()` and mark the features it
 
 ## 3. Its types
 
-Everything you give the interface is made with a constructor, never field by field: `Version::new("3", "format 3")`,
+What you give the interface is made with its constructor, never by naming every field: `Version::new("3", "format 3")`,
 `TypeGroup::new("whole", "Whole numbers")`, `TypeSpec::new("decimal(P,S)", "exact", "An exact number…",
 "decimal(18,2)").since("2")`, `Parsed::new(…)`, `TypeError::not_in_version(…)`, `Report::new("statements")`,
 `Unread::new(…)`, `Imported::new(…)`, and the model's `Namespace::new`, `Object::new`, `Column::new`, `Link::new`,
-`Area::new`, with the rest set by field (`object.comment = Some(…)`). That is what lets the interface and the model
-grow without breaking your engine: a field added later gets a default, and your code still builds. For the same
+`Area::new`, with the rest set by field (`object.comment = Some(…)`). The section layout's parts are made with
+`Default` and set by field (`let mut key = Key::default(); key.columns = …`). That is what lets the interface and the
+model grow without breaking your engine: a field added later gets a default, and your code still builds. For the same
 reason, match a `TypeError` with a wildcard arm.
 
 `Types` gives the palette its groups and types, and reads a type written as text:
@@ -85,7 +86,58 @@ away): that is what the canvas tells the person.
 
 A column holds its type as your text; only your engine reads it.
 
-## 4. Reading files
+## 4. Where your data goes: the section layout and your options
+
+Everything your engine stores on a schema goes in the parts' engine sections, and every engine's sections follow one
+layout, `schema_forge_engine::sections`: fill the slots your database has (`ObjectSection.keys`, `.checks`,
+`.indexes`, `.partitioning`, `.order`, `.query`…; `ColumnSection.default`, `.identity`, `.generated`; `LinkSection`;
+`SchemaSection.kept`, `.requires`, `.format`) and leave the rest out. Read a section with `sections::read`, write it
+with `sections::write`. Do not invent slots: a slot the layout does not have is refused.
+
+What is your database's alone goes in an element's `options`, and **you declare every option** your engine may hold,
+as data, in `Engine::options()`:
+
+```rust
+const OPTIONS: &[OptionSpec] = &[
+    OptionSpec::new(Part::Object, "fillfactor", OptionKind::Integer, "How full each page is filled, in percent")
+        .for_kinds(&["table"]),
+    OptionSpec::new(Part::Key, "nulls_not_distinct", OptionKind::Flag, "Nulls count as equal").since("15"),
+];
+```
+
+That list is your engine's own schema over the shared layout: the kit refuses an option you do not declare, one of
+the wrong kind, or one the schema's version does not have, and the canvas builds its option forms from it. If what you
+need does not fit a slot or an option, that is a finding about the layout: propose it upstream, never store it
+elsewhere.
+
+Declare your **kinds of object** the same way, in `Engine::kinds()`, each with the slots it uses:
+
+```rust
+const KINDS: &[ObjectKind] = &[
+    ObjectKind::new("table", "Table", &[Slot::Keys, Slot::Checks, Slot::Indexes]),
+    ObjectKind::new("view", "View", &[Slot::Query]),
+];
+```
+
+An object of a kind you do not declare, or a slot its kind does not use (a view with indexes, a table with a query),
+is refused; the canvas shows your kinds by their names.
+
+When your engine changes how it stores its options, raise `Engine::format()` and `SchemaSection.format`, and read what
+your earlier versions wrote. The layout itself has a version too (`sections::LAYOUT`): check a schema with
+`sections::layout_of` before reading it, so a schema written by a newer Schema Forge is refused whole, never read
+with something dropped.
+
+## 5. Your types as Arrow's
+
+Implement `Portable`: `arrow_type` gives each of your types as an Apache Arrow type, and `engine_type` gives your type
+for an Arrow type, each saying how faithful it is: `Mapped::exact` when it comes back as the same type,
+`Mapped::approximate` when a detail is not kept (say which), `Mapped::lost` when nothing holds it (say what is lost).
+That mapping is how your engine meets every other engine and the DataFusion layer: compatibility, conversion,
+planned views and lineage work for your engine through it, so every engine has one. The kit holds an exact mapping to
+coming back as the same type, and every column type in your samples to mapping. Depend on `arrow-schema` only; never
+on DataFusion or the rest of Arrow.
+
+## 6. Reading files
 
 `Read` turns your database's files into a schema:
 
@@ -98,16 +150,17 @@ A column holds its type as your text; only your engine reads it.
   say what your unit is (`statements`, `non-blank lines`, `files`). Something not understood is kept and listed, never an error: an error is only
   for an input that cannot be read at all.
 
-## 5. Writing, queries and checks
+## 7. Writing, queries and checks
 
 - **`Write`**: one object's definition, and the whole schema, as your SQL. What your reader keeps, your writer writes
-  back.
+  back. Writing returns an error rather than drop anything: a section that does not read is an error, never an empty
+  one.
 - **`Queries`**: what a view's query reads, as name parts.
 - **`Checks`**: what makes a schema wrong for your database at its version, beyond the model's own checks.
 
 Each is optional: an engine without a writer simply cannot export yet.
 
-## 6. Register it
+## 8. Register it
 
 Add one line to the registry crate:
 
@@ -116,7 +169,7 @@ Registry::new()
     .with(schema_forge_yourdb::YourDb)
 ```
 
-## 7. Pass the conformance kit
+## 9. Pass the conformance kit
 
 Give your crate sample files (`tests/samples/`) and one test:
 
@@ -143,9 +196,19 @@ checked on its identity, versions and types until the interface gives it schemas
 
 The kit checks your identity and versions; every type (its example reads back exactly as itself in the versions that
 have it, and is refused as `NotInVersion` by the others); every sample (recognised, read with a report that adds up, a
-sound schema of your engine at one of its versions, every column's type your own, every object with a definition,
+sound schema of your engine at one of its versions, every section in the layout and every id it names in the schema,
+every option declared, every column's type your own, every object with a definition,
 and, when written back, the same schema written the same way); and every sample query. It names everything that does
 not conform. A part your engine does not have is not checked.
 
 The kit's own tests break the `example` engine on purpose, one way each, to prove it finds each mistake:
 [`crates/engine/tests/interface.rs`](../crates/engine/tests/interface.rs).
+
+## 10. Let people add onto your engine
+
+Give your engine an add-on trait, so people extend it without forking it: a database extension's types, statements,
+kept statements and later rules, each from an add-on crate registered with one line (`YourDb::new().with(Extra)`).
+Build your engine's tables (types, statement handlers, kept kinds) from your built-ins and its add-ons, never as fixed
+lists. Write the extensions you ship support for as add-ons themselves, using only what your crate makes public: they
+are your add-on authors' examples. The PostgreSQL engine's `AddOn` trait and its `addons/` (PostGIS, pgvector, citext,
+hstore) are the worked example.

@@ -10,9 +10,13 @@
 //!
 //! The conformance kit ([`kit`]) tells an engine's author when it is complete and correct.
 
+pub mod kinds;
 pub mod kit;
+pub mod options;
+pub mod portable;
 mod read;
 mod registry;
+pub mod sections;
 mod types;
 mod version;
 
@@ -43,6 +47,24 @@ pub trait Engine: Send + Sync {
     /// Its types.
     fn types(&self) -> &dyn Types;
 
+    /// Its kinds of object, and the slots of the section layout each uses. An object of a kind it does not declare,
+    /// or a slot its kind does not use, is refused.
+    fn kinds(&self) -> &[kinds::ObjectKind] {
+        &[]
+    }
+
+    /// The options it may hold in its sections: its own schema over the shared section layout. An option it does not
+    /// declare is refused.
+    fn options(&self) -> &[options::OptionSpec] {
+        &[]
+    }
+
+    /// Its own storage version: the highest `SchemaSection::format` it writes and reads. Raise it when the engine
+    /// changes how it stores its options, and read what the versions before it wrote.
+    fn format(&self) -> u32 {
+        0
+    }
+
     /// Reading its files (dumps, definition files, table metadata) into a schema.
     fn read(&self) -> Option<&dyn Read> {
         None
@@ -60,6 +82,11 @@ pub trait Engine: Send + Sync {
 
     /// What makes a schema wrong for it, beyond the model's own checks.
     fn checks(&self) -> Option<&dyn Checks> {
+        None
+    }
+
+    /// Its types as Apache Arrow's, and back: how it meets every other engine and the DataFusion layer.
+    fn portable(&self) -> Option<&dyn portable::Portable> {
         None
     }
 }
@@ -80,10 +107,17 @@ impl<E: Engine + ?Sized> Offered for E {
 /// Writing a schema as the engine's SQL.
 pub trait Write: Send + Sync {
     /// One object's definition, or `None` when the schema has no object `id`.
-    fn definition(&self, schema: &Schema, id: &Id) -> Option<String>;
+    ///
+    /// # Errors
+    /// When what it holds cannot be written: a section off the layout, a schema from a later layout. Never written
+    /// with something dropped.
+    fn definition(&self, schema: &Schema, id: &Id) -> Result<Option<String>, String>;
 
     /// The whole schema, in an order the database accepts, with what the reader kept written back in its place.
-    fn schema(&self, schema: &Schema) -> String;
+    ///
+    /// # Errors
+    /// As [`Write::definition`].
+    fn schema(&self, schema: &Schema) -> Result<String, String>;
 }
 
 /// Reading queries written in the engine's SQL.

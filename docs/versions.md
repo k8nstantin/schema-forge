@@ -29,7 +29,7 @@ definitions/
 So an object's path reads like its address: `prod-mysql / shop / tables / orders.sql`, or
 `lakehouse / glue / analytics.sales / tables / orders.sql`.
 
-- **Each file is valid SQL for the target**, the way that target writes it: MySQL and PostgreSQL DDL;
+- **Each file is valid SQL for the schema's engine**, the way that engine writes it: MySQL and PostgreSQL DDL;
   for Iceberg, Spark SQL (`CREATE TABLE … USING iceberg PARTITIONED BY … TBLPROPERTIES …`), with the
   dialect chosen in the rules.
 - **The SQL plus `.schema-forge/model.json` is the whole model.** `schema-forge` reads the folder back into exactly the same

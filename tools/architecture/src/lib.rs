@@ -104,8 +104,25 @@ pub const DATABASES: &[&str] = &[
     "trino",
 ];
 
-/// External crates only some roles may use: parsing SQL is an engine's business.
-const ONLY_FOR: &[(&str, &[Role])] = &[("sqlparser", &[Role::Engine, Role::Helper])];
+/// External crates only some roles may use: parsing SQL is an engine's business; querying is the DataFusion layer's.
+/// A name ending in `*` is a family of crates (`datafusion*` is `datafusion`, `datafusion-sql`, `datafusion-expr`…);
+/// the first entry that matches a crate decides, so a single crate comes before its family.
+const ONLY_FOR: &[(&str, &[Role], &str)] = &[
+    ("sqlparser", &[Role::Engine, Role::Helper], "parsing SQL belongs to engines"),
+    // Engines map their types to Arrow, and need its types only: never a query engine.
+    (
+        "arrow-schema",
+        &[Role::Interface, Role::Engine, Role::App],
+        "Arrow's types are for the interface, engines and apps",
+    ),
+    ("arrow*", &[Role::App], "Arrow beyond its types belongs to the DataFusion layer"),
+    ("datafusion*", &[Role::App], "querying belongs to the DataFusion layer"),
+];
+
+/// Whether the crate `name` is `pattern`, or of its family when the pattern ends in `*`.
+fn matches_crate(pattern: &str, name: &str) -> bool {
+    pattern.strip_suffix('*').map_or(pattern == name, |family| name.starts_with(family))
+}
 
 /// One crate of the workspace, as the check sees it.
 #[derive(Debug, Clone)]
@@ -183,9 +200,11 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
                 }
             }
         }
-        for (ext, roles) in ONLY_FOR {
-            if c.external.iter().any(|e| e == ext) && !roles.contains(&role) {
-                breach(format!("{}: {} may not use {ext}; that belongs to engines", c.name, role.a()));
+        for ext in &c.external {
+            if let Some((_, roles, why)) = ONLY_FOR.iter().find(|(p, _, _)| matches_crate(p, ext))
+                && !roles.contains(&role)
+            {
+                breach(format!("{}: {} may not use {ext}: {why}", c.name, role.a()));
             }
         }
         if !role.may_name_databases() {
@@ -451,7 +470,20 @@ mod tests {
         let mut c = good();
         c[7].external.push("sqlparser".into());
         c[3].external.push("sqlparser".into());
-        assert_eq!(check(&c, none), [Breach("serve: an app may not use sqlparser; that belongs to engines".into())]);
+        assert_eq!(
+            check(&c, none),
+            [Breach("serve: an app may not use sqlparser: parsing SQL belongs to engines".into())]
+        );
+        let mut c = good();
+        c[3].external.extend(["datafusion-sql".into(), "arrow-array".into(), "arrow-schema".into()]);
+        assert_eq!(
+            check(&c, none),
+            [
+                Breach("schema-forge-postgres: an engine may not use datafusion-sql: querying belongs to the DataFusion layer".into()),
+                Breach("schema-forge-postgres: an engine may not use arrow-array: Arrow beyond its types belongs to the DataFusion layer".into()),
+            ],
+            "the whole family is held, and arrow-schema is an engine's to use"
+        );
     }
 
     #[test]
