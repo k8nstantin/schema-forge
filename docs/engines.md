@@ -169,27 +169,29 @@ through its Arrow mapping.
 
 ## The plan
 
-Each step is one issue, one branch and one PR, in the milestone
-[Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7):
+Each piece of work is one issue, one branch and one pull request, in the milestone
+[Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7). An engine is one piece of work, with whatever
+it needs from the interface.
 
-1. **Done:** the foundation (the prototype tagged and cleared, the design checked on the code), the model, the engine
-   interface with its registry and conformance kit.
-2. **The base every engine fills:** the section layout, each engine's option schema, and its Arrow mapping.
-3. **The PostgreSQL engine, whole**, built as any outside plugin would be, with its add-on trait and the add-ons it
-   ships: the proof of the plugin design.
-4. **The Iceberg engine, whole**, reading Spark SQL and a warehouse of `metadata.json`.
-5. **The MySQL engine, whole**, reading `mysqldump` with its `DELIMITER` blocks.
-6. **The DataFusion layer**: a schema as a DataFusion catalog, views planned with their column types and lineage,
-   compatibility through Arrow types.
-7. **The store**, **the operations** (the skeleton's, and each engine's declared ones) and **the rules** (shared rule
-   ideas implemented per engine, each engine's own packs, and the checks the DataFusion layer makes possible) on the
-   new model.
+**Done (5):** the foundation (the prototype tagged and cleared, the architecture checked by CI); the model; the engine
+interface with its registry and conformance kit; the base every engine fills (the section layout, kinds and options,
+the Arrow mapping); routines, triggers and events in the layout.
+
+**To build (11), in order:**
+
+1. **The MySQL engine**, whole: dumps and the live database (the interface gains `Live`), every object and clause.
+2. **The PostgreSQL engine**, whole, with the add-ons it ships (PostGIS, pgvector, citext, hstore).
+3. **The Iceberg engine**, whole: Spark SQL, a warehouse of `metadata.json`, and REST catalogs.
+4. **The DataFusion layer**: a schema as a DataFusion catalog, views planned, lineage, compatibility through Arrow.
+5. **The store** on the new model: schemas, versions, turns, undo, history.
+6. **The operations**: the skeleton's and each engine's, checked against what the agent saw.
+7. **The rules**: the machinery shared, each engine's rules its own.
 8. **The server, the MCP and the command line**, with the registry crate.
-9. **The canvas**, built from the agreed boards on the engines; then schemas imported with the new readers and checked
-   in the browser.
-10. **The guide to writing an engine and an add-on**, finished, with template crates.
+9. **Connections in the app**: profiles, secrets, the Connections page, testing ([connections.md](connections.md)).
+10. **The canvas**, built from the agreed boards on the engines; then schemas imported and checked in the browser.
+11. **The guide to writing an engine and an add-on**, finished, with template crates.
 
-Then: reading PostgreSQL, MySQL and an Iceberg REST catalog live; schema management (drift, migrations planned and
-checked, versions in git); CDC pipelines; BigQuery, kept for developers outside the core to prove the guide.
+After them: schema management (drift, migrations planned and checked, versions in git), CDC pipelines, consistency,
+deploy, branches and merges; BigQuery, kept for developers outside the core to prove the guide.
 
 How to write an engine: [writing-an-engine.md](writing-an-engine.md).
