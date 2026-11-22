@@ -46,6 +46,12 @@ pub enum Broken {
     QueriesBlind,
     /// Its default version is not one of its versions.
     DefaultNoVersion,
+    /// `wide` in version 1 says it came in version 1.
+    WrongSince,
+    /// It writes nothing, though a sample is to be written back.
+    NoWriter,
+    /// The report does not say what it counts.
+    NoUnit,
 }
 
 pub struct Example {
@@ -63,43 +69,25 @@ impl Example {
     }
 }
 
-const VERSIONS: &[Version] = &[Version { id: "1", name: "example 1" }, Version { id: "2", name: "example 2" }];
+const VERSIONS: &[Version] = &[Version::new("1", "example 1"), Version::new("2", "example 2")];
 
-const GROUPS: &[TypeGroup] = &[TypeGroup { id: "numbers", title: "Numbers" }, TypeGroup { id: "text", title: "Text" }];
+const GROUPS: &[TypeGroup] = &[TypeGroup::new("numbers", "Numbers"), TypeGroup::new("text", "Text")];
 
-const INT: TypeSpec = TypeSpec {
-    name: "int",
-    group: "numbers",
-    meaning: "A whole number",
-    example: "int",
-    available: Availability::ALWAYS,
-};
-const DECIMAL: TypeSpec = TypeSpec {
-    name: "decimal(P,S)",
-    group: "numbers",
-    meaning: "An exact number with P digits, S after the point",
-    example: "decimal(10,2)",
-    available: Availability::ALWAYS,
-};
-const TEXT: TypeSpec = TypeSpec {
-    name: "text",
-    group: "text",
-    meaning: "Text of any length",
-    example: "text",
-    available: Availability::ALWAYS,
-};
-const WIDE: TypeSpec = TypeSpec {
-    name: "wide",
-    group: "text",
-    meaning: "Wide text",
-    example: "wide",
-    available: Availability::since("2"),
-};
+const INT: TypeSpec = TypeSpec::new("int", "numbers", "A whole number", "int");
+const DECIMAL: TypeSpec =
+    TypeSpec::new("decimal(P,S)", "numbers", "An exact number with P digits, S after the point", "decimal(10,2)");
+const TEXT: TypeSpec = TypeSpec::new("text", "text", "Text of any length", "text");
+const WIDE: TypeSpec = TypeSpec::new("wide", "text", "Wide text", "wide").since("2");
 
 const CATALOG: &[TypeSpec] = &[INT, DECIMAL, TEXT, WIDE];
 const TWICE: &[TypeSpec] = &[INT, INT, DECIMAL, TEXT, WIDE];
-const NO_VERSION: &[TypeSpec] = &[INT, DECIMAL, TEXT, TypeSpec { available: Availability::since("9"), ..WIDE }];
-const UNWRITTEN: &[TypeSpec] = &[INT, TypeSpec { example: "DECIMAL( 10 , 2 )", ..DECIMAL }, TEXT, WIDE];
+const NO_VERSION: &[TypeSpec] = &[INT, DECIMAL, TEXT, WIDE.available(Availability::since("9"))];
+const UNWRITTEN: &[TypeSpec] = &[
+    INT,
+    TypeSpec::new("decimal(P,S)", "numbers", "An exact number with P digits, S after the point", "DECIMAL( 10 , 2 )"),
+    TEXT,
+    WIDE,
+];
 
 impl Engine for Example {
     fn id(&self) -> &'static str {
@@ -127,7 +115,7 @@ impl Engine for Example {
     }
 
     fn write(&self) -> Option<&dyn Write> {
-        Some(self)
+        if self.broken == Broken::NoWriter { None } else { Some(self) }
     }
 
     fn queries(&self) -> Option<&dyn Queries> {
@@ -151,12 +139,15 @@ impl Types for Example {
 
     fn parse(&self, text: &str, version: &str) -> Result<Parsed, TypeError> {
         let t = text.trim().to_ascii_lowercase();
-        let simple = |family: &'static str| Ok(Parsed { family, text: family.to_string() });
+        let simple = |family: &'static str| Ok(Parsed::new(family, family));
         match t.as_str() {
             "int" => simple("int"),
             "text" => simple("text"),
             "wide" if version == "2" || self.broken == Broken::VersionIgnored => simple("wide"),
             "wide" if self.broken == Broken::VersionUnsaid => Err(TypeError::NotAType("`wide` is not a type".into())),
+            "wide" if self.broken == Broken::WrongSince => {
+                Err(TypeError::NotInVersion { family: "wide", since: Some("1") })
+            }
             "wide" => Err(TypeError::NotInVersion { family: "wide", since: Some("2") }),
             _ => {
                 let bad = |why: &str| TypeError::NotAType(format!("`{text}` {why}"));
@@ -165,7 +156,7 @@ impl Types for Example {
                 let (p, s) = inner.split_once(',').ok_or_else(|| bad("needs a precision and a scale"))?;
                 let p: u32 = p.trim().parse().map_err(|_| bad("has a precision that is not a number"))?;
                 let s: u32 = s.trim().parse().map_err(|_| bad("has a scale that is not a number"))?;
-                Ok(Parsed { family: "decimal(P,S)", text: format!("decimal({p},{s})") })
+                Ok(Parsed::new("decimal(P,S)", format!("decimal({p},{s})")))
             }
         }
     }
@@ -188,8 +179,10 @@ impl Read for Example {
         let version = head.strip_prefix("example ").ok_or("not an example file")?.trim();
         let mut s = Schema::new(self.id, version);
         let mut ids = Ids::default();
-        let mut report = Report { unit: "non-blank lines", read: 1, modelled: 1, ..Report::default() };
-        // Each kept line remembers the object it came after, so it is written back in its place.
+        let mut report = Report::new(if self.broken == Broken::NoUnit { "" } else { "non-blank lines" });
+        report.read = 1;
+        report.modelled = 1;
+        // Each kept line remembers the table or column line it came after, so it is written back in its place.
         let mut kept = Vec::new();
         for (n, line) in lines {
             report.read += 1;
@@ -227,21 +220,23 @@ impl Read for Example {
                     report.modelled += 1;
                 }
                 _ => {
-                    let after = s.objects.last().map_or(Value::Null, |o| Value::String(o.id.to_string()));
+                    let after = s
+                        .objects
+                        .last()
+                        .map_or(Value::Null, |o| Value::String(o.columns.last().map_or(&o.id, |c| &c.id).to_string()));
                     kept.push(json!({ "after": after, "line": line }));
                     if self.broken != Broken::ReportShort {
                         *report.kept.entry("other".to_string()).or_default() += 1;
                     }
-                    report
-                        .not_understood
-                        .push(Unread { at: format!("line {}", n + 1), start: line.chars().take(40).collect() });
+                    let start: String = line.chars().take(40).collect();
+                    report.not_understood.push(Unread::new(format!("line {}", n + 1), start));
                 }
             }
         }
         if !kept.is_empty() {
             s.engine_section.insert("kept".to_string(), Value::Array(kept));
         }
-        Ok(Imported { schema: s, report })
+        Ok(Imported::new(s, report))
     }
 }
 
@@ -298,8 +293,13 @@ impl Write for Example {
         }
         kept_after(None, &mut out);
         for o in &schema.objects {
-            table(&mut out, schema, o);
+            let ns = schema.namespace(&o.namespace).map_or("", |n| n.name.as_str());
+            let _ = writeln!(out, "table {ns} {}", o.name);
             kept_after(Some(o.id.as_str()), &mut out);
+            for c in &o.columns {
+                column(&mut out, c);
+                kept_after(Some(c.id.as_str()), &mut out);
+            }
         }
         out
     }
@@ -309,8 +309,12 @@ fn table(out: &mut String, schema: &Schema, o: &Object) {
     let ns = schema.namespace(&o.namespace).map_or("", |n| n.name.as_str());
     let _ = writeln!(out, "table {ns} {}", o.name);
     for c in &o.columns {
-        let _ = writeln!(out, "column {} {} {}", c.name, c.data_type, if c.null { "null" } else { "not-null" });
+        column(out, c);
     }
+}
+
+fn column(out: &mut String, c: &Column) {
+    let _ = writeln!(out, "column {} {} {}", c.name, c.data_type, if c.null { "null" } else { "not-null" });
 }
 
 impl Queries for Example {

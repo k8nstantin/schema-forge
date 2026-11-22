@@ -8,5 +8,6 @@ column name text null
 
 table sales orders
 column id int not-null
+-- totals are in the shop's currency
 column total decimal(10,2) null
 column note wide null

@@ -1,7 +1,9 @@
 //! Versions, and the versions a feature is in.
 
-/// A version of an engine's database (`"3"`, `"8.4"`, `"17"`).
+/// A version of an engine's database (`"3"`, `"8.4"`, `"17"`). Made with [`Version::new`], so a field added later
+/// breaks no engine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Version {
     /// As a schema names it.
     pub id: &'static str,
@@ -12,9 +14,17 @@ pub struct Version {
 /// The versions a feature is in: from the one it came in, up to but not including the one that took it away. An
 /// open end is every version on that side.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub struct Availability {
     pub since: Option<&'static str>,
     pub until: Option<&'static str>,
+}
+
+impl Version {
+    #[must_use]
+    pub const fn new(id: &'static str, name: &'static str) -> Self {
+        Self { id, name }
+    }
 }
 
 impl Availability {
@@ -25,6 +35,18 @@ impl Availability {
     #[must_use]
     pub const fn since(version: &'static str) -> Self {
         Self { since: Some(version), until: None }
+    }
+
+    /// In every version before `version`, which took it away.
+    #[must_use]
+    pub const fn until(version: &'static str) -> Self {
+        Self { since: None, until: Some(version) }
+    }
+
+    /// From `since` on, until `until` took it away.
+    #[must_use]
+    pub const fn between(since: &'static str, until: &'static str) -> Self {
+        Self { since: Some(since), until: Some(until) }
     }
 
     /// Whether the feature is in `version`, by the order of `versions` (oldest first). A version not in the list has
@@ -43,14 +65,13 @@ impl Availability {
 mod tests {
     use super::*;
 
-    const V: &[Version] =
-        &[Version { id: "1", name: "one" }, Version { id: "2", name: "two" }, Version { id: "3", name: "three" }];
+    const V: &[Version] = &[Version::new("1", "one"), Version::new("2", "two"), Version::new("3", "three")];
 
     #[test]
     fn a_feature_is_in_the_versions_from_its_since_to_its_until() {
         let a = Availability::since("2");
         assert_eq!(["1", "2", "3"].map(|v| a.in_version(v, V)), [false, true, true]);
-        let gone = Availability { since: None, until: Some("3") };
+        let gone = Availability::until("3");
         assert_eq!(["1", "2", "3"].map(|v| gone.in_version(v, V)), [true, true, false]);
         assert!(Availability::ALWAYS.in_version("2", V));
     }

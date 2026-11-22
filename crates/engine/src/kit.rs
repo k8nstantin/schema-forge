@@ -5,22 +5,21 @@
 //!
 //! #[test]
 //! fn the_engine_conforms() {
-//!     kit::assert_conforms(&MyEngine, &Samples {
-//!         files: &[Sample { path: Path::new("tests/samples/shop.sql"), written_back: true }],
-//!         queries: &[QuerySample { query: "select * from sales.orders", reads: &[&["sales", "orders"]] }],
-//!     });
+//!     let files = [Sample::written_back(Path::new("tests/samples/shop.sql"))];
+//!     let queries = [QuerySample::new("select * from sales.orders", &[&["sales", "orders"]])];
+//!     kit::assert_conforms(&MyEngine, &Samples::new(&files, &queries));
 //! }
 //! ```
 //!
 //! It checks the engine's identity and versions; every type (its example reads back as itself, exactly, in the
 //! versions that have it, and is refused as not in the version by the others); and every sample: recognised, read
 //! with a report that adds up, a sound schema of this engine at one of its versions, every column's type its own,
-//! every object's definition written, and, for a sample that says so, written and read back to the same schema, and
-//! written the same way twice. Every part the engine has needs samples that exercise it; a part it does not have is
-//! not checked.
+//! every object's definition written, and, for a sample in the form the engine writes, written back as the same text
+//! (blank lines aside) and read back to the same schema. Every part the engine has needs samples that exercise it; a
+//! part it does not have is not checked.
 
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use schema_forge_model::{Ids, Kind};
@@ -29,6 +28,7 @@ use crate::{Engine, Imported, Input, Parsed, Read, TypeError, Write};
 
 /// What an engine is checked on.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct Samples<'a> {
     /// Files the engine reads.
     pub files: &'a [Sample<'a>],
@@ -36,20 +36,50 @@ pub struct Samples<'a> {
     pub queries: &'a [QuerySample<'a>],
 }
 
+impl<'a> Samples<'a> {
+    #[must_use]
+    pub const fn new(files: &'a [Sample<'a>], queries: &'a [QuerySample<'a>]) -> Self {
+        Self { files, queries }
+    }
+}
+
 /// A file the engine reads.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct Sample<'a> {
     pub path: &'a Path,
-    /// Whether what the engine writes from it reads back to the same schema. True for a file in the form the engine
-    /// writes (its SQL); false for a form it only reads (table metadata, a live catalog's export).
+    /// Whether it is in the form the engine writes, exactly: read and written again, it must come back as the same
+    /// text (blank lines aside) and read back to the same schema.
     pub written_back: bool,
+}
+
+impl<'a> Sample<'a> {
+    /// A file in the form the engine writes (its SQL, as it writes it).
+    #[must_use]
+    pub const fn written_back(path: &'a Path) -> Self {
+        Self { path, written_back: true }
+    }
+
+    /// A file in a form the engine only reads (table metadata, a dump made by another tool).
+    #[must_use]
+    pub const fn read_only(path: &'a Path) -> Self {
+        Self { path, written_back: false }
+    }
 }
 
 /// A query and the tables and views it reads, as name parts.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct QuerySample<'a> {
     pub query: &'a str,
     pub reads: &'a [&'a [&'a str]],
+}
+
+impl<'a> QuerySample<'a> {
+    #[must_use]
+    pub const fn new(query: &'a str, reads: &'a [&'a [&'a str]]) -> Self {
+        Self { query, reads }
+    }
 }
 
 /// Everything in `engine` and its samples that does not conform; none when it all does.
@@ -61,6 +91,14 @@ pub fn check(engine: &dyn Engine, samples: &Samples<'_>) -> Vec<String> {
     match (engine.read(), samples.files.is_empty()) {
         (Some(_), true) => out.push("it reads files, but no sample file is given".to_string()),
         (None, false) => out.push("sample files are given, but the engine reads nothing".to_string()),
+        _ => {}
+    }
+    let written_back = samples.files.iter().any(|f| f.written_back);
+    match (engine.write(), written_back) {
+        (Some(_), false) => {
+            out.push("it writes, but no sample is in the form it writes (`Sample::written_back`)".to_string());
+        }
+        (None, true) => out.push("a sample is to be written back, but the engine writes nothing".to_string()),
         _ => {}
     }
     if let Some(read) = engine.read() {
@@ -193,7 +231,21 @@ fn example_reads(engine: &dyn Engine, t: &crate::TypeSpec, version: &str, out: &
             }
         }
         Ok(_) => out.push(format!("`{}` reads in version `{version}`, which does not have it", t.example)),
-        Err(TypeError::NotInVersion { family, .. }) if !has && family == t.name => {}
+        Err(TypeError::NotInVersion { family, since }) if !has && family == t.name => {
+            // Before the version it came in, say that version; once taken away, say none.
+            let versions = engine.versions();
+            let at = |v: &str| versions.iter().position(|x| x.id == v);
+            let before = t.available.since.is_some_and(|s| at(version) < at(s));
+            let want = if before { t.available.since } else { None };
+            if since != want {
+                out.push(format!(
+                    "`{}` in version `{version}` says it came in {}, not {}",
+                    t.example,
+                    since.map_or("no version".to_string(), |v| format!("version {v}")),
+                    want.map_or("no version (it was taken away)".to_string(), |v| format!("version {v}"))
+                ));
+            }
+        }
         Err(e) if has => out.push(format!("`{}` does not read in version `{version}`: {e}", t.example)),
         Err(e) => out.push(format!(
             "`{}` in version `{version}`, which does not have it, should be refused as not in the version, not: {e}",
@@ -216,6 +268,16 @@ fn sample_conforms(engine: &dyn Engine, read: &dyn Read, sample: &Sample<'_>, ou
         Err(e) => return out.push(format!("{at}: it does not read: {e}")),
     };
     let (schema, report) = (&imported.schema, &imported.report);
+    if report.unit.trim().is_empty() {
+        out.push(format!("{at}: the report does not say what it counts (its unit)"));
+    }
+    if report.not_understood.len() > report.kept_total() {
+        out.push(format!(
+            "{at}: the report lists {} things not understood, but kept only {}",
+            report.not_understood.len(),
+            report.kept_total()
+        ));
+    }
     if !report.adds_up() {
         out.push(format!(
             "{at}: the report does not add up: {} read, {} modelled, {} kept, {} data",
@@ -282,6 +344,23 @@ fn written_back(
 ) {
     let at = sample.display();
     let text = write.schema(&first.schema);
+    match std::fs::read_to_string(sample) {
+        Ok(original) => {
+            let lines = |t: &str| {
+                t.lines().map(str::trim_end).filter(|l| !l.is_empty()).map(str::to_string).collect::<Vec<_>>()
+            };
+            let (a, b) = (lines(&original), lines(&text));
+            if a != b {
+                let n = a.iter().zip(&b).position(|(x, y)| x != y).unwrap_or(a.len().min(b.len()));
+                out.push(format!(
+                    "{at}: written back, it is not the sample: its line `{}` is written `{}`",
+                    a.get(n).map_or("(the end)", String::as_str),
+                    b.get(n).map_or("(the end)", String::as_str)
+                ));
+            }
+        }
+        Err(e) => out.push(format!("{at}: a sample to write back is a file: {e}")),
+    }
     let again = match read_text(engine, read, &text) {
         Ok(a) => a,
         Err(e) => return out.push(format!("{at}: what the engine writes does not read back: {e}")),
@@ -301,19 +380,41 @@ fn written_back(
     }
 }
 
-/// Reads `text` as the engine reads a file.
+/// Reads `text` as the engine reads a file: written into a folder of its own, made new for it, and removed
+/// afterwards, even when the engine panics.
 fn read_text(engine: &dyn Engine, read: &dyn Read, text: &str) -> Result<Imported, String> {
     static N: AtomicUsize = AtomicUsize::new(0);
-    let file = std::env::temp_dir().join(format!(
-        "schema-forge-kit-{}-{}-{}",
+
+    /// Removes the folder when dropped, panic or not.
+    struct Folder(PathBuf);
+    impl Drop for Folder {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.subsec_nanos());
+    let dir = std::env::temp_dir().join(format!(
+        "schema-forge-kit-{}-{}-{}-{nanos}",
         engine.id(),
         std::process::id(),
         N.fetch_add(1, Ordering::Relaxed)
     ));
-    std::fs::write(&file, text).map_err(|e| format!("{}: {e}", file.display()))?;
-    let result = Input::open(&file).and_then(|i| {
-        if read.recognises(&i) { read.read(&i) } else { Err("the engine does not recognise what it wrote".to_string()) }
-    });
-    let _ = std::fs::remove_file(&file);
-    result
+    // `create_dir` fails when the path is there already, whatever it is: nothing in place is followed or written.
+    std::fs::create_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let folder = Folder(dir);
+    let file = folder.0.join("written");
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&file)
+        .map_err(|e| format!("{}: {e}", file.display()))?;
+    std::io::Write::write_all(&mut f, text.as_bytes()).map_err(|e| format!("{}: {e}", file.display()))?;
+    drop(f);
+    let input = Input::open(&file)?;
+    if read.recognises(&input) {
+        read.read(&input)
+    } else {
+        Err("the engine does not recognise what it wrote".to_string())
+    }
 }

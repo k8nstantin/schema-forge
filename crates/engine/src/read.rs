@@ -9,8 +9,9 @@ use schema_forge_model::Schema;
 /// How much of a file is read to tell what it is: enough for any header, never a whole dump.
 const HEAD: u64 = 64 * 1024;
 
-/// What is offered to read: a file or a folder, and the start of a file.
+/// What is offered to read: a file or a folder, and the start of a file. Made by [`Input::open`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Input {
     pub path: PathBuf,
     pub is_dir: bool,
@@ -38,14 +39,28 @@ impl Input {
 
 /// A schema read in, and what reading did with everything it read.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Imported {
     pub schema: Schema,
     pub report: Report,
 }
 
+impl Imported {
+    #[must_use]
+    pub const fn new(schema: Schema, report: Report) -> Self {
+        Self { schema, report }
+    }
+}
+
 /// Everything read, accounted for: `read == modelled + kept + data`. A unit is what the engine reads one at a time
 /// (`statements`, `files`); what is not a unit (the space between statements) is not content and is not counted.
+/// Made with [`Report::new`], then counted into:
+///
+/// ```compile_fail
+/// let r = schema_forge_engine::Report { unit: "statements", ..Default::default() };
+/// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Report {
     pub unit: &'static str,
     pub read: usize,
@@ -61,6 +76,7 @@ pub struct Report {
 
 /// Something read but not understood, kept as written.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Unread {
     /// Where it was (`line 12`, `orders/metadata/v3.metadata.json`).
     pub at: String,
@@ -68,7 +84,20 @@ pub struct Unread {
     pub start: String,
 }
 
+impl Unread {
+    #[must_use]
+    pub fn new(at: impl Into<String>, start: impl Into<String>) -> Self {
+        Self { at: at.into(), start: start.into() }
+    }
+}
+
 impl Report {
+    /// An empty report of what is read one `unit` at a time (`statements`, `non-blank lines`, `files`).
+    #[must_use]
+    pub fn new(unit: &'static str) -> Self {
+        Self { unit, ..Self::default() }
+    }
+
     #[must_use]
     pub fn kept_total(&self) -> usize {
         self.kept.values().sum()

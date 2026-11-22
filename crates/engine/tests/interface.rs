@@ -16,21 +16,24 @@ fn shop() -> &'static Path {
 }
 
 fn files() -> [Sample<'static>; 1] {
-    [Sample { path: shop(), written_back: true }]
+    [Sample::written_back(shop())]
 }
 
-const QUERIES: &[QuerySample<'static>] = &[QuerySample {
-    query: "select o.total, c.name from sales.orders o join sales.customers c on o.customer = c.id",
-    reads: &[&["sales", "orders"], &["sales", "customers"]],
-}];
+const QUERIES: &[QuerySample<'static>] = &[QuerySample::new(
+    "select o.total, c.name from sales.orders o join sales.customers c on o.customer = c.id",
+    &[&["sales", "orders"], &["sales", "customers"]],
+)];
+
 /// What `example` is checked on: its shop, written back, and a query.
 fn check(engine: &Example) -> Vec<String> {
-    kit::check(engine, &Samples { files: &files(), queries: QUERIES })
+    let files = files();
+    kit::check(engine, &Samples::new(&files, QUERIES))
 }
 
 #[test]
 fn a_conforming_engine_passes_the_kit() {
-    kit::assert_conforms(&Example::new(), &Samples { files: &files(), queries: QUERIES });
+    let files = files();
+    kit::assert_conforms(&Example::new(), &Samples::new(&files, QUERIES));
 }
 
 /// The kit's findings for a broken copy of the engine.
@@ -78,19 +81,53 @@ fn the_kit_finds_an_example_not_written_as_the_engine_writes_it() {
 #[test]
 fn the_kit_finds_a_report_that_does_not_add_up() {
     let f = findings(Broken::ReportShort);
-    assert!(has(&f, "the report does not add up: 10 read, 8 modelled, 0 kept, 0 data"), "{f:?}");
+    assert!(has(&f, "the report does not add up: 11 read, 8 modelled, 0 kept, 0 data"), "{f:?}");
+    assert!(has(&f, "the report lists 3 things not understood, but kept only 0"), "{f:?}");
 }
 
 #[test]
 fn the_kit_finds_a_writer_that_loses_something() {
     let f = findings(Broken::WriterLoses);
+    assert!(
+        has(
+            &f,
+            "written back, it is not the sample: its line `-- the shop's tables` is written `table sales customers`"
+        ),
+        "{f:?}"
+    );
     assert!(has(&f, "written and read back, it differs"), "{f:?}");
 }
 
 #[test]
 fn the_kit_finds_kept_text_written_out_of_its_place() {
     let f = findings(Broken::KeptToEnd);
-    assert!(has(&f, "written and read back, it differs"), "{f:?}");
+    assert!(has(&f, "written back, it is not the sample"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_a_type_that_names_the_wrong_version() {
+    assert_eq!(findings(Broken::WrongSince), ["`wide` in version `1` says it came in version 1, not version 2"]);
+}
+
+#[test]
+fn the_kit_finds_a_sample_to_write_back_with_no_writer() {
+    let f = findings(Broken::NoWriter);
+    assert_eq!(f, ["a sample is to be written back, but the engine writes nothing"]);
+}
+
+#[test]
+fn the_kit_finds_a_report_that_does_not_say_what_it_counts() {
+    let f = findings(Broken::NoUnit);
+    assert!(has(&f, "the report does not say what it counts (its unit)"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_a_writer_no_sample_exercises() {
+    let files = [Sample::read_only(shop())];
+    assert_eq!(
+        kit::check(&Example::new(), &Samples::new(&files, QUERIES)),
+        ["it writes, but no sample is in the form it writes (`Sample::written_back`)"]
+    );
 }
 
 #[test]
@@ -115,13 +152,18 @@ fn the_kit_finds_a_default_version_that_is_not_one() {
 fn every_part_the_engine_has_needs_samples() {
     assert_eq!(
         kit::check(&Example::new(), &Samples::default()),
-        ["it reads files, but no sample file is given", "it reads queries, but no sample query is given"]
+        [
+            "it reads files, but no sample file is given",
+            "it writes, but no sample is in the form it writes (`Sample::written_back`)",
+            "it reads queries, but no sample query is given"
+        ]
     );
 }
 
 #[test]
 fn a_schema_is_offered_the_types_of_its_version() {
-    let e = Example::new();
+    let example = Example::new();
+    let e: &dyn Engine = &example;
     let names = |v: &str| e.types_in(v).iter().map(|t| t.name).collect::<Vec<_>>();
     assert_eq!(names("1"), ["int", "decimal(P,S)", "text"]);
     assert_eq!(names("2"), ["int", "decimal(P,S)", "text", "wide"]);
@@ -140,16 +182,17 @@ fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place
     assert_eq!(engine.id(), "example");
     let read = e.read().expect("it reads").read(&input).expect("it reads");
     let r = &read.report;
-    assert_eq!((r.read, r.modelled, r.kept_total(), r.data), (10, 8, 2, 0));
+    assert_eq!((r.read, r.modelled, r.kept_total(), r.data), (11, 8, 3, 0));
     assert!(r.adds_up());
     assert_eq!(
         r.not_understood,
         [
-            Unread { at: "line 2".into(), start: "-- the shop's tables".into() },
-            Unread { at: "line 7".into(), start: "-- customers come from the web shop".into() },
+            Unread::new("line 2", "-- the shop's tables"),
+            Unread::new("line 7", "-- customers come from the web shop"),
+            Unread::new("line 11", "-- totals are in the shop's currency"),
         ]
     );
-    assert!(r.to_string().starts_with("10 non-blank lines read\n  modelled: 8\n  kept as written: 2\n"), "{r}");
+    assert!(r.to_string().starts_with("11 non-blank lines read\n  modelled: 8\n  kept as written: 3\n"), "{r}");
     let s = &read.schema;
     assert_eq!((s.engine.id.as_str(), s.engine.version.as_str()), ("example", "2"));
     let write = e.write().expect("it writes");
@@ -157,7 +200,7 @@ fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place
         write.schema(s),
         "example 2\n-- the shop's tables\ntable sales customers\ncolumn id int not-null\ncolumn name text null\n\
          -- customers come from the web shop\ntable sales orders\ncolumn id int not-null\n\
-         column total decimal(10,2) null\ncolumn note wide null\n"
+         -- totals are in the shop's currency\ncolumn total decimal(10,2) null\ncolumn note wide null\n"
     );
     let orders = &s.objects[1];
     assert_eq!(

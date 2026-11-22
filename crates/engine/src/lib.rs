@@ -4,7 +4,9 @@
 //!
 //! An engine starts with its identity, versions and types, and adds the parts its database has. Every part beyond
 //! those is optional and has a default, so a part added to this interface later never breaks an engine written before
-//! it. Each part is added to the interface when something first uses it, shaped by that use.
+//! it; the data types engines make are made with constructors and may gain fields, and the errors they match may gain
+//! variants, for the same reason. Each part is added to the interface when something first uses it, shaped by that
+//! use.
 //!
 //! The conformance kit ([`kit`]) tells an engine's author when it is complete and correct.
 
@@ -41,11 +43,6 @@ pub trait Engine: Send + Sync {
     /// Its types.
     fn types(&self) -> &dyn Types;
 
-    /// The types a schema at `version` may use, in palette order.
-    fn types_in(&self, version: &str) -> Vec<&TypeSpec> {
-        self.types().catalog().iter().filter(|t| t.available.in_version(version, self.versions())).collect()
-    }
-
     /// Reading its files (dumps, definition files, table metadata) into a schema.
     fn read(&self) -> Option<&dyn Read> {
         None
@@ -64,6 +61,15 @@ pub trait Engine: Send + Sync {
     /// What makes a schema wrong for it, beyond the model's own checks.
     fn checks(&self) -> Option<&dyn Checks> {
         None
+    }
+}
+
+impl dyn Engine + '_ {
+    /// The types a schema at `version` may use, in palette order. Worked out from the catalog and its versions, never
+    /// by the engine itself, so it cannot disagree with them.
+    #[must_use]
+    pub fn types_in(&self, version: &str) -> Vec<&TypeSpec> {
+        self.types().catalog().iter().filter(|t| t.available.in_version(version, self.versions())).collect()
     }
 }
 

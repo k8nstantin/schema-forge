@@ -58,16 +58,10 @@ impl Role {
 
 impl Role {
     /// The role with its article, as a sentence says it: `an engine`, `a model`.
-    const fn a(self) -> &'static str {
-        match self {
-            Self::Model => "a model",
-            Self::Interface => "an interface",
-            Self::Helper => "a helper",
-            Self::Engine => "an engine",
-            Self::Registry => "a registry",
-            Self::App => "an app",
-            Self::Tool => "a tool",
-        }
+    fn a(self) -> String {
+        let name = self.to_string();
+        let article = if name.starts_with(['a', 'e', 'i', 'o', 'u']) { "an" } else { "a" };
+        format!("{article} {name}")
     }
 }
 
@@ -226,16 +220,17 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
     out
 }
 
-/// The databases `text` names, by line. Words are split at everything but letters and digits (`pg_dump` is `pg`
-/// and `dump`), then into the parts of an identifier (`readMySqlDialect` is `read`, `My`, `Sql`, `Dialect`), and any
-/// run of parts that spells a database is a name: `mysql`, `PostgreSQL`, `pg_dump`, `FromPostgres`, `readMySql`. A
-/// word that only contains one (`archive`, `sparkline`) is not.
+/// The databases `text` names, by line. Words are split at everything but letters, digits and `_`, then into the
+/// parts of an identifier, at `_` and at capitals (`read_MySqlDialect` is `read`, `My`, `Sql`, `Dialect`), and any
+/// run of parts that spells a database, its own `_` aside, is a name: `mysql`, `PostgreSQL`, `pg_dump`,
+/// `FromPostgres`, `readMySql`, and for a database `sql_server`, `SqlServer` and `read_sql_server`. A word that only
+/// contains one (`archive`, `sparkline`) is not.
 #[must_use]
 pub fn names(text: &str, databases: &[String]) -> Vec<(usize, String)> {
     let mut out = Vec::new();
     for (i, line) in text.lines().enumerate() {
-        for word in line.split(|ch: char| !ch.is_ascii_alphanumeric()).filter(|w| !w.is_empty()) {
-            let parts = parts(word);
+        for word in line.split(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_').filter(|w| !w.is_empty()) {
+            let parts: Vec<&str> = word.split('_').filter(|p| !p.is_empty()).flat_map(parts).collect();
             let mut start = 0;
             while start < parts.len() {
                 // The longest run from here: `PostgreSQL` is `postgresql`, not `postgres`.
@@ -243,7 +238,7 @@ pub fn names(text: &str, databases: &[String]) -> Vec<(usize, String)> {
                 let mut hit = None;
                 for (end, part) in parts.iter().enumerate().skip(start) {
                     run.push_str(&part.to_ascii_lowercase());
-                    if let Some(d) = databases.iter().find(|d| **d == run) {
+                    if let Some(d) = databases.iter().find(|d| d.replace('_', "") == run) {
                         hit = Some((end, d));
                     }
                 }
@@ -494,11 +489,22 @@ mod tests {
     }
 
     #[test]
+    fn a_database_id_with_an_underscore_is_found_however_it_is_written() {
+        let words = vec!["sql_server".to_string()];
+        let found = |t: &str| names(t, &words).into_iter().map(|(_, w)| w).collect::<Vec<_>>();
+        assert_eq!(found("fn read_sql_server_dump() -> SqlServer"), ["sql_server", "sql_server"]);
+        assert_eq!(found("sql server, sqlservers"), Vec::<String>::new());
+    }
+
+    #[test]
     fn names_hide_in_no_identifier() {
         let words: Vec<String> = DATABASES.iter().map(|w| (*w).to_string()).collect();
         let found = |t: &str| names(t, &words).into_iter().map(|(_, w)| w).collect::<Vec<_>>();
         assert_eq!(found("fn readMySql() -> FromPostgres"), ["mysql", "postgres"]);
-        assert_eq!(found("ToIceberg IsSnowflake MYSQL_DUMP SQLiteParser"), ["iceberg", "snowflake", "mysql", "sqlite"]);
+        assert_eq!(
+            found("ToIceberg IsSnowflake MYSQL_DUMP SQLiteParser"),
+            ["iceberg", "snowflake", "mysqldump", "sqlite"]
+        );
         assert_eq!(found("let iceberg3 = PgDump::new(); Iceberg3Table"), ["iceberg", "pgdump", "iceberg"]);
         assert_eq!(found("upgrade frompg toiceberg"), Vec::<String>::new(), "a lowercase run is one word");
     }
@@ -508,7 +514,7 @@ mod tests {
         let words: Vec<String> = DATABASES.iter().map(|w| (*w).to_string()).collect();
         let found = |t: &str| names(t, &words).into_iter().map(|(_, w)| w).collect::<Vec<_>>();
         assert_eq!(found("PostgreSQL, Iceberg and mysql"), ["postgresql", "iceberg", "mysql"]);
-        assert_eq!(found("pg_dump IcebergTable read_mysqldump"), ["pg", "iceberg", "mysqldump"]);
+        assert_eq!(found("pg_dump IcebergTable read_mysqldump"), ["pgdump", "iceberg", "mysqldump"]);
         assert_eq!(found("an archive of hives, a sparkline, the oracles"), Vec::<String>::new());
         assert_eq!(found("Hive and SPARK"), ["hive", "spark"]);
     }

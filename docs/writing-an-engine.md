@@ -56,6 +56,12 @@ database releases a new version, add it to `versions()` and mark the features it
 
 ## 3. Its types
 
+Everything you give the interface is made with a constructor, never field by field: `Version::new("3", "format 3")`,
+`TypeGroup::new("whole", "Whole numbers")`, `TypeSpec::new("decimal(P,S)", "exact", "An exact number…",
+"decimal(18,2)").since("2")`, `Parsed::new(…)`, `Report::new("statements")`, `Unread::new(…)`, `Imported::new(…)`.
+That is what lets the interface grow without breaking your engine: a field added later gets a default, and your
+code still builds. For the same reason, match a `TypeError` with a wildcard arm.
+
 `Types` gives the palette its groups and types, and reads a type written as text:
 
 - **`groups()`**: the palette's groups, in order (whole numbers, exact decimals, text, dates and times…).
@@ -69,7 +75,10 @@ database releases a new version, add it to `versions()` and mark the features it
 - **Examples are written exactly as you write them**: `decimal(18,2)`, never `DECIMAL( 18 , 2 )`; the palette puts the
   example into a column as it is.
 
-`engine.types_in(version)` gives the types a schema at that version may use, in palette order.
+`types_in(version)` on an engine gives the types a schema at that version may use, in palette order. It is worked out
+from your catalog and versions, not something you write, so it cannot disagree with them. When `parse` refuses a type
+as `NotInVersion`, `since` is exactly the version your catalog says it came in (or `None` when a version took it
+away): that is what the canvas tells the person.
 
 A column holds its type as your text; only your engine reads it.
 
@@ -113,20 +122,20 @@ use schema_forge_engine::kit::{self, QuerySample, Sample, Samples};
 
 #[test]
 fn the_engine_conforms() {
-    kit::assert_conforms(&YourDb, &Samples {
-        files: &[
-            Sample { path: Path::new("tests/samples/shop.sql"), written_back: true },
-            Sample { path: Path::new("tests/samples/metadata"), written_back: false },
-        ],
-        queries: &[QuerySample { query: "select * from sales.orders", reads: &[&["sales", "orders"]] }],
-    });
+    let files = [
+        Sample::written_back(Path::new("tests/samples/shop.sql")),
+        Sample::read_only(Path::new("tests/samples/metadata")),
+    ];
+    let queries = [QuerySample::new("select * from sales.orders", &[&["sales", "orders"]])];
+    kit::assert_conforms(&YourDb, &Samples::new(&files, &queries));
 }
 ```
 
-A sample is `written_back` when it is in the form your engine writes (its SQL): written and read again, it must give
-the same schema, written the same way twice. A form you only read (table metadata, a catalog's export) is not.
-Every part your engine has needs samples that exercise it: an engine that reads with no sample file, or reads queries
-with no sample query, does not conform.
+A `written_back` sample is in the form your engine writes, exactly as it writes it: read and written again, it must
+come back as **the same text**, line for line (blank lines aside), and read back to the same schema. That is how the
+kit knows kept text goes back in its place. A form you only read (table metadata, a dump made by another tool) is
+`read_only`. Every part your engine has needs samples that exercise it: reading needs a sample file, writing a
+written-back sample, reading queries a sample query.
 
 The kit checks your identity and versions; every type (its example reads back exactly as itself in the versions that
 have it, and is refused as `NotInVersion` by the others); every sample (recognised, read with a report that adds up, a
