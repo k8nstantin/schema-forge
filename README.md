@@ -82,6 +82,23 @@ soft.
 
 ![The new-schema wizard, choosing rule packs](docs/screenshots/new-schema-rules.jpg)
 
+## Every database is a plugin
+
+You choose a schema's database first, and everything follows it. Schema Forge keeps two layers apart:
+
+- **The process is shared.** The screens, turns, undo, history, references, the rules machinery and the MCP work the
+  same for every database and know none of them.
+- **The database is its engine's.** Table kinds, data types, keys and constraints, indexes, options, partitioning,
+  the operations that change them, its rules, its SQL, and reading it in from a dump, definition files or the live
+  database all belong to its engine plugin. MySQL, PostgreSQL and Apache Iceberg today; BigQuery, Snowflake or
+  Iceberg format 4 next.
+
+Each engine is a Rust crate with the same layout, implementing one trait, registered with one line, and checked by a
+conformance kit. Engines have versions, and every feature belongs to the version that brought it, so a new version of
+a database is new features in its plugin and nothing more. **Adding a database needs no change to the core.** The
+design, and what we learned from DBeaver, Bytebase, Atlas, Prisma, sqlglot and Liquibase:
+[docs/engines.md](docs/engines.md).
+
 ## How it works
 
 ```
@@ -122,10 +139,11 @@ each Rule, the workspace's rule packs); the MCP; design operations, views, editi
 rules engine with hard and soft, exceptions, groups, goals, compatibility and CDC packs, and agent-proposed rules
 with verification; reading pg_dumps and Iceberg Spark SQL; writing PostgreSQL and Iceberg SQL.
 
-**Next:** the remaining rule screens from the design (applying packs, goals, where rules apply), MySQL reading and
-writing, migration scripts between versions, and versions written as SQL files you can commit.
+**Next:** engines as plugins ([docs/engines.md](docs/engines.md)), with reading MySQL dumps and Iceberg table metadata,
+then reading live databases and catalogs; the remaining rule screens from the design (applying packs, goals, where
+rules apply); MySQL writing; migration scripts between versions, and versions written as SQL files you can commit.
 
-The design behind it: [docs/rules.md](docs/rules.md) (rules), [docs/model.md](docs/model.md) (the model),
+The design behind it: [docs/engines.md](docs/engines.md) (engines), [docs/rules.md](docs/rules.md) (rules), [docs/model.md](docs/model.md) (the model),
 [docs/perspectives.md](docs/perspectives.md) (the canvas), [docs/cdc.md](docs/cdc.md) (CDC to Iceberg),
 [docs/store.md](docs/store.md) (storage), [docs/market.md](docs/market.md) (how it compares).
 
