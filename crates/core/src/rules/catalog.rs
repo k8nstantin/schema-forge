@@ -236,7 +236,7 @@ fn build() -> Catalog {
             &["pk.present", "pk.required", "pk.ident"],
         ),
         check("pk.present", "Every table has a key", Must, "Without a key, no change can be applied to one row.", &[]),
-        check("pk.required", "Key columns are required", Must, "A key that may be empty identifies nothing.", &[]),
+        check("pk.required", "Key columns are not null", Must, "A key that can be null identifies nothing.", &[]),
         check(
             "pk.ident",
             "The key is declared as Iceberg identifier fields",

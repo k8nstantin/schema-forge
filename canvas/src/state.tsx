@@ -144,7 +144,7 @@ export function referenceWithContext(ix: Index, model: Schema, p: Pointer): stri
   if (!r || !p) return r
   if (p.kind === 'column') {
     const c = ix.columns.get(p.column)!.column
-    const parts = [typeLabel(c.type, model.target, ix.typeNames), c.nullable ? 'may be empty' : 'required']
+    const parts = [typeLabel(c.type, model.target, ix.typeNames), c.nullable ? 'null' : 'not null']
     if (c.comment) parts.push(c.comment)
     return `${r} (${parts.join(', ')})`
   }

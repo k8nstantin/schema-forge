@@ -169,12 +169,12 @@ function TableOf({ id }: { id?: string }) {
         {tab === 'columns' && (
           <>
             <div className="d-tbl">
-              <div className="d-crow d-tbl-head"><span>Column</span><span>Type</span><span>Required</span><span>Description</span></div>
+              <div className="d-crow d-tbl-head"><span>Column</span><span>Type</span><span>Null</span><span>Description</span></div>
               {t.columns.map((c) => (
                 <button key={c.id} type="button" className={`d-crow d-crow-line${pointedCol === c.id ? ' d-crow-on' : ''}`} onClick={() => point({ kind: 'column', table: t.id, column: c.id })}>
                   <span className="d-mono" style={{ fontSize: 14, color: 'var(--d-bright)', overflowWrap: 'anywhere' }}>{c.name}</span>
                   <span className="d-mono" style={{ fontSize: 13, color: nested(c.type).length ? 'var(--d-blue)' : 'var(--d-lilac)', overflowWrap: 'anywhere' }}>{typeLabel(c.type, model.target, ix.typeNames)}</span>
-                  <span className="d-xsmall d-soft">{c.nullable ? 'may be empty' : 'required'}</span>
+                  <span className="d-xsmall d-soft">{c.nullable ? 'null' : 'not null'}</span>
                   <span className="d-small d-soft">{c.comment}</span>
                 </button>
               ))}

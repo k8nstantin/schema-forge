@@ -302,7 +302,7 @@ mod review {
         let cx = review::Context { cat, custom: &[], schema: &s, global: &[], set: &set, proposals: &all };
         let v: Vec<review::Verdict> = all.iter().map(|p| review::verify(&cx, p)).collect();
         assert_eq!(v[0].state, State::Ready, "{:?}", v[0].notes);
-        assert_eq!(v[0].title, "Every table has `id`, required");
+        assert_eq!(v[0].title, "Every table has `id`, not null");
         assert_eq!((v[0].tally.checked, v[0].tally.breaks), (3, 1), "entries has no id");
         assert_eq!(v[1].state, State::Conflict, "times kept as strings contradict types.time");
         assert_eq!(v[1].conflicts, ["types.time"]);

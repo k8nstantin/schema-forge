@@ -242,7 +242,7 @@ async fn the_agent_proposes_the_person_approves_and_the_rule_holds() {
     ] });
     let (_, reply) = mcp(&app, Some(&session), call(3, "propose_rules", proposals)).await;
     let text = tool_text(&reply);
-    assert!(text.contains("#1 Every table has `id`, required"), "{text}");
+    assert!(text.contains("#1 Every table has `id`, not null"), "{text}");
     assert!(
         text.contains("#2") && text.contains("invalid"),
         "`string` is an Iceberg type, not a PostgreSQL one: {text}"

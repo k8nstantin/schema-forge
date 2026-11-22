@@ -383,7 +383,7 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
             let cid = column_id(s, &s.tables[i], &column.name);
             push_column(target, &mut s.tables[i], column, at, cid)?;
             let destructive = (!column.nullable && column.default.is_none())
-                .then(|| "a required column with no default: existing rows have no value for it".to_string());
+                .then(|| "a not null column with no default: existing rows have no value for it".to_string());
             Ok(Done { summary: format!("added column `{}.{}`", s.tables[i].name, column.name), destructive })
         }
         Op::RenameColumn { column, name } => {
@@ -424,10 +424,10 @@ fn change(s: &mut Schema, op: &Op) -> Result<Done, String> {
                 && *n != col.nullable
             {
                 if !n {
-                    destructive.push("required: existing empty values break it".to_string());
+                    destructive.push("not null: existing null values break it".to_string());
                 }
                 col.nullable = *n;
-                what.push(if *n { "may be empty" } else { "required" });
+                what.push(if *n { "null" } else { "not null" });
             }
             if let Some(d) = default {
                 col.default = Some(d.clone()).filter(|d| !d.trim().is_empty());
@@ -977,11 +977,11 @@ fn col_name<'a>(t: &'a Table, id: &'a Id) -> &'a str {
     t.columns.iter().find(|c| &c.id == id).map_or(id.as_str(), |c| c.name.as_str())
 }
 
-/// What making `cols` a key does to columns that may be empty: they become required.
+/// What making `cols` a key does to nullable columns: they become not null.
 fn made_required(t: &Table, cols: &[Id]) -> Option<String> {
     let names: Vec<&str> =
         t.columns.iter().filter(|c| cols.contains(&c.id) && c.nullable).map(|c| c.name.as_str()).collect();
-    (!names.is_empty()).then(|| format!("{} become required: existing empty values break it", names.join(", ")))
+    (!names.is_empty()).then(|| format!("{} become not null: existing null values break it", names.join(", ")))
 }
 
 fn set_key(target: Target, t: &mut Table, cols: Vec<Id>) {
@@ -1391,7 +1391,7 @@ mod tests {
         };
         apply(&mut s, &t("orders", vec![col("code", "string")]), false).expect("orders");
         let key = Op::SetIdentifierFields { table: "orders".into(), columns: vec!["code".into()] };
-        assert!(apply(&mut s.clone(), &key, false).is_err(), "code may be empty: making it required needs a yes");
+        assert!(apply(&mut s.clone(), &key, false).is_err(), "code is nullable: making it not null needs a yes");
         apply(&mut s, &key, true).expect("with a yes");
         assert!(!s.tables[0].columns[0].nullable, "an identifier field is required");
         // An id is unique across the schema: a renamed table's column id does not clash with a new table's.
