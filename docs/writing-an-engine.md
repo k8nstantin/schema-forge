@@ -85,7 +85,34 @@ away): that is what the canvas tells the person.
 
 A column holds its type as your text; only your engine reads it.
 
-## 4. Reading files
+## 4. Where your data goes: the section layout and your options
+
+Everything your engine stores on a schema goes in the parts' engine sections, and every engine's sections follow one
+layout, `schema_forge_engine::sections`: fill the slots your database has (`ObjectSection.keys`, `.checks`,
+`.indexes`, `.partitioning`, `.order`, `.query`…; `ColumnSection.default`, `.identity`, `.generated`; `LinkSection`;
+`SchemaSection.kept`, `.requires`, `.format`) and leave the rest out. Read a section with `sections::read`, write it
+with `sections::write`. Do not invent slots: a slot the layout does not have is refused.
+
+What is your database's alone goes in an element's `options`, and **you declare every option** your engine may hold,
+as data, in `Engine::options()`:
+
+```rust
+const OPTIONS: &[OptionSpec] = &[
+    OptionSpec::new(Part::Object, "fillfactor", OptionKind::Number, "How full each page is filled, in percent")
+        .for_kinds(&["table"]),
+    OptionSpec::new(Part::Key, "nulls_not_distinct", OptionKind::Flag, "Nulls count as equal").since("15"),
+];
+```
+
+That list is your engine's own schema over the shared layout: the kit refuses an option you do not declare, one of
+the wrong kind, or one the schema's version does not have, and the canvas builds its option forms from it. If what you
+need does not fit a slot or an option, that is a finding about the layout: propose it upstream, never store it
+elsewhere.
+
+When your engine changes how it stores its options, raise `SchemaSection.format` and read what your earlier versions
+wrote.
+
+## 5. Reading files
 
 `Read` turns your database's files into a schema:
 
@@ -98,7 +125,7 @@ A column holds its type as your text; only your engine reads it.
   say what your unit is (`statements`, `non-blank lines`, `files`). Something not understood is kept and listed, never an error: an error is only
   for an input that cannot be read at all.
 
-## 5. Writing, queries and checks
+## 6. Writing, queries and checks
 
 - **`Write`**: one object's definition, and the whole schema, as your SQL. What your reader keeps, your writer writes
   back.
@@ -107,7 +134,7 @@ A column holds its type as your text; only your engine reads it.
 
 Each is optional: an engine without a writer simply cannot export yet.
 
-## 6. Register it
+## 7. Register it
 
 Add one line to the registry crate:
 
@@ -116,7 +143,7 @@ Registry::new()
     .with(schema_forge_yourdb::YourDb)
 ```
 
-## 7. Pass the conformance kit
+## 8. Pass the conformance kit
 
 Give your crate sample files (`tests/samples/`) and one test:
 
@@ -143,9 +170,19 @@ checked on its identity, versions and types until the interface gives it schemas
 
 The kit checks your identity and versions; every type (its example reads back exactly as itself in the versions that
 have it, and is refused as `NotInVersion` by the others); every sample (recognised, read with a report that adds up, a
-sound schema of your engine at one of its versions, every column's type your own, every object with a definition,
+sound schema of your engine at one of its versions, every section in the layout and every id it names in the schema,
+every option declared, every column's type your own, every object with a definition,
 and, when written back, the same schema written the same way); and every sample query. It names everything that does
 not conform. A part your engine does not have is not checked.
 
 The kit's own tests break the `example` engine on purpose, one way each, to prove it finds each mistake:
 [`crates/engine/tests/interface.rs`](../crates/engine/tests/interface.rs).
+
+## 9. Let people add onto your engine
+
+Give your engine an add-on trait, so people extend it without forking it: a database extension's types, statements,
+kept statements and later rules, each from an add-on crate registered with one line (`YourDb::new().with(Extra)`).
+Build your engine's tables (types, statement handlers, kept kinds) from your built-ins and its add-ons, never as fixed
+lists. Write the extensions you ship support for as add-ons themselves, using only what your crate makes public: they
+are your add-on authors' examples. The PostgreSQL engine's `AddOn` trait and its `addons/` (PostGIS, pgvector, citext,
+hstore) are the worked example.

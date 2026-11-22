@@ -84,20 +84,21 @@ soft.
 
 ## Every database is a plugin
 
-You choose a schema's database first, and everything follows it. Schema Forge keeps two layers apart:
+You choose a schema's database first, and everything follows it. Schema Forge is built in two layers that never mix:
 
 - **The process is shared.** The screens, turns, undo, history, references, the rules machinery and the MCP work the
   same for every database and know none of them.
-- **The database is its engine's.** Table kinds, data types, keys and constraints, indexes, options, partitioning,
-  the operations that change them, its rules, its SQL, and reading it in from a dump, definition files or the live
-  database all belong to its engine plugin. MySQL, PostgreSQL and Apache Iceberg today; BigQuery, Snowflake or
-  Iceberg format 4 next.
+- **The database is its engine's.** Table kinds, types, keys and constraints, indexes, options, partitioning, the
+  operations that change them, its rules, its SQL, and reading it in from a dump, definition files or the live
+  database all belong to its **engine**: one Rust crate per database, its versions inside it.
 
-Each engine is a Rust crate with the same layout, implementing one trait, registered with one line, and checked by a
-conformance kit. Engines have versions, and every feature belongs to the version that brought it, so a new version of
-a database is new features in its plugin and nothing more. **Adding a database needs no change to the core.** The
-design, and what we learned from DBeaver, Bytebase, Atlas, Prisma, sqlglot and Liquibase:
-[docs/engines.md](docs/engines.md).
+Every engine stores its data in **one shared layout** (keys, checks, indexes, partitioning, defaults, identity…) and
+**declares its own options** as data, so no engine grows a storage of its own. Engines share nothing with each other
+but that interface: a problem in one is found in that one and never breaks another. People **add onto** an engine
+with add-ons (PostGIS types, a company's conventions) without forking it. A **conformance kit** checks every engine,
+and **CI checks the architecture itself**: a database named outside its engine, or one engine depending on another,
+fails the build. **Adding a database needs no change to the core.** Every decision and why:
+[docs/engines.md](docs/engines.md); how to write one: [docs/writing-an-engine.md](docs/writing-an-engine.md).
 
 ## How it works
 
@@ -125,11 +126,11 @@ engine with hard and soft rules, exceptions, goals, compatibility and CDC packs,
 verification, reading pg_dumps and Iceberg Spark SQL, and writing PostgreSQL and Iceberg SQL. It is kept as the tag
 [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype).
 
-**The product is being built now**, new, on engine plugins ([docs/engines.md](docs/engines.md)): every database its
-own crate, the design checked on the code by CI. Follow it in the
-[Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7) milestone: the model, the engine interface,
-PostgreSQL, Iceberg (with its table metadata) and MySQL, then the store, the operations, the rules, the server and
-the MCP, and the canvas.
+**The product is being built now**, new, on engine plugins ([docs/engines.md](docs/engines.md)). Done: the model,
+the engine interface with its registry and conformance kit, and the design checked by CI. Next: the layout every
+engine fills, then the PostgreSQL engine (the proof of the plugin design), Iceberg (with its table metadata) and
+MySQL, then the store, the operations, the rules, the server and the MCP, and the canvas. Follow it in the
+[Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7) milestone.
 
 To try the prototype:
 
