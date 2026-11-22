@@ -5,7 +5,8 @@ mod example;
 use std::path::Path;
 
 use example::{Broken, Example};
-use schema_forge_engine::{Engine, Registry, kit};
+use schema_forge_engine::kit::{self, QuerySample, Sample, Samples};
+use schema_forge_engine::{Engine, Registry, TypeError, Unread};
 use schema_forge_model::Schema;
 
 const SHOP: &str = "tests/samples/shop.example";
@@ -14,14 +15,27 @@ fn shop() -> &'static Path {
     Path::new(SHOP)
 }
 
+fn files() -> [Sample<'static>; 1] {
+    [Sample { path: shop(), written_back: true }]
+}
+
+const QUERIES: &[QuerySample<'static>] = &[QuerySample {
+    query: "select o.total, c.name from sales.orders o join sales.customers c on o.customer = c.id",
+    reads: &[&["sales", "orders"], &["sales", "customers"]],
+}];
+/// What `example` is checked on: its shop, written back, and a query.
+fn check(engine: &Example) -> Vec<String> {
+    kit::check(engine, &Samples { files: &files(), queries: QUERIES })
+}
+
 #[test]
 fn a_conforming_engine_passes_the_kit() {
-    kit::assert_conforms(&Example::new(), &[shop()]);
+    kit::assert_conforms(&Example::new(), &Samples { files: &files(), queries: QUERIES });
 }
 
 /// The kit's findings for a broken copy of the engine.
 fn findings(broken: Broken) -> Vec<String> {
-    kit::check(&Example::broken(broken), &[shop()])
+    check(&Example::broken(broken))
 }
 
 fn has(findings: &[String], text: &str) -> bool {
@@ -42,14 +56,29 @@ fn the_kit_finds_a_feature_of_a_version_the_engine_does_not_have() {
 
 #[test]
 fn the_kit_finds_a_type_read_in_a_version_without_it() {
-    let f = findings(Broken::VersionIgnored);
-    assert_eq!(f, ["`wide` reads in version `1`, which does not have it"]);
+    assert_eq!(findings(Broken::VersionIgnored), ["`wide` reads in version `1`, which does not have it"]);
+}
+
+#[test]
+fn the_kit_finds_a_type_refused_without_saying_it_is_the_version() {
+    assert_eq!(
+        findings(Broken::VersionUnsaid),
+        [
+            "`wide` in version `1`, which does not have it, should be refused as not in the version, not: `wide` is not a type"
+        ]
+    );
+}
+
+#[test]
+fn the_kit_finds_an_example_not_written_as_the_engine_writes_it() {
+    let f = findings(Broken::ExampleUnwritten);
+    assert!(has(&f, "the example `DECIMAL( 10 , 2 )` of `decimal(P,S)` is written `decimal(10,2)`"), "{f:?}");
 }
 
 #[test]
 fn the_kit_finds_a_report_that_does_not_add_up() {
     let f = findings(Broken::ReportShort);
-    assert!(has(&f, "the report does not add up: 9 read, 8 modelled, 0 kept, 0 data"), "{f:?}");
+    assert!(has(&f, "the report does not add up: 10 read, 8 modelled, 0 kept, 0 data"), "{f:?}");
 }
 
 #[test]
@@ -59,41 +88,81 @@ fn the_kit_finds_a_writer_that_loses_something() {
 }
 
 #[test]
+fn the_kit_finds_kept_text_written_out_of_its_place() {
+    let f = findings(Broken::KeptToEnd);
+    assert!(has(&f, "written and read back, it differs"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_objects_without_a_definition() {
+    let f = findings(Broken::NoDefinitions);
+    assert!(has(&f, "`customers` has no definition") && has(&f, "`orders` has no definition"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_queries_read_wrong() {
+    let f = findings(Broken::QueriesBlind);
+    assert_eq!(f.len(), 1, "{f:?}");
+    assert!(f[0].ends_with("reads [], not [[\"sales\", \"orders\"], [\"sales\", \"customers\"]]"), "{f:?}");
+}
+
+#[test]
 fn the_kit_finds_a_default_version_that_is_not_one() {
-    let f = findings(Broken::DefaultNoVersion);
-    assert_eq!(f, ["its default version `0` is not one of its versions"]);
+    assert_eq!(findings(Broken::DefaultNoVersion), ["its default version `0` is not one of its versions"]);
+}
+
+#[test]
+fn every_part_the_engine_has_needs_samples() {
+    assert_eq!(
+        kit::check(&Example::new(), &Samples::default()),
+        ["it reads files, but no sample file is given", "it reads queries, but no sample query is given"]
+    );
 }
 
 #[test]
 fn a_schema_is_offered_the_types_of_its_version() {
     let e = Example::new();
-    let names = |v: &str| e.types().in_version(v, e.versions()).iter().map(|t| t.name).collect::<Vec<_>>();
+    let names = |v: &str| e.types_in(v).iter().map(|t| t.name).collect::<Vec<_>>();
     assert_eq!(names("1"), ["int", "decimal(P,S)", "text"]);
     assert_eq!(names("2"), ["int", "decimal(P,S)", "text", "wide"]);
     assert_eq!(e.types().parse(" DECIMAL( 12 , 4 ) ", "1").map(|p| p.text), Ok("decimal(12,4)".to_string()));
-    assert!(e.types().parse("wide", "1").is_err());
+    let refused = e.types().parse("wide", "1").unwrap_err();
+    assert_eq!(refused, TypeError::NotInVersion { family: "wide", since: Some("2") });
+    assert_eq!(refused.to_string(), "`wide` came in version 2");
+    assert!(matches!(e.types().parse("whole", "2"), Err(TypeError::NotAType(_))));
 }
 
 #[test]
-fn reading_accounts_for_every_line() {
+fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place() {
     let e = Example::new();
-    let (engine, input) =
-        Registry::new().with(Example::new()).reader_of(shop()).map(|(e, i)| (e.id(), i)).expect("read");
-    assert_eq!(engine, "example");
+    let registry = Registry::new().with(Example::new());
+    let (engine, input) = registry.reader_of(shop()).expect("a reader");
+    assert_eq!(engine.id(), "example");
     let read = e.read().expect("it reads").read(&input).expect("it reads");
     let r = &read.report;
-    assert_eq!((r.read, r.modelled, r.kept_total(), r.data), (9, 8, 1, 0));
+    assert_eq!((r.read, r.modelled, r.kept_total(), r.data), (10, 8, 2, 0));
     assert!(r.adds_up());
-    assert_eq!(r.not_understood, [("line 9".to_string(), "-- a note the model does not hold".to_string())]);
-    assert!(r.to_string().starts_with("9 lines read\n  modelled: 8\n  kept as written: 1\n    other: 1\n"), "{r}");
+    assert_eq!(
+        r.not_understood,
+        [
+            Unread { at: "line 2".into(), start: "-- the shop's tables".into() },
+            Unread { at: "line 7".into(), start: "-- customers come from the web shop".into() },
+        ]
+    );
+    assert!(r.to_string().starts_with("10 non-blank lines read\n  modelled: 8\n  kept as written: 2\n"), "{r}");
     let s = &read.schema;
     assert_eq!((s.engine.id.as_str(), s.engine.version.as_str()), ("example", "2"));
-    assert_eq!(s.objects.iter().map(|o| o.name.as_str()).collect::<Vec<_>>(), ["customers", "orders"]);
-    let orders = &s.objects[1];
-    let def = e.write().expect("it writes").definition(s, &orders.id).expect("orders is there");
+    let write = e.write().expect("it writes");
     assert_eq!(
-        def,
-        "table sales orders\ncolumn id int not-null\ncolumn total decimal(10,2) null\ncolumn note wide null\n"
+        write.schema(s),
+        "example 2\n-- the shop's tables\ntable sales customers\ncolumn id int not-null\ncolumn name text null\n\
+         -- customers come from the web shop\ntable sales orders\ncolumn id int not-null\n\
+         column total decimal(10,2) null\ncolumn note wide null\n"
+    );
+    let orders = &s.objects[1];
+    assert_eq!(
+        write.definition(s, &orders.id).as_deref(),
+        Some("table sales orders\ncolumn id int not-null\ncolumn total decimal(10,2) null\ncolumn note wide null\n")
     );
 }
 

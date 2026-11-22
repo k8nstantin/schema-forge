@@ -44,7 +44,7 @@ pub struct Imported {
 }
 
 /// Everything read, accounted for: `read == modelled + kept + data`. A unit is what the engine reads one at a time
-/// (`statements`, `files`).
+/// (`statements`, `files`); what is not a unit (the space between statements) is not content and is not counted.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Report {
     pub unit: &'static str,
@@ -55,8 +55,17 @@ pub struct Report {
     pub kept: BTreeMap<String, usize>,
     /// Data, not schema, left out (rows, sequence values).
     pub data: usize,
-    /// What was kept because it was not understood: where, and how it starts.
-    pub not_understood: Vec<(String, String)>,
+    /// What was kept because it was not understood.
+    pub not_understood: Vec<Unread>,
+}
+
+/// Something read but not understood, kept as written.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Unread {
+    /// Where it was (`line 12`, `orders/metadata/v3.metadata.json`).
+    pub at: String,
+    /// How it starts, enough to find it.
+    pub start: String,
 }
 
 impl Report {
@@ -83,8 +92,8 @@ impl fmt::Display for Report {
         writeln!(f, "  data, left out: {}", self.data)?;
         if !self.not_understood.is_empty() {
             writeln!(f, "  kept because not understood:")?;
-            for (at, start) in &self.not_understood {
-                writeln!(f, "    {at}: {start}")?;
+            for u in &self.not_understood {
+                writeln!(f, "    {}: {}", u.at, u.start)?;
             }
         }
         Ok(())

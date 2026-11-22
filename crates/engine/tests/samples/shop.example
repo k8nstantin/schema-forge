@@ -1,9 +1,12 @@
 example 2
+-- the shop's tables
+
 table sales customers
 column id int not-null
 column name text null
+-- customers come from the web shop
+
 table sales orders
 column id int not-null
 column total decimal(10,2) null
 column note wide null
--- a note the model does not hold

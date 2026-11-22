@@ -1,6 +1,8 @@
 //! An engine's types: what the palette shows, what a column may be, and how a type is written.
 
-use crate::{Availability, Version};
+use std::fmt;
+
+use crate::Availability;
 
 /// A group of types in the palette, in the order the engine lists them (whole numbers, exact decimals, text…).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,7 +20,8 @@ pub struct TypeSpec {
     pub group: &'static str,
     /// What it holds, in a plain sentence (`"An exact number with P digits, S after the point"`).
     pub meaning: &'static str,
-    /// A real type of this family as a column would have it, ready to use (`decimal(18,2)`); it reads back as itself.
+    /// A real type of this family as a column would have it, written exactly as the engine writes it
+    /// (`decimal(18,2)`): reading it gives back the same text.
     pub example: &'static str,
     pub available: Availability,
 }
@@ -32,6 +35,32 @@ pub struct Parsed {
     pub text: String,
 }
 
+/// Why a text is not a type a schema's version may use.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TypeError {
+    /// Not a type of this engine at all, or written wrong, with why.
+    NotAType(String),
+    /// A type of this engine that the schema's version does not have.
+    NotInVersion {
+        /// The [`TypeSpec::name`] of its family.
+        family: &'static str,
+        /// The version it came in, when a later one has it; `None` when it was taken away.
+        since: Option<&'static str>,
+    },
+}
+
+impl fmt::Display for TypeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotAType(why) => f.write_str(why),
+            Self::NotInVersion { family, since: Some(v) } => write!(f, "`{family}` came in version {v}"),
+            Self::NotInVersion { family, since: None } => write!(f, "`{family}` is not in this version"),
+        }
+    }
+}
+
+impl std::error::Error for TypeError {}
+
 /// An engine's types.
 pub trait Types: Send + Sync {
     /// Its groups, in palette order.
@@ -43,11 +72,7 @@ pub trait Types: Send + Sync {
     /// Reads a type written as text, as a column of a schema at `version` would have it.
     ///
     /// # Errors
-    /// When it is not a type of this engine, or not one `version` has, saying why.
-    fn parse(&self, text: &str, version: &str) -> Result<Parsed, String>;
-
-    /// The types a schema at `version` may use.
-    fn in_version<'a>(&'a self, version: &str, versions: &[Version]) -> Vec<&'a TypeSpec> {
-        self.catalog().iter().filter(|t| t.available.in_version(version, versions)).collect()
-    }
+    /// [`TypeError::NotAType`] when it is not a type of this engine; [`TypeError::NotInVersion`] when it is one that
+    /// `version` does not have.
+    fn parse(&self, text: &str, version: &str) -> Result<Parsed, TypeError>;
 }

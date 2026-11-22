@@ -136,7 +136,7 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
     let mut breach = |s: String| out.push(Breach(s));
     let role_of = |name: &str| crates.iter().find(|c| c.name == name).and_then(|c| c.role);
     let mut words: Vec<String> = DATABASES.iter().map(|w| (*w).to_string()).collect();
-    words.extend(crates.iter().filter_map(|c| c.database.clone()));
+    words.extend(crates.iter().filter_map(|c| c.database.as_deref().map(str::to_ascii_lowercase)));
 
     for c in crates {
         let Some(role) = c.role else {
@@ -156,8 +156,17 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
         if role != Role::Engine && in_engines {
             breach(format!("{}: only engines live in engines/; this is a {role}", c.name));
         }
-        if role == Role::Engine && c.database.is_none() {
-            breach(format!("{}: an engine says its database id (database = \"…\")", c.name));
+        match (&c.database, role) {
+            (None, Role::Engine) => breach(format!("{}: an engine says its database id (database = \"…\")", c.name)),
+            (Some(d), Role::Engine)
+                if d.is_empty() || !d.chars().all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_') =>
+            {
+                breach(format!("{}: the database id `{d}` is not lowercase letters, digits and `_`", c.name));
+            }
+            (Some(_), r) if r != Role::Engine => {
+                breach(format!("{}: only an engine says a database; this is a {r}", c.name))
+            }
+            _ => {}
         }
         if let Some(allowed) = role.may_depend_on() {
             for d in &c.depends_on {
@@ -185,10 +194,10 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
         }
     }
     // One crate per database, never one per version: a version lives in its database's crate.
-    let mut engines: Vec<(&str, &str)> = crates
+    let mut engines: Vec<(String, &str)> = crates
         .iter()
         .filter(|c| c.role == Some(Role::Engine))
-        .filter_map(|c| c.database.as_deref().map(|d| (d, c.name.as_str())))
+        .filter_map(|c| c.database.as_deref().map(|d| (d.to_ascii_lowercase(), c.name.as_str())))
         .collect();
     engines.sort_unstable();
     for pair in engines.windows(2) {
@@ -202,29 +211,58 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
     out
 }
 
-/// The databases `text` names, by line: a word that is one (`mysql`, `PostgreSQL`, `pg_dump`), or starts with one
-/// before a capital or a digit (`MySqlDialect`, `IcebergTable`).
+/// The databases `text` names, by line. Words are split at everything but letters and digits (`pg_dump` is `pg`
+/// and `dump`), then into the parts of an identifier (`readMySqlDialect` is `read`, `My`, `Sql`, `Dialect`), and any
+/// run of parts that spells a database is a name: `mysql`, `PostgreSQL`, `pg_dump`, `FromPostgres`, `readMySql`. A
+/// word that only contains one (`archive`, `sparkline`) is not.
 #[must_use]
 pub fn names(text: &str, databases: &[String]) -> Vec<(usize, String)> {
     let mut out = Vec::new();
     for (i, line) in text.lines().enumerate() {
         for word in line.split(|ch: char| !ch.is_ascii_alphanumeric()).filter(|w| !w.is_empty()) {
-            let lower = word.to_ascii_lowercase();
-            // The whole word first: `PostgreSQL` is `postgresql`, not `postgres` before a capital.
-            let hit = databases.iter().find(|d| lower == **d).or_else(|| {
-                databases.iter().find(|d| {
-                    lower.starts_with(d.as_str())
-                        && word[d.len()..]
-                            .chars()
-                            .next()
-                            .is_some_and(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit())
-                })
-            });
-            if let Some(d) = hit {
-                out.push((i + 1, d.clone()));
+            let parts = parts(word);
+            let mut start = 0;
+            while start < parts.len() {
+                // The longest run from here: `PostgreSQL` is `postgresql`, not `postgres`.
+                let mut run = String::new();
+                let mut hit = None;
+                for (end, part) in parts.iter().enumerate().skip(start) {
+                    run.push_str(&part.to_ascii_lowercase());
+                    if let Some(d) = databases.iter().find(|d| **d == run) {
+                        hit = Some((end, d));
+                    }
+                }
+                match hit {
+                    Some((end, d)) => {
+                        out.push((i + 1, d.clone()));
+                        start = end + 1;
+                    }
+                    None => start += 1,
+                }
             }
         }
     }
+    out
+}
+
+/// An identifier's parts: split before a capital that follows a small letter or a digit, before the last capital of
+/// a run of capitals followed by a small letter (`SQLParser` is `SQL` and `Parser`), and between letters and digits.
+fn parts(word: &str) -> Vec<&str> {
+    let b = word.as_bytes();
+    let mut out = Vec::new();
+    let mut from = 0;
+    for i in 1..b.len() {
+        let (p, c) = (b[i - 1], b[i]);
+        let next_small = b.get(i + 1).is_some_and(u8::is_ascii_lowercase);
+        let cut = (c.is_ascii_uppercase() && (p.is_ascii_lowercase() || p.is_ascii_digit()))
+            || (c.is_ascii_uppercase() && p.is_ascii_uppercase() && next_small)
+            || (c.is_ascii_digit() != p.is_ascii_digit());
+        if cut {
+            out.push(&word[from..i]);
+            from = i;
+        }
+    }
+    out.push(&word[from..]);
     out
 }
 
@@ -421,6 +459,33 @@ mod tests {
             check(&c, src),
             [Breach("crates/model/src/lib.rs:2: names the database `mysql`; that belongs in its engine".into())]
         );
+    }
+
+    #[test]
+    fn database_ids_are_lowercase_and_compared_so() {
+        let mut c = good();
+        c[4].database = Some("Postgres".into());
+        let b = check(&c, none);
+        assert!(
+            b.iter()
+                .any(|b| b.0
+                    == "schema-forge-mysql: the database id `Postgres` is not lowercase letters, digits and `_`"),
+            "{b:?}"
+        );
+        assert!(b.iter().any(|b| b.0.contains("both say the database `postgres`")), "{b:?}");
+        let mut c = good();
+        c[6].database = Some("x".into());
+        assert_eq!(check(&c, none), [Breach("store: only an engine says a database; this is a app".into())]);
+    }
+
+    #[test]
+    fn names_hide_in_no_identifier() {
+        let words: Vec<String> = DATABASES.iter().map(|w| (*w).to_string()).collect();
+        let found = |t: &str| names(t, &words).into_iter().map(|(_, w)| w).collect::<Vec<_>>();
+        assert_eq!(found("fn readMySql() -> FromPostgres"), ["mysql", "postgres"]);
+        assert_eq!(found("ToIceberg IsSnowflake MYSQL_DUMP SQLiteParser"), ["iceberg", "snowflake", "mysql", "sqlite"]);
+        assert_eq!(found("let iceberg3 = PgDump::new(); Iceberg3Table"), ["iceberg", "pgdump", "iceberg"]);
+        assert_eq!(found("upgrade frompg toiceberg"), Vec::<String>::new(), "a lowercase run is one word");
     }
 
     #[test]

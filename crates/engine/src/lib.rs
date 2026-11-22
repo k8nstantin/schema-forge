@@ -14,9 +14,9 @@ mod registry;
 mod types;
 mod version;
 
-pub use read::{Imported, Input, Read, Report};
+pub use read::{Imported, Input, Read, Report, Unread};
 pub use registry::Registry;
-pub use types::{Parsed, TypeGroup, TypeSpec, Types};
+pub use types::{Parsed, TypeError, TypeGroup, TypeSpec, Types};
 pub use version::{Availability, Version};
 
 use schema_forge_model::{Id, Problem, Schema};
@@ -40,6 +40,11 @@ pub trait Engine: Send + Sync {
 
     /// Its types.
     fn types(&self) -> &dyn Types;
+
+    /// The types a schema at `version` may use, in palette order.
+    fn types_in(&self, version: &str) -> Vec<&TypeSpec> {
+        self.types().catalog().iter().filter(|t| t.available.in_version(version, self.versions())).collect()
+    }
 
     /// Reading its files (dumps, definition files, table metadata) into a schema.
     fn read(&self) -> Option<&dyn Read> {
@@ -67,7 +72,7 @@ pub trait Write: Send + Sync {
     /// One object's definition, or `None` when the schema has no object `id`.
     fn definition(&self, schema: &Schema, id: &Id) -> Option<String>;
 
-    /// The whole schema, in an order the database accepts.
+    /// The whole schema, in an order the database accepts, with what the reader kept written back in its place.
     fn schema(&self, schema: &Schema) -> String;
 }
 
