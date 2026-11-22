@@ -179,15 +179,53 @@ later without changing it.
 
 ## The crates
 
-| Crate | What it is |
+The workspace says the design in its folders: `crates/` holds what every database shares, `engines/` one crate per
+database, `tools/` the checks of the code itself.
+
+| Crate | Folder | Role | What it is |
+|---|---|---|---|
+| `schema-forge-model` | `crates/model` | model | the skeleton: no database in it |
+| `schema-forge-engine` | `crates/engine` | interface | the plugin interface: the trait and its facets, the read report, the registry, the conformance kit |
+| `schema-forge-sql` | `crates/sql` | helper | reading SQL statements and tokens with `sqlparser`, for the engines that want it |
+| `schema-forge-postgres`, `-mysql`, `-iceberg` | `engines/<database>` | engine | the engines, each with the same modules |
+| `schema-forge-portable` | `crates/portable` | interface | the portable types engines map to, for moving between engines |
+| `schema-forge-engines` | `crates/engines` | registry | the engines Schema Forge ships with, registered |
+| `schema-forge-store`, `-ops`, `-rules`, `-serve`, `-mcp`, `-cli` | `crates/…` | app | the store, the operations, the rules machinery, the server, the MCP, the command line: they ask the registry |
+| `schema-forge-architecture` | `tools/architecture` | tool | the design, checked on the code |
+| the canvas | `canvas/` | | shared screens, drawn from the engines' descriptors (`/api/engines`) |
+
+## The design is checked on the code
+
+Every crate declares its role in its `Cargo.toml`:
+
+```toml
+[package.metadata.schema-forge]
+role = "engine"
+database = "mysql"
+```
+
+`tools/architecture` runs with every `cargo test`, in CI too, and fails the build when the design is broken:
+
+| Role | May depend on |
 |---|---|
-| `schema-forge-core` | the skeleton, the shared operations, the rules machinery, references: no database in it |
-| `schema-forge-engine` | the plugin interface: the trait and its facets, the read report, the registry, the conformance kit |
-| `schema-forge-postgres`, `-mysql`, `-iceberg` | the engines, each with the same modules |
-| `schema-forge-portable` | the portable types engines map to, for moving between engines |
-| `schema-forge-engines` | the engines Schema Forge ships with, registered |
-| `schema-forge-store`, `-serve`, `-mcp`, `-cli` | ask the registry for the schema's engine |
-| the canvas | shared screens, drawn from the engines' descriptors (`/api/engines`) |
+| model | nothing of ours |
+| interface | the model |
+| helper | the model, the interface |
+| engine | the model, the interface, helpers; **never another engine** |
+| registry | the interface, the engines |
+| app | the model, the interface, the registry, other apps; **never one engine** |
+| tool | anything |
+
+And besides what each role may depend on:
+
+- **A database is named only in its engine.** In every crate but the engines and the registry, a word that is a
+  database (`mysql`, `PostgreSQL`, `pg_dump`, `IcebergTable`…) fails the build. A comment counts too: an example in the
+  model that names a database is a database's knowledge in the wrong place.
+- **Parsing SQL belongs to engines.** Only engines and helpers may use `sqlparser`.
+- **Engines live in `engines/` and say their database**; nothing else lives there.
+- **Every crate declares a role**; a crate without one fails the build.
+
+The check has its own tests, which break each rule on purpose, so it can never pass by checking nothing.
 
 ## Reading in
 
@@ -231,32 +269,28 @@ The screens, the agent, the rules and the store pick it up from there.
 
 Adding an engine is how Schema Forge grows, so it gets a full guide, `docs/writing-an-engine.md`, and a template
 crate to start from: each facet explained with a worked example from a shipped engine, the conformance kit, the
-fixtures, and how to propose an engine upstream. Every step below that changes the interface updates the guide in the
-same PR, so the guide is never behind the code.
+fixtures, and how to propose an engine upstream. Every step that changes the interface updates the guide in the same PR,
+so the guide is never behind the code.
 
-## Today, and the way there
+## Building it
 
-Today the core holds every database: one data type with MySQL's `unsigned` and charset, PostgreSQL's arrays and user
-types and Iceberg's field ids; keys, indexes and checks on every table; a closed `Target` list tested in about 150
-places, from the model's checks and operations to the rules and the canvas. The way there is in steps, each one issue,
-one branch and one PR, each leaving everything working:
+The prototype (the tag [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype)) proved Schema Forge
+can be built: the canvas from the designs, the rules engine, the agent's MCP, reading PostgreSQL dumps and Iceberg's
+Spark SQL. The product is built new, to this design, from an empty tree; the prototype is reference and test
+material, never code to wrap or move. Each step is one issue, one branch and one PR, in the milestone
+[Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7):
 
-1. **The plugin interface and the registry**, with the engines registered over the code that exists today, and the
-   command line, the server and the MCP asking the registry.
-2. **The conformance kit**, and recorded fixtures for each engine.
-3. **PostgreSQL in its own crate**, moved as it is.
-4. **Iceberg in its own crate**, moved as it is.
-5. **Types belong to the engine**: schema format 2 starts; a column's type is the engine's.
-6. **Keys, constraints and indexes belong to the engine.**
-7. **Options, partitioning and order belong to the engine.**
-8. **Engine operations**: declared by the engine; the agent's tools and the edit forms built from them.
-9. **Rules per engine**: shared ideas implemented by each engine, its own packs in it.
-10. **The screens from the engine**: `/api/engines`; no database named in the canvas.
-11. **Iceberg: reading a warehouse of `metadata.json`.**
-12. **MySQL: its engine, and reading `mysqldump`.**
-13. **Portable types**, and compatibility through them.
-14. **The guide to writing an engine, and the template crate**, finished and tried on a new engine from scratch.
+1. **The foundation** (#57): the prototype tagged and cleared, the workspace laid out, the design checked on the code.
+2. **The model** (#58): the skeleton with engine sections.
+3. **The engine interface** (#59): the trait and its facets, the registry, the conformance kit; the guide starts.
+4. **PostgreSQL** (#60, #61): its model and reading `pg_dump`; then writing.
+5. **Iceberg** (#62, #63): its model and reading Spark SQL and a warehouse of `metadata.json`; then writing.
+6. **MySQL** (#64, #65): its model and reading `mysqldump`; then writing.
+7. **The store** (#66), **the operations** (#67) and **the rules** (#68) on the new model.
+8. **The server, the MCP and the command line** (#69).
+9. **The canvas** (#70), built from the agreed boards on the engines; then the schemas are imported with the new
+   readers and checked in the browser.
+10. **Portable types** (#79) and **the guide to writing an engine with its template crate** (#80).
 
-Then, each its own issue: writing MySQL; reading PostgreSQL, MySQL and an Iceberg REST catalog live; BigQuery;
-migrations between versions of a schema. Format 1 schemas keep reading throughout: each step that changes the model
-reads the format before it, with nothing lost.
+Then, each its own issue: reading PostgreSQL, MySQL and an Iceberg REST catalog live (#72, #73, #74); BigQuery
+(#75), kept for developers outside the core to prove the guide; migrations between versions of a schema.
