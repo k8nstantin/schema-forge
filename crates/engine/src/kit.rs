@@ -776,6 +776,11 @@ fn object_ids(
             out.push(format!("its {what} has no body"));
         }
     }
+    for p in t.routine.iter().flat_map(|r| &r.parameters) {
+        if p.name.trim().is_empty() || p.data_type.trim().is_empty() {
+            out.push(format!("its routine has a parameter without a name or a type (`{}`, `{}`)", p.name, p.data_type));
+        }
+    }
     if t.event.as_ref().is_some_and(|e| e.schedule.trim().is_empty()) {
         out.push("its event has no schedule".to_string());
     }
