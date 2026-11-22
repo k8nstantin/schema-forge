@@ -12,6 +12,7 @@
 
 pub mod kinds;
 pub mod kit;
+pub mod live;
 pub mod options;
 pub mod portable;
 mod read;
@@ -82,6 +83,11 @@ pub trait Engine: Send + Sync {
 
     /// What makes a schema wrong for it, beyond the model's own checks.
     fn checks(&self) -> Option<&dyn Checks> {
+        None
+    }
+
+    /// Reading a schema from the live database: its connection fields, a test, a read-only read.
+    fn live(&self) -> Option<&dyn live::Live> {
         None
     }
 
