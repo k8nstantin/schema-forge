@@ -36,8 +36,8 @@ the agent's and the architect's, is checked against **rules**: the team's design
 - **CDC as a goal.** Say what a schema has to do ("feed it by CDC", "land PostgreSQL in Iceberg") and Schema Forge
   shows the gap: keys Debezium can follow, identifier fields, merge-on-read, source positions, types Debezium carries
   well.
-- **Starts from what exists.** It reads `pg_dump` and `mysqldump` files, Iceberg's Spark SQL and table metadata, and
-  keeps exactly as written whatever it does not model.
+- **Starts from what exists.** It reads `pg_dump` files and Iceberg's Spark SQL today (`mysqldump` and Iceberg table
+  metadata are being added), and keeps exactly as written whatever it does not model.
 
 ## Who it is for
 

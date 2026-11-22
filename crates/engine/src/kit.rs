@@ -535,6 +535,9 @@ fn walk(engine: &dyn Engine, schema: &schema_forge_model::Schema) -> Vec<String>
         Ok(s) => {
             options(engine, version, Part::Schema, None, "the schema", &s.options, &mut out);
             for k in &s.kept {
+                if k.kind.trim().is_empty() || k.text.trim().is_empty() {
+                    out.push(format!("a kept statement has no kind or no text (`{}`, `{}`)", k.kind, k.text));
+                }
                 if let Some(after) = &k.after
                     && !ids.contains(after)
                 {

@@ -55,11 +55,28 @@ pub fn layout_of(section: &Section) -> Result<u32, String> {
     Ok(layout)
 }
 
+/// The shapes of the layout: the sections of a schema's parts. Only this module's types are layouts, so [`read`] and
+/// [`write`] take nothing else.
+pub trait Layout: Serialize + DeserializeOwned + Default + sealed::Sealed {}
+
+mod sealed {
+    pub trait Sealed {}
+}
+
+macro_rules! layouts {
+    ($($t:ty),* $(,)?) => {
+        $(impl sealed::Sealed for $t {} impl Layout for $t {})*
+    };
+}
+
+layouts!(SchemaSection, NamespaceSection, ObjectSection, ColumnSection, LinkSection);
+
 /// Reads a part's section in the layout `T`; an empty section is `T`'s default.
 ///
 /// # Errors
-/// When the section does not follow the layout: a slot it does not have, or a slot of the wrong shape.
-pub fn read<T: DeserializeOwned + Default>(section: &Section) -> Result<T, String> {
+/// When the section does not follow the layout: a slot it does not have, a slot of the wrong shape, or (for the
+/// schema's section) a later layout than this build knows.
+pub fn read<T: Layout>(section: &Section) -> Result<T, String> {
     if section.is_empty() {
         return Ok(T::default());
     }
@@ -67,11 +84,15 @@ pub fn read<T: DeserializeOwned + Default>(section: &Section) -> Result<T, Strin
 }
 
 /// A section in the layout, as the model stores it: slots left empty are left out.
+///
+/// # Panics
+/// Never: every layout is a struct of strings, numbers, booleans, ids and string-keyed maps, which always become a
+/// JSON object.
 #[must_use]
-pub fn write<T: Serialize>(layout: &T) -> Section {
+pub fn write<T: Layout>(layout: &T) -> Section {
     match serde_json::to_value(layout) {
         Ok(serde_json::Value::Object(map)) => map,
-        _ => Section::new(),
+        other => unreachable!("a section layout always becomes a JSON object, not {other:?}"),
     }
 }
 
@@ -99,13 +120,25 @@ fn is_current_layout(n: &u32) -> bool {
     *n == LAYOUT
 }
 
+fn known_layout<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+    let layout = u32::deserialize(d)?;
+    if layout > LAYOUT {
+        return Err(serde::de::Error::custom(format!(
+            "this schema was written with section layout {layout}; this build of Schema Forge reads up to {LAYOUT}: \
+             open it with a newer one"
+        )));
+    }
+    Ok(layout)
+}
+
 /// The schema as a whole.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct SchemaSection {
-    /// The version of this layout the schema was written with; [`LAYOUT`] when it says none.
-    #[serde(default = "current_layout", skip_serializing_if = "is_current_layout")]
+    /// The version of this layout the schema was written with; [`LAYOUT`] when it says none. A later one is refused as
+    /// it is read.
+    #[serde(default = "current_layout", skip_serializing_if = "is_current_layout", deserialize_with = "known_layout")]
     pub layout: u32,
     /// The engine's own storage version: which version of the engine wrote the options in this schema, so a later
     /// engine reads what an earlier one wrote. Zero when the engine has never changed how it stores them.
@@ -614,5 +647,10 @@ mod tests {
         let later = section(json!({ "layout": LAYOUT + 1 }));
         let e = layout_of(&later).unwrap_err();
         assert!(e.contains(&format!("section layout {}", LAYOUT + 1)) && e.contains("open it with a newer one"), "{e}");
+        let e = read::<SchemaSection>(&later).unwrap_err();
+        assert!(
+            e.contains("open it with a newer one"),
+            "reading the section refuses it too, whoever forgets layout_of: {e}"
+        );
     }
 }

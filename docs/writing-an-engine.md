@@ -127,7 +127,7 @@ your earlier versions wrote. The layout itself has a version too (`sections::LAY
 `sections::layout_of` before reading it, so a schema written by a newer Schema Forge is refused whole, never read
 with something dropped.
 
-## 4b. Your types as Arrow's
+## 5. Your types as Arrow's
 
 Implement `Portable`: `arrow_type` gives each of your types as an Apache Arrow type, and `engine_type` gives your type
 for an Arrow type, each saying how faithful it is: `Mapped::exact` when it comes back as the same type,
@@ -137,7 +137,7 @@ planned views and lineage work for your engine through it, so every engine has o
 coming back as the same type, and every column type in your samples to mapping. Depend on `arrow-schema` only; never
 on DataFusion or the rest of Arrow.
 
-## 5. Reading files
+## 6. Reading files
 
 `Read` turns your database's files into a schema:
 
@@ -150,7 +150,7 @@ on DataFusion or the rest of Arrow.
   say what your unit is (`statements`, `non-blank lines`, `files`). Something not understood is kept and listed, never an error: an error is only
   for an input that cannot be read at all.
 
-## 6. Writing, queries and checks
+## 7. Writing, queries and checks
 
 - **`Write`**: one object's definition, and the whole schema, as your SQL. What your reader keeps, your writer writes
   back. Writing returns an error rather than drop anything: a section that does not read is an error, never an empty
@@ -160,7 +160,7 @@ on DataFusion or the rest of Arrow.
 
 Each is optional: an engine without a writer simply cannot export yet.
 
-## 7. Register it
+## 8. Register it
 
 Add one line to the registry crate:
 
@@ -169,7 +169,7 @@ Registry::new()
     .with(schema_forge_yourdb::YourDb)
 ```
 
-## 8. Pass the conformance kit
+## 9. Pass the conformance kit
 
 Give your crate sample files (`tests/samples/`) and one test:
 
@@ -204,7 +204,7 @@ not conform. A part your engine does not have is not checked.
 The kit's own tests break the `example` engine on purpose, one way each, to prove it finds each mistake:
 [`crates/engine/tests/interface.rs`](../crates/engine/tests/interface.rs).
 
-## 9. Let people add onto your engine
+## 10. Let people add onto your engine
 
 Give your engine an add-on trait, so people extend it without forking it: a database extension's types, statements,
 kept statements and later rules, each from an add-on crate registered with one line (`YourDb::new().with(Extra)`).
