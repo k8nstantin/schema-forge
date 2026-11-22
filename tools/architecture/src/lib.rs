@@ -44,7 +44,7 @@ impl Role {
             Self::Interface => &[Self::Model],
             Self::Helper => &[Self::Model, Self::Interface],
             Self::Engine => &[Self::Model, Self::Interface, Self::Helper],
-            Self::Registry => &[Self::Interface, Self::Engine],
+            Self::Registry => &[Self::Model, Self::Interface, Self::Engine],
             Self::App => &[Self::Model, Self::Interface, Self::Registry, Self::App],
             Self::Tool => return None,
         })
@@ -53,6 +53,21 @@ impl Role {
     /// Whether this role's code may name a database: an engine names its own, the registry names the engines.
     const fn may_name_databases(self) -> bool {
         matches!(self, Self::Engine | Self::Registry | Self::Tool)
+    }
+}
+
+impl Role {
+    /// The role with its article, as a sentence says it: `an engine`, `a model`.
+    const fn a(self) -> &'static str {
+        match self {
+            Self::Model => "a model",
+            Self::Interface => "an interface",
+            Self::Helper => "a helper",
+            Self::Engine => "an engine",
+            Self::Registry => "a registry",
+            Self::App => "an app",
+            Self::Tool => "a tool",
+        }
     }
 }
 
@@ -154,7 +169,7 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
             breach(format!("{}: an engine lives in engines/, not {}", c.name, c.dir.display()));
         }
         if role != Role::Engine && in_engines {
-            breach(format!("{}: only engines live in engines/; this is a {role}", c.name));
+            breach(format!("{}: only engines live in engines/; this is {}", c.name, role.a()));
         }
         match (&c.database, role) {
             (None, Role::Engine) => breach(format!("{}: an engine says its database id (database = \"…\")", c.name)),
@@ -164,7 +179,7 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
                 breach(format!("{}: the database id `{d}` is not lowercase letters, digits and `_`", c.name));
             }
             (Some(_), r) if r != Role::Engine => {
-                breach(format!("{}: only an engine says a database; this is a {r}", c.name))
+                breach(format!("{}: only an engine says a database; this is {}", c.name, r.a()))
             }
             _ => {}
         }
@@ -172,14 +187,14 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
             for d in &c.depends_on {
                 match role_of(d) {
                     Some(r) if allowed.contains(&r) => {}
-                    Some(r) => breach(format!("{}: a {role} may not depend on {d}, a {r}", c.name)),
+                    Some(r) => breach(format!("{}: {} may not depend on {d}, {}", c.name, role.a(), r.a())),
                     None => breach(format!("{}: depends on {d}, which declares no role", c.name)),
                 }
             }
         }
         for (ext, roles) in ONLY_FOR {
             if c.external.iter().any(|e| e == ext) && !roles.contains(&role) {
-                breach(format!("{}: a {role} may not use {ext}; that belongs to engines", c.name));
+                breach(format!("{}: {} may not use {ext}; that belongs to engines", c.name, role.a()));
             }
         }
         if !role.may_name_databases() {
@@ -379,7 +394,7 @@ mod tests {
         c[4].depends_on.push("schema-forge-postgres".into());
         assert_eq!(
             check(&c, none),
-            [Breach("schema-forge-mysql: a engine may not depend on schema-forge-postgres, a engine".into())]
+            [Breach("schema-forge-mysql: an engine may not depend on schema-forge-postgres, an engine".into())]
         );
     }
 
@@ -394,7 +409,7 @@ mod tests {
     fn the_model_depends_on_nothing_of_ours() {
         let mut c = good();
         c[0].depends_on.push("engine".into());
-        assert_eq!(check(&c, none), [Breach("model: a model may not depend on engine, a interface".into())]);
+        assert_eq!(check(&c, none), [Breach("model: a model may not depend on engine, an interface".into())]);
     }
 
     #[test]
@@ -440,7 +455,7 @@ mod tests {
         let mut c = good();
         c[7].external.push("sqlparser".into());
         c[3].external.push("sqlparser".into());
-        assert_eq!(check(&c, none), [Breach("serve: a app may not use sqlparser; that belongs to engines".into())]);
+        assert_eq!(check(&c, none), [Breach("serve: an app may not use sqlparser; that belongs to engines".into())]);
     }
 
     #[test]
@@ -475,7 +490,7 @@ mod tests {
         assert!(b.iter().any(|b| b.0.contains("both say the database `postgres`")), "{b:?}");
         let mut c = good();
         c[6].database = Some("x".into());
-        assert_eq!(check(&c, none), [Breach("store: only an engine says a database; this is a app".into())]);
+        assert_eq!(check(&c, none), [Breach("store: only an engine says a database; this is an app".into())]);
     }
 
     #[test]

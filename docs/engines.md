@@ -236,7 +236,7 @@ database = "mysql"
 | interface | the model |
 | helper | the model, the interface |
 | engine | the model, the interface, helpers; **never another engine** |
-| registry | the interface, the engines |
+| registry | the model, the interface, the engines |
 | app | the model, the interface, the registry, other apps; **never one engine** |
 | tool | anything |
 
