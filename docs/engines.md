@@ -202,6 +202,15 @@ in `version-hint.text`, else the highest). Credentials for live reading come fro
 `~/.my.cnf`, gcloud application default credentials, an AWS profile), are never stored in the workspace and never
 seen by the agent. Every read, of a file or a database, accounts for everything it read, and the counts add up.
 
+## Parsing SQL
+
+Every engine parses SQL with `sqlparser` (Apache DataFusion's parser, pure Rust), in its own dialect: MySQL,
+PostgreSQL, Databricks for Iceberg's Spark SQL, BigQuery and the others it has. Dumps are read with its tokenizer and
+the engine's own reader on top, so a clause the model does not describe is kept as written instead of failing the
+statement; view queries are read with its full parser. The statement splitter and token cursor that do this are a
+small helper crate engines may use. The core parses no SQL. Iceberg's `metadata.json` is JSON, read with the engine's
+own types written from the Iceberg spec.
+
 ## Moving between engines
 
 The only place engines meet. Each engine maps its types to a small set of portable types and back, saying what is
