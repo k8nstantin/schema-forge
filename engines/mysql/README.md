@@ -231,8 +231,11 @@ In `tests/samples/`, made by this crate, never copied from a company's database:
   named, keys on columns, `CREATE INDEX`, views made again, an `ALTER TABLE`, accounts and grants, a resource group, a
   server, a foreign key outside the schema; a JavaScript library and function, a loadable function, `REFERENCES` on a
   column), and `written<v>.sql`, the same as this engine writes it;
-- `lending/source.sql`: a lending library laced with stored programs (4 tables, 2 functions, 2 procedures, 5
-  triggers, 3 events, 2 views) whose procedures and triggers run as it loads.
+- `lending/source.sql`: a lending library laced with stored programs and holding every type MySQL has: 15 tables (a
+  table for each family of types, every spatial type, list and range-columns partitions, 5 foreign keys), 4 functions,
+  5 procedures (`IN`, `OUT`, `INOUT`, cursors, handlers, transactions), 10 triggers, 4 events, 5 views (a common
+  table expression, a check option); its procedures and triggers run as it loads. `source97.sql` adds a vector table
+  with a foreign key on its column.
 
 The tests:
 
@@ -243,7 +246,8 @@ The tests:
 - `tests/live.rs`: against MySQL 8.0, 8.4, 9.7 and 26.10 in Docker (`cargo test -p schema-forge-mysql --test live --
   --ignored`): the five steps passed, a wrong password failing at sign in, an account without the rights failing at
   rights and naming them, root warned that it can change things, and the live read the same schema as the dump; and
-  the lending library loaded, read live and from its dump as one schema, written, loaded into a fresh server, dumped
-  again as the same schema, its procedures and triggers still lending and refusing as they should;
+  the lending library, on 8.4 and on 9.7, loaded, a column of every type the version has, read live and from its dump
+  as one schema, written, loaded into a fresh server, dumped again as the same schema, its procedures and triggers
+  still lending and refusing as they should;
 - the unit tests of each part: the splitter, the tokens, every column and table clause, views and stored programs,
   accounts, versions, types, checks.

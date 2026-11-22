@@ -237,7 +237,9 @@ fn a_server_that_does_not_answer_fails_at_reach() {
 
 /// Reads SQL text as the engine reads a file.
 fn read_text(engine: &Mysql, text: &str, name: &str) -> schema_forge_engine::Imported {
-    let dir = std::env::temp_dir().join(format!("schema-forge-mysql-{name}-{}", std::process::id()));
+    static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("schema-forge-mysql-{name}-{}-{n}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a folder");
     let file = dir.join(format!("{name}.sql"));
     std::fs::write(&file, text).expect("written");
@@ -248,18 +250,36 @@ fn read_text(engine: &Mysql, text: &str, name: &str) -> schema_forge_engine::Imp
 
 #[test]
 #[ignore = "needs Docker and the MySQL images"]
-fn a_lending_library_laced_with_stored_programs() {
-    let source =
-        std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/samples/lending/source.sql"))
-            .expect("the source");
-    let first = Server::named("8.4", "schema-forge-mysql-lending");
+fn a_lending_library_laced_with_stored_programs_8_4() {
+    lending("8.4");
+}
+
+#[test]
+#[ignore = "needs Docker and the MySQL images"]
+fn a_lending_library_laced_with_stored_programs_9_7() {
+    lending("9.7");
+}
+
+/// The lending library in MySQL `version`: every type, every kind of stored program, read live and from its dump as
+/// one schema, written, loaded into a fresh server, and dumped again as the same schema, its programs still working.
+fn lending(version: &str) {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/samples/lending");
+    let mut source = std::fs::read_to_string(dir.join("source.sql")).expect("the source");
+    let later = !version.starts_with("8.");
+    if later {
+        source.push_str(&std::fs::read_to_string(dir.join("source97.sql")).expect("the source"));
+    }
+    let tag = version.replace('.', "-");
+    let first = Server::named(version, &format!("schema-forge-mysql-lending-{tag}"));
     first.sql(&source).expect("the library loads, and its procedures, functions and triggers run");
     assert_eq!(
         first.query("SELECT loans_out, fines FROM lending.members").trim(),
         "0\t0.00",
         "borrowed and given back"
     );
-    assert_eq!(first.query("SELECT COUNT(*) FROM lending.audit").trim(), "1", "the audit trigger fired");
+    let audited: u32 = first.query("SELECT COUNT(*) FROM lending.audit").trim().parse().expect("a count");
+    // The loan given back, the book tagged, the fine paid; renewing a returned loan changes nothing.
+    assert_eq!(audited, 3, "the audit triggers and the procedure wrote what happened");
     first
         .sql("CREATE USER 'reader'@'%' IDENTIFIED BY 'samples-reader'; GRANT SELECT, SHOW VIEW, TRIGGER, EVENT, PROCESS, SHOW_ROUTINE ON *.* TO 'reader'@'%';")
         .expect("a reader");
@@ -285,18 +305,38 @@ fn a_lending_library_laced_with_stored_programs() {
         }
         k
     };
+    let tables = if later { 16 } else { 15 };
     let want = BTreeMap::from(
-        [("table", 4), ("function", 2), ("procedure", 2), ("trigger", 5), ("event", 3), ("view", 2)]
+        [("table", tables), ("function", 4), ("procedure", 5), ("trigger", 10), ("event", 4), ("view", 5)]
             .map(|(k, n)| (k.to_string(), n)),
     );
     assert_eq!(kinds(&from_dump.schema), want);
-    assert_eq!(from_dump.schema.links.len(), 2, "loans → members, loans → books");
+    // loans → members and books, shelves → branches, preferences → members, book_tags → books; from 9.7 also
+    // book_embeddings → books, written on its column.
+    assert_eq!(from_dump.schema.links.len(), if later { 6 } else { 5 });
+    // A column of every type MySQL has in this version.
+    let types: std::collections::BTreeSet<&str> = from_dump
+        .schema
+        .objects
+        .iter()
+        .flat_map(|o| &o.columns)
+        .filter_map(|c| engine.types().parse(&c.data_type, version).ok().map(|p| p.family))
+        .collect();
+    let every: std::collections::BTreeSet<&str> = engine
+        .types()
+        .catalog()
+        .iter()
+        .filter(|t| t.available.in_version(version, engine.versions()))
+        .map(|t| t.name)
+        .collect();
+    let missing: Vec<&&str> = every.difference(&types).collect();
+    assert!(missing.is_empty(), "MySQL {version}: no column of {missing:?}");
     let live_schema = as_a_dump_holds_it(from_live.schema);
     assert_eq!(live_schema.to_json(), as_a_dump_holds_it(from_dump.schema.clone()).to_json(), "live and dump");
 
     // Write it, load what was written into a fresh server, dump that: the same schema, and its programs still run.
     let written = engine.write().expect("writes").schema(&from_dump.schema).expect("it writes");
-    let second = Server::named("8.4", "schema-forge-mysql-lending-again");
+    let second = Server::named(version, &format!("schema-forge-mysql-lending-again-{tag}"));
     second.sql(&written).expect("what the engine wrote loads");
     let again = read_text(&engine, &second.dump("lending"), "again");
     assert_eq!(
