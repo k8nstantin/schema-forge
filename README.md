@@ -118,10 +118,23 @@ the schema's type and has read its rules.
 | new rules | `propose_rules` (a new rule as a sentence, a catalog rule to link, an exception with its reason), `proposals` |
 | a design | `new_schema`; `start_turn`; `change`: operations (`add_table`, `add_column`, `alter_column`, `relate`, `add_index`, `set_identifier_fields`, `set_partition_spec`, `set_property`, views, renames, drops) applied as one change, all or none; refused with the rule and the reason when it breaks a hard rule; destructive ones need a yes |
 
-## Start
+## Where it stands
+
+**The prototype is done.** Everything on this page runs in it: the canvas, the agent's MCP, turns and undo, the rules
+engine with hard and soft rules, exceptions, goals, compatibility and CDC packs, agent-proposed rules with
+verification, reading pg_dumps and Iceberg Spark SQL, and writing PostgreSQL and Iceberg SQL. It is kept as the tag
+[`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype).
+
+**The product is being built now**, new, on engine plugins ([docs/engines.md](docs/engines.md)): every database its
+own crate, the design checked on the code by CI. Follow it in the
+[Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7) milestone: the model, the engine interface,
+PostgreSQL, Iceberg (with its table metadata) and MySQL, then the store, the operations, the rules, the server and
+the MCP, and the canvas.
+
+To try the prototype:
 
 ```
-git clone https://github.com/k8nstantin/schema-forge && cd schema-forge
+git clone https://github.com/k8nstantin/schema-forge && cd schema-forge && git checkout prototype
 (cd canvas && npm ci && npm run build)
 cargo build --release
 ./target/release/schema-forge serve
@@ -132,20 +145,10 @@ claude mcp add --transport http schema-forge http://127.0.0.1:7410/mcp
 `schema-forge import <pg_dump or Iceberg folder> --schema <name>` or **Open a file or folder** on Home. Then ask
 your agent: *"Design `@orders_lake`: orders and customers landed from the shop's PostgreSQL by Debezium."*
 
-## What is built, and what is next
-
-**Built:** the canvas (Home, the new-schema wizard, opening a file or folder, Tables, Categories, Map, Rules and
-each Rule, the workspace's rule packs); the MCP; design operations, views, editing by hand, turns and undo; the
-rules engine with hard and soft, exceptions, groups, goals, compatibility and CDC packs, and agent-proposed rules
-with verification; reading pg_dumps and Iceberg Spark SQL; writing PostgreSQL and Iceberg SQL.
-
-**Next:** engines as plugins ([docs/engines.md](docs/engines.md)), with reading MySQL dumps and Iceberg table metadata,
-then reading live databases and catalogs; the remaining rule screens from the design (applying packs, goals, where
-rules apply); MySQL writing; migration scripts between versions, and versions written as SQL files you can commit.
-
-The design behind it: [docs/engines.md](docs/engines.md) (engines), [docs/rules.md](docs/rules.md) (rules), [docs/model.md](docs/model.md) (the model),
+The design: [docs/engines.md](docs/engines.md) (engines), [docs/rules.md](docs/rules.md) (rules),
 [docs/perspectives.md](docs/perspectives.md) (the canvas), [docs/cdc.md](docs/cdc.md) (CDC to Iceberg),
-[docs/store.md](docs/store.md) (storage), [docs/market.md](docs/market.md) (how it compares).
+[docs/store.md](docs/store.md) (storage), [docs/versions.md](docs/versions.md) (versions),
+[docs/market.md](docs/market.md) (how it compares).
 
 ## Built with
 

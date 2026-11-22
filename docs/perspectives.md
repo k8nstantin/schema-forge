@@ -127,8 +127,24 @@ whole-schema view down to the card. A legend is one key away.
 
 ## Directing the agent
 
-You prompt the agent while you look, so pointing is effortless (the full list:
-[model.md, References](model.md#references)):
+You prompt the agent while you look, so pointing is effortless. Everything you see has a reference the agent
+resolves through the MCP:
+
+| What you point at | Reference |
+|---|---|
+| a schema, a pipeline (Home) | `@schema:orders`, `@pipeline:orders-lakehouse` |
+| a table, a view | `@orders` (`@billing.orders` when the name is in more than one namespace) |
+| a column | `@orders.total` |
+| a key, an index, a relationship | `@orders.fk_orders_customers` |
+| a partition series | `@orders.partitions` |
+| an area, a tag | `@area:billing`, `@tag:scd2` |
+| a rule pack, a rule, a rule setting | `@pack:debezium`, `@rule:scd2`, `@rule:debezium.bigint_unsigned_handling` |
+| a pipeline mapping (source column to target column) | `@map:orders.total` |
+| a finding | `@finding:14` (an inconsistency or a failing rule, numbered while it lasts) |
+| a locked version, a change, an agent turn | `@v3`, `@change:42`, `@turn:12` |
+| a perspective, as you see it now | `@perspective` (which one, what is in view, the zoom level) |
+| the current selection | `@selection` |
+| your pinned notes | `@notes` |
 
 - **Copy** (`C`) the reference of anything you see, **copy with context** (`Shift+C`), or **drag** it into
   your terminal: schemas, tables, columns, relationships, partition series, areas, packs, rules and their

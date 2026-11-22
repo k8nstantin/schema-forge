@@ -1,24 +1,19 @@
 [workspace]
 resolver = "3"
-members = ["crates/core", "crates/dialects", "crates/store", "crates/serve", "crates/mcp", "crates/cli"]
+# crates/: what every database shares. engines/: one crate per database. tools/: checks of the code itself. Each folder
+# joins the members with its first crate (cargo refuses a pattern that matches nothing).
+# Every crate declares its role in `[package.metadata.schema-forge]`; tools/architecture fails the build when the
+# roles depend on each other in a way docs/engines.md does not allow, or a database is named outside its engine.
+members = ["tools/*"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 publish = false
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/k8nstantin/schema-forge"
 
 [workspace.dependencies]
-schema-forge-core = { path = "crates/core" }
-schema-forge-dialects = { path = "crates/dialects" }
-schema-forge-store = { path = "crates/store" }
-schema-forge-serve = { path = "crates/serve" }
-schema-forge-mcp = { path = "crates/mcp" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 thiserror = "2.0.21"
-blake3 = { version = "1.8.7", features = ["pure"] }
-# Without the default recursive-protection, which grows the stack with compiled assembly (psm): the parser's own
-# recursion limit still bounds how deep a view's query may nest.
-sqlparser = { version = "0.64.0", default-features = false, features = ["std", "visitor"] }
