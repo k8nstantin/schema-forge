@@ -1,0 +1,17 @@
+[package]
+name = "schema-forge-engine"
+description = "The engine plugin interface: the trait every database implements, the registry, the conformance kit"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.schema-forge]
+role = "interface"
+
+[dependencies]
+schema-forge-model = { path = "../model" }
+
+[dev-dependencies]
+serde_json.workspace = true
