@@ -14,3 +14,4 @@ role = "interface"
 schema-forge-model = { path = "../model" }
 serde.workspace = true
 serde_json.workspace = true
+arrow-schema.workspace = true

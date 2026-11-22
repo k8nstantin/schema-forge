@@ -14,6 +14,7 @@
 use std::fmt::Write as _;
 
 use schema_forge_engine::options::{OptionKind, OptionSpec, Part};
+use schema_forge_engine::portable::{ArrowType, Mapped, Portable};
 use schema_forge_engine::sections::{self, Kept, ObjectSection, SchemaSection};
 use schema_forge_engine::{
     Availability, Engine, Imported, Input, Parsed, Queries, Read, Report, TypeError, TypeGroup, TypeSpec, Types,
@@ -59,6 +60,8 @@ pub enum Broken {
     UndeclaredOption,
     /// It stores something in a slot the section layout does not have.
     OffLayout,
+    /// Its exact Arrow mapping of `wide` comes back as `text`.
+    ArrowAstray,
 }
 
 pub struct Example {
@@ -136,6 +139,39 @@ impl Engine for Example {
 
     fn queries(&self) -> Option<&dyn Queries> {
         Some(self)
+    }
+
+    fn portable(&self) -> Option<&dyn Portable> {
+        Some(self)
+    }
+}
+
+impl Portable for Example {
+    fn arrow_type(&self, type_text: &str, version: &str) -> Result<Mapped<ArrowType>, TypeError> {
+        let p = self.parse(type_text, version)?;
+        Ok(match p.family {
+            "int" => Mapped::exact(ArrowType::Int64),
+            "text" => Mapped::exact(ArrowType::Utf8),
+            "wide" => Mapped::exact(ArrowType::LargeUtf8),
+            _ => {
+                let inner = p.text.trim_start_matches("decimal(").trim_end_matches(')');
+                let (pr, sc) = inner.split_once(',').unwrap_or((inner, "0"));
+                Mapped::exact(ArrowType::Decimal128(pr.parse().unwrap_or(38), sc.parse().unwrap_or(0)))
+            }
+        })
+    }
+
+    fn engine_type(&self, arrow: &ArrowType, version: &str) -> Mapped<String> {
+        match arrow {
+            ArrowType::Int8 | ArrowType::Int16 | ArrowType::Int32 | ArrowType::Int64 => Mapped::exact("int".into()),
+            ArrowType::Utf8 => Mapped::exact("text".into()),
+            ArrowType::LargeUtf8 if version == "2" && self.broken != Broken::ArrowAstray => {
+                Mapped::exact("wide".into())
+            }
+            ArrowType::LargeUtf8 => Mapped::exact("text".into()),
+            ArrowType::Decimal128(p, s) => Mapped::exact(format!("decimal({p},{s})")),
+            other => Mapped::lost("text".into(), format!("{other} has no type here: kept as text")),
+        }
     }
 }
 

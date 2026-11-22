@@ -12,6 +12,7 @@
 
 pub mod kit;
 pub mod options;
+pub mod portable;
 mod read;
 mod registry;
 pub mod sections;
@@ -68,6 +69,11 @@ pub trait Engine: Send + Sync {
 
     /// What makes a schema wrong for it, beyond the model's own checks.
     fn checks(&self) -> Option<&dyn Checks> {
+        None
+    }
+
+    /// Its types as Apache Arrow's, and back: how it meets every other engine and the DataFusion layer.
+    fn portable(&self) -> Option<&dyn portable::Portable> {
         None
     }
 }

@@ -149,6 +149,12 @@ fn the_kit_finds_a_default_version_that_is_not_one() {
 }
 
 #[test]
+fn the_kit_finds_an_exact_arrow_mapping_that_does_not_come_back() {
+    let f = findings(Broken::ArrowAstray);
+    assert_eq!(f, ["`wide` maps to Arrow `LargeUtf8` exactly, but comes back as `text` in version `2`"]);
+}
+
+#[test]
 fn the_kit_finds_a_section_off_the_layout() {
     let f = findings(Broken::OffLayout);
     assert!(has(&f, "the section of the schema does not follow the layout: unknown field `storage`"), "{f:?}");

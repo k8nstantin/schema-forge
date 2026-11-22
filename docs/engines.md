@@ -106,7 +106,7 @@ add-on. Engine ids are strings; the engines Schema Forge ships with are register
 - **The architecture check** (`tools/architecture`), run by `cargo test` in CI: every crate declares its role; roles
   depend only the way this design allows (an engine never on another; the store, server, MCP and command line never
   on one engine); a database is named only in its engine, not even inside an identifier or a comment; only engines
-  parse SQL; one crate per database.
+  parse SQL; only the query layer depends on DataFusion; one crate per database.
 
 ### 10. Reading in: files and live
 
@@ -116,22 +116,41 @@ are never stored in the workspace, never seen by the agent, and every live read 
 everything it read (modelled, kept as written, or left out as data) and the counts add up; what is not understood is
 kept whole, never half read, and written back in its place.
 
-### 11. Moving between engines through portable types
+### 11. Apache DataFusion at the center, as the query layer
 
-The only place engines meet. Each engine maps its types to portable types and back, saying what is kept, widened,
-narrowed, approximated or lost; comparing or converting any two engines goes through them, so a new engine is
-comparable with every other once it maps its own types. The proposal for the portable types is Apache Arrow's type
-system (`arrow-schema`, pure Rust): the vocabulary DataFusion and Iceberg's Rust library already speak. Decided at that
-step.
+Every engine maps its types to **Apache Arrow's** and back (`schema_forge_engine::portable`), saying how faithful each
+mapping is: exact (it comes back as the same type), approximate (the kind of value kept, a detail such as a length
+lost) or lost. Arrow is the vocabulary Apache DataFusion and Iceberg's Rust library speak, and it is the one place
+engines meet: any two engines are compared or converted through it, never through a map written for the pair, and a
+new engine is comparable with every other once it maps its own types.
+
+On top of it sits **the DataFusion layer** (`schema-forge-query`): a designed schema, of any engine, exposed to
+DataFusion as a catalog. With it:
+
+- a view's query is **planned**, not only parsed: each of its columns gets a type, its lineage is known (this column
+  comes from `orders.total`), and whether it still works after a change is the planner's answer;
+- **compatibility and conversion** between engines go through Arrow types, and queries are written for another
+  engine with DataFusion's dialect unparsers;
+- **live sources** come through the DataFusion ecosystem (Iceberg catalogs, community table providers for PostgreSQL,
+  MySQL and others) beside each engine's own native reader, which stays the source of truth for its DDL;
+- **schema management** grows from here: comparing a design with a live database, finding drift, planning and checking
+  a migration before it is applied.
+
+DataFusion is not the model: it describes tables as Arrow schemas, without lengths, unsigned integers, keys, indexes
+or partitions, the fidelity a designer needs. The model and the engines keep that; DataFusion is the shared layer
+that plans and connects. Engines depend on `arrow-schema` only, never on DataFusion; only the query layer does, and
+the architecture check holds that. As DataFusion grows (new dialects, connectors, functions), every engine gains it
+through its Arrow mapping.
 
 ## The crates
 
 | Crate | Folder | Role | What it is |
 |---|---|---|---|
 | `schema-forge-model` | `crates/model` | model | the skeleton |
-| `schema-forge-engine` | `crates/engine` | interface | the trait, the section layout, the option schema, the registry, the conformance kit |
+| `schema-forge-engine` | `crates/engine` | interface | the trait, the section layout, the option schema, the Arrow mapping, the registry, the conformance kit |
 | `schema-forge-postgres`, `-mysql`, `-iceberg` | `engines/<database>` | engine | the engines, each with its add-on trait and bundled add-ons |
 | `schema-forge-engines` | `crates/engines` | registry | the engines Schema Forge ships with, registered |
+| `schema-forge-query` | `crates/query` | app | the DataFusion layer: a schema as a DataFusion catalog, planned views, lineage, Arrow-type compatibility, live sources |
 | `schema-forge-store`, `-ops`, `-rules`, `-serve`, `-mcp`, `-cli` | `crates/…` | app | they ask the registry, never one engine |
 | `schema-forge-architecture` | `tools/architecture` | tool | the design, checked on the code |
 | the canvas | `canvas/` | | the shared screens, drawn from what each engine describes (`/api/engines`) |
@@ -143,19 +162,22 @@ Each step is one issue, one branch and one PR, in the milestone
 
 1. **Done:** the foundation (the prototype tagged and cleared, the design checked on the code), the model, the engine
    interface with its registry and conformance kit.
-2. **The base every engine fills:** the section layout and each engine's option schema.
+2. **The base every engine fills:** the section layout, each engine's option schema, and its Arrow mapping.
 3. **The PostgreSQL engine, whole**, built as any outside plugin would be, with its add-on trait and the add-ons it
    ships: the proof of the plugin design.
 4. **The Iceberg engine, whole**, reading Spark SQL and a warehouse of `metadata.json`.
 5. **The MySQL engine, whole**, reading `mysqldump` with its `DELIMITER` blocks.
-6. **The store**, **the operations** (the skeleton's, and each engine's declared ones) and **the rules** (shared rule
-   ideas implemented per engine, each engine's own packs) on the new model.
-7. **The server, the MCP and the command line**, with the registry crate.
-8. **The canvas**, built from the agreed boards on the engines; then schemas imported with the new readers and checked
+6. **The DataFusion layer**: a schema as a DataFusion catalog, views planned with their column types and lineage,
+   compatibility through Arrow types.
+7. **The store**, **the operations** (the skeleton's, and each engine's declared ones) and **the rules** (shared rule
+   ideas implemented per engine, each engine's own packs, and the checks the DataFusion layer makes possible) on the
+   new model.
+8. **The server, the MCP and the command line**, with the registry crate.
+9. **The canvas**, built from the agreed boards on the engines; then schemas imported with the new readers and checked
    in the browser.
-9. **Portable types**, and **the guide to writing an engine and an add-on**, finished, with a template crate.
+10. **The guide to writing an engine and an add-on**, finished, with template crates.
 
-Then: reading PostgreSQL, MySQL and an Iceberg REST catalog live; BigQuery, kept for developers outside the core to
-prove the guide; migrations between versions of a schema; CDC pipelines.
+Then: reading PostgreSQL, MySQL and an Iceberg REST catalog live; schema management (drift, migrations planned and
+checked, versions in git); CDC pipelines; BigQuery, kept for developers outside the core to prove the guide.
 
 How to write an engine: [writing-an-engine.md](writing-an-engine.md).

@@ -104,8 +104,12 @@ pub const DATABASES: &[&str] = &[
     "trino",
 ];
 
-/// External crates only some roles may use: parsing SQL is an engine's business.
-const ONLY_FOR: &[(&str, &[Role])] = &[("sqlparser", &[Role::Engine, Role::Helper])];
+/// External crates only some roles may use: parsing SQL is an engine's business; querying is the DataFusion layer's.
+const ONLY_FOR: &[(&str, &[Role], &str)] = &[
+    ("sqlparser", &[Role::Engine, Role::Helper], "parsing SQL belongs to engines"),
+    // Engines map their types to Arrow and never pull in a query engine.
+    ("datafusion", &[Role::App], "querying belongs to the DataFusion layer"),
+];
 
 /// One crate of the workspace, as the check sees it.
 #[derive(Debug, Clone)]
@@ -183,9 +187,9 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
                 }
             }
         }
-        for (ext, roles) in ONLY_FOR {
+        for (ext, roles, why) in ONLY_FOR {
             if c.external.iter().any(|e| e == ext) && !roles.contains(&role) {
-                breach(format!("{}: {} may not use {ext}; that belongs to engines", c.name, role.a()));
+                breach(format!("{}: {} may not use {ext}: {why}", c.name, role.a()));
             }
         }
         if !role.may_name_databases() {
@@ -451,7 +455,19 @@ mod tests {
         let mut c = good();
         c[7].external.push("sqlparser".into());
         c[3].external.push("sqlparser".into());
-        assert_eq!(check(&c, none), [Breach("serve: an app may not use sqlparser; that belongs to engines".into())]);
+        assert_eq!(
+            check(&c, none),
+            [Breach("serve: an app may not use sqlparser: parsing SQL belongs to engines".into())]
+        );
+        let mut c = good();
+        c[3].external.push("datafusion".into());
+        assert_eq!(
+            check(&c, none),
+            [Breach(
+                "schema-forge-postgres: an engine may not use datafusion: querying belongs to the DataFusion layer"
+                    .into()
+            )]
+        );
     }
 
     #[test]

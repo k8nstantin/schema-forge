@@ -112,6 +112,15 @@ elsewhere.
 When your engine changes how it stores its options, raise `SchemaSection.format` and read what your earlier versions
 wrote.
 
+## 4b. Your types as Arrow's
+
+Implement `Portable`: `arrow_type` gives each of your types as an Apache Arrow type, and `engine_type` gives your type
+for an Arrow type, each saying how faithful it is: `Mapped::exact` when it comes back as the same type,
+`Mapped::approximate` when a detail is not kept (say which), `Mapped::lost` when nothing holds it (say what is lost).
+That mapping is how your engine meets every other engine and the DataFusion layer: compatibility, conversion,
+planned views and lineage work for your engine through it. The kit holds an exact mapping to coming back as the same
+type. Depend on `arrow-schema` only; never on DataFusion.
+
 ## 5. Reading files
 
 `Read` turns your database's files into a schema:

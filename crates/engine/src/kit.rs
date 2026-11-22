@@ -89,6 +89,7 @@ pub fn check(engine: &dyn Engine, samples: &Samples<'_>) -> Vec<String> {
     let mut out = Vec::new();
     identity(engine, &mut out);
     types(engine, &mut out);
+    portable(engine, &mut out);
     match (engine.read(), samples.files.is_empty()) {
         (Some(_), true) => out.push("it reads files, but no sample file is given".to_string()),
         (None, false) => out.push("sample files are given, but the engine reads nothing".to_string()),
@@ -613,4 +614,32 @@ fn declared(engine: &dyn Engine, schema: &schema_forge_model::Schema) -> Vec<Str
         }
     }
     out
+}
+
+/// Every type's example maps to Arrow in every version that has it; an exact mapping comes back as the same type.
+fn portable(engine: &dyn Engine, out: &mut Vec<String>) {
+    use crate::portable::Fidelity;
+    let Some(p) = engine.portable() else { return };
+    for t in engine.types().catalog() {
+        for v in engine.versions() {
+            if !t.available.in_version(v.id, engine.versions()) {
+                continue;
+            }
+            match p.arrow_type(t.example, v.id) {
+                Ok(m) if m.fidelity == Fidelity::Exact => {
+                    let back = p.engine_type(&m.to, v.id);
+                    if back.to != t.example {
+                        out.push(format!(
+                            "`{}` maps to Arrow `{}` exactly, but comes back as `{}` in version `{}`",
+                            t.example, m.to, back.to, v.id
+                        ));
+                    }
+                }
+                Ok(m) if m.lost.is_none() => out
+                    .push(format!("`{}` maps to Arrow `{}` with something lost, without saying what", t.example, m.to)),
+                Ok(_) => {}
+                Err(e) => out.push(format!("`{}` does not map to Arrow in version `{}`: {e}", t.example, v.id)),
+            }
+        }
+    }
 }
