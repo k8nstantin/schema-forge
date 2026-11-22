@@ -43,32 +43,43 @@ branches on the database (Liquibase).
 
 ## The shared model is a skeleton
 
-The core holds only what every database has, and holds it the same way for all:
+The model (`schema-forge-model`) holds only what every database has, and holds it the same way for all:
 
-- a **schema**: its name, its engine and the engine's version;
-- **namespaces**: a path of names (a MySQL database, a PostgreSQL schema, an Iceberg namespace of any depth); the
-  engine names the level and says how deep it goes;
+- a **schema**: its engine and the engine's version (the store keeps its name);
+- **namespaces**: a name and a parent, nested to any depth (a MySQL database, a PostgreSQL schema, an Iceberg
+  namespace); the engine names the level and says how deep namespaces go;
 - **objects**: an id, a kind the engine defines (a MySQL table, a PostgreSQL partitioned table, an Iceberg table, a
-  view, a sequence), a namespace, a name, a comment, notes, tags and an area;
-- **columns**: an id, a name, null or not null, a comment; their **type is the engine's**;
-- **links** between columns, for the Map; whether a link is an enforced foreign key is the engine's;
-- and on each of them **the engine's own section**: the engine's data, stored and versioned by the core without the
-  core reading it.
+  view, a sequence), a namespace, a name, a comment, notes, tags, an area, and the objects it reads (a view's query);
+- **columns**: an id, a name, a type, null or not null, a comment; the **type is the engine's text**, only the engine
+  reads it;
+- **links** between columns of two objects, for the Map; whether a link is an enforced foreign key is the engine's;
+- **areas**, grouping objects by subject across namespaces;
+- and on each of them **the engine's own section** (`engine`, and `engine_section` on the schema): the engine's data,
+  stored and versioned without the model reading it, kept exactly as the engine wrote it.
+
+Every part has an id that never changes when it is renamed (`o_orders`, `c_orders_total`), unique across the schema.
+The model's own checks are what breaks a schema whatever its engine: ids used twice, a parent, namespace, area, column
+or object that is not there, a namespace inside itself, two namespaces or objects or columns of the same name side by
+side, a column without a type, a link whose two ends differ in length. Names are compared exactly; whether names that
+differ only in case clash is the engine's rule.
 
 ```json
 {
   "format": 2,
   "engine": { "id": "iceberg", "version": "3" },
-  "namespaces": [{ "id": "ns_sales", "path": ["lake", "sales"] }],
+  "namespaces": [
+    { "id": "n_lake", "name": "lake" },
+    { "id": "n_lake_sales", "name": "sales", "parent": "n_lake" }
+  ],
   "objects": [{
-    "id": "t_orders", "kind": "table", "namespace": "ns_sales", "name": "orders",
+    "id": "o_orders", "kind": "table", "namespace": "n_lake_sales", "name": "orders",
     "columns": [
-      { "id": "c_orders_id", "name": "id", "null": false, "type": "long", "engine": { "field_id": 1 } },
-      { "id": "c_orders_at", "name": "placed_at", "null": false, "type": "timestamptz", "engine": { "field_id": 2 } }
+      { "id": "c_orders_id", "name": "id", "type": "long", "null": false, "engine": { "field_id": 1 } },
+      { "id": "c_orders_placed_at", "name": "placed_at", "type": "timestamptz", "null": false, "engine": { "field_id": 2 } }
     ],
     "engine": {
       "identifier_fields": ["c_orders_id"],
-      "partition_spec": [{ "source": "c_orders_at", "transform": "day" }],
+      "partition_spec": [{ "source": "c_orders_placed_at", "transform": "day" }],
       "properties": { "write.delete.mode": "merge-on-read" }
     }
   }]
@@ -108,6 +119,12 @@ Every type, kind, option, transform and operation says the version that brought 
 A schema is designed for one version and is offered exactly that version's features; moving a schema to another
 version is an operation the engine checks. Iceberg format 4 is a new version in the Iceberg plugin and the features
 it brings, nothing else.
+
+**One crate per database, never one per version.** Versions of a database share nearly everything (types, ids, the
+reader, the writer), so they live in its crate, each feature marked with the version it came in. A crate per version
+would hold everything once per version, and every fix would be made once per version. A version that shares nothing
+with the ones before it gets a module of its own in the crate (`versions/v4/`); only a different database is a
+different crate. The architecture check fails the build when two crates say the same database.
 
 ### Operations
 

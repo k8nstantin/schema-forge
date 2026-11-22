@@ -4,7 +4,7 @@ resolver = "3"
 # joins the members with its first crate (cargo refuses a pattern that matches nothing).
 # Every crate declares its role in `[package.metadata.schema-forge]`; tools/architecture fails the build when the
 # roles depend on each other in a way docs/engines.md does not allow, or a database is named outside its engine.
-members = ["tools/*"]
+members = ["crates/*", "tools/*"]
 
 [workspace.package]
 version = "0.2.0"
