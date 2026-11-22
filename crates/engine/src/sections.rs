@@ -1,8 +1,8 @@
 //! The section layout: one shape for what every engine stores on the parts of a schema.
 //!
 //! Every engine fills the same slots, and leaves out the ones its database does not have: a table's keys, checks,
-//! indexes, partitioning and order; a view's query; a sequence; the schema's own types; a column's default, identity
-//! and generated expression; a link's actions; what the schema kept as written. What belongs to one database alone has
+//! indexes, partitioning and order; a view's query; a sequence; the schema's own types; a routine, a trigger, an event;
+//! a column's default, identity and generated expression; a link's actions; what the schema kept as written. What belongs to one database alone has
 //! one home, the `options` of the element it is about, which that engine describes and checks. A slot the layout does
 //! not have is refused, so no engine grows a storage of its own.
 //!
@@ -219,8 +219,141 @@ pub struct ObjectSection {
     /// A composite type's fields.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fields: Vec<Field>,
+    /// A procedure or a function.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routine: Option<Routine>,
+    /// A trigger on a table.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<Trigger>,
+    /// Something the database runs on a schedule.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event: Option<Event>,
     #[serde(default, skip_serializing_if = "Options::is_empty")]
     pub options: Options,
+}
+
+/// A procedure or a function: what it takes, what it returns, and its body, exactly as written.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct Routine {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub parameters: Vec<Parameter>,
+    /// What a function returns, as the engine writes the type; `None` for a procedure.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub returns: Option<String>,
+    /// The language it is written in, in the engine's words (`sql`, `plpgsql`, `javascript`); `None` is the engine's
+    /// own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    /// Whether it always gives the same result for the same arguments.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deterministic: Option<bool>,
+    /// Whose rights it runs with, in the engine's words (`definer`, `invoker`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub security: Option<String>,
+    /// The body, exactly as written.
+    pub body: String,
+    #[serde(default, skip_serializing_if = "Options::is_empty")]
+    pub options: Options,
+}
+
+/// One parameter of a routine.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct Parameter {
+    pub name: String,
+    /// Its type, as the engine writes it.
+    #[serde(rename = "type")]
+    pub data_type: String,
+    /// Whether it is passed in, out or both; `None` is in.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mode: Option<Mode>,
+    /// Its default, an expression in the engine's SQL.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<String>,
+    #[serde(default, skip_serializing_if = "Options::is_empty")]
+    pub options: Options,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum Mode {
+    In,
+    Out,
+    InOut,
+}
+
+/// A trigger: when it fires, on which table, and its body, exactly as written. Made with [`Trigger::new`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct Trigger {
+    pub timing: Timing,
+    /// The changes it fires on.
+    pub events: Vec<Change>,
+    /// The table (or view) it is on.
+    pub table: Id,
+    /// When it fires only for some rows: a condition in the engine's SQL.
+    #[serde(default, rename = "when", skip_serializing_if = "Option::is_none")]
+    pub condition: Option<String>,
+    /// The body, exactly as written: the statements it runs, or the routine it calls.
+    pub body: String,
+    #[serde(default, skip_serializing_if = "Options::is_empty")]
+    pub options: Options,
+}
+
+impl Trigger {
+    #[must_use]
+    pub fn new(timing: Timing, events: Vec<Change>, table: Id, body: impl Into<String>) -> Self {
+        Self { timing, events, table, condition: None, body: body.into(), options: Options::new() }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum Timing {
+    Before,
+    After,
+    InsteadOf,
+}
+
+/// A change to a table a trigger fires on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum Change {
+    Insert,
+    Update,
+    Delete,
+    Truncate,
+}
+
+/// Something the database runs on a schedule, with its body exactly as written.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct Event {
+    /// When it runs, in the engine's SQL (`AT '2027-01-01 00:00:00'`, `EVERY 1 DAY STARTS '2027-01-01'`).
+    pub schedule: String,
+    /// Whether it is kept once its schedule is over.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub preserve: bool,
+    /// Whether it runs.
+    #[serde(default = "yes", skip_serializing_if = "is_true")]
+    pub enabled: bool,
+    pub body: String,
+    #[serde(default, skip_serializing_if = "Options::is_empty")]
+    pub options: Options,
+}
+
+impl Default for Event {
+    fn default() -> Self {
+        Self { schedule: String::new(), preserve: false, enabled: true, body: String::new(), options: Options::new() }
+    }
 }
 
 /// A table's keys.
@@ -639,6 +772,30 @@ mod tests {
         assert!(d.null, "a domain may hold null unless it says not");
         assert!(Domain::default().null, "built in code, the same");
         assert_eq!(write(&SchemaSection::default()), Section::new(), "the current layout is not written out");
+    }
+
+    #[test]
+    fn routines_triggers_and_events_keep_their_bodies_as_written() {
+        let s = section(json!({ "routine": {
+            "parameters": [{ "name": "p_id", "type": "bigint" }, { "name": "p_total", "type": "decimal(18,2)", "mode": "out" }],
+            "deterministic": false, "security": "invoker", "body": "BEGIN\n  SELECT 1;\nEND"
+        }}));
+        let r: ObjectSection = read(&s).expect("a routine");
+        let routine = r.routine.as_ref().expect("routine");
+        assert_eq!(routine.parameters[1].mode, Some(Mode::Out));
+        assert_eq!(routine.body, "BEGIN\n  SELECT 1;\nEND", "exactly as written");
+        assert_eq!(write(&r), s);
+        let e: ObjectSection =
+            read(&section(json!({ "event": { "schedule": "EVERY 1 DAY", "body": "DELETE FROM sessions" } })))
+                .expect("an event");
+        assert!(
+            e.event.as_ref().is_some_and(|e| e.enabled && !e.preserve),
+            "an event runs, and goes once over, unless it says"
+        );
+        let t = read::<ObjectSection>(&section(
+            json!({ "trigger": { "timing": "during", "events": ["insert"], "table": "o_t", "body": "x" } }),
+        ));
+        assert!(t.is_err(), "a trigger's timing is before, after or instead of");
     }
 
     #[test]

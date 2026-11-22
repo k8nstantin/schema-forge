@@ -25,6 +25,9 @@ pub enum Slot {
     Values,
     Domain,
     Fields,
+    Routine,
+    Trigger,
+    Event,
 }
 
 /// A kind of object the engine has.

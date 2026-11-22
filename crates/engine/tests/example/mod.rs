@@ -6,6 +6,7 @@
 //! table sales orders
 //! column id int not-null
 //! column total decimal(10,2) null
+//! trigger sales orders_touch before insert on orders: set new.placed = now()
 //! anything else is kept as written, and written back in its place
 //! ```
 //!
@@ -16,7 +17,7 @@ use std::fmt::Write as _;
 use schema_forge_engine::kinds::{ObjectKind, Slot};
 use schema_forge_engine::options::{OptionKind, OptionSpec, Part};
 use schema_forge_engine::portable::{ArrowType, Mapped, Portable};
-use schema_forge_engine::sections::{self, Kept, ObjectSection, SchemaSection};
+use schema_forge_engine::sections::{self, Change, Kept, ObjectSection, SchemaSection, Timing, Trigger};
 use schema_forge_engine::{
     Availability, Engine, Imported, Input, Parsed, Queries, Read, Report, TypeError, TypeGroup, TypeSpec, Types,
     Unread, Version, Write,
@@ -73,6 +74,8 @@ pub enum Broken {
     NoArrow,
     /// It writes its sections in a storage format later than it says it reads.
     LaterFormat,
+    /// Its trigger is on a table that is not in the schema.
+    TriggerOnNothing,
 }
 
 pub struct Example {
@@ -101,7 +104,8 @@ const TEXT: TypeSpec = TypeSpec::new("text", "text", "Text of any length", "text
 const WIDE: TypeSpec = TypeSpec::new("wide", "text", "Wide text", "wide").since("2");
 
 /// Its one kind of object: a table, which uses no slot of the layout but its options.
-const KINDS: &[ObjectKind] = &[ObjectKind::new("table", "Table", &[Slot::Keys])];
+const KINDS: &[ObjectKind] =
+    &[ObjectKind::new("table", "Table", &[Slot::Keys]), ObjectKind::new("trigger", "Trigger", &[Slot::Trigger])];
 
 /// The same option declared twice, to prove the kit finds it.
 const OPTIONS_TWICE: &[OptionSpec] = &[
@@ -290,6 +294,20 @@ impl Read for Example {
                     s.objects.push(o);
                     report.modelled += 1;
                 }
+                ["trigger", ns, name, "before", "insert", "on", table, ..] if line.contains(": ") => {
+                    let body = line.split_once(": ").map_or("", |(_, b)| b);
+                    let namespace = namespace(&mut s, &mut ids, ns);
+                    let on = match s.objects.iter().find(|o| o.name == table.trim_end_matches(':')) {
+                        Some(o) if self.broken != Broken::TriggerOnNothing => o.id.clone(),
+                        _ => Id::try_from("o_nowhere").map_err(|e| e.to_string())?,
+                    };
+                    let mut o = Object::new(ids.next(Kind::Object, &[name]), "trigger", namespace, *name);
+                    let mut t = ObjectSection::default();
+                    t.trigger = Some(Trigger::new(Timing::Before, vec![Change::Insert], on, body));
+                    o.engine = sections::write(&t);
+                    s.objects.push(o);
+                    report.modelled += 1;
+                }
                 ["column", name, ty, null @ ("null" | "not-null")] if !s.objects.is_empty() => {
                     let o = s.objects.last_mut().expect("a table");
                     let id: Id = ids.next(Kind::Column, &[&o.name, name]);
@@ -398,6 +416,11 @@ fn table(out: &mut String, schema: &Schema, o: &Object) -> Result<(), String> {
 fn header(out: &mut String, schema: &Schema, o: &Object) -> Result<(), String> {
     let ns = schema.namespace(&o.namespace).map_or("", |n| n.name.as_str());
     let section: ObjectSection = sections::read(&o.engine).map_err(|e| format!("`{}`: {e}", o.name))?;
+    if let Some(t) = &section.trigger {
+        let table = schema.object(&t.table).map_or(t.table.as_str(), |x| x.name.as_str());
+        let _ = writeln!(out, "trigger {ns} {} before insert on {table}: {}", o.name, t.body);
+        return Ok(());
+    }
     let fast = if section.options.is_empty() { "" } else { " fast" };
     let _ = writeln!(out, "table {ns} {}{fast}", o.name);
     Ok(())

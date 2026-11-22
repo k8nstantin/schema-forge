@@ -81,7 +81,7 @@ fn the_kit_finds_an_example_not_written_as_the_engine_writes_it() {
 #[test]
 fn the_kit_finds_a_report_that_does_not_add_up() {
     let f = findings(Broken::ReportShort);
-    assert!(has(&f, "the report does not add up: 11 read, 8 modelled, 0 kept, 0 data"), "{f:?}");
+    assert!(has(&f, "the report does not add up: 12 read, 9 modelled, 0 kept, 0 data"), "{f:?}");
     assert!(has(&f, "the report lists 3 things not understood, but kept only 0"), "{f:?}");
 }
 
@@ -146,6 +146,26 @@ fn the_kit_finds_queries_read_wrong() {
 #[test]
 fn the_kit_finds_a_default_version_that_is_not_one() {
     assert_eq!(findings(Broken::DefaultNoVersion), ["its default version `0` is not one of its versions"]);
+}
+
+#[test]
+fn the_kit_finds_a_trigger_on_a_table_that_is_not_there() {
+    let f = findings(Broken::TriggerOnNothing);
+    assert!(has(&f, "`orders_touch`: it is a trigger on o_nowhere, which is not in the schema"), "{f:?}");
+}
+
+#[test]
+fn a_trigger_is_an_object_on_its_table() {
+    let e = Example::new();
+    let registry = Registry::new().with(Example::new());
+    let (_, input) = registry.reader_of(shop()).expect("a reader");
+    let s = e.read().expect("it reads").read(&input).expect("it reads").schema;
+    let touch = s.objects.iter().find(|o| o.kind == "trigger").expect("the trigger");
+    let section: schema_forge_engine::sections::ObjectSection =
+        schema_forge_engine::sections::read(&touch.engine).expect("in the layout");
+    let t = section.trigger.expect("a trigger");
+    assert_eq!(s.object(&t.table).map(|o| o.name.as_str()), Some("orders"));
+    assert_eq!(t.body, "set new.placed = now()");
 }
 
 #[test]
@@ -240,7 +260,7 @@ fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place
     assert_eq!(engine.id(), "example");
     let read = e.read().expect("it reads").read(&input).expect("it reads");
     let r = &read.report;
-    assert_eq!((r.read, r.modelled, r.kept_total(), r.data), (11, 8, 3, 0));
+    assert_eq!((r.read, r.modelled, r.kept_total(), r.data), (12, 9, 3, 0));
     assert!(r.adds_up());
     assert_eq!(
         r.not_understood,
@@ -250,7 +270,7 @@ fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place
             Unread::new("line 11", "-- totals are in the shop's currency"),
         ]
     );
-    assert!(r.to_string().starts_with("11 non-blank lines read\n  modelled: 8\n  kept as written: 3\n"), "{r}");
+    assert!(r.to_string().starts_with("12 non-blank lines read\n  modelled: 9\n  kept as written: 3\n"), "{r}");
     let s = &read.schema;
     assert_eq!((s.engine.id.as_str(), s.engine.version.as_str()), ("example", "2"));
     let write = e.write().expect("it writes");
@@ -258,7 +278,8 @@ fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place
         write.schema(s).expect("it writes"),
         "example 2\n-- the shop's tables\ntable sales customers\ncolumn id int not-null\ncolumn name text null\n\
          -- customers come from the web shop\ntable sales orders fast\ncolumn id int not-null\n\
-         -- totals are in the shop's currency\ncolumn total decimal(10,2) null\ncolumn note wide null\n"
+         -- totals are in the shop's currency\ncolumn total decimal(10,2) null\ncolumn note wide null\n\
+         trigger sales orders_touch before insert on orders: set new.placed = now()\n"
     );
     let orders = &s.objects[1];
     assert_eq!(

@@ -120,7 +120,10 @@ const KINDS: &[ObjectKind] = &[
 ```
 
 An object of a kind you do not declare, or a slot its kind does not use (a view with indexes, a table with a query),
-is refused; the canvas shows your kinds by their names.
+is refused; the canvas shows your kinds by their names. Account for **every kind of object your database has**:
+tables and views, and also its procedures and functions (`Slot::Routine`), triggers (`Slot::Trigger`), scheduled
+events (`Slot::Event`), sequences and types. Keep as written only what belongs to the server rather than the schema
+(accounts, roles, grants), counted by kind, and say why in your engine's plan.
 
 When your engine changes how it stores its options, raise `Engine::format()` and `SchemaSection.format`, and read what
 your earlier versions wrote. The layout itself has a version too (`sections::LAYOUT`): check a schema with
