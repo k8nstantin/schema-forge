@@ -6,7 +6,7 @@ use std::path::Path;
 
 use example::{Broken, Example};
 use schema_forge_engine::kit::{self, QuerySample, Sample, Samples};
-use schema_forge_engine::{Engine, Registry, TypeError, Unread};
+use schema_forge_engine::{Engine, Offered, Registry, TypeError, Unread};
 use schema_forge_model::Schema;
 
 const SHOP: &str = "tests/samples/shop.example";
@@ -149,6 +149,18 @@ fn the_kit_finds_a_default_version_that_is_not_one() {
 }
 
 #[test]
+fn an_engine_that_writes_and_does_not_read_can_conform() {
+    assert_eq!(kit::check(&Example::broken(Broken::NoReader), &Samples::new(&[], QUERIES)), Vec::<String>::new());
+}
+
+#[test]
+fn a_type_says_the_version_its_catalog_says_even_one_the_engine_lacks() {
+    let f = findings(Broken::SinceNoVersion);
+    assert!(has(&f, "`wide` in version `1` says it came in version 2, not version 9"), "{f:?}");
+    assert!(!has(&f, "taken away"), "an unknown since is not a version that took it away: {f:?}");
+}
+
+#[test]
 fn every_part_the_engine_has_needs_samples() {
     assert_eq!(
         kit::check(&Example::new(), &Samples::default()),
@@ -162,14 +174,13 @@ fn every_part_the_engine_has_needs_samples() {
 
 #[test]
 fn a_schema_is_offered_the_types_of_its_version() {
-    let example = Example::new();
-    let e: &dyn Engine = &example;
+    let e = Example::new();
     let names = |v: &str| e.types_in(v).iter().map(|t| t.name).collect::<Vec<_>>();
     assert_eq!(names("1"), ["int", "decimal(P,S)", "text"]);
     assert_eq!(names("2"), ["int", "decimal(P,S)", "text", "wide"]);
     assert_eq!(e.types().parse(" DECIMAL( 12 , 4 ) ", "1").map(|p| p.text), Ok("decimal(12,4)".to_string()));
     let refused = e.types().parse("wide", "1").unwrap_err();
-    assert_eq!(refused, TypeError::NotInVersion { family: "wide", since: Some("2") });
+    assert_eq!(refused, TypeError::not_in_version("wide", Some("2")));
     assert_eq!(refused.to_string(), "`wide` came in version 2");
     assert!(matches!(e.types().parse("whole", "2"), Err(TypeError::NotAType(_))));
 }

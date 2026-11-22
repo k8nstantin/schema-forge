@@ -99,7 +99,8 @@ impl Parsed {
 pub enum TypeError {
     /// Not a type of this engine at all, or written wrong, with why.
     NotAType(String),
-    /// A type of this engine that the schema's version does not have.
+    /// A type of this engine that the schema's version does not have. Made with [`TypeError::not_in_version`].
+    #[non_exhaustive]
     NotInVersion {
         /// The [`TypeSpec::name`] of its family.
         family: &'static str,
@@ -107,6 +108,15 @@ pub enum TypeError {
         /// version at or before the schema's took it away.
         since: Option<&'static str>,
     },
+}
+
+impl TypeError {
+    /// `family` is a type the schema's version does not have: it came in `since`, or, with `None`, a version took it
+    /// away.
+    #[must_use]
+    pub const fn not_in_version(family: &'static str, since: Option<&'static str>) -> Self {
+        Self::NotInVersion { family, since }
+    }
 }
 
 impl fmt::Display for TypeError {

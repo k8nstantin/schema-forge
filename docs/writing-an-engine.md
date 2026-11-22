@@ -58,9 +58,11 @@ database releases a new version, add it to `versions()` and mark the features it
 
 Everything you give the interface is made with a constructor, never field by field: `Version::new("3", "format 3")`,
 `TypeGroup::new("whole", "Whole numbers")`, `TypeSpec::new("decimal(P,S)", "exact", "An exact number…",
-"decimal(18,2)").since("2")`, `Parsed::new(…)`, `Report::new("statements")`, `Unread::new(…)`, `Imported::new(…)`.
-That is what lets the interface grow without breaking your engine: a field added later gets a default, and your
-code still builds. For the same reason, match a `TypeError` with a wildcard arm.
+"decimal(18,2)").since("2")`, `Parsed::new(…)`, `TypeError::not_in_version(…)`, `Report::new("statements")`,
+`Unread::new(…)`, `Imported::new(…)`, and the model's `Namespace::new`, `Object::new`, `Column::new`, `Link::new`,
+`Area::new`, with the rest set by field (`object.comment = Some(…)`). That is what lets the interface and the model
+grow without breaking your engine: a field added later gets a default, and your code still builds. For the same
+reason, match a `TypeError` with a wildcard arm.
 
 `Types` gives the palette its groups and types, and reads a type written as text:
 
@@ -75,8 +77,9 @@ code still builds. For the same reason, match a `TypeError` with a wildcard arm.
 - **Examples are written exactly as you write them**: `decimal(18,2)`, never `DECIMAL( 18 , 2 )`; the palette puts the
   example into a column as it is.
 
-`types_in(version)` on an engine gives the types a schema at that version may use, in palette order. It is worked out
-from your catalog and versions, not something you write, so it cannot disagree with them. When `parse` refuses a type
+`types_in(version)` (from the `Offered` trait, on any engine) gives the types a schema at that version may use, in
+palette order. It is worked out from your catalog and versions, not something you write or can override, so it cannot
+disagree with them. When `parse` refuses a type
 as `NotInVersion`, `since` is exactly the version your catalog says it came in (or `None` when a version took it
 away): that is what the canvas tells the person.
 
@@ -135,7 +138,8 @@ A `written_back` sample is in the form your engine writes, exactly as it writes 
 come back as **the same text**, line for line (blank lines aside), and read back to the same schema. That is how the
 kit knows kept text goes back in its place. A form you only read (table metadata, a dump made by another tool) is
 `read_only`. Every part your engine has needs samples that exercise it: reading needs a sample file, writing a
-written-back sample, reading queries a sample query.
+written-back sample when it also reads, reading queries a sample query. An engine that writes but does not read is
+checked on its identity, versions and types until the interface gives it schemas to write.
 
 The kit checks your identity and versions; every type (its example reads back exactly as itself in the versions that
 have it, and is refused as `NotInVersion` by the others); every sample (recognised, read with a report that adds up, a

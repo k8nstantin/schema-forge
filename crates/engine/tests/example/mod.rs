@@ -52,6 +52,8 @@ pub enum Broken {
     NoWriter,
     /// The report does not say what it counts.
     NoUnit,
+    /// It writes, but reads nothing.
+    NoReader,
 }
 
 pub struct Example {
@@ -111,7 +113,7 @@ impl Engine for Example {
     }
 
     fn read(&self) -> Option<&dyn Read> {
-        Some(self)
+        if self.broken == Broken::NoReader { None } else { Some(self) }
     }
 
     fn write(&self) -> Option<&dyn Write> {
@@ -145,10 +147,8 @@ impl Types for Example {
             "text" => simple("text"),
             "wide" if version == "2" || self.broken == Broken::VersionIgnored => simple("wide"),
             "wide" if self.broken == Broken::VersionUnsaid => Err(TypeError::NotAType("`wide` is not a type".into())),
-            "wide" if self.broken == Broken::WrongSince => {
-                Err(TypeError::NotInVersion { family: "wide", since: Some("1") })
-            }
-            "wide" => Err(TypeError::NotInVersion { family: "wide", since: Some("2") }),
+            "wide" if self.broken == Broken::WrongSince => Err(TypeError::not_in_version("wide", Some("1"))),
+            "wide" => Err(TypeError::not_in_version("wide", Some("2"))),
             _ => {
                 let bad = |why: &str| TypeError::NotAType(format!("`{text}` {why}"));
                 let inner =
@@ -190,33 +190,14 @@ impl Read for Example {
             match words.as_slice() {
                 ["table", ns, name] => {
                     let namespace = namespace(&mut s, &mut ids, ns);
-                    s.objects.push(Object {
-                        id: ids.next(Kind::Object, &[name]),
-                        kind: "table".to_string(),
-                        namespace,
-                        name: (*name).to_string(),
-                        comment: None,
-                        notes: None,
-                        tags: Vec::new(),
-                        area: None,
-                        columns: Vec::new(),
-                        reads: Vec::new(),
-                        engine: Default::default(),
-                    });
+                    s.objects.push(Object::new(ids.next(Kind::Object, &[name]), "table", namespace, *name));
                     report.modelled += 1;
                 }
                 ["column", name, ty, null @ ("null" | "not-null")] if !s.objects.is_empty() => {
                     let o = s.objects.last_mut().expect("a table");
                     let id: Id = ids.next(Kind::Column, &[&o.name, name]);
                     let data_type = self.parse(ty, version).map_or_else(|_| (*ty).to_string(), |p| p.text);
-                    o.columns.push(Column {
-                        id,
-                        name: (*name).to_string(),
-                        data_type,
-                        null: *null == "null",
-                        comment: None,
-                        engine: Default::default(),
-                    });
+                    o.columns.push(Column::new(id, *name, data_type, *null == "null"));
                     report.modelled += 1;
                 }
                 _ => {
@@ -245,13 +226,7 @@ fn namespace(s: &mut Schema, ids: &mut Ids, name: &str) -> Id {
         return n.id.clone();
     }
     let id = ids.next(Kind::Namespace, &[name]);
-    s.namespaces.push(Namespace {
-        id: id.clone(),
-        name: name.to_string(),
-        parent: None,
-        comment: None,
-        engine: Default::default(),
-    });
+    s.namespaces.push(Namespace::new(id.clone(), name));
     id
 }
 
@@ -293,8 +268,7 @@ impl Write for Example {
         }
         kept_after(None, &mut out);
         for o in &schema.objects {
-            let ns = schema.namespace(&o.namespace).map_or("", |n| n.name.as_str());
-            let _ = writeln!(out, "table {ns} {}", o.name);
+            header(&mut out, schema, o);
             kept_after(Some(o.id.as_str()), &mut out);
             for c in &o.columns {
                 column(&mut out, c);
@@ -306,11 +280,15 @@ impl Write for Example {
 }
 
 fn table(out: &mut String, schema: &Schema, o: &Object) {
-    let ns = schema.namespace(&o.namespace).map_or("", |n| n.name.as_str());
-    let _ = writeln!(out, "table {ns} {}", o.name);
+    header(out, schema, o);
     for c in &o.columns {
         column(out, c);
     }
+}
+
+fn header(out: &mut String, schema: &Schema, o: &Object) {
+    let ns = schema.namespace(&o.namespace).map_or("", |n| n.name.as_str());
+    let _ = writeln!(out, "table {ns} {}", o.name);
 }
 
 fn column(out: &mut String, c: &Column) {

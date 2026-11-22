@@ -64,11 +64,15 @@ pub trait Engine: Send + Sync {
     }
 }
 
-impl dyn Engine + '_ {
-    /// The types a schema at `version` may use, in palette order. Worked out from the catalog and its versions, never
-    /// by the engine itself, so it cannot disagree with them.
-    #[must_use]
-    pub fn types_in(&self, version: &str) -> Vec<&TypeSpec> {
+/// What every engine offers, worked out from what it says: no engine writes these, so none can disagree with its
+/// catalog and versions. In scope with `use schema_forge_engine::Offered`.
+pub trait Offered {
+    /// The types a schema at `version` may use, in palette order.
+    fn types_in(&self, version: &str) -> Vec<&TypeSpec>;
+}
+
+impl<E: Engine + ?Sized> Offered for E {
+    fn types_in(&self, version: &str) -> Vec<&TypeSpec> {
         self.types().catalog().iter().filter(|t| t.available.in_version(version, self.versions())).collect()
     }
 }

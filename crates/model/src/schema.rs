@@ -1,4 +1,7 @@
 //! The skeleton's parts. Order is meaning: namespaces, objects and columns keep the order they were made or read in.
+//!
+//! Engines make the parts with their constructors (`Object::new`, `Column::new`) and set the rest by field, never by
+//! naming every field, so a field added to the model later breaks no engine.
 
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +17,7 @@ pub type Section = serde_json::Map<String, serde_json::Value>;
 /// A whole schema, designed for one engine.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Schema {
     pub format: u32,
     pub engine: EngineRef,
@@ -34,6 +38,7 @@ pub struct Schema {
 /// The engine a schema is designed for, and the version of it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct EngineRef {
     /// The engine's id in the registry.
     pub id: String,
@@ -45,6 +50,7 @@ pub struct EngineRef {
 /// how deep namespaces go.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Namespace {
     pub id: Id,
     pub name: String,
@@ -59,6 +65,7 @@ pub struct Namespace {
 /// Something a namespace holds: a table, a view, whatever kinds the engine has.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Object {
     pub id: Id,
     /// One of the engine's kinds of object.
@@ -87,6 +94,7 @@ pub struct Object {
 /// A column of an object.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Column {
     pub id: Id,
     pub name: String,
@@ -105,6 +113,7 @@ pub struct Column {
 /// how, is in its section.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Link {
     pub id: Id,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -118,6 +127,7 @@ pub struct Link {
 /// One end of a link: an object and its columns, in order.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Ends {
     pub object: Id,
     pub columns: Vec<Id>,
@@ -126,11 +136,76 @@ pub struct Ends {
 /// A group of objects, by subject (billing, catalog), across namespaces.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Area {
     pub id: Id,
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub colour: Option<String>,
+}
+
+impl EngineRef {
+    #[must_use]
+    pub fn new(id: &str, version: &str) -> Self {
+        Self { id: id.to_string(), version: version.to_string() }
+    }
+}
+
+impl Namespace {
+    /// A namespace at the top; set `parent` to nest it.
+    #[must_use]
+    pub fn new(id: Id, name: impl Into<String>) -> Self {
+        Self { id, name: name.into(), parent: None, comment: None, engine: Section::new() }
+    }
+}
+
+impl Object {
+    /// An object of the engine's `kind`, with no columns yet.
+    #[must_use]
+    pub fn new(id: Id, kind: impl Into<String>, namespace: Id, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            kind: kind.into(),
+            namespace,
+            name: name.into(),
+            comment: None,
+            notes: None,
+            tags: Vec::new(),
+            area: None,
+            columns: Vec::new(),
+            reads: Vec::new(),
+            engine: Section::new(),
+        }
+    }
+}
+
+impl Column {
+    /// A column of the engine's type `data_type`.
+    #[must_use]
+    pub fn new(id: Id, name: impl Into<String>, data_type: impl Into<String>, null: bool) -> Self {
+        Self { id, name: name.into(), data_type: data_type.into(), null, comment: None, engine: Section::new() }
+    }
+}
+
+impl Link {
+    #[must_use]
+    pub fn new(id: Id, from: Ends, to: Ends) -> Self {
+        Self { id, name: None, from, to, engine: Section::new() }
+    }
+}
+
+impl Ends {
+    #[must_use]
+    pub const fn new(object: Id, columns: Vec<Id>) -> Self {
+        Self { object, columns }
+    }
+}
+
+impl Area {
+    #[must_use]
+    pub fn new(id: Id, name: impl Into<String>) -> Self {
+        Self { id, name: name.into(), colour: None }
+    }
 }
 
 impl Schema {
@@ -139,7 +214,7 @@ impl Schema {
     pub fn new(engine: &str, version: &str) -> Self {
         Self {
             format: FORMAT,
-            engine: EngineRef { id: engine.to_string(), version: version.to_string() },
+            engine: EngineRef::new(engine, version),
             namespaces: Vec::new(),
             objects: Vec::new(),
             links: Vec::new(),

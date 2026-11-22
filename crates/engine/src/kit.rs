@@ -95,7 +95,9 @@ pub fn check(engine: &dyn Engine, samples: &Samples<'_>) -> Vec<String> {
     }
     let written_back = samples.files.iter().any(|f| f.written_back);
     match (engine.write(), written_back) {
-        (Some(_), false) => {
+        // A writer is checked by writing back what was read; an engine that writes and does not read is checked on
+        // its types and identity only, until a part of the interface gives it schemas to write.
+        (Some(_), false) if engine.read().is_some() => {
             out.push("it writes, but no sample is in the form it writes (`Sample::written_back`)".to_string());
         }
         (None, true) => out.push("a sample is to be written back, but the engine writes nothing".to_string()),
@@ -235,7 +237,9 @@ fn example_reads(engine: &dyn Engine, t: &crate::TypeSpec, version: &str, out: &
             // Before the version it came in, say that version; once taken away, say none.
             let versions = engine.versions();
             let at = |v: &str| versions.iter().position(|x| x.id == v);
-            let before = t.available.since.is_some_and(|s| at(version) < at(s));
+            // Not at or after the version it came in: before it, or that version is unknown (reported above).
+            let before =
+                t.available.since.is_some_and(|s| !matches!((at(version), at(s)), (Some(v), Some(s)) if v >= s));
             let want = if before { t.available.since } else { None };
             if since != want {
                 out.push(format!(
@@ -359,7 +363,8 @@ fn written_back(
                 ));
             }
         }
-        Err(e) => out.push(format!("{at}: a sample to write back is a file: {e}")),
+        Err(_) if sample.is_dir() => out.push(format!("{at}: a folder cannot be written back; mark it `read_only`")),
+        Err(e) => out.push(format!("{at}: the sample cannot be read as text to compare: {e}")),
     }
     let again = match read_text(engine, read, &text) {
         Ok(a) => a,

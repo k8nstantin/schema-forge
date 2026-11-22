@@ -24,17 +24,30 @@ pub enum Role {
 }
 
 impl Role {
+    const ALL: [Self; 7] =
+        [Self::Model, Self::Interface, Self::Helper, Self::Engine, Self::Registry, Self::App, Self::Tool];
+
+    /// Its name and its article: the one place they are written.
+    const fn words(self) -> (&'static str, &'static str) {
+        match self {
+            Self::Model => ("a", "model"),
+            Self::Interface => ("an", "interface"),
+            Self::Helper => ("a", "helper"),
+            Self::Engine => ("an", "engine"),
+            Self::Registry => ("a", "registry"),
+            Self::App => ("an", "app"),
+            Self::Tool => ("a", "tool"),
+        }
+    }
+
     fn parse(s: &str) -> Option<Self> {
-        Some(match s {
-            "model" => Self::Model,
-            "interface" => Self::Interface,
-            "helper" => Self::Helper,
-            "engine" => Self::Engine,
-            "registry" => Self::Registry,
-            "app" => Self::App,
-            "tool" => Self::Tool,
-            _ => return None,
-        })
+        Self::ALL.into_iter().find(|r| r.words().1 == s)
+    }
+
+    /// The role with its article, as a sentence says it: `an engine`, `a model`.
+    fn a(self) -> String {
+        let (article, name) = self.words();
+        format!("{article} {name}")
     }
 
     /// The roles a crate of this role may depend on; `None` for any.
@@ -56,26 +69,9 @@ impl Role {
     }
 }
 
-impl Role {
-    /// The role with its article, as a sentence says it: `an engine`, `a model`.
-    fn a(self) -> String {
-        let name = self.to_string();
-        let article = if name.starts_with(['a', 'e', 'i', 'o', 'u']) { "an" } else { "a" };
-        format!("{article} {name}")
-    }
-}
-
 impl fmt::Display for Role {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Model => "model",
-            Self::Interface => "interface",
-            Self::Helper => "helper",
-            Self::Engine => "engine",
-            Self::Registry => "registry",
-            Self::App => "app",
-            Self::Tool => "tool",
-        })
+        f.write_str(self.words().1)
     }
 }
 
@@ -146,14 +142,15 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
     let role_of = |name: &str| crates.iter().find(|c| c.name == name).and_then(|c| c.role);
     let mut words: Vec<String> = DATABASES.iter().map(|w| (*w).to_string()).collect();
     words.extend(crates.iter().filter_map(|c| c.database.as_deref().map(str::to_ascii_lowercase)));
+    words.sort();
+    words.dedup();
 
     for c in crates {
         let Some(role) = c.role else {
             match &c.role_text {
-                Some(t) => breach(format!(
-                    "{}: `{t}` is not a role (model, interface, helper, engine, registry, app, tool)",
-                    c.name
-                )),
+                Some(t) => {
+                    breach(format!("{}: `{t}` is not a role ({})", c.name, Role::ALL.map(|r| r.words().1).join(", ")))
+                }
                 None => breach(format!("{}: declares no role in [package.metadata.schema-forge]", c.name)),
             }
             continue;
@@ -221,16 +218,20 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
 }
 
 /// The databases `text` names, by line. Words are split at everything but letters, digits and `_`, then into the
-/// parts of an identifier, at `_` and at capitals (`read_MySqlDialect` is `read`, `My`, `Sql`, `Dialect`), and any
+/// parts of an identifier, at `_`, `-` and capitals (`read_MySqlDialect` is `read`, `My`, `Sql`, `Dialect`), and any
 /// run of parts that spells a database, its own `_` aside, is a name: `mysql`, `PostgreSQL`, `pg_dump`,
-/// `FromPostgres`, `readMySql`, and for a database `sql_server`, `SqlServer` and `read_sql_server`. A word that only
-/// contains one (`archive`, `sparkline`) is not.
+/// `FromPostgres`, `readMySql`, and for a database `sql_server`, `SqlServer`, `read_sql_server` and `sql-server`. A
+/// word that only contains one (`archive`, `sparkline`) is not.
 #[must_use]
 pub fn names(text: &str, databases: &[String]) -> Vec<(usize, String)> {
+    // Spelled as runs of parts are: without `_` or `-`.
+    let spelled: Vec<(String, &String)> = databases.iter().map(|d| (d.replace(['_', '-'], ""), d)).collect();
     let mut out = Vec::new();
     for (i, line) in text.lines().enumerate() {
-        for word in line.split(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_').filter(|w| !w.is_empty()) {
-            let parts: Vec<&str> = word.split('_').filter(|p| !p.is_empty()).flat_map(parts).collect();
+        for word in
+            line.split(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_' && ch != '-').filter(|w| !w.is_empty())
+        {
+            let parts: Vec<&str> = word.split(['_', '-']).filter(|p| !p.is_empty()).flat_map(parts).collect();
             let mut start = 0;
             while start < parts.len() {
                 // The longest run from here: `PostgreSQL` is `postgresql`, not `postgres`.
@@ -238,8 +239,8 @@ pub fn names(text: &str, databases: &[String]) -> Vec<(usize, String)> {
                 let mut hit = None;
                 for (end, part) in parts.iter().enumerate().skip(start) {
                     run.push_str(&part.to_ascii_lowercase());
-                    if let Some(d) = databases.iter().find(|d| d.replace('_', "") == run) {
-                        hit = Some((end, d));
+                    if let Some((_, d)) = spelled.iter().find(|(w, _)| *w == run) {
+                        hit = Some((end, *d));
                     }
                 }
                 match hit {
@@ -493,6 +494,7 @@ mod tests {
         let words = vec!["sql_server".to_string()];
         let found = |t: &str| names(t, &words).into_iter().map(|(_, w)| w).collect::<Vec<_>>();
         assert_eq!(found("fn read_sql_server_dump() -> SqlServer"), ["sql_server", "sql_server"]);
+        assert_eq!(found("\"sql-server\", schema-forge-engine-sql-server"), ["sql_server", "sql_server"]);
         assert_eq!(found("sql server, sqlservers"), Vec::<String>::new());
     }
 
