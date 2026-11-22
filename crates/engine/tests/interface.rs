@@ -1,0 +1,135 @@
+//! The interface, the registry and the conformance kit, on the made-up `example` engine.
+
+mod example;
+
+use std::path::Path;
+
+use example::{Broken, Example};
+use schema_forge_engine::{Engine, Registry, kit};
+use schema_forge_model::Schema;
+
+const SHOP: &str = "tests/samples/shop.example";
+
+fn shop() -> &'static Path {
+    Path::new(SHOP)
+}
+
+#[test]
+fn a_conforming_engine_passes_the_kit() {
+    kit::assert_conforms(&Example::new(), &[shop()]);
+}
+
+/// The kit's findings for a broken copy of the engine.
+fn findings(broken: Broken) -> Vec<String> {
+    kit::check(&Example::broken(broken), &[shop()])
+}
+
+fn has(findings: &[String], text: &str) -> bool {
+    findings.iter().any(|f| f.contains(text))
+}
+
+#[test]
+fn the_kit_finds_a_type_listed_twice() {
+    let f = findings(Broken::TypeTwice);
+    assert!(has(&f, "the type `int` is listed twice"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_a_feature_of_a_version_the_engine_does_not_have() {
+    let f = findings(Broken::SinceNoVersion);
+    assert!(has(&f, "the type `wide` names the version `9`, which is not one of its versions"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_a_type_read_in_a_version_without_it() {
+    let f = findings(Broken::VersionIgnored);
+    assert_eq!(f, ["`wide` reads in version `1`, which does not have it"]);
+}
+
+#[test]
+fn the_kit_finds_a_report_that_does_not_add_up() {
+    let f = findings(Broken::ReportShort);
+    assert!(has(&f, "the report does not add up: 9 read, 8 modelled, 0 kept, 0 data"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_a_writer_that_loses_something() {
+    let f = findings(Broken::WriterLoses);
+    assert!(has(&f, "written and read back, it differs"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_a_default_version_that_is_not_one() {
+    let f = findings(Broken::DefaultNoVersion);
+    assert_eq!(f, ["its default version `0` is not one of its versions"]);
+}
+
+#[test]
+fn a_schema_is_offered_the_types_of_its_version() {
+    let e = Example::new();
+    let names = |v: &str| e.types().in_version(v, e.versions()).iter().map(|t| t.name).collect::<Vec<_>>();
+    assert_eq!(names("1"), ["int", "decimal(P,S)", "text"]);
+    assert_eq!(names("2"), ["int", "decimal(P,S)", "text", "wide"]);
+    assert_eq!(e.types().parse(" DECIMAL( 12 , 4 ) ", "1").map(|p| p.text), Ok("decimal(12,4)".to_string()));
+    assert!(e.types().parse("wide", "1").is_err());
+}
+
+#[test]
+fn reading_accounts_for_every_line() {
+    let e = Example::new();
+    let (engine, input) =
+        Registry::new().with(Example::new()).reader_of(shop()).map(|(e, i)| (e.id(), i)).expect("read");
+    assert_eq!(engine, "example");
+    let read = e.read().expect("it reads").read(&input).expect("it reads");
+    let r = &read.report;
+    assert_eq!((r.read, r.modelled, r.kept_total(), r.data), (9, 8, 1, 0));
+    assert!(r.adds_up());
+    assert_eq!(r.not_understood, [("line 9".to_string(), "-- a note the model does not hold".to_string())]);
+    assert!(r.to_string().starts_with("9 lines read\n  modelled: 8\n  kept as written: 1\n    other: 1\n"), "{r}");
+    let s = &read.schema;
+    assert_eq!((s.engine.id.as_str(), s.engine.version.as_str()), ("example", "2"));
+    assert_eq!(s.objects.iter().map(|o| o.name.as_str()).collect::<Vec<_>>(), ["customers", "orders"]);
+    let orders = &s.objects[1];
+    let def = e.write().expect("it writes").definition(s, &orders.id).expect("orders is there");
+    assert_eq!(
+        def,
+        "table sales orders\ncolumn id int not-null\ncolumn total decimal(10,2) null\ncolumn note wide null\n"
+    );
+}
+
+#[test]
+fn the_registry_finds_the_schemas_engine() {
+    let r = Registry::new().with(Example::new());
+    assert_eq!(r.of(&Schema::new("example", "2")).map(Engine::id), Ok("example"));
+    assert_eq!(
+        r.of(&Schema::new("elsewhere", "1")).map(Engine::id),
+        Err("the schema is for `elsewhere`, which this build has no engine for (it has example)".to_string())
+    );
+    assert_eq!(r.all().map(Engine::id).collect::<Vec<_>>(), ["example"]);
+    assert!(r.get("elsewhere").is_none());
+}
+
+#[test]
+#[should_panic(expected = "the engine `example` is registered twice")]
+fn one_database_is_one_engine() {
+    let _ = Registry::new().with(Example::new()).with(Example::new());
+}
+
+#[test]
+fn the_reader_is_the_one_engine_that_recognises_the_input() {
+    let r = Registry::new().with(Example::new());
+    let err = r.reader_of(Path::new("tests/samples/other.txt")).map(|(e, _)| e.id()).unwrap_err();
+    assert!(
+        err.ends_with("no engine recognises it; say which engine it is for. Read here: Example (example files)"),
+        "{err}"
+    );
+    let two = Registry::new().with(Example::new()).with(Example { id: "copy", broken: Broken::Nothing });
+    let err = two.reader_of(shop()).map(|(e, _)| e.id()).unwrap_err();
+    assert!(
+        err.ends_with("more than one engine recognises it (Example, Example); say which engine it is for"),
+        "{err}"
+    );
+    assert!(r.reader_of(Path::new("tests/samples/missing")).is_err());
+    let folder = r.reader_of(Path::new("tests/samples")).map(|(e, _)| e.id()).unwrap_err();
+    assert!(folder.contains("no engine recognises it"), "a folder this engine does not read: {folder}");
+}

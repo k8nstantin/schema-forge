@@ -184,6 +184,21 @@ pub fn check(crates: &[Crate], source: impl Fn(&Crate) -> Vec<(PathBuf, String)>
             }
         }
     }
+    // One crate per database, never one per version: a version lives in its database's crate.
+    let mut engines: Vec<(&str, &str)> = crates
+        .iter()
+        .filter(|c| c.role == Some(Role::Engine))
+        .filter_map(|c| c.database.as_deref().map(|d| (d, c.name.as_str())))
+        .collect();
+    engines.sort_unstable();
+    for pair in engines.windows(2) {
+        if pair[0].0 == pair[1].0 {
+            breach(format!(
+                "{} and {} both say the database `{}`: one crate per database, its versions inside it",
+                pair[0].1, pair[1].1, pair[0].0
+            ));
+        }
+    }
     out
 }
 
@@ -364,6 +379,22 @@ mod tests {
         c[6].dir = PathBuf::from("engines/store");
         let b = check(&c, none);
         assert_eq!(b.len(), 3, "{b:?}");
+    }
+
+    #[test]
+    fn one_crate_per_database_never_one_per_version() {
+        let mut c = good();
+        let mut v4 = krate("schema-forge-postgres-v4", "engines/postgres-v4", "engine", &["model", "engine"]);
+        v4.database = Some("postgres".into());
+        c.push(v4);
+        assert_eq!(
+            check(&c, none),
+            [Breach(
+                "schema-forge-postgres and schema-forge-postgres-v4 both say the database `postgres`: one crate per \
+                 database, its versions inside it"
+                    .into()
+            )]
+        );
     }
 
     #[test]

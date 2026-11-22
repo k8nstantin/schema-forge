@@ -176,6 +176,13 @@ pub trait Engine: Send + Sync {
 }
 ```
 
+Each part joins the interface (`schema-forge-engine`) when something first uses it, shaped by that use: identity,
+versions, types, reading, writing, queries and checks are there now, with the registry and the conformance kit;
+objects, keys, indexes, options and partitions come with the first engine's model, operations with the operations,
+rules with the rules, `ui` with the canvas, `portable` with moving between engines, `live` with reading a live
+database. Adding a part never breaks an engine written before it. How to write an engine:
+[writing-an-engine.md](writing-an-engine.md).
+
 The facets are asked questions, never tested as flags: the core asks the engine "may this table have an index?" and
 the engine answers from its version, instead of the core reading a `supports_indexes` flag and deciding itself.
 

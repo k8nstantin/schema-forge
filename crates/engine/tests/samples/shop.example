@@ -1,0 +1,9 @@
+example 2
+table sales customers
+column id int not-null
+column name text null
+table sales orders
+column id int not-null
+column total decimal(10,2) null
+column note wide null
+-- a note the model does not hold

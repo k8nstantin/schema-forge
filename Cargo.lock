@@ -68,6 +68,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "schema-forge-engine"
+version = "0.2.0"
+dependencies = [
+ "schema-forge-model",
+ "serde_json",
+]
+
+[[package]]
 name = "schema-forge-model"
 version = "0.2.0"
 dependencies = [
