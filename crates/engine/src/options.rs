@@ -38,6 +38,10 @@ pub enum Part {
     OrderField,
     PartitionOf,
     Kept,
+    Routine,
+    Parameter,
+    Trigger,
+    Event,
 }
 
 impl Part {

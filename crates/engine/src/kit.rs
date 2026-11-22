@@ -591,6 +591,9 @@ fn walk(engine: &dyn Engine, schema: &schema_forge_model::Schema) -> Vec<String>
             (Slot::Values, !t.values.is_empty()),
             (Slot::Domain, t.domain.is_some()),
             (Slot::Fields, !t.fields.is_empty()),
+            (Slot::Routine, t.routine.is_some()),
+            (Slot::Trigger, t.trigger.is_some()),
+            (Slot::Event, t.event.is_some()),
         ];
         if let Some(k) = kind {
             for (slot, filled) in used {
@@ -631,6 +634,16 @@ fn walk(engine: &dyn Engine, schema: &schema_forge_model::Schema) -> Vec<String>
             opt(Part::Domain, &d.options);
         }
         t.fields.iter().for_each(|f| opt(Part::Field, &f.options));
+        if let Some(r) = &t.routine {
+            opt(Part::Routine, &r.options);
+            r.parameters.iter().for_each(|p| opt(Part::Parameter, &p.options));
+        }
+        if let Some(tr) = &t.trigger {
+            opt(Part::Trigger, &tr.options);
+        }
+        if let Some(e) = &t.event {
+            opt(Part::Event, &e.options);
+        }
         for c in &o.columns {
             let at = format!("`{}.{}`", o.name, c.name);
             match section::<ColumnSection>(&c.engine) {
@@ -745,6 +758,26 @@ fn object_ids(
         && schema.object(&p.parent).is_none()
     {
         out.push(format!("it is a partition of {}, which is not in the schema", p.parent));
+    }
+    if let Some(tr) = &t.trigger {
+        if schema.object(&tr.table).is_none() {
+            out.push(format!("it is a trigger on {}, which is not in the schema", tr.table));
+        }
+        if tr.events.is_empty() {
+            out.push("it is a trigger that fires on nothing".to_string());
+        }
+    }
+    for (what, body) in [
+        ("routine", t.routine.as_ref().map(|r| r.body.as_str())),
+        ("trigger", t.trigger.as_ref().map(|r| r.body.as_str())),
+        ("event", t.event.as_ref().map(|r| r.body.as_str())),
+    ] {
+        if body.is_some_and(|b| b.trim().is_empty()) {
+            out.push(format!("its {what} has no body"));
+        }
+    }
+    if t.event.as_ref().is_some_and(|e| e.schedule.trim().is_empty()) {
+        out.push("its event has no schedule".to_string());
     }
     if let Some(owner) = t.sequence.as_ref().and_then(|s| s.owned_by.as_ref())
         && schema.column(owner).is_none()

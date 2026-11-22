@@ -11,3 +11,4 @@ column id int not-null
 -- totals are in the shop's currency
 column total decimal(10,2) null
 column note wide null
+trigger sales orders_touch before insert on orders: set new.placed = now()

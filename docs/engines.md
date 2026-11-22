@@ -38,10 +38,17 @@ names a database.
 So that no engine grows a storage of its own, every engine's sections follow **one layout**
 (`schema_forge_engine::sections`), the template: a table's `keys` (primary, unique, identifier), `checks`, `indexes`,
 `partitioning`, `partition_of`, `order`; a view's `query`; a `sequence`; the schema's own types (`values`, `domain`,
-`fields`); a column's `default`, `identity`, `generated`; a link's `enforced`, `on_delete`, `on_update`, `match`,
+`fields`); a `routine` (a procedure or function: its parameters, what it returns, its language and characteristics),
+a `trigger` (its timing, the changes it fires on, the table it is on), an `event` (its schedule), each with its body
+exactly as written; a column's `default`, `identity`, `generated`; a link's `enforced`, `on_delete`, `on_update`, `match`,
 `deferrable`; the schema's `format` (the engine's storage version, for upgrades), `kept` (what the model does not
 describe, exactly as written, with where it goes back) and `requires`. An engine fills the slots its database has and
 leaves the rest out. A slot the layout does not have is refused.
+
+**Every object a database has is accounted for.** Each engine's plan inventories every kind of object its database
+has, and each is modelled as a kind (visible in the canvas, referenced by the agent, open to rules) or, when it belongs
+to the server rather than the schema (accounts, roles, grants), kept exactly as written and counted by kind, with the
+reason in the engine's plan. Nothing is dropped, and nothing is lumped into "other" by default.
 
 Each engine also **declares its kinds of object** and the slots each uses (a table its keys and indexes, a view its
 query), so a view with partitioning or a table with a query is refused. The layout has a version; a schema written
