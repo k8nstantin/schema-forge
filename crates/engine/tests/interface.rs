@@ -149,6 +149,18 @@ fn the_kit_finds_a_default_version_that_is_not_one() {
 }
 
 #[test]
+fn the_kit_finds_a_section_off_the_layout() {
+    let f = findings(Broken::OffLayout);
+    assert!(has(&f, "the section of the schema does not follow the layout: unknown field `storage`"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_an_option_the_engine_does_not_declare() {
+    let f = findings(Broken::UndeclaredOption);
+    assert!(has(&f, "`orders` holds the option `quick`, which the engine does not declare there"), "{f:?}");
+}
+
+#[test]
 fn an_engine_that_writes_and_does_not_read_can_conform() {
     assert_eq!(kit::check(&Example::broken(Broken::NoReader), &Samples::new(&[], QUERIES)), Vec::<String>::new());
 }
@@ -210,13 +222,15 @@ fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place
     assert_eq!(
         write.schema(s),
         "example 2\n-- the shop's tables\ntable sales customers\ncolumn id int not-null\ncolumn name text null\n\
-         -- customers come from the web shop\ntable sales orders\ncolumn id int not-null\n\
+         -- customers come from the web shop\ntable sales orders fast\ncolumn id int not-null\n\
          -- totals are in the shop's currency\ncolumn total decimal(10,2) null\ncolumn note wide null\n"
     );
     let orders = &s.objects[1];
     assert_eq!(
         write.definition(s, &orders.id).as_deref(),
-        Some("table sales orders\ncolumn id int not-null\ncolumn total decimal(10,2) null\ncolumn note wide null\n")
+        Some(
+            "table sales orders fast\ncolumn id int not-null\ncolumn total decimal(10,2) null\ncolumn note wide null\n"
+        )
     );
 }
 

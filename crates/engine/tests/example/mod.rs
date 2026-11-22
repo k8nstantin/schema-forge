@@ -13,12 +13,13 @@
 
 use std::fmt::Write as _;
 
+use schema_forge_engine::options::{OptionKind, OptionSpec, Part};
+use schema_forge_engine::sections::{self, Kept, ObjectSection, SchemaSection};
 use schema_forge_engine::{
     Availability, Engine, Imported, Input, Parsed, Queries, Read, Report, TypeError, TypeGroup, TypeSpec, Types,
     Unread, Version, Write,
 };
 use schema_forge_model::{Column, Id, Ids, Kind, Namespace, Object, Schema};
-use serde_json::{Value, json};
 
 /// What a broken copy of the engine gets wrong, to prove the kit finds it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,6 +55,10 @@ pub enum Broken {
     NoUnit,
     /// It writes, but reads nothing.
     NoReader,
+    /// It holds an option it does not declare.
+    UndeclaredOption,
+    /// It stores something in a slot the section layout does not have.
+    OffLayout,
 }
 
 pub struct Example {
@@ -80,6 +85,11 @@ const DECIMAL: TypeSpec =
     TypeSpec::new("decimal(P,S)", "numbers", "An exact number with P digits, S after the point", "decimal(10,2)");
 const TEXT: TypeSpec = TypeSpec::new("text", "text", "Text of any length", "text");
 const WIDE: TypeSpec = TypeSpec::new("wide", "text", "Wide text", "wide").since("2");
+
+/// A table may be marked `fast`, from version 2.
+const OPTIONS: &[OptionSpec] = &[OptionSpec::new(Part::Object, "fast", OptionKind::Flag, "Kept in memory for speed")
+    .for_kinds(&["table"])
+    .since("2")];
 
 const CATALOG: &[TypeSpec] = &[INT, DECIMAL, TEXT, WIDE];
 const TWICE: &[TypeSpec] = &[INT, INT, DECIMAL, TEXT, WIDE];
@@ -110,6 +120,10 @@ impl Engine for Example {
 
     fn types(&self) -> &dyn Types {
         self
+    }
+
+    fn options(&self) -> &[OptionSpec] {
+        OPTIONS
     }
 
     fn read(&self) -> Option<&dyn Read> {
@@ -188,9 +202,16 @@ impl Read for Example {
             report.read += 1;
             let words: Vec<&str> = line.split_whitespace().collect();
             match words.as_slice() {
-                ["table", ns, name] => {
+                ["table", ns, name, rest @ ..] if rest.iter().all(|w| *w == "fast") => {
                     let namespace = namespace(&mut s, &mut ids, ns);
-                    s.objects.push(Object::new(ids.next(Kind::Object, &[name]), "table", namespace, *name));
+                    let mut o = Object::new(ids.next(Kind::Object, &[name]), "table", namespace, *name);
+                    if !rest.is_empty() {
+                        let mut t = ObjectSection::default();
+                        let key = if self.broken == Broken::UndeclaredOption { "quick" } else { "fast" };
+                        t.options.insert(key.to_string(), true.into());
+                        o.engine = sections::write(&t);
+                    }
+                    s.objects.push(o);
                     report.modelled += 1;
                 }
                 ["column", name, ty, null @ ("null" | "not-null")] if !s.objects.is_empty() => {
@@ -201,11 +222,11 @@ impl Read for Example {
                     report.modelled += 1;
                 }
                 _ => {
-                    let after = s
-                        .objects
-                        .last()
-                        .map_or(Value::Null, |o| Value::String(o.columns.last().map_or(&o.id, |c| &c.id).to_string()));
-                    kept.push(json!({ "after": after, "line": line }));
+                    let mut k = Kept::default();
+                    k.kind = "other".to_string();
+                    k.text = line.to_string();
+                    k.after = s.objects.last().map(|o| o.columns.last().map_or(&o.id, |c| &c.id).clone());
+                    kept.push(k);
                     if self.broken != Broken::ReportShort {
                         *report.kept.entry("other".to_string()).or_default() += 1;
                     }
@@ -214,8 +235,11 @@ impl Read for Example {
                 }
             }
         }
-        if !kept.is_empty() {
-            s.engine_section.insert("kept".to_string(), Value::Array(kept));
+        let mut section = SchemaSection::default();
+        section.kept = kept;
+        s.engine_section = sections::write(&section);
+        if self.broken == Broken::OffLayout {
+            s.engine_section.insert("storage".to_string(), "heap".into());
         }
         Ok(Imported::new(s, report))
     }
@@ -242,14 +266,10 @@ impl Write for Example {
     }
 
     fn schema(&self, schema: &Schema) -> String {
+        let section: SchemaSection = sections::read(&schema.engine_section).unwrap_or_default();
         let kept: Vec<(Option<&str>, &str)> = match self.broken {
             Broken::WriterLoses => Vec::new(),
-            _ => schema
-                .engine_section
-                .get("kept")
-                .and_then(Value::as_array)
-                .map(|k| k.iter().filter_map(|e| Some((e["after"].as_str(), e["line"].as_str()?))).collect())
-                .unwrap_or_default(),
+            _ => section.kept.iter().map(|k| (k.after.as_ref().map(Id::as_str), k.text.as_str())).collect(),
         };
         let kept_after = |after: Option<&str>, out: &mut String| {
             for (_, line) in kept.iter().filter(|(a, _)| *a == after) {
@@ -288,7 +308,9 @@ fn table(out: &mut String, schema: &Schema, o: &Object) {
 
 fn header(out: &mut String, schema: &Schema, o: &Object) {
     let ns = schema.namespace(&o.namespace).map_or("", |n| n.name.as_str());
-    let _ = writeln!(out, "table {ns} {}", o.name);
+    let section: ObjectSection = sections::read(&o.engine).unwrap_or_default();
+    let fast = if section.options.is_empty() { "" } else { " fast" };
+    let _ = writeln!(out, "table {ns} {}{fast}", o.name);
 }
 
 fn column(out: &mut String, c: &Column) {

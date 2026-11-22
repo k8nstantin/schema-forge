@@ -11,8 +11,10 @@
 //! The conformance kit ([`kit`]) tells an engine's author when it is complete and correct.
 
 pub mod kit;
+pub mod options;
 mod read;
 mod registry;
+pub mod sections;
 mod types;
 mod version;
 
@@ -42,6 +44,12 @@ pub trait Engine: Send + Sync {
 
     /// Its types.
     fn types(&self) -> &dyn Types;
+
+    /// The options it may hold in its sections: its own schema over the shared section layout. An option it does not
+    /// declare is refused.
+    fn options(&self) -> &[options::OptionSpec] {
+        &[]
+    }
 
     /// Reading its files (dumps, definition files, table metadata) into a schema.
     fn read(&self) -> Option<&dyn Read> {
