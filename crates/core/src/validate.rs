@@ -225,7 +225,7 @@ impl Checker<'_> {
             for id in &ice.identifier_fields {
                 if let Some(c) = cols.get(id) {
                     if c.nullable {
-                        self.problem(id, "an identifier field must be required (not nullable)");
+                        self.problem(id, "an identifier field must be not null");
                     }
                     if matches!(c.data_type.name.as_str(), "float" | "double") {
                         self.problem(id, "an identifier field cannot be float or double");

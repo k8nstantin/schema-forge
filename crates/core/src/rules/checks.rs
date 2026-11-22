@@ -222,7 +222,7 @@ pub(super) fn run(id: &str, cx: &Context<'_>, table: &Table) -> Outcome {
             if !key.is_empty() {
                 o.look();
                 for c in key.into_iter().filter(|c| c.nullable) {
-                    o.column(&c.id, format!("key column `{}` may be empty", c.name));
+                    o.column(&c.id, format!("key column `{}` is null", c.name));
                 }
             }
         }

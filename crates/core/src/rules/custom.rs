@@ -86,7 +86,7 @@ impl Sentence {
             Self::Columns { name, must } => {
                 let what = match must {
                     ColumnMust::OfType(t) => format!("are {}", t.join(" or ")),
-                    ColumnMust::Required => "are required".to_string(),
+                    ColumnMust::Required => "are not null".to_string(),
                     ColumnMust::Described => "have a description".to_string(),
                     ColumnMust::SnakeCase => "are snake_case".to_string(),
                 };
@@ -98,7 +98,7 @@ impl Sentence {
                     s.push_str(&format!(", {}", types.join(" or ")));
                 }
                 if *required {
-                    s.push_str(", required");
+                    s.push_str(", not null");
                 }
                 s
             }
@@ -209,7 +209,7 @@ impl Sentence {
                     let broken = match must {
                         ColumnMust::OfType(types) => (!types.contains(&type_name(&c.data_type)))
                             .then(|| format!("`{}` is {}", c.name, type_name(&c.data_type))),
-                        ColumnMust::Required => c.nullable.then(|| format!("`{}` may be empty", c.name)),
+                        ColumnMust::Required => c.nullable.then(|| format!("`{}` is null", c.name)),
                         ColumnMust::Described => c
                             .comment
                             .as_deref()
@@ -228,7 +228,7 @@ impl Sentence {
                     None => o.breaks.push((None, format!("`{}` has no `{column}`", table.name))),
                     Some(c) => {
                         if *required && c.nullable {
-                            o.breaks.push((Some(c.id.clone()), format!("`{column}` may be empty")));
+                            o.breaks.push((Some(c.id.clone()), format!("`{column}` is null")));
                         }
                         if !types.is_empty() && !types.contains(&type_name(&c.data_type)) {
                             o.breaks.push((Some(c.id.clone()), format!("`{column}` is {}", type_name(&c.data_type))));
@@ -321,7 +321,7 @@ mod tests {
             .is_err()
         );
         let h = Sentence::HasColumn { column: "loaded_at".into(), required: true, types: vec![] };
-        assert_eq!(h.words(), "Every table has `loaded_at`, required");
+        assert_eq!(h.words(), "Every table has `loaded_at`, not null");
         assert!(
             Sentence::PartitionedBy { transform: "bucket[16]".into(), column: "id".into() }
                 .valid(Target::Iceberg)

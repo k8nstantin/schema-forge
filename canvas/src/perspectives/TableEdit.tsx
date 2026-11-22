@@ -35,7 +35,7 @@ export function TableEdit({ t }: { t: Table }) {
 
       <section className="sf-edit-section">
         <span className="sf-caption">Columns · {iceberg ? 'key = identifier fields' : 'key = primary key'}</span>
-        <div className="sf-editrow sf-thead"><span>Column</span><span>Type</span><span>Required</span><span>Key</span><span>Description</span><span></span></div>
+        <div className="sf-editrow sf-thead"><span>Column</span><span>Type</span><span>Not null</span><span>Key</span><span>Description</span><span></span></div>
         {t.columns.map((c) => <ColumnRow key={c.id} table={t} id={c.id} inKey={key.has(c.id)} keyCols={[...key]} />)}
         <NewColumn t={t} />
       </section>
@@ -94,7 +94,7 @@ function ColumnRow({ table, id, inKey, keyCols }: { table: Table; id: string; in
     <div className={`sf-editrow${dirty ? ' sf-dirty' : ''}`}>
       <input className="sf-edit-input sf-mono" value={name} onChange={(e) => setName(e.target.value)} aria-label="Column name" />
       <input className="sf-edit-input sf-mono" value={type} onChange={(e) => setType(e.target.value)} disabled={!editable} title={editable ? 'As the target writes it' : 'A nested type: ask the agent'} aria-label="Type" />
-      <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} aria-label="Required" />
+      <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} aria-label="Not null" />
       <input type="checkbox" checked={inKey} onChange={toggleKey} aria-label="In the key" />
       <input className="sf-edit-input" value={about} onChange={(e) => setAbout(e.target.value)} placeholder="What it holds" aria-label="Description" />
       <span className="sf-row-gap">

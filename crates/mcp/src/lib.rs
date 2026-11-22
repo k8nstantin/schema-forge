@@ -117,7 +117,7 @@ pub struct ChangeArg {
     pub schema: String,
     /// The operations, applied in order as one change: all of them, or none.
     pub operations: Vec<serde_json::Value>,
-    /// Yes to destructive operations (drops, narrowed types, required columns): say it only when the person asked.
+    /// Yes to destructive operations (drops, narrowed types, not null columns): say it only when the person asked.
     #[serde(default)]
     pub confirm_destructive: bool,
 }
@@ -419,7 +419,7 @@ Operations, as JSON objects with "op". Tables are named `orders` or `namespace.o
                     "  {} {}{}",
                     c.name,
                     type_label(&c.data_type),
-                    if c.nullable { "" } else { " required" }
+                    if c.nullable { "" } else { " not null" }
                 );
                 if a.table.is_some()
                     && let Some(cm) = &c.comment

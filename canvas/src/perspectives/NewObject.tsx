@@ -67,7 +67,7 @@ export function NewObject() {
         <button type="button" className="sf-button" disabled={!name.trim() || (ns === '+' && !newNs.trim()) || !ns} onClick={make}>Make it</button>
         <button type="button" className="sf-chip" onClick={() => setOpen(false)}>Cancel</button>
       </span>
-      {kind === 'table' && <span className="sf-muted sf-small">It starts with a required `id` as its key; add and change columns in the Table perspective.</span>}
+      {kind === 'table' && <span className="sf-muted sf-small">It starts with a not null `id` as its key; add and change columns in the Table perspective.</span>}
       {kind === 'view' && <textarea className="sf-sql-edit" value={sql} onChange={(e) => setSql(e.target.value)} spellCheck={false} aria-label="The view's query" />}
     </section>
   )

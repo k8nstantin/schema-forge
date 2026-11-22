@@ -93,7 +93,7 @@ What the perspectives group and draw is computed by the engine (`schema_forge_co
 |---|---|---|
 | **Tables** | what is here | every table under its namespace, searchable by table or column name, sortable by family, columns, nesting, partitioning, links |
 | **Categories** | what belongs together | namespaces, then families as cards listing their tables and where the family links |
-| **Table** | everything about one table | a picker by namespace; the table's link diagram; every column (type, required, description); its SQL in the target's dialect; its copies |
+| **Table** | everything about one table | a picker by namespace; the table's link diagram; every column (type, null or not null, description); its SQL in the target's dialect; its copies |
 | **Map** | how the families fit | families in columns, left to right by who refers to whom, each line with its count; click a family for its link diagram |
 | **Consistency** | where it disagrees with itself | every inconsistency and failing rule, grouped, each with the agent's suggested fix (next) |
 | **Changes** | what changed since the last version | added, changed and removed objects; any two versions compared (later) |

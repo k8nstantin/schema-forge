@@ -163,12 +163,12 @@ function TableOf({ id }: { id?: string }) {
         </div>
         {tab === 'columns' && (
           <div className="sf-coltable">
-            <div className="sf-colrow sf-thead"><span>Column</span><span>Type</span><span>Required</span><span>Description</span></div>
+            <div className="sf-colrow sf-thead"><span>Column</span><span>Type</span><span>Null</span><span>Description</span></div>
             {t.columns.map((c) => (
               <button key={c.id} type="button" className={`sf-colrow${pointedCol === c.id ? ' sf-pointed' : ''}`} onClick={() => point({ kind: 'column', table: t.id, column: c.id })}>
                 <span className="sf-mono sf-strong">{c.name}</span>
                 <span className={`sf-mono ${nested(c.type).length ? 'sf-nested' : 'sf-type'}`}>{typeLabel(c.type, model.target, ix.typeNames)}{nested(c.type).length ? ` · ${nested(c.type).length} fields` : ''}</span>
-                <span className="sf-muted">{c.nullable ? 'may be empty' : 'required'}</span>
+                <span className="sf-muted">{c.nullable ? 'null' : 'not null'}</span>
                 <span className="sf-muted">{c.comment}</span>
               </button>
             ))}
