@@ -20,9 +20,11 @@ Read [docs/engines.md](docs/engines.md): every decision behind the design, and w
 ## How work is done
 
 - One issue, one branch, one pull request, one concern. An engine is built whole in one pull request.
-- Every pull request passes `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings` and
-  `cargo test --workspace`. The tests include the **architecture check** (`tools/architecture`): it fails the build
-  when a crate depends the wrong way, a database is named outside its engine, or engines share code.
+- Every pull request passes **`tools/check.sh`**, the one command CI runs too: `cargo fmt --all --check`,
+  `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, and, once the canvas is in, its
+  types, its build and its browser tests on every engine. Nothing is done until it passes. The tests include the
+  **architecture check** (`tools/architecture`): it fails the build when a crate depends the wrong way, a database is
+  named outside its engine, or engines share code.
 - New code follows the code around it: plain names, documentation in full sentences, no dead code, nothing hardcoded
   that should be data.
 - Public data types are `#[non_exhaustive]` with constructors, so the interface grows without breaking anyone.
