@@ -104,6 +104,7 @@ pub const OPTIONS: &[O] = &[
     // A column.
     O::new(P::Column, "charset", K::Text, "Its character set"),
     O::new(P::Column, "collation", K::Text, "Its collation"),
+    O::new(P::Column, "binary", K::Flag, "Whether it uses its character set's binary collation (BINARY, deprecated)"),
     O::new(P::Column, "on_update", K::Text, "What it becomes whenever its row changes"),
     O::new(P::Column, "srid", K::Integer, "The spatial reference system of its shapes"),
     O::new(P::Column, "invisible", K::Flag, "Whether SELECT * leaves it out"),

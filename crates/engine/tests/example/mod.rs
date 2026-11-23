@@ -7,14 +7,19 @@
 //! column id int not-null
 //! column total decimal(10,2) null
 //! trigger sales orders_touch before insert on orders: set new.placed = now()
+//! set mode fast
 //! anything else is kept as written, and written back in its place
 //! ```
+//!
+//! A `set` line is the file's own machinery: counted, and left out. Its live database is reached at a host, with a
+//! password.
 //!
 //! Its queries are `select … from <namespace>.<name>`, with `join`s.
 
 use std::fmt::Write as _;
 
 use schema_forge_engine::kinds::{ObjectKind, Slot};
+use schema_forge_engine::live::{Field, FieldKind, Live, Outcome, Profile, Secret, Step, StepKind};
 use schema_forge_engine::options::{OptionKind, OptionSpec, Part};
 use schema_forge_engine::portable::{ArrowType, Mapped, Portable};
 use schema_forge_engine::sections::{self, Change, Kept, ObjectSection, SchemaSection, Timing, Trigger};
@@ -76,6 +81,16 @@ pub enum Broken {
     LaterFormat,
     /// Its trigger is on a table that is not in the schema.
     TriggerOnNothing,
+    /// It leaves its machinery out of the report.
+    MachineryUncounted,
+    /// It declares the connection field `host` twice.
+    FieldTwice,
+    /// It declares two secret fields.
+    TwoSecrets,
+    /// Its `mode` field defaults to a word that is not one of its choices.
+    DefaultNotAChoice,
+    /// A connection field has no label.
+    FieldUnlabelled,
 }
 
 pub struct Example {
@@ -119,6 +134,24 @@ const OPTIONS_TWICE: &[OptionSpec] = &[
 const OPTIONS: &[OptionSpec] = &[OptionSpec::new(Part::Object, "fast", OptionKind::Flag, "Kept in memory for speed")
     .for_kinds(&["table"])
     .since("2")];
+
+/// What a connection to its live database needs.
+const FIELDS: &[Field] = &[
+    Field::new("host", "Host", FieldKind::Text, "Where the database is").required(),
+    Field::new("password", "Password", FieldKind::Secret, "The password"),
+    Field::new("mode", "Mode", FieldKind::OneOf(&["safe", "fast"]), "How to connect").default("safe"),
+];
+const FIELD_TWICE: &[Field] = &[
+    Field::new("host", "Host", FieldKind::Text, "Where the database is"),
+    Field::new("host", "Host again", FieldKind::Text, "Where else"),
+];
+const TWO_SECRETS: &[Field] = &[
+    Field::new("password", "Password", FieldKind::Secret, "The password"),
+    Field::new("token", "Token", FieldKind::Secret, "A token too"),
+];
+const DEFAULT_NOT_A_CHOICE: &[Field] =
+    &[Field::new("mode", "Mode", FieldKind::OneOf(&["safe", "fast"]), "How to connect").default("reckless")];
+const FIELD_UNLABELLED: &[Field] = &[Field::new("host", "", FieldKind::Text, "Where the database is")];
 
 const CATALOG: &[TypeSpec] = &[INT, DECIMAL, TEXT, WIDE];
 const TWICE: &[TypeSpec] = &[INT, INT, DECIMAL, TEXT, WIDE];
@@ -177,6 +210,36 @@ impl Engine for Example {
 
     fn portable(&self) -> Option<&dyn Portable> {
         if self.broken == Broken::NoArrow { None } else { Some(self) }
+    }
+
+    fn live(&self) -> Option<&dyn Live> {
+        Some(self)
+    }
+}
+
+impl Live for Example {
+    fn fields(&self) -> &[Field] {
+        match self.broken {
+            Broken::FieldTwice => FIELD_TWICE,
+            Broken::TwoSecrets => TWO_SECRETS,
+            Broken::DefaultNotAChoice => DEFAULT_NOT_A_CHOICE,
+            Broken::FieldUnlabelled => FIELD_UNLABELLED,
+            _ => FIELDS,
+        }
+    }
+
+    /// There is no example server: it is never reached.
+    fn test(&self, profile: &Profile, _secret: Option<&Secret>) -> Vec<Step> {
+        let host = profile.get("host", FIELDS).unwrap_or("nowhere");
+        let mut steps = vec![Step::new(StepKind::Reach, Outcome::Failed, format!("{host} does not answer"))];
+        for s in [StepKind::Secure, StepKind::SignIn, StepKind::Version, StepKind::Rights] {
+            steps.push(Step::new(s, Outcome::Skipped, "not tried: a step before it failed"));
+        }
+        steps
+    }
+
+    fn read(&self, _profile: &Profile, _secret: Option<&Secret>, _which: &[String]) -> Result<Imported, String> {
+        Err("there is no example server".to_string())
     }
 }
 
@@ -281,6 +344,11 @@ impl Read for Example {
             report.read += 1;
             let words: Vec<&str> = line.split_whitespace().collect();
             match words.as_slice() {
+                ["set", ..] => {
+                    if self.broken != Broken::MachineryUncounted {
+                        report.machinery += 1;
+                    }
+                }
                 ["table", ns, name, rest @ ..] if rest.iter().all(|w| *w == "fast") => {
                     let namespace = namespace(&mut s, &mut ids, ns);
                     let kind = if self.broken == Broken::UnknownKind { "sheet" } else { "table" };

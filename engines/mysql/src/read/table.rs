@@ -224,15 +224,31 @@ fn element(c: &mut Cursor<'_>, t: &mut Table, families: &[Family], version: &str
 
 /// A unique key: whole columns are a key of the table; one with an expression is a unique index.
 fn add_unique(t: &mut Table, index: IndexDef) {
-    if index.parts.iter().all(|p| p.column.is_some()) {
-        let mut options = index.options;
-        if let Some(m) = index.method {
-            options.insert("method".into(), json!(m.to_ascii_uppercase()));
-        }
-        t.unique.push(KeyDef { name: index.name, parts: index.parts, options });
-    } else {
-        t.indexes.push(index);
+    match unique(index) {
+        Unique::Key(key) => t.unique.push(key),
+        Unique::Index(index) => t.indexes.push(index),
     }
+}
+
+/// What an index is to the table: a key, or an index.
+pub enum Unique {
+    Key(KeyDef),
+    Index(IndexDef),
+}
+
+/// A unique index as a key of the table, when every part is a column (a prefix or a descending part is kept in the
+/// key's `parts`); one with an expression, or not unique, stays an index. The one rule for `UNIQUE KEY` in a table
+/// and `CREATE UNIQUE INDEX`.
+#[must_use]
+pub fn unique(index: IndexDef) -> Unique {
+    if !index.unique || index.parts.iter().any(|p| p.column.is_none()) {
+        return Unique::Index(index);
+    }
+    let mut options = index.options;
+    if let Some(m) = index.method {
+        options.insert("method".into(), json!(m.to_ascii_uppercase()));
+    }
+    Unique::Key(KeyDef { name: index.name, parts: index.parts, options })
 }
 
 /// An index's name, when one is written before its parts.
@@ -381,12 +397,37 @@ fn strip_parens(e: &str) -> &str {
 /// A column: its name, its type, and each clause after it.
 fn column(c: &mut Cursor<'_>, t: &mut Table, families: &[Family], version: &str) -> Result<(), String> {
     let name = c.name()?;
-    let raw = type_text(c)?;
+    // `SERIAL` is MySQL's `bigint unsigned NOT NULL AUTO_INCREMENT UNIQUE`; `SERIAL DEFAULT VALUE` on a whole number
+    // the same without the type.
+    let serial = c.peek_kw("SERIAL") && !c.peek_kw_at(1, "DEFAULT");
+    let raw = if serial {
+        c.next();
+        "bigint unsigned"
+    } else {
+        type_text(c)?
+    };
     let data_type = types::parse(families, raw, version).map_err(|e| format!("`{name}`: {e}"))?.text;
     let mut col = Col { name, data_type, null: true, comment: None, section: ColumnSection::default() };
-    let opts = &mut col.section.options;
+    let serial_key = |t: &mut Table, col: &mut Col| {
+        col.null = false;
+        col.section.identity = Some(Identity::default());
+        let part = Part { column: Some(col.name.clone()), ..Part::default() };
+        t.unique.push(KeyDef { name: None, parts: vec![part], options: Options::new() });
+    };
+    if serial {
+        serial_key(t, &mut col);
+    }
     loop {
-        if c.eat_kws(&["NOT", "NULL"]) {
+        let opts = &mut col.section.options;
+        if c.eat_kws(&["SERIAL", "DEFAULT", "VALUE"]) {
+            serial_key(t, &mut col);
+        } else if c.eat_kw("BINARY") {
+            opts.insert("binary".into(), json!(true));
+        } else if c.eat_kw("ASCII") {
+            opts.insert("charset".into(), json!("latin1"));
+        } else if c.eat_kw("UNICODE") {
+            opts.insert("charset".into(), json!("ucs2"));
+        } else if c.eat_kws(&["NOT", "NULL"]) {
             col.null = false;
         } else if c.eat_kw("NULL") {
             col.null = true;
@@ -796,6 +837,26 @@ mod tests {
             .expect("partitioned");
         assert!(matches!(&k.by[0], By::Column(c) if c == "t"));
         assert_eq!((&k.options["linear"], &k.options["count"]), (&json!(true), &json!(4)));
+    }
+
+    #[test]
+    fn serial_and_the_column_attributes_read_as_mysql_reads_them() {
+        let t = table(
+            "CREATE TABLE t (id serial, n int SERIAL DEFAULT VALUE, b varchar(5) BINARY, a varchar(5) ASCII, \
+             u char(2) UNICODE)",
+        )
+        .expect("a table");
+        let col = |n: &str| t.columns.iter().find(|c| c.name == n).expect("the column");
+        assert_eq!(col("id").data_type, "bigint unsigned");
+        for n in ["id", "n"] {
+            assert!(!col(n).null && col(n).section.identity.is_some(), "{n}: NOT NULL AUTO_INCREMENT");
+        }
+        assert_eq!(t.unique.len(), 2, "and UNIQUE");
+        assert_eq!(col("b").section.options["binary"], true);
+        assert_eq!(
+            (&col("a").section.options["charset"], &col("u").section.options["charset"]),
+            (&json!("latin1"), &json!("ucs2"))
+        );
     }
 
     #[test]

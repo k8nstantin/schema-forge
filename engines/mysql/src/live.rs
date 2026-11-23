@@ -118,6 +118,10 @@ pub fn test(profile: &Profile, secret: Option<&Secret>) -> Vec<Step> {
     let user = profile.get("user", FIELDS).unwrap_or_default();
     steps.push(Step::new(StepKind::SignIn, Outcome::Passed, format!("signed in as {user}")));
     match server_version(&mut conn) {
+        Ok(v) if v.to_ascii_lowercase().contains("mariadb") => {
+            fail(&mut steps, Failure { step: StepKind::Version, said: format!("{v} is MariaDB, which is not MySQL") });
+            return steps;
+        }
         Ok(v) => steps.push(Step::new(
             StepKind::Version,
             Outcome::Passed,
@@ -144,13 +148,20 @@ pub fn read(
 ) -> Result<Imported, String> {
     let mut conn = connect(profile, secret).map_err(|f| f.said)?;
     let server = server_version(&mut conn)?;
+    if server.to_ascii_lowercase().contains("mariadb") {
+        return Err(format!("{server} is MariaDB, which is not MySQL"));
+    }
     let version = read::version_for(&server);
     let databases = databases(&mut conn, profile, which)?;
+    let missing = missing(&grants(&mut conn)?, &databases);
+    if !missing.is_empty() {
+        return Err(format!("the account cannot read every definition: {}", missing.join("; ")));
+    }
     let mut sql = String::new();
     for (n, db) in databases.iter().enumerate() {
         script(&mut conn, db, n == 0, &mut sql)?;
     }
-    Ok(read::read(families, &sql, version))
+    read::read(families, sql, version)
 }
 
 /// One database, as a dump of it would hold it.
@@ -423,19 +434,8 @@ fn server_version(conn: &mut Conn) -> Result<String, String> {
         .ok_or_else(|| "the server gave no version".to_string())
 }
 
-/// Whether the account can read the definitions, and whether it can change anything too.
+/// Whether the account can read every definition, and whether it can change anything too.
 fn rights(conn: &mut Conn, profile: &Profile) -> Step {
-    let grants: Vec<String> = match conn.query("SHOW GRANTS") {
-        Ok(g) => g,
-        Err(e) => {
-            return Step::new(
-                StepKind::Rights,
-                Outcome::Failed,
-                format!("the server would not say the account's rights: {e}"),
-            );
-        }
-    };
-    let all = grants.join("\n").to_ascii_uppercase();
     let databases = match databases(conn, profile, &[]) {
         Ok(d) => d,
         Err(e) => return Step::new(StepKind::Rights, Outcome::Failed, e),
@@ -443,22 +443,20 @@ fn rights(conn: &mut Conn, profile: &Profile) -> Step {
     if databases.is_empty() {
         return Step::new(StepKind::Rights, Outcome::Failed, "the account sees no database to read");
     }
-    // What reading every definition needs: SHOW CREATE TRIGGER needs TRIGGER, SHOW CREATE EVENT needs EVENT, a
-    // routine's body SHOW_ROUTINE, and the server's general tablespaces PROCESS. MySQL has no narrower right for them.
-    const NEEDED: &[&str] = &["SELECT", "SHOW VIEW", "TRIGGER", "EVENT", "SHOW_ROUTINE", "PROCESS"];
-    let missing: Vec<&str> =
-        NEEDED.iter().copied().filter(|n| !all.contains("ALL PRIVILEGES") && !all.contains(n)).collect();
+    let grants = match grants(conn) {
+        Ok(g) => g,
+        Err(e) => return Step::new(StepKind::Rights, Outcome::Failed, e),
+    };
+    let missing = missing(&grants, &databases);
     if !missing.is_empty() {
         return Step::new(
             StepKind::Rights,
             Outcome::Failed,
-            format!("the account cannot read every definition: grant it {}", missing.join(", ")),
+            format!("the account cannot read every definition: {}", missing.join("; ")),
         );
     }
-    const CHANGES: &[&str] =
-        &["ALL PRIVILEGES", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER", "GRANT OPTION", "SUPER"];
-    let changes: Vec<&str> = CHANGES.iter().copied().filter(|c| all.contains(c)).collect();
     let sees = format!("it sees {}", databases.join(", "));
+    let changes = changes(&grants);
     if changes.is_empty() {
         Step::new(
             StepKind::Rights,
@@ -474,5 +472,195 @@ fn rights(conn: &mut Conn, profile: &Profile) -> Step {
                 changes.join(", ")
             ),
         )
+    }
+}
+
+/// One `GRANT` the account has: its rights, uppercase, and where they apply.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Grant {
+    rights: Vec<String>,
+    scope: Scope,
+    grant_option: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Scope {
+    /// `*.*`.
+    Everywhere,
+    /// `db.*`: a database's name, or a pattern of names (`%`, `_`).
+    Database(String),
+    /// A table, a routine or columns: only part of a database.
+    Part,
+}
+
+/// The account's grants, with those of its active roles.
+fn grants(conn: &mut Conn) -> Result<Vec<Grant>, String> {
+    let roles: Option<String> = conn.query_first("SELECT CURRENT_ROLE()").map_err(|e| e.to_string())?;
+    let query = match roles.as_deref() {
+        None | Some("NONE" | "") => "SHOW GRANTS".to_string(),
+        Some(r) => format!("SHOW GRANTS FOR CURRENT_USER() USING {r}"),
+    };
+    let lines: Vec<String> =
+        conn.query(&query).map_err(|e| format!("the server would not say the account's rights: {e}"))?;
+    Ok(lines.iter().filter_map(|l| grant(l)).collect())
+}
+
+/// A `SHOW GRANTS` line, read: `GRANT a, b (col) ON scope TO user [WITH GRANT OPTION]`; a grant of roles is none.
+fn grant(line: &str) -> Option<Grant> {
+    let rest = line.strip_prefix("GRANT ")?;
+    let on = rest.find(" ON ")?;
+    let (list, rest) = (&rest[..on], &rest[on + 4..]);
+    let to = rest.rfind(" TO ")?;
+    let scope = rest[..to].trim();
+    let routine = scope.starts_with("PROCEDURE ") || scope.starts_with("FUNCTION ");
+    let mut rights = Vec::new();
+    let (mut depth, mut start) = (0, 0);
+    for (i, c) in list.char_indices().chain(std::iter::once((list.len(), ','))) {
+        match c {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ',' if depth == 0 => {
+                let r = list[start..i].split('(').next().unwrap_or("").trim().to_ascii_uppercase();
+                rights.push(if r == "ALL" { "ALL PRIVILEGES".to_string() } else { r });
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    let scope = match scope {
+        "*.*" if !routine => Scope::Everywhere,
+        s if !routine && !list.contains('(') && s.ends_with(".*") => {
+            Scope::Database(s[..s.len() - 2].trim_matches('`').replace("``", "`"))
+        }
+        _ => Scope::Part,
+    };
+    Some(Grant { rights, scope, grant_option: rest[to..].contains("WITH GRANT OPTION") })
+}
+
+/// Whether a database-level grant's name or pattern (`%` any, `_` one, `\_` itself) covers `db`.
+fn covers(pattern: &str, db: &str) -> bool {
+    fn at(p: &[char], d: &[char]) -> bool {
+        match (p.first(), d.first()) {
+            (None, None) => true,
+            (Some('%'), _) => at(&p[1..], d) || (!d.is_empty() && at(p, &d[1..])),
+            (Some('\\'), Some(c)) if p.get(1) == Some(c) => at(&p[2..], &d[1..]),
+            (Some('_'), Some(_)) => at(&p[1..], &d[1..]),
+            (Some(a), Some(b)) if a == b => at(&p[1..], &d[1..]),
+            _ => false,
+        }
+    }
+    at(&pattern.chars().collect::<Vec<_>>(), &db.chars().collect::<Vec<_>>())
+}
+
+/// What the account lacks to read every definition of `databases`, each said with the right it needs: `SHOW CREATE
+/// TRIGGER` needs TRIGGER and `SHOW CREATE EVENT` EVENT (without them MySQL hides the triggers and events, rather than
+/// refusing), a view's definition SHOW VIEW, a routine's body SHOW_ROUTINE (or SELECT everywhere), and the server's
+/// general tablespaces PROCESS. MySQL has no narrower rights for these.
+fn missing(grants: &[Grant], databases: &[String]) -> Vec<String> {
+    let has = |right: &str, db: Option<&str>| {
+        grants.iter().any(|g| {
+            let applies = match (&g.scope, db) {
+                (Scope::Everywhere, _) => true,
+                (Scope::Database(p), Some(db)) => covers(p, db),
+                _ => false,
+            };
+            applies && g.rights.iter().any(|r| r == right || r == "ALL PRIVILEGES")
+        })
+    };
+    let mut out = Vec::new();
+    for db in databases {
+        let lacks: Vec<&str> =
+            ["SELECT", "SHOW VIEW", "TRIGGER", "EVENT"].into_iter().filter(|r| !has(r, Some(db))).collect();
+        if !lacks.is_empty() {
+            out.push(format!("on {db}, grant it {}", lacks.join(", ")));
+        }
+    }
+    if !has("SHOW_ROUTINE", None) && !has("SELECT", None) {
+        out.push("grant it SHOW_ROUTINE, to read the routines' bodies".to_string());
+    }
+    if !has("PROCESS", None) {
+        out.push("grant it PROCESS, to read the general tablespaces".to_string());
+    }
+    out
+}
+
+/// The rights the account has that change things, beyond the TRIGGER and EVENT that reading needs.
+fn changes(grants: &[Grant]) -> Vec<String> {
+    const CHANGE: &[&str] = &[
+        "ALL PRIVILEGES",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "CREATE",
+        "DROP",
+        "ALTER",
+        "INDEX",
+        "REFERENCES",
+        "CREATE VIEW",
+        "CREATE ROUTINE",
+        "ALTER ROUTINE",
+        "EXECUTE",
+        "CREATE TEMPORARY TABLES",
+        "CREATE TABLESPACE",
+        "CREATE USER",
+        "CREATE ROLE",
+        "DROP ROLE",
+        "FILE",
+        "SUPER",
+        "SYSTEM_VARIABLES_ADMIN",
+    ];
+    let mut out: Vec<String> = Vec::new();
+    for g in grants {
+        for r in &g.rights {
+            if CHANGE.contains(&r.as_str()) && !out.contains(r) {
+                out.push(r.clone());
+            }
+        }
+        if g.grant_option && !out.iter().any(|r| r == "GRANT OPTION") {
+            out.push("GRANT OPTION".to_string());
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn read(lines: &[&str]) -> Vec<Grant> {
+        lines.iter().filter_map(|l| grant(l)).collect()
+    }
+
+    #[test]
+    fn grants_are_read_with_where_they_apply() {
+        let g = read(&[
+            "GRANT SELECT, SHOW VIEW, TRIGGER, EVENT, PROCESS ON *.* TO `reader`@`%`",
+            "GRANT SHOW_ROUTINE ON *.* TO `reader`@`%`",
+            "GRANT `analysts`@`%` TO `reader`@`%`",
+        ]);
+        assert_eq!(g.len(), 2, "a grant of a role is not a right");
+        assert!(missing(&g, &["shop".to_string()]).is_empty());
+        assert!(changes(&g).is_empty());
+    }
+
+    #[test]
+    fn a_right_on_another_database_or_some_tables_is_not_enough() {
+        let g = read(&[
+            "GRANT PROCESS, SHOW_ROUTINE ON *.* TO `r`@`%`",
+            "GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON `other`.* TO `r`@`%`",
+            "GRANT SELECT (`a`), INSERT ON `shop`.`t` TO `r`@`%`",
+        ]);
+        assert_eq!(missing(&g, &["shop".to_string()]), ["on shop, grant it SELECT, SHOW VIEW, TRIGGER, EVENT"]);
+        assert_eq!(changes(&g), ["INSERT"]);
+        let patterned = read(&["GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON `sh\\_p%`.* TO `r`@`%`"]);
+        assert!(missing(&patterned, &["sh_prod".to_string()]).iter().all(|m| !m.starts_with("on ")));
+        assert!(missing(&patterned, &["shxprod".to_string()]).iter().any(|m| m.starts_with("on shxprod")));
+    }
+
+    #[test]
+    fn root_can_read_everything_and_change_everything() {
+        let g = read(&["GRANT ALL PRIVILEGES ON *.* TO `root`@`localhost` WITH GRANT OPTION"]);
+        assert!(missing(&g, &["shop".to_string()]).is_empty());
+        assert_eq!(changes(&g), ["ALL PRIVILEGES", "GRANT OPTION"]);
     }
 }

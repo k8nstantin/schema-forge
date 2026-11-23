@@ -177,6 +177,11 @@ fn live_equals_dump(version: &str) {
     let partial = live.test(&server.profile("partial"), Some(&Secret::new("partial")));
     assert_eq!(partial[4].outcome, Outcome::Failed, "{:?}", partial[4]);
     assert!(partial[4].said.contains("SHOW VIEW") && partial[4].said.contains("SHOW_ROUTINE"), "{}", partial[4].said);
+    let refused = live.read(&server.profile("partial"), Some(&Secret::new("partial")), &[]);
+    assert!(
+        refused.is_err_and(|e| e.contains("TRIGGER")),
+        "a read that would miss the triggers and events it cannot see is refused"
+    );
     let root = live.test(&server.profile("root"), Some(&Secret::new(ROOT)));
     assert_eq!(root[4].outcome, Outcome::Warning, "root can change things: {:?}", root[4].said);
 
@@ -285,6 +290,19 @@ fn lending(version: &str) {
         .expect("a reader");
 
     let engine = Mysql::new();
+    // What MySQL rewrites as it reads it (serial, BINARY, ASCII, year(4), text(N), escapes), read by this engine from
+    // the hand-written source, written, and loaded into another database: MySQL makes the same table of both.
+    let at = source.find("CREATE TABLE quirks").expect("the quirks table");
+    let quirks = &source[at..at + source[at..].find(";\n").expect("its end")];
+    let read_quirks = read_text(&engine, &format!("CREATE DATABASE again;\nUSE again;\n{quirks};\n"), "quirks");
+    assert!(read_quirks.report.not_understood.is_empty(), "{:?}", read_quirks.report.not_understood);
+    let written_quirks = engine.write().expect("writes").schema(&read_quirks.schema).expect("it writes");
+    first.sql(&written_quirks).expect("the quirks, as written, load");
+    assert_eq!(
+        first.query("SHOW CREATE TABLE lending.quirks"),
+        first.query("SHOW CREATE TABLE again.quirks"),
+        "read and written by the engine, the same table to MySQL:\n{written_quirks}"
+    );
     let live = engine.live().expect("live");
     let secret = Secret::new(READER);
     let mut profile = first.profile("reader");
@@ -305,7 +323,7 @@ fn lending(version: &str) {
         }
         k
     };
-    let tables = if later { 16 } else { 15 };
+    let tables = if later { 17 } else { 16 };
     let want = BTreeMap::from(
         [("table", tables), ("function", 4), ("procedure", 5), ("trigger", 10), ("event", 4), ("view", 5)]
             .map(|(k, n)| (k.to_string(), n)),

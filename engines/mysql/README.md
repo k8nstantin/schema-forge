@@ -60,9 +60,9 @@ functions belong to the server; they are kept in the database they were read wit
 | Kept as written, counted by kind | Why |
 |---|---|
 | accounts (`CREATE USER`, `ALTER USER`, roles) | the server's accounts, not a schema's design; **never with a credential**: every `IDENTIFIED …` clause is cut out and the account kept locked (`ACCOUNT LOCK`), so what is written back never makes an account that signs in without a password; `SET PASSWORD` is left out, counted with the data |
-| grants (`GRANT`, `REVOKE`) | the server's rights |
+| grants (`GRANT`, `REVOKE`) | the server's rights; an old grant's `IDENTIFIED BY` cut out |
 | resource groups | the server's thread scheduling |
-| servers (for `FEDERATED` tables) | the server's connections to other servers |
+| servers (for `FEDERATED` tables) | the server's connections to other servers; a server's `PASSWORD` cut out |
 | what the reader does not know (an `ALTER TABLE`, a table made `LIKE` another) | kept whole as `other`, written back in its place, and listed in the report |
 
 ## Every clause, and where it goes
@@ -112,7 +112,11 @@ keys, so a schema is the same file however its SQL ordered the clauses.
 
 In palette groups, each with a plain meaning and a real example; a column holds its type as MySQL writes it in
 lowercase (`int unsigned`, `varchar(200)`, `decimal(18,2)`, `enum('new','paid')`), every spelling MySQL accepts read
-as that (`integer` is `int`, `numeric` is `decimal(10,0)`, `boolean` is `tinyint(1)`).
+as that (`integer` is `int`, `numeric` is `decimal(10,0)`, `boolean` is `tinyint(1)`, `year(4)` is `year`, `serial`
+is `bigint unsigned NOT NULL AUTO_INCREMENT UNIQUE`). `text(N)` and `blob(N)` keep their size: MySQL makes each the
+smallest type that holds N characters of the column's character set, or N bytes, which only the server knows. The
+`BINARY` attribute of a text column is its option `binary`; `ASCII` and `UNICODE` are its character set. An `enum` or
+`set` value keeps every character, written as MySQL writes it (`'a\\b'`, `'c\nd'`, `'it''s'`).
 
 | Group | Types |
 |---|---|
@@ -142,7 +146,14 @@ tokenised with `sqlparser`'s MySQL dialect, and expressions and bodies taken fro
 - the `SET` lines before each stored program carry its settings into it; one restoring a saved value forgets them;
 - `DROP … IF EXISTS`, `LOCK TABLES`, the header and the trailer are the dump's machinery; rows are data; both are
   counted and left out;
-- a foreign key may name a table the dump writes later: links are made once every table is read.
+- a foreign key may name a table the dump writes later: links are made once every table is read; a trigger is made
+  on a table already read, as MySQL makes one, and a trigger whose table is not in the schema is kept in its place;
+- rows are counted by their first word and never tokenised, statements borrow the file, and lines are counted once,
+  so a whole dump is read in one pass and held once.
+
+What is not MySQL's is refused, not misread: a MariaDB dump (its header, its `/*M!…*/` comments, or its server
+version), and statements made under the SQL mode `NO_BACKSLASH_ESCAPES`, whose strings a reader that takes a
+backslash as an escape would misread.
 
 The version a file is read at: the one this engine's header names (`-- MySQL 8.4 schema, written by Schema Forge`),
 the one a dump's `-- Server version` line falls in, or 8.4. A person names it in hand-written DDL with a line like
@@ -162,26 +173,36 @@ Over a connection ([docs/connections.md](../../docs/connections.md)), with the `
   `required`; `preferred`; `off`), a CA certificate, a timeout;
 - **test**, in five steps, stopping at the first that fails: **reach** the host; **secure**: TLS as asked, and what
   was negotiated; **sign in**; **version**: the server's, and the engine version a schema read from it is designed
-  for; **rights**: whether the account can read every definition, naming what it lacks, and whether it can also change
-  anything (an account that only reads is recommended);
+  for (a MariaDB server fails here: it is not MySQL); **rights**: the account's grants read with where each applies
+  (everywhere, a database or a pattern of databases, or only some tables) and with its active roles' grants, naming
+  every right it lacks, and whether it can also change anything (an account that only reads is recommended);
 - **read**: each database's definitions as the server writes them (`SHOW CREATE …`), in `mysqldump`'s order (tables
   with their triggers, events, libraries, functions, procedures, views), from inside the database as `mysqldump` is,
   read through the same reader as a dump: a schema read live and one read from a dump of the same database are the
   same model. The server's general tablespaces and the spatial reference systems people defined (MySQL's own come from
   the EPSG) are read too, which a dump leaves out.
 
-The rights reading needs, and MySQL has no narrower ones: `SELECT, SHOW VIEW, TRIGGER, EVENT, SHOW_ROUTINE, PROCESS`
-(`TRIGGER` and `EVENT` to see triggers' and events' definitions, `SHOW_ROUTINE` a routine's body, `PROCESS` the
-general tablespaces).
+The rights reading needs, and MySQL has no narrower ones: `SELECT, SHOW VIEW, TRIGGER, EVENT` on each database read,
+and `SHOW_ROUTINE` and `PROCESS` everywhere (`TRIGGER` and `EVENT` to see triggers and events, `SHOW_ROUTINE` a
+routine's body, `PROCESS` the general tablespaces). Without `TRIGGER` or `EVENT`, MySQL hides those objects rather
+than refusing, so a read by an account that lacks any of these is refused, never returned with something missing.
+
+Not yet proven against a server: reading libraries (`SHOW CREATE LIBRARY`, `information_schema.LIBRARIES`), which
+need MySQL Enterprise; libraries are read and written from files, and tested that way.
 
 ## Writing
 
 One object's definition, and the whole schema, in one canonical form: each object as `SHOW CREATE …` writes it,
 without the versioned comments, every name quoted; stored programs inside `DELIMITER` with the settings they were made
 under, saved before and restored after; foreign key checks off while the schema is made, so tables come in any order;
-a view after what it reads; what the reader kept, written back after the part it followed. Writing returns an error
-rather than drop anything: a link MySQL does not enforce on several columns, or from 9.0 at all; an identity numbered
-other than by `AUTO_INCREMENT`; an index with a `WHERE`.
+a view after what it reads, in any database (with `USE` where it must switch); what the reader kept, written back
+after the part it followed. Every string is written as `SHOW CREATE …` writes one; every setting is a quoted string;
+every value written outside quotes (an engine, a character set, a collation, a size, a definer) must be one word or an
+account, so no value can change the statement around it. A link marked as written on its column is written there
+when that keeps its meaning in the schema's version, and as a constraint when MySQL would ignore it on the column.
+Writing returns an error rather than drop or change anything: a link MySQL does not enforce on several columns, or
+from 9.0 at all; an identity numbered other than by `AUTO_INCREMENT`; an index with a `WHERE`; a value that is not
+one word.
 
 What this engine writes reads back as the same schema, and loads into MySQL: each canonical sample is loaded into a
 server of its version and dumped again by that server's own `mysqldump`, and that dump reads as the same schema as the
@@ -231,10 +252,11 @@ In `tests/samples/`, made by this crate, never copied from a company's database:
   named, keys on columns, `CREATE INDEX`, views made again, an `ALTER TABLE`, accounts and grants, a resource group, a
   server, a foreign key outside the schema; a JavaScript library and function, a loadable function, `REFERENCES` on a
   column), and `written<v>.sql`, the same as this engine writes it;
-- `lending/source.sql`: a lending library laced with stored programs and holding every type MySQL has: 15 tables (a
+- `lending/source.sql`: a lending library laced with stored programs and holding every type MySQL has: 16 tables (a
   table for each family of types, every spatial type, list and range-columns partitions, 5 foreign keys), 4 functions,
   5 procedures (`IN`, `OUT`, `INOUT`, cursors, handlers, transactions), 10 triggers, 4 events, 5 views (a common
-  table expression, a check option); its procedures and triggers run as it loads. `source97.sql` adds a vector table
+  table expression, a check option), and a table of what MySQL rewrites as it reads it (`serial`, `BINARY`,
+  `ASCII`, `year(4)`, `text(N)`, `blob(N)`, escapes); its procedures and triggers run as it loads. `source97.sql` adds a vector table
   with a foreign key on its column.
 
 The tests:
@@ -246,7 +268,8 @@ The tests:
 - `tests/live.rs`: against MySQL 8.0, 8.4, 9.7 and 26.10 in Docker (`cargo test -p schema-forge-mysql --test live --
   --ignored`): the five steps passed, a wrong password failing at sign in, an account without the rights failing at
   rights and naming them, root warned that it can change things, and the live read the same schema as the dump; and
-  the lending library, on 8.4 and on 9.7, loaded, a column of every type the version has, read live and from its dump
+  the lending library, on 8.4 and on 9.7, loaded, its quirks read and written by the engine and made by MySQL into
+  the same table, a column of every type the version has, read live and from its dump
   as one schema, written, loaded into a fresh server, dumped again as the same schema, its procedures and triggers
   still lending and refusing as they should;
 - the unit tests of each part: the splitter, the tokens, every column and table clause, views and stored programs,

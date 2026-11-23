@@ -158,7 +158,7 @@ mod tests {
 
     fn problems(version: &str, sql: &str) -> Vec<String> {
         let header = format!("-- MySQL {version} schema, written by Schema Forge\n{sql}");
-        let imported = read::read(BUILT_IN, &header, version);
+        let imported = read::read(BUILT_IN, header, version).expect("it reads");
         assert!(imported.report.not_understood.is_empty(), "{:?}", imported.report.not_understood);
         check(&imported.schema).into_iter().map(|p| p.message).collect()
     }

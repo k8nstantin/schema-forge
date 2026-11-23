@@ -181,7 +181,8 @@ impl Read for Mysql {
         // A whole dump holds rows as raw bytes, which need not be UTF-8. They are data, counted and left out; every
         // byte that ends a statement or a quote is ASCII, and stays where it is.
         let bytes = std::fs::read(&input.path).map_err(|e| format!("{}: {e}", input.path.display()))?;
-        Ok(read::read(&self.families, &String::from_utf8_lossy(&bytes), read::version_of(&input.head)))
+        let text = String::from_utf8(bytes).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned());
+        read::read(&self.families, text, read::version_of(&input.head))
     }
 }
 

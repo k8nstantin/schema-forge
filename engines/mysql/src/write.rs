@@ -15,6 +15,7 @@ use crate::kinds::{
     EVENT, FUNCTION, LIBRARY, LOADABLE_FUNCTION, PROCEDURE, SPATIAL_REFERENCE_SYSTEM, TABLE, TABLESPACE, TRIGGER, VIEW,
 };
 use crate::read::{HEADER, HEADER_TAIL};
+use crate::versions;
 
 /// The whole schema.
 ///
@@ -31,37 +32,40 @@ pub fn schema(s: &Schema) -> Result<String, String> {
         }
     };
     kept_after(&mut out, None);
-    for n in &s.namespaces {
-        let ns: NamespaceSection = sections::read(&n.engine)?;
-        let _ = write!(
-            out,
-            "\nCREATE DATABASE {}{};\nUSE {};\n",
-            quote(&n.name),
-            database_options(&ns.options),
-            quote(&n.name)
-        );
-        kept_after(&mut out, Some(&n.id));
-        // Each object in its order, except a view, which waits for what it reads in its database.
-        let mut pending: HashSet<&Id> = s.objects.iter().filter(|o| o.namespace == n.id).map(|o| &o.id).collect();
-        let mut waiting: Vec<&Object> = Vec::new();
-        for o in s.objects.iter().filter(|o| o.namespace == n.id) {
-            waiting.push(o);
-            while let Some(at) =
-                waiting.iter().position(|w| w.kind != VIEW || w.reads.iter().all(|r| !pending.contains(r)))
-            {
-                let w = waiting.remove(at);
-                out.push('\n');
-                out.push_str(&wrapped(s, w)?);
-                pending.remove(&w.id);
-                kept_after(&mut out, Some(&w.id));
+    // Each object in its order, except a view, which waits for what it reads, in any database; written in its own
+    // database, with `USE` when the one before was in another.
+    let mut pending: HashSet<&Id> = s.objects.iter().map(|o| &o.id).collect();
+    let mut waiting: Vec<&Object> = Vec::new();
+    let mut current: Option<Id> = None;
+    let mut ready = |out: &mut String, waiting: &mut Vec<&Object>, current: &mut Option<Id>, all: bool| {
+        loop {
+            let at = waiting.iter().position(|w| all || w.kind != VIEW || w.reads.iter().all(|r| !pending.contains(r)));
+            let Some(at) = at else { return Ok::<(), String>(()) };
+            let w = waiting.remove(at);
+            if current.as_ref() != Some(&w.namespace) {
+                let n =
+                    s.namespace(&w.namespace).ok_or_else(|| format!("`{}` is in no database of the schema", w.name))?;
+                let _ = write!(out, "\nUSE {};\n", quote(&n.name));
+                *current = Some(w.namespace.clone());
             }
-        }
-        for w in waiting {
             out.push('\n');
             out.push_str(&wrapped(s, w)?);
-            kept_after(&mut out, Some(&w.id));
+            pending.remove(&w.id);
+            kept_after(out, Some(&w.id));
+        }
+    };
+    for n in &s.namespaces {
+        let ns: NamespaceSection = sections::read(&n.engine)?;
+        let name = quote(&n.name);
+        let _ = write!(out, "\nCREATE DATABASE {name}{};\nUSE {name};\n", database_options(&ns.options)?);
+        current = Some(n.id.clone());
+        kept_after(&mut out, Some(&n.id));
+        for o in s.objects.iter().filter(|o| o.namespace == n.id) {
+            waiting.push(o);
+            ready(&mut out, &mut waiting, &mut current, false)?;
         }
     }
+    ready(&mut out, &mut waiting, &mut current, true)?;
     out.push_str("\nSET FOREIGN_KEY_CHECKS = 1;\n");
     Ok(out)
 }
@@ -100,16 +104,17 @@ fn wrapped(s: &Schema, o: &Object) -> Result<String, String> {
     Ok(out)
 }
 
-/// The settings an object was made under, as `SET` writes them; `character_set_results` follows the client's.
+/// The settings an object was made under, each a quoted string as `SET` takes it; `character_set_results` follows the
+/// client's.
 fn settings(options: &Options) -> Vec<(&'static str, String)> {
     let mut out = Vec::new();
     let text = |k: &str| options.get(k).and_then(Value::as_str);
     if let Some(v) = text("character_set_client") {
-        out.push(("character_set_client", v.to_string()));
-        out.push(("character_set_results", v.to_string()));
+        out.push(("character_set_client", string(v)));
+        out.push(("character_set_results", string(v)));
     }
     if let Some(v) = text("collation_connection") {
-        out.push(("collation_connection", v.to_string()));
+        out.push(("collation_connection", string(v)));
     }
     if let Some(v) = text("sql_mode") {
         out.push(("sql_mode", string(v)));
@@ -124,17 +129,20 @@ fn settings(options: &Options) -> Vec<(&'static str, String)> {
 fn create(s: &Schema, o: &Object) -> Result<(String, bool), String> {
     let section: ObjectSection = sections::read(&o.engine)?;
     let opts = &section.options;
-    let definer = opts.get("definer").and_then(Value::as_str).map(|d| format!(" DEFINER={d}")).unwrap_or_default();
+    let definer = match opts.get("definer").and_then(Value::as_str) {
+        Some(d) => format!(" DEFINER={}", account(d)?),
+        None => String::new(),
+    };
     let name = quote(&o.name);
     let text = match o.kind.as_str() {
         TABLE => return table(s, o, &section).map(|t| (t, false)),
         VIEW => {
             let mut t = "CREATE".to_string();
-            if let Some(a) = text_opt(opts, "algorithm") {
+            if let Some(a) = word_opt(opts, "algorithm")? {
                 let _ = write!(t, " ALGORITHM={a}");
             }
             t.push_str(&definer);
-            if let Some(sec) = text_opt(opts, "security") {
+            if let Some(sec) = word_opt(opts, "security")? {
                 let _ = write!(t, " SQL SECURITY {sec}");
             }
             let _ = write!(t, " VIEW {name}");
@@ -143,7 +151,7 @@ fn create(s: &Schema, o: &Object) -> Result<(String, bool), String> {
                 let _ = write!(t, " ({})", cols.join(","));
             }
             let _ = write!(t, " AS {}", section.query.as_deref().ok_or("a view without a query")?);
-            if let Some(k) = text_opt(opts, "check_option") {
+            if let Some(k) = word_opt(opts, "check_option")? {
                 let _ = write!(t, " WITH {k} CHECK OPTION");
             }
             return Ok((t, false));
@@ -177,9 +185,12 @@ fn create(s: &Schema, o: &Object) -> Result<(String, bool), String> {
             }
             let mut lines = Vec::new();
             if let Some(l) = &r.language {
-                lines.push(format!("LANGUAGE {}", l.to_ascii_uppercase()));
+                lines.push(format!("LANGUAGE {}", word(l, "a language")?.to_ascii_uppercase()));
             }
             if let Some(d) = text_opt(&r.options, "data_access") {
+                if !["CONTAINS SQL", "NO SQL", "READS SQL DATA", "MODIFIES SQL DATA"].contains(&d) {
+                    return Err(format!("`{}`: `{d}` is not what a routine does with data", o.name));
+                }
                 lines.push(d.to_string());
             }
             match r.deterministic {
@@ -188,7 +199,7 @@ fn create(s: &Schema, o: &Object) -> Result<(String, bool), String> {
                 None => {}
             }
             if let Some(sec) = &r.security {
-                lines.push(format!("SQL SECURITY {}", sec.to_ascii_uppercase()));
+                lines.push(format!("SQL SECURITY {}", word(sec, "a security")?.to_ascii_uppercase()));
             }
             if let Some(c) = &o.comment {
                 lines.push(format!("COMMENT {}", string(c)));
@@ -248,7 +259,7 @@ fn create(s: &Schema, o: &Object) -> Result<(String, bool), String> {
         }
         LOADABLE_FUNCTION => {
             let aggregate = if opts.get("aggregate") == Some(&Value::Bool(true)) { " AGGREGATE" } else { "" };
-            let returns = text_opt(opts, "returns").ok_or("a loadable function that returns nothing")?;
+            let returns = word_opt(opts, "returns")?.ok_or("a loadable function that returns nothing")?;
             let soname = text_opt(opts, "soname").ok_or("a loadable function without its library file")?;
             return Ok((
                 format!("CREATE{aggregate} FUNCTION {name} RETURNS {returns} SONAME {}", string(soname)),
@@ -267,8 +278,12 @@ fn create(s: &Schema, o: &Object) -> Result<(String, bool), String> {
                 ("engine_attribute", "ENGINE_ATTRIBUTE", true),
                 ("engine", "ENGINE", false),
             ] {
-                if let Some(v) = text_opt(opts, key) {
-                    let _ = write!(t, " {sql}={}", if quoted { string(v) } else { v.to_string() });
+                if quoted {
+                    if let Some(v) = text_opt(opts, key) {
+                        let _ = write!(t, " {sql}={}", string(v));
+                    }
+                } else if let Some(v) = word_opt(opts, key)? {
+                    let _ = write!(t, " {sql}={v}");
                 }
             }
             return Ok((t, false));
@@ -308,16 +323,24 @@ fn table(s: &Schema, o: &Object, t: &ObjectSection) -> Result<String, String> {
         .filter(|l| l.from.object == o.id)
         .map(|l| sections::read::<LinkSection>(&l.engine).map(|sec| (l, sec)))
         .collect::<Result<_, _>>()?;
+    // A link marked as written on its column is written there when that keeps its meaning in the schema's version:
+    // MySQL enforces a REFERENCES on a column from 9.0, and before it ignores one. An enforced link for a version that
+    // would ignore it is written as a constraint; one MySQL does not enforce cannot be written for a version that would.
+    let enforces_on_column = versions::has(&s.engine.version, &versions::INLINE_REFERENCES);
     let inline = |l: &LinkSection| l.options.get("inline") == Some(&Value::Bool(true));
+    let on_column = |l: &LinkSection| inline(l) && l.enforced == enforces_on_column;
     let mut lines = Vec::new();
     for c in &o.columns {
         let cs: sections::ColumnSection = sections::read(&c.engine)?;
         let opts = &cs.options;
         let mut line = format!("{} {}", quote(&c.name), c.data_type);
-        if let Some(v) = text_opt(opts, "charset") {
+        if opts.get("binary") == Some(&Value::Bool(true)) {
+            line.push_str(" BINARY");
+        }
+        if let Some(v) = word_opt(opts, "charset")? {
             let _ = write!(line, " CHARACTER SET {v}");
         }
-        if let Some(v) = text_opt(opts, "collation") {
+        if let Some(v) = word_opt(opts, "collation")? {
             let _ = write!(line, " COLLATE {v}");
         }
         if let Some(g) = &cs.generated {
@@ -358,7 +381,7 @@ fn table(s: &Schema, o: &Object, t: &ObjectSection) -> Result<String, String> {
             line.push_str(" INVISIBLE");
         }
         for (key, sql) in [("column_format", "COLUMN_FORMAT"), ("storage", "STORAGE")] {
-            if let Some(v) = text_opt(opts, key) {
+            if let Some(v) = word_opt(opts, key)? {
                 let _ = write!(line, " {sql} {v}");
             }
         }
@@ -369,7 +392,7 @@ fn table(s: &Schema, o: &Object, t: &ObjectSection) -> Result<String, String> {
                 let _ = write!(line, " {sql}={}", string(v));
             }
         }
-        for (l, sec) in links.iter().filter(|(l, sec)| inline(sec) && l.from.columns == [c.id.clone()]) {
+        for (l, sec) in links.iter().filter(|(l, sec)| on_column(sec) && l.from.columns == [c.id.clone()]) {
             let _ = write!(line, " {}", references(s, o, l, sec)?);
         }
         lines.push(line);
@@ -385,7 +408,7 @@ fn table(s: &Schema, o: &Object, t: &ObjectSection) -> Result<String, String> {
         lines.push(index(i, &col_name)?);
     }
     for (l, sec) in &links {
-        if inline(sec) {
+        if on_column(sec) {
             if l.from.columns.len() != 1 {
                 return Err("a link written on its column has one column".to_string());
             }
@@ -393,7 +416,8 @@ fn table(s: &Schema, o: &Object, t: &ObjectSection) -> Result<String, String> {
         }
         if !sec.enforced {
             return Err(format!(
-                "`{}`: a link MySQL does not enforce can only be written on its column, and from 9.0 MySQL enforces those",
+                "`{}`: a link MySQL does not enforce can only be written on one column before MySQL 9.0, which enforces \
+                 every REFERENCES",
                 o.name
             ));
         }
@@ -410,7 +434,7 @@ fn table(s: &Schema, o: &Object, t: &ObjectSection) -> Result<String, String> {
         lines.push(format!("{name}CHECK ({}){not}", c.expression));
     }
     let mut out = format!("CREATE TABLE {} (\n  {}\n)", quote(&o.name), lines.join(",\n  "));
-    out.push_str(&table_options(&t.options, o.comment.as_deref()));
+    out.push_str(&table_options(&t.options, o.comment.as_deref())?);
     if let Some(p) = &t.partitioning {
         out.push('\n');
         out.push_str(&partitioning(p, &col_name)?);
@@ -488,7 +512,7 @@ fn key(k: &Key, col_name: &dyn Fn(&Id) -> Result<String, String>) -> Result<Stri
         parts.push(p);
     }
     let mut t = format!("({})", parts.join(","));
-    if let Some(m) = text_opt(&k.options, "method") {
+    if let Some(m) = word_opt(&k.options, "method")? {
         let _ = write!(t, " USING {m}");
     }
     t.push_str(&index_options(&k.options));
@@ -556,7 +580,7 @@ fn index_options(o: &Options) -> String {
 }
 
 /// The table's options, in the order `SHOW CREATE TABLE` writes them, then its comment.
-fn table_options(o: &Options, comment: Option<&str>) -> String {
+fn table_options(o: &Options, comment: Option<&str>) -> Result<String, String> {
     const ORDER: &[(&str, &str, bool)] = &[
         ("engine", "ENGINE", false),
         ("auto_increment", "AUTO_INCREMENT", false),
@@ -591,7 +615,7 @@ fn table_options(o: &Options, comment: Option<&str>) -> String {
     for (key, sql, quoted) in ORDER {
         match o.get(*key) {
             Some(Value::String(v)) => {
-                let _ = write!(t, " {sql}={}", if *quoted { string(v) } else { v.clone() });
+                let _ = write!(t, " {sql}={}", if *quoted { string(v) } else { word(v, key)?.to_string() });
             }
             Some(Value::Number(n)) => {
                 let _ = write!(t, " {sql}={n}");
@@ -606,7 +630,7 @@ fn table_options(o: &Options, comment: Option<&str>) -> String {
     if let Some(c) = comment {
         let _ = write!(t, " COMMENT={}", string(c));
     }
-    t
+    Ok(t)
 }
 
 fn partitioning(
@@ -639,7 +663,8 @@ fn partitioning(
     if let Some(sub) = o.get("subpartition") {
         let get = |k: &str| sub.get(k);
         let linear = if get("linear") == Some(&Value::Bool(true)) { "LINEAR " } else { "" };
-        let strategy = get("strategy").and_then(Value::as_str).ok_or("subpartitioning without its way")?;
+        let strategy =
+            word(get("strategy").and_then(Value::as_str).ok_or("subpartitioning without its way")?, "a way")?;
         let _ = write!(t, "\nSUBPARTITION BY {linear}{}", strategy.to_ascii_uppercase());
         if let Some(a) = get("algorithm").and_then(Value::as_i64) {
             let _ = write!(t, " ALGORITHM = {a}");
@@ -650,35 +675,29 @@ fn partitioning(
         }
     }
     if !p.partitions.is_empty() {
-        let parts: Vec<String> = p
-            .partitions
-            .iter()
-            .map(|x| {
-                let mut s = format!("PARTITION {}", quote(&x.name));
-                if !x.bounds.is_empty() {
-                    let _ = write!(s, " {}", x.bounds);
+        let mut parts = Vec::new();
+        for x in &p.partitions {
+            let mut part = format!("PARTITION {}", quote(&x.name));
+            if !x.bounds.is_empty() {
+                let _ = write!(part, " {}", x.bounds);
+            }
+            part.push_str(&partition_options(&x.options)?);
+            if let Some(Value::Array(subs)) = x.options.get("subpartitions") {
+                let mut written = Vec::new();
+                for sub in subs.iter().filter_map(Value::as_object) {
+                    let name = sub.get("name").and_then(Value::as_str).unwrap_or_default();
+                    written.push(format!("SUBPARTITION {}{}", quote(name), partition_options(sub)?));
                 }
-                s.push_str(&partition_options(&x.options));
-                if let Some(Value::Array(subs)) = x.options.get("subpartitions") {
-                    let subs: Vec<String> = subs
-                        .iter()
-                        .filter_map(Value::as_object)
-                        .map(|sub| {
-                            let name = sub.get("name").and_then(Value::as_str).unwrap_or_default();
-                            format!("SUBPARTITION {}{}", quote(name), partition_options(sub))
-                        })
-                        .collect();
-                    let _ = write!(s, " ({})", subs.join(", "));
-                }
-                s
-            })
-            .collect();
+                let _ = write!(part, " ({})", written.join(", "));
+            }
+            parts.push(part);
+        }
         let _ = write!(t, "\n({})", parts.join(",\n "));
     }
     Ok(t)
 }
 
-fn partition_options(o: &Options) -> String {
+fn partition_options(o: &Options) -> Result<String, String> {
     let mut t = String::new();
     for (key, sql, quoted) in [
         ("comment", "COMMENT", true),
@@ -691,7 +710,7 @@ fn partition_options(o: &Options) -> String {
     ] {
         match o.get(key) {
             Some(Value::String(v)) => {
-                let _ = write!(t, " {sql} = {}", if quoted { string(v) } else { v.clone() });
+                let _ = write!(t, " {sql} = {}", if quoted { string(v) } else { word(v, key)?.to_string() });
             }
             Some(Value::Number(n)) => {
                 let _ = write!(t, " {sql} = {n}");
@@ -699,15 +718,15 @@ fn partition_options(o: &Options) -> String {
             _ => {}
         }
     }
-    t
+    Ok(t)
 }
 
-fn database_options(o: &Options) -> String {
+fn database_options(o: &Options) -> Result<String, String> {
     let mut t = String::new();
-    if let Some(c) = text_opt(o, "charset") {
+    if let Some(c) = word_opt(o, "charset")? {
         let _ = write!(t, " DEFAULT CHARACTER SET {c}");
     }
-    if let Some(c) = text_opt(o, "collation") {
+    if let Some(c) = word_opt(o, "collation")? {
         let _ = write!(t, " COLLATE {c}");
     }
     if let Some(Value::Bool(e)) = o.get("encryption") {
@@ -716,7 +735,7 @@ fn database_options(o: &Options) -> String {
     if let Some(Value::Bool(r)) = o.get("read_only") {
         let _ = write!(t, " READ ONLY = {}", u8::from(*r));
     }
-    t
+    Ok(t)
 }
 
 /// A kept statement, written back as it was read.
@@ -728,6 +747,44 @@ fn text_opt<'a>(o: &'a Options, key: &str) -> Option<&'a str> {
     o.get(key).and_then(Value::as_str)
 }
 
+/// A value written as it is, outside quotes (an engine, a character set, a collation, a size): one word, or nothing is
+/// written, so no value can change the statement around it.
+fn word<'a>(v: &'a str, what: &str) -> Result<&'a str, String> {
+    if !v.is_empty() && v.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$') {
+        Ok(v)
+    } else {
+        Err(format!("`{v}` is not one word, as {what} is written"))
+    }
+}
+
+fn word_opt<'a>(o: &'a Options, key: &str) -> Result<Option<&'a str>, String> {
+    text_opt(o, key).map(|v| word(v, key)).transpose()
+}
+
+/// An account as `DEFINER` names it: `user@host`, each part a name, a quoted name or a string, or `CURRENT_USER`.
+fn account(d: &str) -> Result<&str, String> {
+    let part = |p: &str| {
+        let quoted = |q: char| {
+            p.len() >= 2
+                && p.starts_with(q)
+                && p.ends_with(q)
+                && !p[1..p.len() - 1].replace(&format!("{q}{q}"), "").contains(q)
+        };
+        quoted('`')
+            || quoted('\'')
+            || quoted('"')
+            || word(p, "an account").is_ok()
+            || p.chars().all(|c| c.is_ascii_alphanumeric() || "_$.%-".contains(c))
+    };
+    let current = ["CURRENT_USER", "CURRENT_USER()"].iter().any(|c| d.eq_ignore_ascii_case(c));
+    let split = d.rfind('@').map(|at| (&d[..at], &d[at + 1..]));
+    if current || split.is_some_and(|(u, h)| !u.is_empty() && !h.is_empty() && part(u) && part(h)) {
+        Ok(d)
+    } else {
+        Err(format!("`{d}` is not an account, as DEFINER names one"))
+    }
+}
+
 /// A name in backquotes.
 #[must_use]
 pub fn quote(name: &str) -> String {
@@ -737,5 +794,101 @@ pub fn quote(name: &str) -> String {
 /// A string in single quotes, as MySQL reads one by default.
 #[must_use]
 pub fn string(s: &str) -> String {
-    format!("'{}'", s.replace('\\', "\\\\").replace('\'', "''"))
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('\'');
+    for c in s.chars() {
+        // As `SHOW CREATE …` writes a string: a quote doubled, and the characters MySQL escapes with a backslash.
+        match c {
+            '\'' => out.push_str("''"),
+            '\\' => out.push_str("\\\\"),
+            '\0' => out.push_str("\\0"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\u{1a}' => out.push_str("\\Z"),
+            c => out.push(c),
+        }
+    }
+    out.push('\'');
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::BUILT_IN;
+
+    fn read(version: &str, sql: &str) -> Schema {
+        let i = crate::read::read(BUILT_IN, sql.to_string(), version).expect("it reads");
+        assert!(i.report.not_understood.is_empty(), "{:?}", i.report.not_understood);
+        i.schema
+    }
+
+    fn set_option(s: &mut Schema, key: &str, value: &str) {
+        let mut sec: ObjectSection = sections::read(&s.objects[0].engine).expect("a section");
+        sec.options.insert(key.into(), Value::String(value.into()));
+        s.objects[0].engine = sections::write(&sec);
+    }
+
+    #[test]
+    fn a_value_never_changes_the_statement_around_it() {
+        let sql = "CREATE TABLE `t` (`a` int);\nSET character_set_client = 'latin1, sql_mode = 1';\nDELIMITER ;;\n\
+                   CREATE TRIGGER x BEFORE INSERT ON t FOR EACH ROW SET NEW.a = 1;;\nDELIMITER ;\n";
+        let s = read("8.4", sql);
+        let written = schema(&s).expect("it writes");
+        assert!(written.contains("character_set_client = 'latin1, sql_mode = 1'"), "a setting is a quoted string");
+        assert_eq!(read("8.4", &written), s, "and reads back as itself");
+        let mut s = read("8.4", "CREATE TABLE `t` (`a` int) ENGINE=InnoDB;\n");
+        set_option(&mut s, "engine", "InnoDB; DROP DATABASE prod; --");
+        assert!(schema(&s).is_err_and(|e| e.contains("is not one word")));
+        set_option(&mut s, "engine", "InnoDB");
+        let mut v = read("8.4", "CREATE TABLE `t` (`a` int);\nCREATE DEFINER=`a`@`%` VIEW v AS SELECT a FROM t;\n");
+        assert!(schema(&v).is_ok());
+        let at = v.objects.iter().position(|o| o.name == "v").expect("the view");
+        v.objects.swap(0, at);
+        set_option(&mut v, "definer", "`a`@`%` SQL SECURITY INVOKER VIEW x AS SELECT 1; DROP TABLE t; --");
+        assert!(schema(&v).is_err_and(|e| e.contains("is not an account")));
+    }
+
+    #[test]
+    fn a_link_on_its_column_keeps_its_meaning_in_every_version() {
+        let sql = "CREATE TABLE `p` (`id` int NOT NULL, PRIMARY KEY (`id`));\nCREATE TABLE `c` (`p` int REFERENCES p (id));\n";
+        let mut ignored = read("8.4", sql);
+        assert!(schema(&ignored).is_ok_and(|w| w.contains("`p` int REFERENCES `p` (`id`)")), "8.4 ignores it, as read");
+        ignored.engine.version = "9.7".into();
+        assert!(schema(&ignored).is_err_and(|e| e.contains("does not enforce")), "9.7 would enforce it");
+        let mut enforced = read("9.7", sql);
+        assert!(schema(&enforced).is_ok_and(|w| w.contains("`p` int REFERENCES `p` (`id`)")));
+        enforced.engine.version = "8.4".into();
+        let w = schema(&enforced).expect("it writes");
+        assert!(w.contains("FOREIGN KEY (`p`) REFERENCES `p` (`id`)") && !w.contains("int REFERENCES"), "{w}");
+    }
+
+    #[test]
+    fn a_view_waits_for_a_view_it_reads_in_another_database() {
+        let s = read(
+            "8.4",
+            "CREATE DATABASE a;\nUSE a;\nCREATE TABLE `t` (`x` int);\nCREATE VIEW va AS SELECT * FROM b.vb;\n\
+             CREATE DATABASE b;\nUSE b;\nCREATE VIEW vb AS SELECT * FROM a.t;\n",
+        );
+        let id = |name: &str| s.objects.iter().find(|o| o.name == name).map(|o| o.id.clone()).expect("the object");
+        assert_eq!(s.object(&id("va")).map(|o| o.reads.clone()), Some(vec![id("vb")]));
+        let w = schema(&s).expect("it writes");
+        let (va, vb) = (w.find("VIEW `va`").expect("va"), w.find("VIEW `vb`").expect("vb"));
+        assert!(vb < va, "a view after what it reads:\n{w}");
+        assert!(w[vb..va].contains("USE `a`;"), "written in its own database:\n{w}");
+        let again = read("8.4", &w);
+        let ns = |s: &Schema, name: &str| {
+            let o = s.objects.iter().find(|o| o.name == name).expect("the object");
+            s.namespace(&o.namespace).map(|n| n.name.clone())
+        };
+        assert_eq!((ns(&again, "va"), ns(&again, "vb")), (Some("a".to_string()), Some("b".to_string())));
+    }
+
+    #[test]
+    fn enum_values_and_comments_keep_every_character() {
+        let s = read("8.4", "CREATE TABLE `t` (`e` enum('a\\\\b','c\\nd','it''s') COMMENT 'two\\nlines \\\\ here');\n");
+        let w = schema(&s).expect("it writes");
+        assert!(w.contains(r"enum('a\\b','c\nd','it''s')") && w.contains(r"COMMENT 'two\nlines \\ here'"), "{w}");
+        assert_eq!(read("8.4", &w), s);
+    }
 }

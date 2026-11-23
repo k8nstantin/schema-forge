@@ -164,6 +164,10 @@ What the first engine learned, which yours will meet too:
   remove a key with `shift_remove`, which keeps the order of the rest.
 - An object made again under the same name (a dump's placeholder view, `CREATE OR REPLACE`) keeps its id.
 - Resolve references once everything is read: a dump writes a table before the tables its foreign keys name.
+- Never let a value change the statement around it: write every string as your database writes one, and check that
+  every value written outside quotes (an engine, a collation, a size) is one word, or refuse to write it.
+- Refuse what is not your database's rather than misread it (a fork's dump, a mode in which strings mean something
+  else), and refuse a live read that would come back with something missing because the account cannot see it.
 - Prove the writer against the database itself: load what it writes into a real server, dump it again with the
   database's own tool, and read that dump as the same schema (`engines/mysql/tests/samples/shop/roundtrip.sh`).
 

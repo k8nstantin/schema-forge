@@ -295,10 +295,11 @@ pub fn parse(families: &[Family], text: &str, version: &str) -> Result<Parsed, T
     let params = match (fam.params, args) {
         (Params::None, None) => String::new(),
         (Params::None, Some(a)) if matches!(fam.base, "float" | "double") => format!("({})", numbers(a, 2)?),
-        (Params::None, Some(a)) if fam.base == "text" || fam.base == "blob" => {
-            numbers(a, 1)?;
-            String::new()
-        }
+        // `TEXT(M)` and `BLOB(M)` are kept with their size: MySQL makes each the smallest type that holds M characters
+        // of the column's character set, or M bytes, which only the server knows.
+        (Params::None, Some(a)) if fam.base == "text" || fam.base == "blob" => format!("({})", numbers(a, 1)?),
+        // `YEAR(4)` is MySQL's `year`; no other width is left.
+        (Params::None, Some(a)) if fam.base == "year" && numbers(a, 1)? == "4" => String::new(),
         (Params::None, Some(_)) => return Err(not(format!("`{text}`: `{}` takes no size", fam.base))),
         (Params::One, Some(a)) => format!("({})", numbers(a, 1)?),
         (Params::One, None) => return Err(not(format!("`{text}`: `{}` needs a size", fam.base))),
@@ -387,11 +388,21 @@ fn values(args: &str) -> Result<String, String> {
         loop {
             match chars.next() {
                 None => return Err("a value is not closed".to_string()),
-                Some('\\') => {
-                    if let Some(c) = chars.next() {
+                // MySQL's escapes; `\%` and `\_` keep their backslash, any other escaped character is itself.
+                Some('\\') => match chars.next() {
+                    Some('0') => v.push('\0'),
+                    Some('b') => v.push('\u{8}'),
+                    Some('n') => v.push('\n'),
+                    Some('r') => v.push('\r'),
+                    Some('t') => v.push('\t'),
+                    Some('Z') => v.push('\u{1a}'),
+                    Some(c @ ('%' | '_')) => {
+                        v.push('\\');
                         v.push(c);
                     }
-                }
+                    Some(c) => v.push(c),
+                    None => return Err("a value is not closed".to_string()),
+                },
                 Some(c) if c == q && chars.peek() == Some(&q) => {
                     chars.next();
                     v.push(q);
@@ -400,7 +411,7 @@ fn values(args: &str) -> Result<String, String> {
                 Some(c) => v.push(c),
             }
         }
-        out.push(format!("'{}'", v.replace('\'', "''")));
+        out.push(crate::write::string(&v));
         while chars.peek().is_some_and(|c| c.is_whitespace()) {
             chars.next();
         }
@@ -441,6 +452,10 @@ mod tests {
         assert_eq!(read("geometrycollection").as_deref(), Ok("geomcollection"));
         assert_eq!(read("float(7,4)").as_deref(), Ok("float(7,4)"), "deprecated, kept");
         assert_eq!(read("decimal(12,2) unsigned").as_deref(), Ok("decimal(12,2) unsigned"), "deprecated, kept");
+        assert_eq!(read("text(100000)").as_deref(), Ok("text(100000)"), "the size is the server's to resolve");
+        assert_eq!(read("BLOB(70000)").as_deref(), Ok("blob(70000)"));
+        assert_eq!(read("year(4)").as_deref(), Ok("year"));
+        assert!(read("year(2)").is_err(), "MySQL 8 has no two-digit year");
     }
 
     #[test]
@@ -448,6 +463,13 @@ mod tests {
         assert_eq!(read("enum('new', 'active','it''s')").as_deref(), Ok("enum('new','active','it''s')"));
         assert_eq!(read("set(\"vip\",'wholesale')").as_deref(), Ok("set('vip','wholesale')"));
         assert_eq!(read("enum('A','a')").as_deref(), Ok("enum('A','a')"), "values keep their case");
+        // As MySQL writes them, and so read back as themselves.
+        assert_eq!(read(r"enum('a\\b','c\nd','it''s')").as_deref(), Ok(r"enum('a\\b','c\nd','it''s')"));
+        assert_eq!(
+            read(r"set('a\%','b\x')").as_deref(),
+            Ok(r"set('a\\%','bx')"),
+            "the same values, as MySQL reads them"
+        );
         assert!(read("enum()").is_err());
     }
 

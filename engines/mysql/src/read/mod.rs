@@ -9,8 +9,8 @@ pub mod table;
 use std::collections::{BTreeMap, HashMap};
 
 use schema_forge_engine::sections::{
-    self, Change, IndexPart, Kept, Key, LinkSection, NamespaceSection, ObjectSection, Options, PartField, Partitioning,
-    SchemaSection, Timing, Trigger,
+    self, IndexPart, Kept, Key, LinkSection, NamespaceSection, ObjectSection, Options, PartField, Partitioning,
+    SchemaSection, Trigger,
 };
 use schema_forge_engine::{Imported, Input, Report, Unread};
 use schema_forge_model::{Column, Ends, Id, Ids, Kind, Link, Namespace, Object, Schema};
@@ -36,6 +36,9 @@ pub const DEFAULT_DATABASE: &str = "default";
 #[must_use]
 pub fn recognises(input: &Input) -> bool {
     if input.is_dir {
+        return false;
+    }
+    if is_mariadb(&input.head) {
         return false;
     }
     let first = input.head.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("");
@@ -84,14 +87,32 @@ pub fn version_for(server: &str) -> &'static str {
 }
 
 /// Reads `text`, MySQL's SQL, at `version`.
-#[must_use]
-pub fn read(families: &[Family], text: &str, version: &str) -> Imported {
+///
+/// # Errors
+/// When it is not MySQL's to read: a MariaDB dump, or statements made under `NO_BACKSLASH_ESCAPES`, whose strings
+/// this reader would misread.
+pub fn read(families: &[Family], text: String, version: &str) -> Result<Imported, String> {
+    let head: String = text.chars().take(64 * 1024).collect();
+    if is_mariadb(&head) {
+        return Err("this is MariaDB's: MariaDB is not MySQL, and needs an engine of its own".to_string());
+    }
     let open = dump::unwrap(text);
     let mut b = Builder::new(families, version);
     for s in dump::statements(&open) {
         b.statement(&s);
     }
     b.finish()
+}
+
+/// Whether a file is MariaDB's, by what MariaDB writes at its top: its dump header (or MySQL's header naming a MariaDB
+/// distribution), its own versioned comment (`/*M!…*/`) on a line of its own, or a server version that says so. What
+/// a row holds never counts.
+#[must_use]
+pub fn is_mariadb(text: &str) -> bool {
+    let mariadb = |l: &str| l.to_ascii_lowercase().contains("mariadb");
+    text.lines().take(5).any(|l| {
+        l.starts_with("-- MariaDB dump") || (l.starts_with("-- MySQL dump") && mariadb(l)) || l.starts_with("/*M!")
+    }) || text.lines().any(|l| l.starts_with("-- Server version") && mariadb(l))
 }
 
 /// What a dump sets before a stored program, and so the program was made with.
@@ -104,17 +125,6 @@ struct PendingLink {
     fk: table::Fk,
 }
 
-/// A trigger waiting for every table to be read.
-struct PendingTrigger {
-    object: Id,
-    namespace: Id,
-    timing: Timing,
-    change: Change,
-    table: (Option<String>, String),
-    body: String,
-    statement: Statement,
-}
-
 struct Builder<'f> {
     families: &'f [Family],
     version: String,
@@ -124,14 +134,16 @@ struct Builder<'f> {
     kept: Vec<Kept>,
     current: Option<Id>,
     settings: BTreeMap<&'static str, String>,
+    /// Whether a statement was made under `NO_BACKSLASH_ESCAPES`, in which a backslash is not an escape.
+    no_backslash_escapes: bool,
     /// The part the next kept statement goes after.
     last: Option<Id>,
     /// How many statements made each object, to count them again when it is dropped.
     made_by: HashMap<Id, usize>,
-    /// The ids of objects dropped, by namespace and name: an object made again under the same name keeps its id.
-    freed: HashMap<(Id, String), Id>,
+    /// The ids of objects dropped, by namespace, kind and name: an object of that kind made again under the same name
+    /// keeps its id.
+    freed: HashMap<(Id, String, String), Id>,
     links: Vec<PendingLink>,
-    triggers: Vec<PendingTrigger>,
 }
 
 /// What a statement became.
@@ -155,17 +167,23 @@ impl<'f> Builder<'f> {
             kept: Vec::new(),
             current: None,
             settings: BTreeMap::new(),
+            no_backslash_escapes: false,
             last: None,
             made_by: HashMap::new(),
             freed: HashMap::new(),
             links: Vec::new(),
-            triggers: Vec::new(),
         }
     }
 
-    fn statement(&mut self, s: &Statement) {
+    fn statement(&mut self, s: &Statement<'_>) {
         self.report.read += 1;
-        let outcome = Cursor::new(&s.text).and_then(|mut c| self.classify(&mut c, s));
+        // Rows, by their first word: a dump's are most of it, and are never tokenised.
+        let first = s.text.split(|c: char| !c.is_ascii_alphabetic()).next().unwrap_or("");
+        if first.eq_ignore_ascii_case("INSERT") || first.eq_ignore_ascii_case("REPLACE") {
+            self.report.data += 1;
+            return;
+        }
+        let outcome = Cursor::new(s.text).and_then(|mut c| self.classify(&mut c, s));
         match outcome {
             Ok(Done::Modelled(id)) => {
                 self.report.modelled += 1;
@@ -174,7 +192,7 @@ impl<'f> Builder<'f> {
                     self.last = Some(id);
                 }
             }
-            Ok(Done::Kept(kind)) => self.keep(kind, &s.text),
+            Ok(Done::Kept(kind)) => self.keep(kind, s.text),
             Ok(Done::Cut(kind, text)) => self.keep(kind, &text),
             Ok(Done::Data) => self.report.data += 1,
             Ok(Done::Machinery) => self.report.machinery += 1,
@@ -191,13 +209,13 @@ impl<'f> Builder<'f> {
         *self.report.kept.entry(kind.to_string()).or_default() += 1;
     }
 
-    fn not_understood(&mut self, s: &Statement, why: &str) {
-        self.keep("other", &s.text);
+    fn not_understood(&mut self, s: &Statement<'_>, why: &str) {
+        self.keep("other", s.text);
         let start: String = s.text.lines().next().unwrap_or("").chars().take(100).collect();
         self.report.not_understood.push(Unread::new(format!("line {}: {why}", s.line), start));
     }
 
-    fn classify(&mut self, c: &mut Cursor<'_>, s: &Statement) -> Result<Done, String> {
+    fn classify(&mut self, c: &mut Cursor<'_>, s: &Statement<'_>) -> Result<Done, String> {
         if c.eat_kw("CREATE") {
             return self.create(c, s);
         }
@@ -205,14 +223,14 @@ impl<'f> Builder<'f> {
             return Ok(Done::Data);
         }
         if c.peek_kw("GRANT") || c.peek_kw("REVOKE") {
-            return Ok(credentials(&s.text, "grant", false));
+            return Ok(credentials(s.text, "grant", false));
         }
         // A password is never kept: setting one is left out with the data, and an account is kept without it.
         if c.eat_kws(&["SET", "PASSWORD"]) {
             return Ok(Done::Data);
         }
         if c.peek_kw("ALTER") && c.peek_kw_at(1, "USER") {
-            return Ok(credentials(&s.text, "account", true));
+            return Ok(credentials(s.text, "account", true));
         }
         if c.eat_kws(&["SET", "DEFAULT", "ROLE"]) || c.eat_kws(&["RENAME", "USER"]) {
             return Ok(Done::Kept("account"));
@@ -257,9 +275,9 @@ impl<'f> Builder<'f> {
         Err("not a statement this reader knows".to_string())
     }
 
-    fn create(&mut self, c: &mut Cursor<'_>, s: &Statement) -> Result<Done, String> {
+    fn create(&mut self, c: &mut Cursor<'_>, s: &Statement<'_>) -> Result<Done, String> {
         if c.peek_kw("USER") {
-            return Ok(credentials(&s.text, "account", true));
+            return Ok(credentials(s.text, "account", true));
         }
         if c.eat_kw("ROLE") {
             return Ok(Done::Kept("account"));
@@ -268,7 +286,7 @@ impl<'f> Builder<'f> {
             return Ok(Done::Kept("resource_group"));
         }
         if c.peek_kw("SERVER") {
-            return Ok(credentials(&s.text, "server", false));
+            return Ok(credentials(s.text, "server", false));
         }
         if c.eat_kw("DATABASE") || c.eat_kw("SCHEMA") {
             let (name, options) = server::database(c)?;
@@ -337,19 +355,20 @@ impl<'f> Builder<'f> {
         }
         if c.eat_kw("TRIGGER") {
             let t = program::trigger(c, head)?;
-            let mut section = with!(ObjectSection { options: t.options });
+            // MySQL makes a trigger only on a table there already: a trigger whose table is not in the schema is
+            // kept as written, in its place.
+            let named = |db: &str| self.schema.namespaces.iter().find(|n| n.name == db).map(|n| n.id.clone());
+            let ns = match (&t.table.0, &t.db) {
+                (Some(db), _) | (None, Some(db)) => named(db),
+                (None, None) => self.current.clone(),
+            };
+            let table = ns
+                .and_then(|ns| self.find(&ns, &t.table.1, &[TABLE]))
+                .ok_or_else(|| format!("its table `{}` is not in the schema", t.table.1))?;
+            let trigger = Trigger::new(t.timing, vec![t.change], table, t.body);
+            let mut section = with!(ObjectSection { trigger: Some(trigger), options: t.options });
             self.with_settings(TRIGGER, &mut section.options);
             let id = self.object(TRIGGER, t.db.as_deref(), &t.name, None, section)?;
-            let namespace = self.schema.object(&id).map(|o| o.namespace.clone()).ok_or("the trigger was not added")?;
-            self.triggers.push(PendingTrigger {
-                object: id.clone(),
-                namespace,
-                timing: t.timing,
-                change: t.change,
-                table: t.table,
-                body: t.body,
-                statement: s.clone(),
-            });
             return Ok(Done::Modelled(Some(id)));
         }
         if c.eat_kw("EVENT") {
@@ -427,6 +446,9 @@ impl<'f> Builder<'f> {
                     .strip_prefix('\'')
                     .and_then(|x| x.strip_suffix('\''))
                     .map_or(rhs.to_string(), |x| x.replace("''", "'"));
+                if *key == "sql_mode" && v.to_ascii_uppercase().contains("NO_BACKSLASH_ESCAPES") {
+                    self.no_backslash_escapes = true;
+                }
                 self.settings.insert(key, v);
             }
         }
@@ -496,9 +518,10 @@ impl<'f> Builder<'f> {
     fn remove(&mut self, id: &Id) -> Result<(), String> {
         let Some(at) = self.schema.objects.iter().position(|o| &o.id == id) else { return Ok(()) };
         let o = &self.schema.objects[at];
-        if self.links.iter().any(|l| l.fk.parent == o.name || &l.from == id)
-            || self.triggers.iter().any(|t| t.table.1 == o.name || &t.object == id)
-        {
+        let a_trigger_on_it = self.schema.objects.iter().any(|x| {
+            sections::read::<ObjectSection>(&x.engine).is_ok_and(|s| s.trigger.is_some_and(|t| &t.table == id))
+        });
+        if a_trigger_on_it || self.links.iter().any(|l| l.fk.parent == o.name || &l.from == id) {
             return Err(format!("`{}` is dropped while something refers to it", o.name));
         }
         let before = if at > 0 { Some(self.schema.objects[at - 1].id.clone()) } else { Some(o.namespace.clone()) };
@@ -514,7 +537,7 @@ impl<'f> Builder<'f> {
             self.last = before;
         }
         let gone = self.schema.objects.remove(at);
-        self.freed.insert((gone.namespace, gone.name), gone.id);
+        self.freed.insert((gone.namespace, gone.kind, gone.name), gone.id);
         Ok(())
     }
 
@@ -560,7 +583,7 @@ impl<'f> Builder<'f> {
         if self.schema.objects.iter().any(|o| o.namespace == ns && o.name == name && same_space(kind, &o.kind)) {
             return Err(format!("`{name}` is already in the schema"));
         }
-        let id = match self.freed.remove(&(ns.clone(), name.to_string())) {
+        let id = match self.freed.remove(&(ns.clone(), kind.to_string(), name.to_string())) {
             Some(id) => id,
             None => self.ids.next(Kind::Object, &[name]),
         };
@@ -617,33 +640,7 @@ impl<'f> Builder<'f> {
         let by_name: HashMap<String, Id> = columns.iter().map(|c| (c.name.clone(), c.id.clone())).collect();
         let col_id = |n: &str| by_name.get(n).cloned().ok_or_else(|| format!("`{n}` is not a column"));
         let mut s = with!(ObjectSection { options: t.options, checks: t.checks });
-        let key = |k: table::KeyDef| -> Result<Key, String> {
-            let mut out = Key::default();
-            out.name = k.name;
-            out.options = k.options;
-            out.columns = k.parts.iter().filter_map(|p| p.column.as_deref()).map(col_id).collect::<Result<_, _>>()?;
-            if k.parts.iter().any(|p| p.length.is_some() || p.desc) {
-                let parts: Vec<Value> = k
-                    .parts
-                    .iter()
-                    .map(|p| match (p.length, p.desc) {
-                        (None, false) => Value::Null,
-                        (l, d) => {
-                            let mut m = serde_json::Map::new();
-                            if let Some(l) = l {
-                                m.insert("length".into(), json!(l));
-                            }
-                            if d {
-                                m.insert("desc".into(), json!(true));
-                            }
-                            Value::Object(m)
-                        }
-                    })
-                    .collect();
-                out.options.insert("parts".into(), Value::Array(parts));
-            }
-            Ok(out)
-        };
+        let key = |k: table::KeyDef| to_key(k, &col_id);
         s.keys.primary = t.primary.map(key).transpose()?;
         s.keys.unique = t.unique.into_iter().map(key).collect::<Result<_, _>>()?;
         let mut taken: Vec<String> = s.keys.unique.iter().filter_map(|k| k.name.clone()).collect();
@@ -692,35 +689,29 @@ impl<'f> Builder<'f> {
         let mut s: ObjectSection = sections::read(&o.engine)?;
         let mut taken: Vec<String> = s.indexes.iter().map(|i| i.name.clone()).collect();
         taken.extend(s.keys.unique.iter().filter_map(|k| k.name.clone()));
-        if i.unique && i.parts.iter().all(|p| p.column.is_some() && p.length.is_none() && !p.desc) {
-            let mut k = Key::default();
-            k.name = i.name;
-            k.options = i.options;
-            if let Some(m) = i.method {
-                k.options.insert("method".into(), json!(m.to_ascii_uppercase()));
-            }
-            k.columns = i.parts.iter().filter_map(|p| p.column.as_deref()).map(col_id).collect::<Result<_, _>>()?;
-            s.keys.unique.push(k);
-        } else {
-            s.indexes.push(index(i, &col_id, &mut taken)?);
+        match table::unique(i) {
+            table::Unique::Key(k) => s.keys.unique.push(to_key(k, &col_id)?),
+            table::Unique::Index(i) => s.indexes.push(index(i, &col_id, &mut taken)?),
         }
         o.engine = sections::write(&canonical(s));
         Ok(id)
     }
 
-    fn finish(mut self) -> Imported {
+    fn finish(mut self) -> Result<Imported, String> {
+        if self.no_backslash_escapes {
+            return Err("statements here are made under NO_BACKSLASH_ESCAPES, so their strings would be misread: \
+                        dump them without that SQL mode"
+                .to_string());
+        }
         let inline_enforced = versions::has(&self.version, &versions::INLINE_REFERENCES);
         for p in std::mem::take(&mut self.links) {
             self.link(p, inline_enforced);
-        }
-        for t in std::mem::take(&mut self.triggers) {
-            self.trigger(t);
         }
         self.view_reads();
         let mut section = SchemaSection::default();
         section.kept = std::mem::take(&mut self.kept);
         self.schema.engine_section = sections::write(&section);
-        Imported::new(self.schema, self.report)
+        Ok(Imported::new(self.schema, self.report))
     }
 
     fn link(&mut self, p: PendingLink, inline_enforced: bool) {
@@ -760,29 +751,6 @@ impl<'f> Builder<'f> {
                     o.engine = sections::write(&canonical(s));
                 }
             }
-        }
-    }
-
-    fn trigger(&mut self, t: PendingTrigger) {
-        let ns = match &t.table.0 {
-            Some(db) => self.schema.namespaces.iter().find(|n| &n.name == db).map(|n| n.id.clone()),
-            None => Some(t.namespace.clone()),
-        };
-        let table = ns.and_then(|ns| self.find(&ns, &t.table.1, &[TABLE, VIEW]));
-        let Some(table) = table else {
-            // Its table is not in the schema: the trigger is kept as written.
-            if let Some(at) = self.schema.objects.iter().position(|o| o.id == t.object) {
-                self.schema.objects.remove(at);
-                self.report.modelled -= 1;
-                self.not_understood(&t.statement, &format!("its table `{}` is not in the schema", t.table.1));
-            }
-            return;
-        };
-        if let Some(o) = self.schema.objects.iter_mut().find(|o| o.id == t.object)
-            && let Ok(mut s) = sections::read::<ObjectSection>(&o.engine)
-        {
-            s.trigger = Some(Trigger::new(t.timing, vec![t.change], table, t.body));
-            o.engine = sections::write(&s);
         }
     }
 
@@ -866,6 +834,35 @@ fn same_space(a: &str, b: &str) -> bool {
         || ([FUNCTION, LOADABLE_FUNCTION].contains(&a) && [FUNCTION, LOADABLE_FUNCTION].contains(&b))
 }
 
+/// A key, its columns as ids; a prefix length or a descending part kept in its `parts`.
+fn to_key(k: table::KeyDef, col_id: &dyn Fn(&str) -> Result<Id, String>) -> Result<Key, String> {
+    let mut out = Key::default();
+    out.name = k.name;
+    out.options = k.options;
+    out.columns = k.parts.iter().filter_map(|p| p.column.as_deref()).map(col_id).collect::<Result<_, _>>()?;
+    if k.parts.iter().any(|p| p.length.is_some() || p.desc) {
+        let parts: Vec<Value> = k
+            .parts
+            .iter()
+            .map(|p| match (p.length, p.desc) {
+                (None, false) => Value::Null,
+                (l, d) => {
+                    let mut m = serde_json::Map::new();
+                    if let Some(l) = l {
+                        m.insert("length".into(), json!(l));
+                    }
+                    if d {
+                        m.insert("desc".into(), json!(true));
+                    }
+                    Value::Object(m)
+                }
+            })
+            .collect();
+        out.options.insert("parts".into(), Value::Array(parts));
+    }
+    Ok(out)
+}
+
 /// An index, its columns as ids, named as MySQL names one written without a name.
 fn index(
     i: table::IndexDef,
@@ -910,6 +907,72 @@ fn index(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::BUILT_IN;
+
+    fn read84(sql: &str) -> Imported {
+        read(BUILT_IN, sql.to_string(), "8.4").expect("it reads")
+    }
+
+    #[test]
+    fn what_is_not_mysqls_is_refused_not_misread() {
+        assert!(read(BUILT_IN, "-- MariaDB dump 10.19\nCREATE TABLE t (a int);".into(), "8.4").is_err());
+        assert!(is_mariadb("-- MySQL dump 10.19  Distrib 10.11.6-MariaDB, for Linux (x86_64)\n"));
+        let row = "-- MySQL dump 10.13\nCREATE TABLE `t` (`a` text);\nINSERT INTO t VALUES ('/*M! is just text');\n";
+        assert!(!is_mariadb(row) && read(BUILT_IN, row.into(), "8.4").is_ok(), "what a row holds never counts");
+        let stray = read84("DELIMITER ;;\nCREATE TRIGGER nowhere.x BEFORE INSERT ON t FOR EACH ROW SET NEW.a = 1;;\n");
+        assert!(stray.schema.namespaces.is_empty(), "a trigger that is not read makes no database");
+        assert!(
+            read(BUILT_IN, "/*M!999999\\- enable the sandbox mode */\nCREATE TABLE t (a int);".into(), "8.4").is_err()
+        );
+        assert!(is_mariadb("-- MySQL dump 10.19\n-- Server version\t10.11.6-MariaDB-ubu2204\n"));
+        assert!(!is_mariadb("-- MySQL dump 10.13\n-- Server version\t8.4.13\n"));
+        let e = read(
+            BUILT_IN,
+            "SET sql_mode = 'NO_BACKSLASH_ESCAPES';\nCREATE TABLE t (a varchar(9) DEFAULT 'C:\\x');".into(),
+            "8.4",
+        );
+        assert!(e.is_err_and(|e| e.contains("NO_BACKSLASH_ESCAPES")));
+        let i = read84(
+            "CREATE TABLE `t` (`a` int);\nINSERT INTO t VALUES (1), ('it''s; not the end');\nINSERT INTO t VALUES (2);\n",
+        );
+        assert_eq!((i.report.read, i.report.data, i.report.modelled), (3, 2, 1), "rows counted, never tokenised");
+    }
+
+    #[test]
+    fn a_trigger_on_a_missing_table_is_kept_in_its_place_with_what_follows_it() {
+        let i = read84(
+            "CREATE TABLE `t` (`a` int);\nDELIMITER ;;\nCREATE TRIGGER x BEFORE INSERT ON nowhere FOR EACH ROW SET \
+             NEW.a = 1;;\nDELIMITER ;\nGRANT SELECT ON *.* TO r;\n",
+        );
+        assert!(i.report.adds_up());
+        assert_eq!(i.report.not_understood.len(), 1);
+        let section: SchemaSection = sections::read(&i.schema.engine_section).expect("a section");
+        let kept: Vec<(&str, Option<&str>)> =
+            section.kept.iter().map(|k| (k.kind.as_str(), k.after.as_ref().map(Id::as_str))).collect();
+        assert_eq!(kept, [("other", Some("o_t")), ("grant", Some("o_t"))], "in order, after a part that is there");
+        let written = crate::write::schema(&i.schema).expect("it writes");
+        let trigger = written.find("CREATE TRIGGER x").expect("the trigger is written back");
+        assert!(written.find("GRANT SELECT").is_some_and(|g| g > trigger), "{written}");
+    }
+
+    #[test]
+    fn a_unique_index_is_the_same_key_however_it_is_made() {
+        let inline = read84("CREATE TABLE `t` (`n` varchar(50), UNIQUE KEY `u` (`n`(10)));\n");
+        let later = read84("CREATE TABLE `t` (`n` varchar(50));\nCREATE UNIQUE INDEX u ON t (n(10));\n");
+        assert_eq!(inline.schema.objects[0].engine, later.schema.objects[0].engine);
+        let written = crate::write::schema(&later.schema).expect("it writes");
+        assert_eq!(read84(&written).schema.objects, later.schema.objects, "and reads back as itself");
+    }
+
+    #[test]
+    fn a_dropped_objects_id_passes_only_to_one_of_its_kind() {
+        let i = read84(
+            "CREATE TABLE `x` (`a` int);\nDROP TABLE x;\nDELIMITER ;;\nCREATE PROCEDURE x() BEGIN END;;\nDELIMITER ;\n\
+             CREATE TABLE `x` (`b` int);\n",
+        );
+        let ids: Vec<(&str, &str)> = i.schema.objects.iter().map(|o| (o.kind.as_str(), o.id.as_str())).collect();
+        assert_eq!(ids, [("procedure", "o_x_2"), ("table", "o_x")]);
+    }
 
     #[test]
     fn a_server_version_falls_in_an_engine_version() {

@@ -171,6 +171,16 @@ CREATE TABLE book_tags (
   CONSTRAINT book_tags_book FOREIGN KEY (isbn) REFERENCES books (isbn) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE quirks (
+  id serial,
+  code varchar(10) BINARY NOT NULL,
+  legacy varchar(10) ASCII DEFAULT NULL,
+  founded year(4) DEFAULT NULL,
+  notes text(100000),
+  scan blob(70000),
+  mood enum('a\\b', 'c\nd', 'it''s') DEFAULT 'it''s' COMMENT 'with a tab\there and a quote''s'
+) ENGINE=InnoDB COMMENT='What MySQL rewrites as it reads it';
+
 CREATE TABLE visits (
   branch_id smallint unsigned NOT NULL,
   visited date NOT NULL,

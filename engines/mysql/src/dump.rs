@@ -2,27 +2,28 @@
 //! the code they hold, `DELIMITER` changing what ends a statement, and quotes, comments and dollar-quoted bodies never
 //! ending one. Everything keeps its place in the file, so a statement's line is the line it is on.
 
-/// One statement: its text, without the delimiter that ended it, and the line it starts on.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Statement {
-    pub text: String,
+/// One statement: its text, without the delimiter that ended it, and the line it starts on. It borrows the script, so
+/// a dump of any size is held once.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Statement<'a> {
+    pub text: &'a str,
     pub line: usize,
 }
 
-/// The script with every versioned comment opened: its markers (`/*!50003` and the `*/` that closes it) become
-/// spaces, so the code inside reads as code and every other byte stays where it was.
+/// The script with every versioned comment opened, in place: its markers (`/*!50003` and the `*/` that closes it)
+/// become spaces, so the code inside reads as code and every other byte stays where it was.
 #[must_use]
-pub fn unwrap(sql: &str) -> String {
-    let b = sql.as_bytes();
-    let mut out = b.to_vec();
+pub fn unwrap(sql: String) -> String {
+    let mut out = sql.into_bytes();
+    let b = &mut out;
     let mut i = 0;
     let mut in_versioned = false;
     while i < b.len() {
         match b[i] {
             q @ (b'\'' | b'"' | b'`') => i = skip_quoted(b, i, q),
             b'*' if in_versioned && b.get(i + 1) == Some(&b'/') => {
-                out[i] = b' ';
-                out[i + 1] = b' ';
+                b[i] = b' ';
+                b[i + 1] = b' ';
                 in_versioned = false;
                 i += 2;
             }
@@ -32,7 +33,7 @@ pub fn unwrap(sql: &str) -> String {
                     while j < b.len() && b[j].is_ascii_digit() {
                         j += 1;
                     }
-                    out[i..j].fill(b' ');
+                    b[i..j].fill(b' ');
                     in_versioned = true;
                     i = j;
                 } else {
@@ -50,13 +51,19 @@ pub fn unwrap(sql: &str) -> String {
 
 /// The statements of an opened script ([`unwrap`]), in order. `DELIMITER` lines are the client's, not statements.
 #[must_use]
-pub fn statements(text: &str) -> Vec<Statement> {
+pub fn statements(text: &str) -> Vec<Statement<'_>> {
     let b = text.as_bytes();
     let mut out = Vec::new();
     let mut delimiter = b";".to_vec();
     let mut code_at: Option<usize> = None;
     let mut i = 0;
-    let line_of = |at: usize| text[..at].bytes().filter(|&c| c == b'\n').count() + 1;
+    // Lines counted once, as the statements come: each from where the last one was counted.
+    let (mut line, mut counted) = (1, 0);
+    let mut line_of = |at: usize| {
+        line += b[counted..at].iter().filter(|&&c| c == b'\n').count();
+        counted = at;
+        line
+    };
     while i < b.len() {
         if code_at.is_none() && at_line_start(b, i) && starts_word(b, i, b"delimiter") {
             let end = b[i..].iter().position(|&c| c == b'\n').map_or(b.len(), |n| i + n);
@@ -69,7 +76,7 @@ pub fn statements(text: &str) -> Vec<Statement> {
         }
         if b[i..].starts_with(&delimiter) {
             if let Some(at) = code_at {
-                out.push(Statement { text: text[at..i].trim_end().to_string(), line: line_of(at) });
+                out.push(Statement { text: text[at..i].trim_end(), line: line_of(at) });
             }
             i += delimiter.len();
             code_at = None;
@@ -100,7 +107,7 @@ pub fn statements(text: &str) -> Vec<Statement> {
         i = next;
     }
     if let Some(at) = code_at {
-        out.push(Statement { text: text[at..].trim_end().to_string(), line: line_of(at) });
+        out.push(Statement { text: text[at..].trim_end(), line: line_of(at) });
     }
     out
 }
@@ -199,20 +206,20 @@ mod tests {
     use super::*;
 
     fn texts(sql: &str) -> Vec<String> {
-        statements(&unwrap(sql)).into_iter().map(|s| s.text).collect()
+        statements(&unwrap(sql.to_string())).into_iter().map(|s| s.text.to_string()).collect()
     }
 
     #[test]
     fn versioned_comments_read_as_their_code_and_keep_every_place() {
         let sql = "/*!40101 SET NAMES utf8 */;\nCREATE TABLE t (a int) /*!50100 PARTITION BY HASH (a) */;";
-        let open = unwrap(sql);
+        let open = unwrap(sql.to_string());
         assert_eq!(open.len(), sql.len());
         assert_eq!(
             texts(sql),
             ["SET NAMES utf8".to_string(), format!("CREATE TABLE t (a int) {}PARTITION BY HASH (a)", " ".repeat(9))]
         );
-        assert_eq!(unwrap("/* plain */ x"), "/* plain */ x", "a plain comment stays a comment");
-        assert_eq!(unwrap("SELECT '/*!50003 no */'"), "SELECT '/*!50003 no */'", "nor inside a string");
+        assert_eq!(unwrap("/* plain */ x".into()), "/* plain */ x", "a plain comment stays a comment");
+        assert_eq!(unwrap("SELECT '/*!50003 no */'".into()), "SELECT '/*!50003 no */'", "nor inside a string");
     }
 
     #[test]
@@ -224,7 +231,8 @@ mod tests {
     #[test]
     fn quotes_and_comments_never_end_a_statement() {
         let sql = "SELECT 'a;b', \"c;d\", `e;f`, 'it''s;', 'x\\';y' -- no; end\n, 1 # nor;\n/* nor ; */;";
-        let s = statements(&unwrap(sql));
+        let open = unwrap(sql.to_string());
+        let s = statements(&open);
         assert_eq!(s.len(), 1);
         assert!(s[0].text.ends_with("/* nor ; */"));
         assert_eq!(texts("--\n-- only comments\n--\n"), Vec::<String>::new());
@@ -232,7 +240,8 @@ mod tests {
 
     #[test]
     fn a_statement_knows_its_line() {
-        let s = statements(&unwrap("-- header\n\nSELECT 1;\n\n  SELECT\n 2;"));
+        let open = unwrap("-- header\n\nSELECT 1;\n\n  SELECT\n 2;".to_string());
+        let s = statements(&open);
         assert_eq!(s.iter().map(|s| s.line).collect::<Vec<_>>(), [3, 5]);
     }
 
