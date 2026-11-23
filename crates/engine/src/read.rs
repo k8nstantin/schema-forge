@@ -52,7 +52,7 @@ impl Imported {
     }
 }
 
-/// Everything read, accounted for: `read == modelled + kept + data`. A unit is what the engine reads one at a time
+/// Everything read, accounted for: `read == modelled + kept + data + machinery`. A unit is what the engine reads one at a time
 /// (`statements`, `files`); what is not a unit (the space between statements) is not content and is not counted.
 /// Made with [`Report::new`], then counted into:
 ///
@@ -70,6 +70,9 @@ pub struct Report {
     pub kept: BTreeMap<String, usize>,
     /// Data, not schema, left out (rows, sequence values).
     pub data: usize,
+    /// What a dump's own format does around the schema, understood and left out: saving and restoring settings,
+    /// dropping before creating, placeholders written before the real definitions, locking tables.
+    pub machinery: usize,
     /// What was kept because it was not understood.
     pub not_understood: Vec<Unread>,
 }
@@ -106,7 +109,7 @@ impl Report {
     /// Whether every unit read is accounted for, once.
     #[must_use]
     pub fn adds_up(&self) -> bool {
-        self.read == self.modelled + self.kept_total() + self.data
+        self.read == self.modelled + self.kept_total() + self.data + self.machinery
     }
 }
 
@@ -119,6 +122,9 @@ impl fmt::Display for Report {
             writeln!(f, "    {kind}: {n}")?;
         }
         writeln!(f, "  data, left out: {}", self.data)?;
+        if self.machinery > 0 {
+            writeln!(f, "  the dump's own machinery, left out: {}", self.machinery)?;
+        }
         if !self.not_understood.is_empty() {
             writeln!(f, "  kept because not understood:")?;
             for u in &self.not_understood {

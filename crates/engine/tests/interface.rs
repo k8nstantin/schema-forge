@@ -326,3 +326,36 @@ fn the_reader_is_the_one_engine_that_recognises_the_input() {
     let folder = r.reader_of(Path::new("tests/samples")).map(|(e, _)| e.id()).unwrap_err();
     assert!(folder.contains("no engine recognises it"), "a folder this engine does not read: {folder}");
 }
+
+#[test]
+fn the_kit_finds_machinery_left_out_of_the_report() {
+    let files = [Sample::written_back(shop()), Sample::read_only(Path::new("tests/samples/machinery.example"))];
+    kit::assert_conforms(&Example::new(), &Samples::new(&files, QUERIES));
+    let f = kit::check(&Example::broken(Broken::MachineryUncounted), &Samples::new(&files, QUERIES));
+    assert!(has(&f, "the report does not add up: 5 read, 3 modelled, 0 kept, 0 data, 0 machinery"), "{f:?}");
+}
+
+#[test]
+fn the_kit_finds_connection_fields_that_are_wrong() {
+    assert!(has(&findings(Broken::FieldTwice), "the connection field `host` is declared twice"));
+    assert!(has(&findings(Broken::TwoSecrets), "a connection has more than one secret field"));
+    assert!(has(
+        &findings(Broken::DefaultNotAChoice),
+        "the connection field `mode` defaults to `reckless`, which is not one of its choices"
+    ));
+    assert!(has(&findings(Broken::FieldUnlabelled), "the connection field `host` needs a key, a label and help"));
+}
+
+#[test]
+fn a_secret_never_prints_and_a_profile_never_holds_one() {
+    let engine = Example::new();
+    let live = engine.live().expect("it has a live database");
+    let profile = schema_forge_engine::live::Profile::new(std::collections::BTreeMap::from([(
+        "host".to_string(),
+        "db.example".to_string(),
+    )]));
+    let steps = live.test(&profile, Some(&schema_forge_engine::live::Secret::new("hunter2")));
+    assert_eq!(steps.len(), 5);
+    assert!(steps.iter().all(|s| !s.said.contains("hunter2")));
+    assert!(live.read(&profile, None, &[]).is_err());
+}

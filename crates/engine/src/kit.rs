@@ -90,6 +90,7 @@ pub fn check(engine: &dyn Engine, samples: &Samples<'_>) -> Vec<String> {
     let mut out = Vec::new();
     identity(engine, &mut out);
     declarations(engine, &mut out);
+    live_fields(engine, &mut out);
     types(engine, &mut out);
     portable(engine, &mut out);
     match (engine.read(), samples.files.is_empty()) {
@@ -345,11 +346,12 @@ fn sample_conforms(engine: &dyn Engine, read: &dyn Read, sample: &Sample<'_>, ou
     }
     if !report.adds_up() {
         out.push(format!(
-            "{at}: the report does not add up: {} read, {} modelled, {} kept, {} data",
+            "{at}: the report does not add up: {} read, {} modelled, {} kept, {} data, {} machinery",
             report.read,
             report.modelled,
             report.kept_total(),
-            report.data
+            report.data,
+            report.machinery
         ));
     }
     if schema.engine.id != engine.id() {
@@ -820,5 +822,28 @@ fn portable(engine: &dyn Engine, out: &mut Vec<String>) {
                 Err(e) => out.push(format!("`{}` does not map to Arrow in version `{}`: {e}", t.example, v.id)),
             }
         }
+    }
+}
+
+/// A live part's connection fields: named, labelled, each key once, and at most one secret.
+fn live_fields(engine: &dyn Engine, out: &mut Vec<String>) {
+    use crate::live::FieldKind;
+    let Some(live) = engine.live() else { return };
+    let mut keys = HashSet::new();
+    for f in live.fields() {
+        if !keys.insert(f.key) {
+            out.push(format!("the connection field `{}` is declared twice", f.key));
+        }
+        if f.key.trim().is_empty() || f.label.trim().is_empty() || f.help.trim().is_empty() {
+            out.push(format!("the connection field `{}` needs a key, a label and help", f.key));
+        }
+        if let (FieldKind::OneOf(words), Some(d)) = (f.kind, f.default)
+            && !words.contains(&d)
+        {
+            out.push(format!("the connection field `{}` defaults to `{d}`, which is not one of its choices", f.key));
+        }
+    }
+    if live.fields().iter().filter(|f| f.kind == FieldKind::Secret).count() > 1 {
+        out.push("a connection has more than one secret field".to_string());
     }
 }

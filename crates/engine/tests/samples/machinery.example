@@ -1,0 +1,5 @@
+example 2
+set mode fast
+table sales orders
+column id int not-null
+set mode safe

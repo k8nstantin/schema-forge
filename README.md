@@ -36,8 +36,9 @@ the agent's and the architect's, is checked against **rules**: the team's design
 - **CDC as a goal.** Say what a schema has to do ("feed it by CDC", "land PostgreSQL in Iceberg") and Schema Forge
   shows the gap: keys Debezium can follow, identifier fields, merge-on-read, source positions, types Debezium carries
   well.
-- **Starts from what exists.** It reads `pg_dump` files and Iceberg's Spark SQL today (`mysqldump` and Iceberg table
-  metadata are being added), and keeps exactly as written whatever it does not model.
+- **Starts from what exists.** It reads `mysqldump` files, hand-written DDL and the live MySQL database (the
+  prototype also read `pg_dump` files and Iceberg's Spark SQL, which come back as their engines are rebuilt), and keeps
+  exactly as written whatever it does not model.
 
 ## Who it is for
 
@@ -134,9 +135,10 @@ verification, reading pg_dumps and Iceberg Spark SQL, and writing PostgreSQL and
 
 **The product is being rebuilt now**, in the open, on the design in [docs/engines.md](docs/engines.md): every
 database a plugin, Apache DataFusion at the center, the architecture checked by CI. Built so far: the model, the
-engine interface with its registry and conformance kit, and the architecture check. Next, in order: the layout every
-engine fills; the PostgreSQL, Iceberg and MySQL engines; the DataFusion layer; the store, the operations and the
-rules; the server and the MCP; the canvas. Then schema management: drift against live databases, and migrations
+engine interface with its registry and conformance kit, the layout every engine fills, the architecture check, and
+the first engine, [MySQL](engines/mysql/README.md): dumps, DDL and the live database read, every kind of object and
+clause, written back in a form that loads into MySQL 8.0 to 26.10. Next, in order: the PostgreSQL and Iceberg engines;
+the DataFusion layer; the store, the operations and the rules; the server and the MCP; connections; the canvas. Then schema management: drift against live databases, and migrations
 checked before they run. Follow it in the [Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7)
 milestone.
 

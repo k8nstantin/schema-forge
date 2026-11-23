@@ -4,7 +4,7 @@ resolver = "3"
 # joins the members with its first crate (cargo refuses a pattern that matches nothing).
 # Every crate declares its role in `[package.metadata.schema-forge]`; tools/architecture fails the build when the
 # roles depend on each other in a way docs/engines.md does not allow, or a database is named outside its engine.
-members = ["crates/*", "tools/*"]
+members = ["crates/*", "engines/*", "tools/*"]
 
 [workspace.package]
 version = "0.2.0"
@@ -19,3 +19,6 @@ serde_json = { version = "1.0.154", features = ["preserve_order"] }
 # The portable types every engine maps to: Apache Arrow's, the vocabulary DataFusion speaks. Kept to the Arrow version
 # the DataFusion layer uses.
 arrow-schema = "59.3.2"
+# The SQL parser DataFusion is built on. Each SQL engine uses it directly, with its own dialect; engines share no SQL
+# code with each other.
+sqlparser = { version = "0.64.0", default-features = false, features = ["std", "visitor"] }
