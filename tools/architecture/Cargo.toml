@@ -12,3 +12,9 @@ role = "tool"
 
 [dependencies]
 serde_json.workspace = true
+
+[dev-dependencies]
+# The vocabulary every engine declares (its connection fields, kinds and options), Quill's among them, so the
+# shared-code check knows each engine's words without any of them written here.
+schema-forge-engine = { path = "../../crates/engine" }
+schema-forge-engines = { path = "../../crates/engines", features = ["test-engines"] }

@@ -162,7 +162,7 @@ through its Arrow mapping.
 | `schema-forge-engine` | `crates/engine` | interface | the trait, the section layout, the option schema, the Arrow mapping, the registry, the conformance kit |
 | `schema-forge-postgres`, `-mysql`, `-iceberg` | `engines/<database>` | engine | the engines, each with its add-on trait and bundled add-ons |
 | `schema-forge-quill` | `engines/quill` | engine | Quill, a made-up database built unlike the real ones: the conformance kit's own proof, and the engine every app and canvas test runs beside them; shipped in no build |
-| `schema-forge-engines` | `crates/engines` | registry | the engines Schema Forge ships with, registered; with its `quill` feature, Quill too, for tests |
+| `schema-forge-engines` | `crates/engines` | registry | the engines Schema Forge ships with, registered; with its `test-engines` feature, Quill too, for tests |
 | `schema-forge-query` | `crates/query` | app | the DataFusion layer: a schema as a DataFusion catalog, planned views, lineage, Arrow-type compatibility, live sources |
 | `schema-forge-store`, `-ops`, `-rules`, `-serve`, `-mcp`, `-cli` | `crates/…` | app | they ask the registry, never one engine |
 | `schema-forge-architecture` | `tools/architecture` | tool | the design, checked on the code |

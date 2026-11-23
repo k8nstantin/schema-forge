@@ -20,7 +20,9 @@ cargo clippy --workspace --all-targets --all-features --quiet -- -D warnings
 
 step "Rust: tests, the conformance kit and the architecture check"
 if ! out=$(cargo test --workspace --all-features 2>&1); then
-    grep -E 'FAILED|panicked|error|failures:|^----' <<<"$out" | head -80
+    # Each failing test's own output, whole: what broke and where.
+    awk '/^---- .* stdout ----$/,/^failures:$/' <<<"$out" | head -120
+    grep -E '^error' <<<"$out" | head -20
     exit 1
 fi
 grep -c '^test result: ok' <<<"$out" | xargs printf '%s test binaries passed\n'
@@ -32,7 +34,8 @@ if [[ -f canvas/package.json ]]; then
     (cd canvas && npm run --silent build)
     if [[ -f canvas/playwright.config.ts ]] && ! $quick; then
         step "Canvas: browser tests, every engine"
-        (cd canvas && npm run --silent e2e)
+        # CI installs the browser's system libraries too; a developer's machine has them.
+        (cd canvas && npx playwright install ${CI:+--with-deps} chromium >/dev/null && npm run --silent e2e)
     fi
 fi
 

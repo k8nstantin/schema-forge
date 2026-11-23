@@ -365,6 +365,141 @@ pub fn files(dir: &Path) -> Vec<(PathBuf, String)> {
     out
 }
 
+/// What one engine's people and data call things, gathered from what every engine declares: its connection field
+/// keys, its kind ids and its option keys. Shared code (the apps and the canvas) shows what an engine sends and never
+/// names one of these: a connection's `host`, a kind `trigger`, an option `charset` are the engine's business.
+#[derive(Debug, Clone, Default)]
+pub struct Vocabulary {
+    /// Each word, and whose it is (`mysql connection field`).
+    pub words: Vec<(String, String)>,
+    /// Field names of the API's own types (`canvas/src/api/types.ts`): shared code reads these as members, and a word
+    /// that is also one (`table`, `trigger`) is the API's, not the engine's, when read as a member.
+    pub api_fields: Vec<String>,
+}
+
+/// The words the languages themselves use as values (`typeof x === 'function'`): never an engine's word in code.
+const LANGUAGE_WORDS: &[&str] = &["function", "object", "string", "number", "boolean", "undefined", "symbol", "bigint"];
+
+/// The field names declared in TypeScript type text: `name: …` and `name?: …` inside `{ … }`.
+#[must_use]
+pub fn api_fields(types_ts: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for part in types_ts.split(['{', ',', ';', '\n']) {
+        let part = part.trim();
+        if let Some((name, _)) = part.split_once(':') {
+            let name = name.trim().trim_end_matches('?');
+            if !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+                out.push(name.to_string());
+            }
+        }
+    }
+    out.sort_unstable();
+    out.dedup();
+    out
+}
+
+/// Where `text` (a file of shared code) names an engine's word: as a whole string literal (`"host"`, `'trigger'`,
+/// `` `charset` ``), or read as a member (`.host`, `?.host`, `["host"]`) when the API has no field of that name.
+/// Comment lines are not code and are not read.
+#[must_use]
+pub fn vocabulary_in(text: &str, vocabulary: &Vocabulary) -> Vec<(usize, String, String)> {
+    let mut out = Vec::new();
+    for (i, line) in text.lines().enumerate() {
+        let code = line.trim_start();
+        if code.starts_with("//") || code.starts_with('*') || code.starts_with("/*") {
+            continue;
+        }
+        for (word, whose) in &vocabulary.words {
+            if LANGUAGE_WORDS.contains(&word.as_str()) {
+                continue;
+            }
+            let literal = literals(line, word).any(|key| !(key && vocabulary.api_fields.contains(word)));
+            let member = !vocabulary.api_fields.contains(word) && members(line).any(|m| m == word);
+            if literal || member {
+                out.push((i + 1, word.clone(), whose.clone()));
+            }
+        }
+    }
+    out
+}
+
+/// Each place `word` is a whole string literal on `line`, and whether it is in key position there: a key of an object
+/// (`"engine": …`) or an index (`row["table"]`), where an API field is named as the API's, not an engine's.
+fn literals<'a>(line: &'a str, word: &'a str) -> impl Iterator<Item = bool> + 'a {
+    ['"', '\'', '`'].into_iter().flat_map(move |q| {
+        let quoted = format!("{q}{word}{q}");
+        line.match_indices(&quoted)
+            .map(|(i, m)| {
+                let before = line[..i].trim_end().chars().next_back();
+                let after = line[i + m.len()..].trim_start().chars().next();
+                before == Some('[') || after == Some(':')
+            })
+            .collect::<Vec<_>>()
+    })
+}
+
+/// The names read as members on `line`: after `.` or `?.`, not after `..`.
+fn members(line: &str) -> impl Iterator<Item = &str> {
+    line.match_indices('.').filter_map(move |(i, _)| {
+        if line[..i].ends_with('.') {
+            return None;
+        }
+        let rest = &line[i + 1..];
+        let end = rest.find(|c: char| !c.is_ascii_alphanumeric() && c != '_').unwrap_or(rest.len());
+        (end > 0 && !rest.starts_with(|c: char| c.is_ascii_digit())).then(|| &rest[..end])
+    })
+}
+
+/// The canvas's own code, as (path, text): every TypeScript, style and page file under `canvas/`, but its built
+/// output, its packages, its generated API types and its browser tests (which drive each engine by name, as an
+/// engine's own tests do).
+#[must_use]
+pub fn canvas_files(canvas: &Path) -> Vec<(PathBuf, String)> {
+    let mut out = Vec::new();
+    let mut stack = vec![canvas.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&d) else { continue };
+        for e in entries.flatten() {
+            let path = e.path();
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+            if path.is_dir() {
+                if !matches!(name, "node_modules" | "dist" | "e2e" | "test-results" | "playwright-report") {
+                    stack.push(path);
+                }
+            } else if name != "types.ts"
+                && path.extension().and_then(|x| x.to_str()).is_some_and(|x| matches!(x, "ts" | "tsx" | "css" | "html"))
+                && let Ok(text) = std::fs::read_to_string(&path)
+            {
+                out.push((path, text));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// Every breach in the shared code's `files`: a database named (`databases`, the engines' ids among them), or an
+/// engine's word used (`vocabulary`).
+#[must_use]
+pub fn shared_code(files: &[(PathBuf, String)], databases: &[String], vocabulary: &Vocabulary) -> Vec<Breach> {
+    let mut out = Vec::new();
+    for (path, text) in files {
+        for (line, word) in names(text, databases) {
+            out.push(Breach(format!(
+                "{}:{line}: names the database `{word}`; that belongs in its engine",
+                path.display()
+            )));
+        }
+        for (line, word, whose) in vocabulary_in(text, vocabulary) {
+            out.push(Breach(format!(
+                "{}:{line}: names `{word}`, a {whose}; shared code shows what an engine declares and never names it",
+                path.display()
+            )));
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -541,6 +676,51 @@ mod tests {
         );
         assert_eq!(found("let iceberg3 = PgDump::new(); Iceberg3Table"), ["iceberg", "pgdump", "iceberg"]);
         assert_eq!(found("upgrade frompg toiceberg"), Vec::<String>::new(), "a lowercase run is one word");
+    }
+
+    fn vocab() -> Vocabulary {
+        Vocabulary {
+            words: vec![
+                ("host".into(), "mysql connection field".into()),
+                ("trigger".into(), "mysql kind".into()),
+                ("function".into(), "mysql kind".into()),
+            ],
+            api_fields: vec!["trigger".into(), "name".into()],
+        }
+    }
+
+    #[test]
+    fn shared_code_names_no_engine_word() {
+        let v = vocab();
+        let hits = |t: &str| vocabulary_in(t, &v).into_iter().map(|(_, w, _)| w).collect::<Vec<_>>();
+        assert_eq!(hits("const at = `${v.host}:${v.port}`"), ["host"]);
+        assert_eq!(hits("const at = values?.host ?? ''"), ["host"]);
+        assert_eq!(hits("if (o.kind === 'trigger') return"), ["trigger"]);
+        assert_eq!(hits("let h = values[\"host\"];"), ["host"]);
+        assert_eq!(hits("const v = { host: x, 'host': y }"), ["host"]);
+        // An API field named as a key or an index is the API's; as a value, it is still the engine's word.
+        assert!(hits("let t = o[\"trigger\"]; let b = json!({ \"trigger\": 1 });").is_empty());
+        assert_eq!(hits("if (o.kind === \"trigger\") {}"), ["trigger"]);
+        // The API's own member, the language's own word, a comment and a longer word are not the engine's.
+        assert!(hits("const t = o.trigger?.on").is_empty());
+        assert!(hits("if (typeof f === 'function') f()").is_empty());
+        assert!(hits("// the host is the engine's").is_empty());
+        assert!(hits("const hostname = 'hosting'").is_empty());
+    }
+
+    #[test]
+    fn the_api_fields_are_read_from_its_types() {
+        let ts =
+            "export type Field = { key: string, label?: string, kind: FieldKind, };\nexport type A = { trigger?: B, };";
+        assert_eq!(api_fields(ts), ["key", "kind", "label", "trigger"]);
+    }
+
+    #[test]
+    fn shared_code_names_no_database() {
+        let files = vec![(PathBuf::from("canvas/src/a.tsx"), "const label = 'MySQL 8.4'".to_string())];
+        let b = shared_code(&files, &["mysql".to_string()], &Vocabulary::default());
+        assert_eq!(b.len(), 1, "{b:?}");
+        assert!(b[0].0.contains("names the database `mysql`"), "{b:?}");
     }
 
     #[test]

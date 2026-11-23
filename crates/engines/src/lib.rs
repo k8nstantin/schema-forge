@@ -11,7 +11,7 @@ pub fn registry() -> Registry {
 
 /// Every engine this build ships, and Quill: the made-up database built unlike the real ones, so a test of shared
 /// code that runs on every engine here fails wherever that code names one engine's vocabulary.
-#[cfg(feature = "quill")]
+#[cfg(feature = "test-engines")]
 #[must_use]
 pub fn for_tests() -> Registry {
     registry().with(schema_forge_quill::Quill::new())
@@ -25,7 +25,7 @@ mod tests {
         assert_eq!(ids, ["mysql"]);
     }
 
-    #[cfg(feature = "quill")]
+    #[cfg(feature = "test-engines")]
     #[test]
     fn tests_also_have_quill() {
         let ids: Vec<&str> = super::for_tests().all().map(schema_forge_engine::Engine::id).collect();

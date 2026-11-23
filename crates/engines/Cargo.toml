@@ -11,8 +11,8 @@ repository.workspace = true
 role = "registry"
 
 [features]
-# Quill, the made-up database every app and canvas test runs beside the real engines. Tests only: no build ships it.
-quill = ["dep:schema-forge-quill"]
+# The made-up engine every app and canvas test runs beside the real ones (Quill). Tests only: no build ships it.
+test-engines = ["dep:schema-forge-quill"]
 
 [dependencies]
 schema-forge-engine = { path = "../engine" }

@@ -25,6 +25,16 @@ Read [docs/engines.md](docs/engines.md): every decision behind the design, and w
   types, its build and its browser tests on every engine. Nothing is done until it passes. The tests include the
   **architecture check** (`tools/architecture`): it fails the build when a crate depends the wrong way, a database is
   named outside its engine, or engines share code.
+- **Shared code (the server, the command line, the canvas) never assumes an engine.** It shows what an engine
+  declares, through docs/api.md, and names no database and no engine's word (a connection field, a kind, an option):
+  the architecture check reads every engine's declarations and fails on any of them in shared code. Every test of
+  shared code runs on every engine of the test registry (`schema_forge_engines::for_tests`): the shipped ones and
+  Quill (`engines/quill`), a made-up database built unlike them, so an assumption about one fails on the other. What
+  each engine is tested on is data (`crates/serve/tests/fixtures/engines.json`), never code.
+- **The API is written down before it is built** (docs/api.md). The server answers exactly the routes it lists, and
+  the canvas's TypeScript is generated from the server's types (`canvas/src/api/types.ts`), so the two never drift.
+- **A flow is written as a browser test before its screen** (`canvas/e2e/`), on every engine; a flow still marked
+  `fixme` is one the canvas does not do yet.
 - New code follows the code around it: plain names, documentation in full sentences, no dead code, nothing hardcoded
   that should be data.
 - Public data types are `#[non_exhaustive]` with constructors, so the interface grows without breaking anyone.

@@ -1,0 +1,19 @@
+{
+  "_about": "What each engine's run of tests/every_engine.rs reads: a sample file, and, where its live database needs no service, a connection. Data, so the test code names no engine. Paths are from the repository's root.",
+  "mysql": {
+    "file": "engines/mysql/tests/samples/shop/shop8.4.sql"
+  },
+  "quill": {
+    "file": "engines/quill/tests/samples/shop.quill",
+    "live": {
+      "values": {
+        "endpoint": "engines/quill/tests/samples/shop.quill",
+        "mode": "safe"
+      },
+      "secret": "open-quill",
+      "which": [
+        "sales"
+      ]
+    }
+  }
+}

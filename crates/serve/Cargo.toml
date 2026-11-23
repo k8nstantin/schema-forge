@@ -1,0 +1,37 @@
+[package]
+name = "schema-forge-serve"
+description = "The local server: the workspace, the canvas and its data (docs/api.md), reading schemas in from files and the live database"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.schema-forge]
+role = "app"
+
+[features]
+# The test server, with Quill beside the shipped engines: what the canvas's browser tests run against.
+test-engines = ["schema-forge-engines/test-engines"]
+
+[[bin]]
+name = "schema-forge-test-server"
+path = "src/bin/test_server.rs"
+required-features = ["test-engines"]
+
+[dependencies]
+schema-forge-model = { path = "../model" }
+schema-forge-engine = { path = "../engine" }
+schema-forge-engines = { path = "../engines" }
+serde.workspace = true
+serde_json.workspace = true
+axum = "0.8.9"
+tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "net", "sync"] }
+rust-embed = "8.14.0"
+mime_guess = "2.0.5"
+ts-rs = "12.0.1"
+
+[dev-dependencies]
+schema-forge-engines = { path = "../engines", features = ["test-engines"] }
+tower = { version = "0.5.3", features = ["util"] }
+http-body-util = "0.1"
