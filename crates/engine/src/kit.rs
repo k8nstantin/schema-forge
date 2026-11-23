@@ -91,6 +91,7 @@ pub fn check(engine: &dyn Engine, samples: &Samples<'_>) -> Vec<String> {
     identity(engine, &mut out);
     declarations(engine, &mut out);
     live_fields(engine, &mut out);
+    words(engine, &mut out);
     types(engine, &mut out);
     portable(engine, &mut out);
     match (engine.read(), samples.files.is_empty()) {
@@ -845,5 +846,35 @@ fn live_fields(engine: &dyn Engine, out: &mut Vec<String>) {
     }
     if live.fields().iter().filter(|f| f.kind == FieldKind::Secret).count() > 1 {
         out.push("a connection has more than one secret field".to_string());
+    }
+    // Every field given, the secret one included, as a careless caller might: the summary still never holds it.
+    const SECRET: &str = "kit-secret-never-shown";
+    let values = live
+        .fields()
+        .iter()
+        .map(|f| {
+            let v = match f.kind {
+                FieldKind::Secret => SECRET.to_string(),
+                FieldKind::OneOf(words) => words.first().map_or_else(String::new, |w| (*w).to_string()),
+                FieldKind::Number => "1".to_string(),
+                _ => format!("kit-{}", f.key),
+            };
+            (f.key.to_string(), v)
+        })
+        .collect();
+    let summary = live.summary(&crate::live::Profile::new(values));
+    if summary.contains(SECRET) {
+        out.push("a connection's summary shows its secret".to_string());
+    }
+    if summary.trim().is_empty() {
+        out.push("a connection's summary is empty when every field is given".to_string());
+    }
+}
+
+/// The engine's words: what it calls a namespace, one and many.
+fn words(engine: &dyn Engine, out: &mut Vec<String>) {
+    let w = engine.namespace_word();
+    if w.one.trim().is_empty() || w.many.trim().is_empty() {
+        out.push("its word for a namespace needs a singular and a plural".to_string());
     }
 }

@@ -58,6 +58,8 @@ A new optional part of the engine interface, `Live`:
 - **its connection fields**, as data: key, label, kind (text, number, one of a list, secret), default, help, required;
   so the Connections page and the agent's tools are built from them, and a new engine's connection form needs no
   canvas code;
+- **`summary(profile) -> text`**: where a connection points, for the list (`reader@db.internal:3306 · sales`), never
+  the secret, so the canvas shows a connection without knowing any engine's fields;
 - **`test(profile, secret) -> steps`**: the five steps above, each passed or failed with what happened;
 - **`read(profile, secret, which) -> the schema and its report`**: read-only, every object the engine models, with
   the report adding up exactly as a file read's does; `which` names the databases (or namespaces) to read.

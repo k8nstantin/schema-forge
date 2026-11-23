@@ -47,8 +47,12 @@ impl Engine for YourDb {
     fn name(&self) -> &'static str { "YourDB" }        // as people say it
     fn versions(&self) -> &[Version] { VERSIONS }      // oldest first
     fn types(&self) -> &dyn Types { self }
+    fn namespace_word(&self) -> Noun { Noun::new("database", "databases") }  // what your people call a namespace
 }
 ```
+
+The canvas and the agent say your words: a namespace is a `database` in one engine and a `schema` in another, and the
+shared code never decides which.
 
 Every feature of your engine says the version it came in (`Availability::since("4")`) and, if one took it away,
 the version that did. A schema is designed for one version and is offered exactly that version's features. When your
@@ -177,6 +181,9 @@ What the first engine learned, which yours will meet too:
 
 - **`fields()`**: what a connection needs, as data (`Field::new(key, label, kind, help)`, `.required()`,
   `.default(…)`), at most one of them the secret. The Connections page and the agent's tools are built from them.
+- **`summary(profile)`**: where a connection points, in a line people recognise (`reader@db.internal:3306 · sales`),
+  never the secret, whatever the profile holds; the Connections page lists connections by it. The default lists the
+  values of the fields that are not secret; the kit checks it never shows the secret.
 - **`test(profile, secret)`**: the five steps, in order, each passed, warned, failed or skipped with what happened:
   reach, secure, sign in, version, rights. Stop at the first that fails and skip the rest; a warning (TLS not
   checked, an account that can change things) lets the rest run.

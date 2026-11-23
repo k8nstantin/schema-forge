@@ -33,7 +33,7 @@ use schema_forge_engine::live::{Field, Live, Profile, Secret, Step};
 use schema_forge_engine::options::OptionSpec;
 use schema_forge_engine::portable::{ArrowType, Mapped, Portable};
 use schema_forge_engine::{
-    Checks, Engine, Imported, Input, Parsed, Queries, Read, TypeError, TypeGroup, TypeSpec, Types, Version, Write,
+    Checks, Engine, Imported, Input, Noun, Parsed, Queries, Read, TypeError, TypeGroup, TypeSpec, Types, Version, Write,
 };
 use schema_forge_model::{Id, Problem, Schema};
 
@@ -95,6 +95,11 @@ impl Engine for Mysql {
         self
     }
 
+    /// MySQL's namespace is a database (`CREATE SCHEMA` is a synonym).
+    fn namespace_word(&self) -> Noun {
+        Noun::new("database", "databases")
+    }
+
     fn kinds(&self) -> &[ObjectKind] {
         kinds::KINDS
     }
@@ -131,6 +136,22 @@ impl Engine for Mysql {
 impl Live for Mysql {
     fn fields(&self) -> &[Field] {
         live::FIELDS
+    }
+
+    /// `reader@db.internal:3306 · sales, billing`: never the password.
+    fn summary(&self, profile: &Profile) -> String {
+        let get = |k: &str| profile.get(k, live::FIELDS).unwrap_or_default();
+        let user = get("user");
+        let at = format!(
+            "{}{}:{}",
+            if user.is_empty() { String::new() } else { format!("{user}@") },
+            get("host"),
+            get("port")
+        );
+        match get("databases") {
+            "" => at,
+            dbs => format!("{at} · {dbs}"),
+        }
     }
 
     fn test(&self, profile: &Profile, secret: Option<&Secret>) -> Vec<Step> {

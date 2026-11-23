@@ -26,6 +26,22 @@ pub use registry::Registry;
 pub use types::{Parsed, TypeError, TypeGroup, TypeSpec, Types};
 pub use version::{Availability, Version};
 
+/// A word as people say it, one and many (`database`, `databases`): how an engine names a part of its schemas, so
+/// the canvas says what the engine's people say and names no database itself.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Noun {
+    pub one: &'static str,
+    pub many: &'static str,
+}
+
+impl Noun {
+    #[must_use]
+    pub const fn new(one: &'static str, many: &'static str) -> Self {
+        Self { one, many }
+    }
+}
+
 use schema_forge_model::{Id, Problem, Schema};
 
 /// A database Schema Forge designs for.
@@ -47,6 +63,11 @@ pub trait Engine: Send + Sync {
 
     /// Its types.
     fn types(&self) -> &dyn Types;
+
+    /// What its people call a namespace (`database`, `schema`): the word the canvas and the agent use for it.
+    fn namespace_word(&self) -> Noun {
+        Noun::new("namespace", "namespaces")
+    }
 
     /// Its kinds of object, and the slots of the section layout each uses. An object of a kind it does not declare,
     /// or a slot its kind does not use, is refused.

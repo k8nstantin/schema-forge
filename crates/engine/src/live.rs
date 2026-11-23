@@ -155,6 +155,19 @@ pub trait Live: Send + Sync {
     /// The fields a connection needs, in the order the Connections page shows them.
     fn fields(&self) -> &[Field];
 
+    /// Where a connection points, in a line people recognise (`reader@db.internal:3306 · sales, billing`): never the
+    /// secret, whatever the profile holds. The default lists the values of the fields that are not secret, in the
+    /// order they are declared.
+    fn summary(&self, profile: &Profile) -> String {
+        let fields = self.fields();
+        fields
+            .iter()
+            .filter(|f| f.kind != FieldKind::Secret)
+            .filter_map(|f| profile.values.get(f.key).filter(|v| !v.trim().is_empty()).map(|v| v.trim().to_string()))
+            .collect::<Vec<_>>()
+            .join(" · ")
+    }
+
     /// Tests a connection, every step in order, and stops at the first that fails (the rest skipped).
     fn test(&self, profile: &Profile, secret: Option<&Secret>) -> Vec<Step>;
 
@@ -175,6 +188,34 @@ mod tests {
         let s = Secret::new("hunter2");
         assert_eq!(format!("{s:?}"), "Secret(…)");
         assert_eq!(s.expose(), "hunter2");
+    }
+
+    struct Two;
+    const TWO: &[Field] = &[
+        Field::new("place", "Place", FieldKind::Text, "Where").required(),
+        Field::new("key", "Key", FieldKind::Secret, "The key"),
+        Field::new("shelf", "Shelf", FieldKind::Text, "Which shelf"),
+    ];
+    impl Live for Two {
+        fn fields(&self) -> &[Field] {
+            TWO
+        }
+        fn test(&self, _: &Profile, _: Option<&Secret>) -> Vec<Step> {
+            Vec::new()
+        }
+        fn read(&self, _: &Profile, _: Option<&Secret>, _: &[String]) -> Result<Imported, String> {
+            Err("none".into())
+        }
+    }
+
+    #[test]
+    fn the_default_summary_never_holds_the_secret() {
+        let p = Profile::new(BTreeMap::from([
+            ("place".to_string(), "far".to_string()),
+            ("key".to_string(), "hunter2".to_string()),
+            ("shelf".to_string(), "top".to_string()),
+        ]));
+        assert_eq!(Two.summary(&p), "far · top");
     }
 
     #[test]

@@ -379,3 +379,15 @@ fn lending(version: &str) {
         "the BEFORE INSERT trigger refuses a second loan"
     );
 }
+
+#[test]
+fn a_summary_says_where_it_points_and_never_the_password() {
+    let profile = Profile::new(BTreeMap::from([
+        ("host".to_string(), "db.internal".to_string()),
+        ("user".to_string(), "reader".to_string()),
+        ("password".to_string(), "hunter2".to_string()),
+        ("databases".to_string(), "sales, billing".to_string()),
+    ]));
+    let summary = Mysql::new().live().expect("live").summary(&profile);
+    assert_eq!(summary, "reader@db.internal:3306 · sales, billing");
+}
