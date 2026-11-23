@@ -1,15 +1,14 @@
-//! The interface, the registry and the conformance kit, on the made-up `example` engine.
-
-mod example;
+//! The interface, the registry and the conformance kit, on Quill: the kit passes it whole, and finds each way a broken
+//! copy of it goes wrong.
 
 use std::path::Path;
 
-use example::{Broken, Example};
 use schema_forge_engine::kit::{self, QuerySample, Sample, Samples};
 use schema_forge_engine::{Engine, Offered, Registry, TypeError, Unread};
 use schema_forge_model::Schema;
+use schema_forge_quill::{Broken, Quill};
 
-const SHOP: &str = "tests/samples/shop.example";
+const SHOP: &str = "tests/samples/shop.quill";
 
 fn shop() -> &'static Path {
     Path::new(SHOP)
@@ -24,8 +23,8 @@ const QUERIES: &[QuerySample<'static>] = &[QuerySample::new(
     &[&["sales", "orders"], &["sales", "customers"]],
 )];
 
-/// What `example` is checked on: its shop, written back, and a query.
-fn check(engine: &Example) -> Vec<String> {
+/// What Quill is checked on: its shop, written back, and a query.
+fn check(engine: &Quill) -> Vec<String> {
     let files = files();
     kit::check(engine, &Samples::new(&files, QUERIES))
 }
@@ -33,12 +32,12 @@ fn check(engine: &Example) -> Vec<String> {
 #[test]
 fn a_conforming_engine_passes_the_kit() {
     let files = files();
-    kit::assert_conforms(&Example::new(), &Samples::new(&files, QUERIES));
+    kit::assert_conforms(&Quill::new(), &Samples::new(&files, QUERIES));
 }
 
 /// The kit's findings for a broken copy of the engine.
 fn findings(broken: Broken) -> Vec<String> {
-    check(&Example::broken(broken))
+    check(&Quill::broken(broken))
 }
 
 fn has(findings: &[String], text: &str) -> bool {
@@ -125,7 +124,7 @@ fn the_kit_finds_a_report_that_does_not_say_what_it_counts() {
 fn the_kit_finds_a_writer_no_sample_exercises() {
     let files = [Sample::read_only(shop())];
     assert_eq!(
-        kit::check(&Example::new(), &Samples::new(&files, QUERIES)),
+        kit::check(&Quill::new(), &Samples::new(&files, QUERIES)),
         ["it writes, but no sample is in the form it writes (`Sample::written_back`)"]
     );
 }
@@ -156,11 +155,11 @@ fn the_kit_finds_a_trigger_on_a_table_that_is_not_there() {
 
 #[test]
 fn a_trigger_is_an_object_on_its_table() {
-    let e = Example::new();
-    let registry = Registry::new().with(Example::new());
+    let e = Quill::new();
+    let registry = Registry::new().with(Quill::new());
     let (_, input) = registry.reader_of(shop()).expect("a reader");
     let s = e.read().expect("it reads").read(&input).expect("it reads").schema;
-    let touch = s.objects.iter().find(|o| o.kind == "trigger").expect("the trigger");
+    let touch = s.objects.iter().find(|o| o.kind == schema_forge_quill::HOOK).expect("the trigger");
     let section: schema_forge_engine::sections::ObjectSection =
         schema_forge_engine::sections::read(&touch.engine).expect("in the layout");
     let t = section.trigger.expect("a trigger");
@@ -177,7 +176,7 @@ fn the_kit_finds_an_object_of_a_kind_the_engine_does_not_declare() {
 #[test]
 fn the_kit_finds_a_slot_its_kind_does_not_use() {
     let f = findings(Broken::WrongSlot);
-    assert!(has(&f, "`customers` is a `table`, which does not use the slot Query"), "{f:?}");
+    assert!(has(&f, "`customers` is a `record`, which does not use the slot Query"), "{f:?}");
 }
 
 #[test]
@@ -217,7 +216,7 @@ fn the_kit_finds_an_option_the_engine_does_not_declare() {
 
 #[test]
 fn an_engine_that_writes_and_does_not_read_can_conform() {
-    assert_eq!(kit::check(&Example::broken(Broken::NoReader), &Samples::new(&[], QUERIES)), Vec::<String>::new());
+    assert_eq!(kit::check(&Quill::broken(Broken::NoReader), &Samples::new(&[], QUERIES)), Vec::<String>::new());
 }
 
 #[test]
@@ -230,7 +229,7 @@ fn a_type_says_the_version_its_catalog_says_even_one_the_engine_lacks() {
 #[test]
 fn every_part_the_engine_has_needs_samples() {
     assert_eq!(
-        kit::check(&Example::new(), &Samples::default()),
+        kit::check(&Quill::new(), &Samples::default()),
         [
             "it reads files, but no sample file is given",
             "it writes, but no sample is in the form it writes (`Sample::written_back`)",
@@ -241,7 +240,7 @@ fn every_part_the_engine_has_needs_samples() {
 
 #[test]
 fn a_schema_is_offered_the_types_of_its_version() {
-    let e = Example::new();
+    let e = Quill::new();
     let names = |v: &str| e.types_in(v).iter().map(|t| t.name).collect::<Vec<_>>();
     assert_eq!(names("1"), ["int", "decimal(P,S)", "text"]);
     assert_eq!(names("2"), ["int", "decimal(P,S)", "text", "wide"]);
@@ -254,10 +253,10 @@ fn a_schema_is_offered_the_types_of_its_version() {
 
 #[test]
 fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place() {
-    let e = Example::new();
-    let registry = Registry::new().with(Example::new());
+    let e = Quill::new();
+    let registry = Registry::new().with(Quill::new());
     let (engine, input) = registry.reader_of(shop()).expect("a reader");
-    assert_eq!(engine.id(), "example");
+    assert_eq!(engine.id(), "quill");
     let read = e.read().expect("it reads").read(&input).expect("it reads");
     let r = &read.report;
     assert_eq!((r.read, r.modelled, r.kept_total(), r.data), (12, 9, 3, 0));
@@ -272,11 +271,11 @@ fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place
     );
     assert!(r.to_string().starts_with("12 non-blank lines read\n  modelled: 9\n  kept as written: 3\n"), "{r}");
     let s = &read.schema;
-    assert_eq!((s.engine.id.as_str(), s.engine.version.as_str()), ("example", "2"));
+    assert_eq!((s.engine.id.as_str(), s.engine.version.as_str()), ("quill", "2"));
     let write = e.write().expect("it writes");
     assert_eq!(
         write.schema(s).expect("it writes"),
-        "example 2\n-- the shop's tables\ntable sales customers\ncolumn id int not-null\ncolumn name text null\n\
+        "quill 2\n-- the shop's tables\ntable sales customers\ncolumn id int not-null\ncolumn name text null\n\
          -- customers come from the web shop\ntable sales orders fast\ncolumn id int not-null\n\
          -- totals are in the shop's currency\ncolumn total decimal(10,2) null\ncolumn note wide null\n\
          trigger sales orders_touch before insert on orders: set new.placed = now()\n"
@@ -292,36 +291,33 @@ fn reading_accounts_for_every_entry_and_writing_puts_kept_text_back_in_its_place
 
 #[test]
 fn the_registry_finds_the_schemas_engine() {
-    let r = Registry::new().with(Example::new());
-    assert_eq!(r.of(&Schema::new("example", "2")).map(Engine::id), Ok("example"));
+    let r = Registry::new().with(Quill::new());
+    assert_eq!(r.of(&Schema::new("quill", "2")).map(Engine::id), Ok("quill"));
     assert_eq!(
         r.of(&Schema::new("elsewhere", "1")).map(Engine::id),
-        Err("the schema is for `elsewhere`, which this build has no engine for (it has example)".to_string())
+        Err("the schema is for `elsewhere`, which this build has no engine for (it has quill)".to_string())
     );
-    assert_eq!(r.all().map(Engine::id).collect::<Vec<_>>(), ["example"]);
+    assert_eq!(r.all().map(Engine::id).collect::<Vec<_>>(), ["quill"]);
     assert!(r.get("elsewhere").is_none());
 }
 
 #[test]
-#[should_panic(expected = "the engine `example` is registered twice")]
+#[should_panic(expected = "the engine `quill` is registered twice")]
 fn one_database_is_one_engine() {
-    let _ = Registry::new().with(Example::new()).with(Example::new());
+    let _ = Registry::new().with(Quill::new()).with(Quill::new());
 }
 
 #[test]
 fn the_reader_is_the_one_engine_that_recognises_the_input() {
-    let r = Registry::new().with(Example::new());
+    let r = Registry::new().with(Quill::new());
     let err = r.reader_of(Path::new("tests/samples/other.txt")).map(|(e, _)| e.id()).unwrap_err();
     assert!(
-        err.ends_with("no engine recognises it; say which engine it is for. Read here: Example (example files)"),
+        err.ends_with("no engine recognises it; say which engine it is for. Read here: Quill (Quill files)"),
         "{err}"
     );
-    let two = Registry::new().with(Example::new()).with(Example { id: "copy", broken: Broken::Nothing });
+    let two = Registry::new().with(Quill::new()).with(Quill { id: "copy", broken: Broken::Nothing });
     let err = two.reader_of(shop()).map(|(e, _)| e.id()).unwrap_err();
-    assert!(
-        err.ends_with("more than one engine recognises it (Example, Example); say which engine it is for"),
-        "{err}"
-    );
+    assert!(err.ends_with("more than one engine recognises it (Quill, Quill); say which engine it is for"), "{err}");
     assert!(r.reader_of(Path::new("tests/samples/missing")).is_err());
     let folder = r.reader_of(Path::new("tests/samples")).map(|(e, _)| e.id()).unwrap_err();
     assert!(folder.contains("no engine recognises it"), "a folder this engine does not read: {folder}");
@@ -329,33 +325,64 @@ fn the_reader_is_the_one_engine_that_recognises_the_input() {
 
 #[test]
 fn the_kit_finds_machinery_left_out_of_the_report() {
-    let files = [Sample::written_back(shop()), Sample::read_only(Path::new("tests/samples/machinery.example"))];
-    kit::assert_conforms(&Example::new(), &Samples::new(&files, QUERIES));
-    let f = kit::check(&Example::broken(Broken::MachineryUncounted), &Samples::new(&files, QUERIES));
+    let files = [Sample::written_back(shop()), Sample::read_only(Path::new("tests/samples/machinery.quill"))];
+    kit::assert_conforms(&Quill::new(), &Samples::new(&files, QUERIES));
+    let f = kit::check(&Quill::broken(Broken::MachineryUncounted), &Samples::new(&files, QUERIES));
     assert!(has(&f, "the report does not add up: 5 read, 3 modelled, 0 kept, 0 data, 0 machinery"), "{f:?}");
 }
 
 #[test]
 fn the_kit_finds_connection_fields_that_are_wrong() {
-    assert!(has(&findings(Broken::FieldTwice), "the connection field `host` is declared twice"));
+    assert!(has(&findings(Broken::FieldTwice), "the connection field `endpoint` is declared twice"));
     assert!(has(&findings(Broken::TwoSecrets), "a connection has more than one secret field"));
     assert!(has(
         &findings(Broken::DefaultNotAChoice),
         "the connection field `mode` defaults to `reckless`, which is not one of its choices"
     ));
-    assert!(has(&findings(Broken::FieldUnlabelled), "the connection field `host` needs a key, a label and help"));
+    assert!(has(&findings(Broken::FieldUnlabelled), "the connection field `endpoint` needs a key, a label and help"));
+    assert!(has(&findings(Broken::SummaryLeaks), "a connection's summary shows its secret"));
+    assert!(has(&findings(Broken::NoWords), "its word for a namespace needs a singular and a plural"));
+}
+
+/// A profile at the shop sample, in `mode`.
+fn at_shop(mode: &str) -> schema_forge_engine::live::Profile {
+    schema_forge_engine::live::Profile::new(std::collections::BTreeMap::from([
+        ("endpoint".to_string(), SHOP.to_string()),
+        ("mode".to_string(), mode.to_string()),
+    ]))
+}
+
+fn key(k: &str) -> schema_forge_engine::live::Secret {
+    schema_forge_engine::live::Secret::new(k)
 }
 
 #[test]
-fn a_secret_never_prints_and_a_profile_never_holds_one() {
-    let engine = Example::new();
+fn a_secret_never_prints_and_a_wrong_key_stops_at_sign_in() {
+    use schema_forge_engine::live::{Outcome::*, StepKind::*};
+    let engine = Quill::new();
     let live = engine.live().expect("it has a live database");
-    let profile = schema_forge_engine::live::Profile::new(std::collections::BTreeMap::from([(
-        "host".to_string(),
-        "db.example".to_string(),
-    )]));
-    let steps = live.test(&profile, Some(&schema_forge_engine::live::Secret::new("hunter2")));
-    assert_eq!(steps.len(), 5);
+    let steps = live.test(&at_shop("safe"), Some(&key("hunter2")));
+    let outcomes: Vec<_> = steps.iter().map(|s| (s.step, s.outcome)).collect();
+    assert_eq!(outcomes, [(Reach, Passed), (Secure, Passed), (SignIn, Failed), (Version, Skipped), (Rights, Skipped)]);
     assert!(steps.iter().all(|s| !s.said.contains("hunter2")));
-    assert!(live.read(&profile, None, &[]).is_err());
+    assert!(live.read(&at_shop("safe"), None, &[]).is_err());
+}
+
+#[test]
+fn the_live_database_is_read_as_its_file_is() {
+    use schema_forge_engine::live::Outcome;
+    let engine = Quill::new();
+    let live = engine.live().expect("it has a live database");
+    let steps = live.test(&at_shop("fast"), Some(&key(schema_forge_quill::KEY)));
+    assert!(steps.iter().all(|s| matches!(s.outcome, Outcome::Passed | Outcome::Warning)), "{steps:?}");
+    let live_read = live.read(&at_shop("safe"), Some(&key(schema_forge_quill::KEY)), &[]).expect("read live");
+    let (_, input) = Registry::new().with(Quill::new()).reader_of(shop()).expect("a reader");
+    let file_read = engine.read().expect("it reads").read(&input).expect("read");
+    assert_eq!(live_read.schema, file_read.schema);
+    let one =
+        live.read(&at_shop("safe"), Some(&key(schema_forge_quill::KEY)), &["sales".to_string()]).expect("a shelf");
+    assert!(one.schema.namespaces.iter().all(|n| n.name == "sales"));
+    let none = live.read(&at_shop("safe"), Some(&key(schema_forge_quill::KEY)), &["attic".to_string()]);
+    assert_eq!(none.err().as_deref(), Some("there is no shelf `attic`"));
+    assert_eq!(live.summary(&at_shop("fast")), "shop.quill · fast");
 }

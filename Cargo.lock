@@ -738,6 +738,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "schema-forge-engines"
+version = "0.2.0"
+dependencies = [
+ "schema-forge-engine",
+ "schema-forge-mysql",
+ "schema-forge-quill",
+]
+
+[[package]]
 name = "schema-forge-model"
 version = "0.2.0"
 dependencies = [
@@ -756,6 +765,15 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlparser",
+]
+
+[[package]]
+name = "schema-forge-quill"
+version = "0.2.0"
+dependencies = [
+ "schema-forge-engine",
+ "schema-forge-model",
+ "serde_json",
 ]
 
 [[package]]

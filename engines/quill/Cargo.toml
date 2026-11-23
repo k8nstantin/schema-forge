@@ -1,0 +1,21 @@
+[package]
+name = "schema-forge-quill"
+description = "Quill, a made-up database: the engine every app and canvas test runs beside MySQL, and the conformance kit's own proof"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# Quill is no real database. It is an engine like any other, built to be unlike MySQL in every way the shared code
+# could wrongly assume (its words, its kinds, its connection fields, its versions), so a test that runs the apps and
+# the canvas on both engines fails wherever the shared code names one engine's vocabulary. It ships in no build:
+# the registry adds it for tests only (the `quill` feature of schema-forge-engines).
+[package.metadata.schema-forge]
+role = "engine"
+database = "quill"
+
+[dependencies]
+schema-forge-model = { path = "../../crates/model" }
+schema-forge-engine = { path = "../../crates/engine" }
+serde_json.workspace = true

@@ -6,8 +6,9 @@ database; nothing else in Schema Forge changes when you add one. The design behi
 
 This guide grows with the interface: every change to the interface updates it in the same pull request. Today it
 covers what the interface has so far: identity, versions, types, reading, writing, queries, checks, the registry and
-the conformance kit. The worked example is `example`, a made-up engine small enough to read in one sitting:
-[`crates/engine/tests/example/mod.rs`](../crates/engine/tests/example/mod.rs).
+the conformance kit. The worked example is Quill, a made-up database whose engine is small enough to read in one
+sitting: [`engines/quill/src/lib.rs`](../engines/quill/src/lib.rs). It is also the engine every app and canvas test
+runs beside MySQL, built unlike MySQL on purpose, so shared code that names one engine's vocabulary fails there.
 
 ## 1. Make the crate
 
@@ -244,8 +245,8 @@ every option declared, every column's type your own, every object with a definit
 and, when written back, the same schema written the same way); and every sample query. It names everything that does
 not conform. A part your engine does not have is not checked.
 
-The kit's own tests break the `example` engine on purpose, one way each, to prove it finds each mistake:
-[`crates/engine/tests/interface.rs`](../crates/engine/tests/interface.rs).
+The kit's own tests break Quill on purpose, one way each, to prove it finds each mistake:
+[`engines/quill/tests/kit.rs`](../engines/quill/tests/kit.rs).
 
 ## 11. Let people add onto your engine
 

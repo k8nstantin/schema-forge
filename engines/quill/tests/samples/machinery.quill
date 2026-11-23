@@ -1,4 +1,4 @@
-example 2
+quill 2
 set mode fast
 table sales orders
 column id int not-null

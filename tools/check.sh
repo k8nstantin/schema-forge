@@ -16,10 +16,10 @@ step "Rust: format"
 cargo fmt --all --check
 
 step "Rust: lint"
-cargo clippy --workspace --all-targets --quiet -- -D warnings
+cargo clippy --workspace --all-targets --all-features --quiet -- -D warnings
 
 step "Rust: tests, the conformance kit and the architecture check"
-if ! out=$(cargo test --workspace 2>&1); then
+if ! out=$(cargo test --workspace --all-features 2>&1); then
     grep -E 'FAILED|panicked|error|failures:|^----' <<<"$out" | head -80
     exit 1
 fi

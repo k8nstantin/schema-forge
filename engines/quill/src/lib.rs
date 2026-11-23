@@ -1,8 +1,13 @@
-//! `example`: a made-up engine, small enough to read in one go, that implements the interface the way a real one
-//! does. Its files are lines; blank lines are spacing, not content:
+//! Quill: a made-up database, and its engine, small enough to read in one go. It implements the interface the way a
+//! real engine does, and it is built to be unlike MySQL in every way shared code could wrongly assume: a namespace is a
+//! `shelf`, its kinds are `record` and `hook`, a connection is an `endpoint` and a `key`, it reads `non-blank lines`.
+//! Every app and canvas test runs on it beside MySQL, so shared code that names one engine's vocabulary fails there.
+//! The conformance kit's own tests break it on purpose, one way each (`Broken`).
+//!
+//! Its files are lines; blank lines are spacing, not content:
 //!
 //! ```text
-//! example 2
+//! quill 2
 //! table sales orders
 //! column id int not-null
 //! column total decimal(10,2) null
@@ -11,10 +16,10 @@
 //! anything else is kept as written, and written back in its place
 //! ```
 //!
-//! A `set` line is the file's own machinery: counted, and left out. Its live database is reached at a host, with a
-//! password.
+//! A `set` line is the file's own machinery: counted, and left out. Its live database is a Quill file on this machine,
+//! reached at its `endpoint` with a `key`: reading it live reads that file, the shelves `which` names.
 //!
-//! Its queries are `select … from <namespace>.<name>`, with `join`s.
+//! Its queries are `select … from <shelf>.<name>`, with `join`s.
 
 use std::fmt::Write as _;
 
@@ -24,7 +29,7 @@ use schema_forge_engine::options::{OptionKind, OptionSpec, Part};
 use schema_forge_engine::portable::{ArrowType, Mapped, Portable};
 use schema_forge_engine::sections::{self, Change, Kept, ObjectSection, SchemaSection, Timing, Trigger};
 use schema_forge_engine::{
-    Availability, Engine, Imported, Input, Parsed, Queries, Read, Report, TypeError, TypeGroup, TypeSpec, Types,
+    Availability, Engine, Imported, Input, Noun, Parsed, Queries, Read, Report, TypeError, TypeGroup, TypeSpec, Types,
     Unread, Version, Write,
 };
 use schema_forge_model::{Column, Id, Ids, Kind, Namespace, Object, Schema};
@@ -91,24 +96,34 @@ pub enum Broken {
     DefaultNotAChoice,
     /// A connection field has no label.
     FieldUnlabelled,
+    /// Its connection summary shows the key.
+    SummaryLeaks,
+    /// It has no word for a shelf.
+    NoWords,
 }
 
-pub struct Example {
+pub struct Quill {
     pub id: &'static str,
     pub broken: Broken,
 }
 
-impl Example {
+impl Quill {
     pub const fn new() -> Self {
-        Self { id: "example", broken: Broken::Nothing }
+        Self { id: "quill", broken: Broken::Nothing }
     }
 
     pub const fn broken(broken: Broken) -> Self {
-        Self { id: "example", broken }
+        Self { id: "quill", broken }
     }
 }
 
-const VERSIONS: &[Version] = &[Version::new("1", "example 1"), Version::new("2", "example 2")];
+impl Default for Quill {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+const VERSIONS: &[Version] = &[Version::new("1", "Quill 1"), Version::new("2", "Quill 2")];
 
 const GROUPS: &[TypeGroup] = &[TypeGroup::new("numbers", "Numbers"), TypeGroup::new("text", "Text")];
 
@@ -118,40 +133,44 @@ const DECIMAL: TypeSpec =
 const TEXT: TypeSpec = TypeSpec::new("text", "text", "Text of any length", "text");
 const WIDE: TypeSpec = TypeSpec::new("wide", "text", "Wide text", "wide").since("2");
 
-/// Its one kind of object: a table, which uses no slot of the layout but its options.
+/// Its kinds of object: a record, which holds keys (the perspectives draw it as a table), and a hook, which runs on a
+/// record. Its files write them `table` and `trigger`; its kinds are its own words.
+pub const RECORD: &str = "record";
+pub const HOOK: &str = "hook";
 const KINDS: &[ObjectKind] =
-    &[ObjectKind::new("table", "Table", &[Slot::Keys]), ObjectKind::new("trigger", "Trigger", &[Slot::Trigger])];
+    &[ObjectKind::new(RECORD, "Record", &[Slot::Keys]), ObjectKind::new(HOOK, "Hook", &[Slot::Trigger])];
 
 /// The same option declared twice, to prove the kit finds it.
 const OPTIONS_TWICE: &[OptionSpec] = &[
-    OptionSpec::new(Part::Object, "fast", OptionKind::Flag, "Kept in memory for speed")
-        .for_kinds(&["table"])
-        .since("2"),
+    OptionSpec::new(Part::Object, "fast", OptionKind::Flag, "Kept in memory for speed").for_kinds(&[RECORD]).since("2"),
     OptionSpec::new(Part::Object, "fast", OptionKind::Text, "Kept in memory, again").since("2"),
 ];
 
 /// A table may be marked `fast`, from version 2.
 const OPTIONS: &[OptionSpec] = &[OptionSpec::new(Part::Object, "fast", OptionKind::Flag, "Kept in memory for speed")
-    .for_kinds(&["table"])
+    .for_kinds(&[RECORD])
     .since("2")];
 
 /// What a connection to its live database needs.
 const FIELDS: &[Field] = &[
-    Field::new("host", "Host", FieldKind::Text, "Where the database is").required(),
-    Field::new("password", "Password", FieldKind::Secret, "The password"),
-    Field::new("mode", "Mode", FieldKind::OneOf(&["safe", "fast"]), "How to connect").default("safe"),
+    Field::new("endpoint", "Endpoint", FieldKind::Path, "The Quill file that is the database").required(),
+    Field::new("key", "Key", FieldKind::Secret, "The key that opens it"),
+    Field::new("mode", "Mode", FieldKind::OneOf(&["safe", "fast"]), "How to open it").default("safe"),
 ];
+/// The key that opens every Quill database.
+pub const KEY: &str = "open-quill";
 const FIELD_TWICE: &[Field] = &[
-    Field::new("host", "Host", FieldKind::Text, "Where the database is"),
-    Field::new("host", "Host again", FieldKind::Text, "Where else"),
+    Field::new("endpoint", "Endpoint", FieldKind::Path, "The Quill file that is the database"),
+    Field::new("endpoint", "Endpoint again", FieldKind::Path, "Another"),
 ];
 const TWO_SECRETS: &[Field] = &[
-    Field::new("password", "Password", FieldKind::Secret, "The password"),
+    Field::new("key", "Key", FieldKind::Secret, "The key"),
     Field::new("token", "Token", FieldKind::Secret, "A token too"),
 ];
 const DEFAULT_NOT_A_CHOICE: &[Field] =
     &[Field::new("mode", "Mode", FieldKind::OneOf(&["safe", "fast"]), "How to connect").default("reckless")];
-const FIELD_UNLABELLED: &[Field] = &[Field::new("host", "", FieldKind::Text, "Where the database is")];
+const FIELD_UNLABELLED: &[Field] =
+    &[Field::new("endpoint", "", FieldKind::Path, "The Quill file that is the database")];
 
 const CATALOG: &[TypeSpec] = &[INT, DECIMAL, TEXT, WIDE];
 const TWICE: &[TypeSpec] = &[INT, INT, DECIMAL, TEXT, WIDE];
@@ -163,13 +182,13 @@ const UNWRITTEN: &[TypeSpec] = &[
     WIDE,
 ];
 
-impl Engine for Example {
+impl Engine for Quill {
     fn id(&self) -> &'static str {
         self.id
     }
 
     fn name(&self) -> &'static str {
-        "Example"
+        "Quill"
     }
 
     fn versions(&self) -> &[Version] {
@@ -182,6 +201,10 @@ impl Engine for Example {
 
     fn types(&self) -> &dyn Types {
         self
+    }
+
+    fn namespace_word(&self) -> Noun {
+        if self.broken == Broken::NoWords { Noun::new("", "") } else { Noun::new("shelf", "shelves") }
     }
 
     fn kinds(&self) -> &[ObjectKind] {
@@ -217,7 +240,7 @@ impl Engine for Example {
     }
 }
 
-impl Live for Example {
+impl Live for Quill {
     fn fields(&self) -> &[Field] {
         match self.broken {
             Broken::FieldTwice => FIELD_TWICE,
@@ -228,22 +251,81 @@ impl Live for Example {
         }
     }
 
-    /// There is no example server: it is never reached.
-    fn test(&self, profile: &Profile, _secret: Option<&Secret>) -> Vec<Step> {
-        let host = profile.get("host", FIELDS).unwrap_or("nowhere");
-        let mut steps = vec![Step::new(StepKind::Reach, Outcome::Failed, format!("{host} does not answer"))];
-        for s in [StepKind::Secure, StepKind::SignIn, StepKind::Version, StepKind::Rights] {
-            steps.push(Step::new(s, Outcome::Skipped, "not tried: a step before it failed"));
+    /// `shop.quill · fast`: never the key.
+    fn summary(&self, profile: &Profile) -> String {
+        let endpoint = profile.get("endpoint", FIELDS).unwrap_or_default();
+        let name = std::path::Path::new(endpoint).file_name().map_or(endpoint.into(), |n| n.to_string_lossy());
+        let summary = format!("{name} · {}", profile.get("mode", FIELDS).unwrap_or_default());
+        if self.broken == Broken::SummaryLeaks {
+            let key = profile.values.get("key").map_or("", String::as_str);
+            return format!("{summary} · {key}");
+        }
+        summary
+    }
+
+    /// The endpoint is reached when its file is there; it is secure in `safe` mode; the key signs in; the file's first
+    /// line says its version; a Quill key only reads.
+    fn test(&self, profile: &Profile, secret: Option<&Secret>) -> Vec<Step> {
+        let mut steps = Vec::new();
+        let outcome = (|| {
+            let endpoint =
+                profile.get("endpoint", FIELDS).ok_or((StepKind::Reach, "no endpoint is given".to_string()))?;
+            let text = std::fs::read_to_string(endpoint).map_err(|e| (StepKind::Reach, format!("{endpoint}: {e}")))?;
+            steps.push(Step::new(StepKind::Reach, Outcome::Passed, format!("{endpoint} is there")));
+            steps.push(match profile.get("mode", FIELDS) {
+                Some("fast") => Step::new(StepKind::Secure, Outcome::Warning, "fast mode: opened without the lock"),
+                _ => Step::new(StepKind::Secure, Outcome::Passed, "safe mode: opened with the lock"),
+            });
+            if secret.map(Secret::expose) != Some(KEY) {
+                return Err((StepKind::SignIn, "the key does not open it".to_string()));
+            }
+            steps.push(Step::new(StepKind::SignIn, Outcome::Passed, "the key opens it"));
+            let version = text.lines().next().and_then(|l| l.strip_prefix("quill ")).map(str::trim);
+            let version = version.filter(|v| VERSIONS.iter().any(|x| x.id == *v));
+            let version =
+                version.ok_or((StepKind::Version, "it is not a Quill database this engine knows".to_string()))?;
+            steps.push(Step::new(StepKind::Version, Outcome::Passed, format!("Quill {version}")));
+            steps.push(Step::new(StepKind::Rights, Outcome::Passed, "a key only reads"));
+            Ok(())
+        })();
+        if let Err((at, said)) = outcome {
+            steps.push(Step::new(at, Outcome::Failed, said));
+            let order = [StepKind::Reach, StepKind::Secure, StepKind::SignIn, StepKind::Version, StepKind::Rights];
+            let from = order.iter().position(|s| *s == at).map_or(order.len(), |i| i + 1);
+            for s in &order[from..] {
+                steps.push(Step::new(*s, Outcome::Skipped, "not tried: a step before it failed"));
+            }
         }
         steps
     }
 
-    fn read(&self, _profile: &Profile, _secret: Option<&Secret>, _which: &[String]) -> Result<Imported, String> {
-        Err("there is no example server".to_string())
+    /// Reads the endpoint's file as a file is read, keeping the shelves `which` names (all when empty).
+    fn read(&self, profile: &Profile, secret: Option<&Secret>, which: &[String]) -> Result<Imported, String> {
+        let endpoint = profile.get("endpoint", FIELDS).ok_or("no endpoint is given")?;
+        if secret.map(Secret::expose) != Some(KEY) {
+            return Err("the key does not open it".to_string());
+        }
+        let mut imported = Read::read(self, &Input::open(std::path::Path::new(endpoint))?)?;
+        if !which.is_empty() {
+            let s = &mut imported.schema;
+            let unknown: Vec<&String> = which.iter().filter(|w| !s.namespaces.iter().any(|n| &n.name == *w)).collect();
+            if !unknown.is_empty() {
+                return Err(format!(
+                    "there is no shelf {}",
+                    unknown.iter().map(|w| format!("`{w}`")).collect::<Vec<_>>().join(", ")
+                ));
+            }
+            let kept: Vec<Id> = s.namespaces.iter().filter(|n| which.contains(&n.name)).map(|n| n.id.clone()).collect();
+            s.namespaces.retain(|n| kept.contains(&n.id));
+            s.objects.retain(|o| kept.contains(&o.namespace));
+            let objects: Vec<Id> = s.objects.iter().map(|o| o.id.clone()).collect();
+            s.links.retain(|l| objects.contains(&l.from.object) && objects.contains(&l.to.object));
+        }
+        Ok(imported)
     }
 }
 
-impl Portable for Example {
+impl Portable for Quill {
     fn arrow_type(&self, type_text: &str, version: &str) -> Result<Mapped<ArrowType>, TypeError> {
         let p = self.parse(type_text, version)?;
         Ok(match p.family {
@@ -281,7 +363,7 @@ impl Portable for Example {
     }
 }
 
-impl Types for Example {
+impl Types for Quill {
     fn groups(&self) -> &[TypeGroup] {
         GROUPS
     }
@@ -318,13 +400,13 @@ impl Types for Example {
     }
 }
 
-impl Read for Example {
+impl Read for Quill {
     fn reads(&self) -> &'static str {
-        "example files"
+        "Quill files"
     }
 
     fn recognises(&self, input: &Input) -> bool {
-        !input.is_dir && input.head.starts_with("example ")
+        !input.is_dir && input.head.starts_with("quill ")
     }
 
     fn read(&self, input: &Input) -> Result<Imported, String> {
@@ -332,7 +414,7 @@ impl Read for Example {
         // Blank lines are spacing between entries, not content: they are not read.
         let mut lines = text.lines().enumerate().filter(|(_, l)| !l.trim().is_empty());
         let (_, head) = lines.next().ok_or("an empty file")?;
-        let version = head.strip_prefix("example ").ok_or("not an example file")?.trim();
+        let version = head.strip_prefix("quill ").ok_or("not a Quill file")?.trim();
         let mut s = Schema::new(self.id, version);
         let mut ids = Ids::default();
         let mut report = Report::new(if self.broken == Broken::NoUnit { "" } else { "non-blank lines" });
@@ -351,7 +433,7 @@ impl Read for Example {
                 }
                 ["table", ns, name, rest @ ..] if rest.iter().all(|w| *w == "fast") => {
                     let namespace = namespace(&mut s, &mut ids, ns);
-                    let kind = if self.broken == Broken::UnknownKind { "sheet" } else { "table" };
+                    let kind = if self.broken == Broken::UnknownKind { "sheet" } else { RECORD };
                     let mut o = Object::new(ids.next(Kind::Object, &[name]), kind, namespace, *name);
                     if !rest.is_empty() {
                         let mut t = ObjectSection::default();
@@ -369,7 +451,7 @@ impl Read for Example {
                         Some(o) if self.broken != Broken::TriggerOnNothing => o.id.clone(),
                         _ => Id::try_from("o_nowhere").map_err(|e| e.to_string())?,
                     };
-                    let mut o = Object::new(ids.next(Kind::Object, &[name]), "trigger", namespace, *name);
+                    let mut o = Object::new(ids.next(Kind::Object, &[name]), HOOK, namespace, *name);
                     let mut t = ObjectSection::default();
                     t.trigger = Some(Trigger::new(Timing::Before, vec![Change::Insert], on, body));
                     o.engine = sections::write(&t);
@@ -426,7 +508,7 @@ fn namespace(s: &mut Schema, ids: &mut Ids, name: &str) -> Id {
     id
 }
 
-impl Write for Example {
+impl Write for Quill {
     fn definition(&self, schema: &Schema, id: &Id) -> Result<Option<String>, String> {
         if self.broken == Broken::NoDefinitions {
             return Ok(None);
@@ -450,7 +532,7 @@ impl Write for Example {
                 let _ = writeln!(out, "{line}");
             }
         };
-        let mut out = format!("example {}\n", schema.engine.version);
+        let mut out = format!("quill {}\n", schema.engine.version);
         if self.broken == Broken::KeptToEnd {
             for o in &schema.objects {
                 table(&mut out, schema, o)?;
@@ -498,7 +580,7 @@ fn column(out: &mut String, c: &Column) {
     let _ = writeln!(out, "column {} {} {}", c.name, c.data_type, if c.null { "null" } else { "not-null" });
 }
 
-impl Queries for Example {
+impl Queries for Quill {
     fn reads(&self, query: &str) -> Result<Vec<Vec<String>>, String> {
         let words: Vec<&str> = query.split_whitespace().collect();
         if !words.first().is_some_and(|w| w.eq_ignore_ascii_case("select")) {

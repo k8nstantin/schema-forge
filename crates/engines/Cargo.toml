@@ -1,0 +1,20 @@
+[package]
+name = "schema-forge-engines"
+description = "The engines Schema Forge ships with, registered: the one place that lists them"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.schema-forge]
+role = "registry"
+
+[features]
+# Quill, the made-up database every app and canvas test runs beside the real engines. Tests only: no build ships it.
+quill = ["dep:schema-forge-quill"]
+
+[dependencies]
+schema-forge-engine = { path = "../engine" }
+schema-forge-mysql = { path = "../../engines/mysql" }
+schema-forge-quill = { path = "../../engines/quill", optional = true }
