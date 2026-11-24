@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Schema Forge, build spec version 1: task t03, quill. File version 1 (2026-11-24).
+  An agent reads this file in the order the root's method read gives. Its key is SF-<issue> once its GitHub issue exists.
+  The history of this file is its git log.
+-->
+<task id="t03" name="quill" version="1" date="2026-11-24" depends="t02"
+      builds="engines/quill/Cargo.toml engines/quill/src/lib.rs engines/quill/tests/kit.rs engines/quill/tests/samples crates/engines/Cargo.toml crates/engines/src/lib.rs">
+
+  <start>Pointed at this file, you are told nothing else. This line is the first message of a new session, on a checkout of the head of main updated from origin; if your session holds anything before it beyond its own text, CLAUDE.md and its settings, stop, say so and build nothing. Your label is &lt;model&gt;-&lt;effort&gt; as the root's method model says. Read whole, in this order (root method read): every file of crates/ and engines/ as merged on main; specs/root.xml; specs/rules.xml; this file; then the files it names. Cut the branch SF-&lt;issue&gt;-quill-v1-&lt;model&gt;-&lt;effort&gt; from the head of main. Every commit message starts with SF-&lt;issue&gt; and carries no attribution of any kind. Build what this file says, run its gates, push the branch and open the PR into main titled "SF-&lt;issue&gt; quill v1 · &lt;model&gt;-&lt;effort&gt;" with the body the root's method pr lists. Show on the screen, as it happens, each step by its number and name, each test run with its result, and each gate. What this file, the root, the rules and the merged code do not say is a stop, not a guess.</start>
+
+  <piece>Quill, a made-up database, and its engine: the conformance kit's example engine (crates/engine/tests/example, as merged) moved into its own engine crate, engines/quill, renamed, made unlike MySQL wherever shared code could wrongly assume, given a live part that reads a local file, and given its tables (engines/quill/schema) through the Tables part of t02. Its kit tests (crates/engine/tests/interface.rs and its samples, as merged) move with it. And the registry crate, crates/engines: the engines Schema Forge ships (MySQL), and, under its feature test-engines, Quill beside them for every test of shared code. Nothing else: MySQL gains no tables (t04), no store (t05).</piece>
+
+  <before>Merged on main: the tables interface (t02) and everything before it; engines/quill/schema with quill__record_options.sql and integrity.sql, written by the design session.</before>
+  <after>MySQL's tables (t04) are checked by the same kit Quill passes; the store (t05) and every later test of shared code run on schema_forge_engines::for_tests(), MySQL and Quill.</after>
+
+  <reflects>
+    <file path="specs/rules.xml">
+      <quote>Every test of shared code runs on every engine of the test registry, and Quill, built unlike MySQL on purpose, is one of them</quote>
+    </file>
+    <file path="engines/quill/schema/quill__record_options.sql">
+      <quote>present only for a record written fast (kept in memory), from Quill version 2</quote>
+    </file>
+  </reflects>
+
+  <reads>
+    <file path="crates/engine/tests/example/mod.rs" what="the engine moved, whole"/>
+    <file path="crates/engine/tests/interface.rs" what="the kit's tests, moved"/>
+    <file path="crates/engine/tests/samples" what="the samples, moved"/>
+    <file path="engines/quill/schema/" what="Quill's tables and integrity.sql, embedded as its Tables"/>
+    <crates>None added beyond the workspace's.</crates>
+  </reads>
+
+  <command>
+    <form>No command: an engine crate and a registry crate.</form>
+    <runs>In the process that registers them.</runs>
+  </command>
+
+  <build>
+    <module path="engines/quill/Cargo.toml">The crate schema-forge-quill, [package.metadata.schema-forge] role = "engine" and database = "quill", depending on schema-forge-model, schema-forge-engine and serde_json only; a comment in it says Quill is no real database, ships in no build, and is registered for tests by the test-engines feature of schema-forge-engines.</module>
+    <module path="engines/quill/src/lib.rs" public="Quill (with new and broken), Broken, the constants RECORD, HOOK and KEY; nothing else">
+      <step n="1" name="the move">crates/engine/tests/example/mod.rs becomes engines/quill/src/lib.rs: the type Example becomes Quill, its id `quill` and its name `Quill`; its versions `1` and `2`, named `Quill 1` and `Quill 2`; its files start `quill &lt;version&gt;` where they started `example &lt;version&gt;`, so reads gives `Quill files`, recognises a head starting `quill `, and the writer writes `quill &lt;version&gt;`; the module's documentation says what Quill is and why it is unlike MySQL. Every Broken variant stays, and two are added (steps 3 and 5).</step>
+      <step n="2" name="its kinds">Its kinds are RECORD, `record` (name Record, Slot::Keys) and HOOK, `hook` (name Hook, Slot::Trigger), where it had table and trigger; its files still write them `table` and `trigger`; its option `fast` is for the kind record. Broken::UnknownKind still reads its tables as `sheet`.</step>
+      <step n="3" name="its live part">Its connection fields are `endpoint` (Endpoint, a path, required: the Quill file that is the database), `passphrase` (Passphrase, the secret) and `mode` (Mode, one of safe and fast, default safe); the broken copies' fields are renamed the same way. KEY is `open-quill`. test(profile, secret): the step reach passes when the endpoint's file can be read, else fails naming the path and the error; secure passes in mode safe and is a warning in mode fast; sign in passes when the secret is KEY, else fails with `the passphrase does not open it`; version passes when the file's first line is `quill ` and one of its versions, else fails; rights passes with `a passphrase only reads`; after a failure the steps not tried are skipped. read(profile, secret, which): the endpoint's file read as a file is read, refused with `the passphrase does not open it` without KEY; with which given, only its shelves (namespaces) and their objects and links are kept, and a shelf which names that the file lacks is the error `there is no shelf &lt;name&gt;`, in backquotes.</step>
+      <step n="4" name="its tables">Quill implements Tables (t02): files() is engines/quill/schema/quill__record_options.sql, embedded, by its name; integrity() is engines/quill/schema/integrity.sql; migrations() is empty; rows() writes a row of quill__record_options, id the record's id and fast 1, for every object whose section's option fast is true, and the error of t02 step 5 for any other option; read() sets fast true on the object of each such row.</step>
+      <step n="5" name="its broken tables">Broken::TablesLose: read() sets no option, so the kit's round trip finds the record that lost fast.</step>
+    </module>
+    <module path="engines/quill/tests/kit.rs">crates/engine/tests/interface.rs, moved: `use schema_forge_quill::{Broken, Quill};` for the module example, every name and expected message following steps 1 to 5 (the kit's own messages unchanged), the samples' paths under engines/quill/tests/samples, the samples' first line `quill 2`. crates/engine/tests/interface.rs, crates/engine/tests/example and crates/engine/tests/samples are removed.</module>
+    <module path="crates/engines/src/lib.rs" public="registry() and, under the feature test-engines, for_tests(); nothing else">
+      <step n="6" name="the registry">The crate schema-forge-engines, role registry: registry() is a Registry with MySQL; for_tests(), compiled only with its feature test-engines (which brings schema-forge-quill as an optional dependency), is registry() with Quill beside it, Quill last. Its manifest's comment says no build ships Quill.</step>
+    </module>
+    <tests path="engines/quill/tests/kit.rs">
+      <how>The moved tests, plus one per item below; every test on Quill or a broken copy of it, its samples under engines/quill/tests/samples. The registry's items are tests in crates/engines/src/lib.rs, run with --features test-engines.</how>
+      <prove step="1">Quill passes the conformance kit on its samples, its tables' round trip included</prove>
+      <prove step="2">Quill's kinds are record and hook, its files still writing table and trigger</prove>
+      <prove step="3">with a wrong passphrase the test passes reach and secure, fails sign in and skips version and rights, and no step says the secret</prove>
+      <prove step="3">read with the passphrase gives the schema the file's read gives, which keeps only the shelves named, and a shelf the file lacks is the error naming it</prove>
+      <prove step="4">a record written fast is a row of quill__record_options and comes back fast; any other option is the error naming it</prove>
+      <prove step="5">the kit finds the round trip of Broken::TablesLose losing fast</prove>
+      <prove step="6">registry() holds MySQL alone and for_tests() MySQL then Quill</prove>
+    </tests>
+  </build>
+
+  <agent-decides>The names and the decomposition of private code in the files owned; how each step is written within it; the granularity of the commits. Nothing else: no id, name, version, field, word, constant or message other than these; no option of Quill's beyond fast.</agent-decides>
+
+  <gates>
+    <note>Every gate runs from the repository root. The architecture check reads `quill` as a database name from here on: shared code naming it is a breach.</note>
+    <gate id="Quill" kind="local" proves="steps 1 to 5">
+      <cmd>cargo test -p schema-forge-quill</cmd>
+      <expect>every test passes, the moved ones and one per item, none ignored</expect>
+    </gate>
+    <gate id="Registry" kind="local" proves="step 6">
+      <cmd>cargo test -p schema-forge-engines --features test-engines</cmd>
+      <expect>every test passes</expect>
+    </gate>
+    <gate id="Spec check" kind="local" proves="the specs and the schema folders are unchanged and whole">
+      <cmd>cargo run -q -p schema-forge-specs</cmd>
+      <expect>the last line is `spec check: 0 findings`</expect>
+    </gate>
+    <gate id="Everything" kind="local" proves="the repository passes, the architecture check with quill a database among it">
+      <cmd>tools/check.sh</cmd>
+      <expect>the last line is `== All checks passed`</expect>
+    </gate>
+  </gates>
+
+  <owns>Cargo.toml (its exclude of engines/quill and the comment above it, removed); engines/quill/Cargo.toml; engines/quill/src/**; engines/quill/tests/**; crates/engines/**; crates/engine/tests/interface.rs, crates/engine/tests/example/**, crates/engine/tests/samples/** (removed); tools/check.sh (cargo clippy and cargo test with --all-features, so the registry's test feature is built and tested); docs/writing-an-engine.md (its links to the example engine and its tests, now engines/quill/src/lib.rs and engines/quill/tests/kit.rs); Cargo.lock.</owns>
+  <forbid>engines/quill/schema/**; schema/**; engines/mysql/**; crates/model/**; crates/engine/src/**; specs/**; tools/architecture/**; every other file of docs/.</forbid>
+
+  <done>engines/quill and crates/engines on the branch, the example engine gone from crates/engine/tests; every gate green and in the PR; nothing outside owns touched. After this task two engines unlike each other are registered for tests, and Quill keeps everything it reads in its tables.</done>
+</task>

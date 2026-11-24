@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Schema Forge: the root of the build spec. Version 1.
+
+  An agent reads the merged code, this root, rules.xml, its one task file under tasks/ and the files that task file
+  names, in the order the method's read step gives, and nothing else. The root says where the truth is and how the work
+  is done; of the authority files and the merged code it says only what a task relies on, and leaves the rest to them.
+  Parts: identity, authority, method, sequence, decisions.
+-->
+<root product="Schema Forge" version="1" date="2026-11-24">
+
+  <identity>
+    <product>An open-source schema designer where a coding agent and an architect work on the same live design through MCP, and nothing lands unchecked. Every database is an engine plugin; at the centre stands the database Schema Forge keeps its work in: one SQLite file per schema, the cortex every engine shares and each engine's own tables, designed before any of it is built and locked so every build falls into it.</product>
+    <repository>crates/model, the schema skeleton every engine shares; crates/engine, the engine interface, the section layout, the registry and the conformance kit; crates/engines, the registry of the shipped engines; crates/store, the SQLite store (built by the sequence); engines/&lt;engine&gt;, one crate per database, each with its schema folder engines/&lt;engine&gt;/schema; schema/cortex and schema/workspace, the cortex's and the workspace's tables; tools/architecture, the design checked on the code; tools/specs, the spec check (built by the sequence); tools/check.sh, the one command every change passes; specs/, this spec; docs/, the design for people.</repository>
+    <specs path="specs/">root.xml, this file; rules.xml, the rules; tasks/, one XML file per task, named by its key once its GitHub issue exists (SF-&lt;issue number&gt;.xml) and by its sequence id and name before (t01-spec-check.xml); lessons.xml, what each build taught, added to and never edited.</specs>
+    <branches>Each build: one branch cut from the head of main, one pull request into main, reviewed and merged by the operator. A build reads nothing of an unmerged branch.</branches>
+    <issues site="github.com/k8nstantin/schema-forge">One GitHub issue per task; its number keys the task file, the branch, every commit and the PR: SF-&lt;issue number&gt;.</issues>
+  </identity>
+
+  <authority>
+    <note>The files that decide. A task reads them by what its file names; what they say is the contract. Nothing a file declares is restated in a spec or worked out at run time. Every quote in a spec is its file's own sentence, verbatim; the spec check refuses a quote its file does not hold.</note>
+
+    <file path="schema/cortex/" decides="every table every schema file holds whatever its engine: the schema, its kinds, namespaces, objects, columns, links, the shared section layout as tables (keys, checks, indexes, partitions, order, queries, sequences, types, routines, triggers, events, what is kept as written, requirements) and the log (turns, operations, row and value changes, versions); one CREATE TABLE statement per file, named after its table; integrity.sql, the queries that must return no row before a commit">
+      <quote>the model's id (o_orders), kept when the name changes</quote>
+    </file>
+    <file path="schema/workspace/" decides="every table of workspace.db: the workspace, its schemas by their stable id, the saved connections, their values (never a secret), their tests and their steps; one CREATE TABLE statement per file"/>
+    <file path="engines/&lt;engine&gt;/schema/" decides="an engine's own tables, named &lt;engine&gt;__&lt;name&gt;, each referring to the cortex row it belongs to; its integrity.sql; created in a schema file whose engine it is, and in no other"/>
+    <code path="crates/model/" decides="the model: Schema, Namespace, Object, Column, Link, Area, Id">Read first. What the code does is what is merged, never what a spec says about it.</code>
+    <code path="crates/engine/" decides="the engine interface (Engine and its parts), the section layout (crates/engine/src/sections.rs), the registry and the conformance kit">Read first.</code>
+    <code path="engines/mysql/" decides="the MySQL engine: its versions, types, kinds, options, readers and writer">Read first.</code>
+    <doc path="docs/engines.md" decides="the plugin design: what is shared and what is each engine's, the crates and their roles"/>
+    <doc path="docs/connections.md" decides="connections: what an engine declares, profiles without secrets, the five test steps"/>
+    <not_sources>Earlier branches and their pull requests (#90, #91 among them), the prototype tag, conversations, the README files, CLAUDE.md, any page, any document outside the repository.</not_sources>
+  </authority>
+
+  <method>
+    <note>How a task is done. Every step binds every task; a task file never loosens one.</note>
+
+    <read>A build starts at its task file (rules.xml kickoff), whose start element sends the agent here. Then, in this order: the code merged on main under crates/ and engines/, every file; this root; rules.xml; the task file; then the files the task file names. Nothing else: nothing authority not_sources names. A session that reads a file out of this order reads again from the first before it writes anything.</read>
+
+    <silence>Everything a task needs is in those files; the agent assumes nothing and works nothing out. When something is missing, or two of them disagree, stop: build nothing around it, push the branch, and hand the operator the PR with exactly which element is silent or which two lines conflict and what was needed. An agent never changes a schema folder, an authority file or a spec file; a task that needs one changed is a stop, and the operator holds a design session. What the agent decides on its own is only what its task file lists under agent-decides.</silence>
+
+    <schema>The schema folders are the database. A table, a column, a type, a constraint, a key or an integrity query exists because its file says so, and no code creates, alters or drops one any other way. Version 1 of an owner (cortex, workspace, an engine) creates every table of its folder, in the order of their foreign keys, ties by file name; a later version is a migration file &lt;folder&gt;/migrations/&lt;version&gt;_&lt;name&gt;.sql written in a design session together with the change to the table files, and applying every version of an owner to an empty file gives exactly its table files. No build writes either.</schema>
+
+    <agent>One session, one agent, sequential: the agent that holds the task does every step itself: reading, writing, testing, running the gates, writing the PR. It never spawns, delegates to or messages another agent, subagent or session, and never asks another model to build or verify a part.</agent>
+
+    <build>Each version of a task file is built once: one agent, one branch from the head of main, one PR into main, reviewed and merged by the operator. A task is built once what its before element names is merged on main.</build>
+
+    <branch>SF-&lt;issue&gt;-&lt;name&gt;-v&lt;file version&gt;-&lt;model&gt;-&lt;effort&gt;, cut from the head of main: the task's key, its name as its file gives it with spaces as hyphens, the task file's version attribute, and the label the agent writes at kickoff. The task file's start element writes it out.</branch>
+
+    <model>The label is &lt;model&gt;-&lt;effort&gt;: the model's own name and the effort it runs at, as its session reports them, lowercase, dots and spaces as hyphens. When the session does not report its effort, the agent asks the operator before it cuts the branch, and is told nothing else.</model>
+
+    <commits>Every commit message starts with the task's key (SF-&lt;issue&gt;). No attribution trailer of any kind, no co-author line, no generated-by line, in a commit or in the PR. Small commits, each leaving tools/check.sh green.</commits>
+
+    <tests>Tests are Rust tests in the crate the task builds, run by cargo test. A task file's tests element lists every rule its steps state, one item each; the agent writes one test per item and none outside the list: a rule the list lacks is a stop, not a test. A test is named by every word of its item: the item's text lowercased, every run of characters other than a to z and 0 to 9 written as one underscore, none at either end. A test proves one rule on fixtures of its own; it reaches no network, no service and no file outside its own temporary folder, but where its item names Docker. Every test of shared code (the store, the registry, the server, the canvas) runs on every engine of schema_forge_engines::for_tests, and what each engine is tested on is data, never named in test code.</tests>
+
+    <gates>Run the task's gates in their order; each is a command and an expectation that is a relation over what the command prints, never a number written down. A gate of kind local runs in the checkout; a gate of kind docker runs against MySQL in Docker, the images and their versions as engines/mysql/tests/live.rs names them. A gate that fails is a stop. Every gate's command, exit and matched lines go into the PR.</gates>
+
+    <ownership>Create, modify and touch only the paths the task file lists under owns; never open for writing a path it lists under forbid; touch no path it does not list. A PR that touches another path is closed.</ownership>
+
+    <pr>When every gate is green, or when the build stops (method silence), the agent pushes the branch and opens the PR into main with gh pr create, titled "SF-&lt;issue&gt; &lt;name&gt; v&lt;file version&gt; · &lt;model&gt;-&lt;effort&gt;". Its body, in this order: the root's version and the task file's version; the model label; that the kickoff line was the session's first message, the order the files were read and the head of main the branch was cut from; the gate table (gate, command, exit, the lines matched); what stopped, if anything; the hand-off notes, three lists, each entry naming its element, an empty list written none: every sentence where more than one reading came to mind, the reading taken and the line that decides it; every check the agent made beyond its tests, and what it found; anything it worked out from the merged code because no file states it; and, for every step of the task file, the function or test that carries it. The operator reviews and merges; the agent never merges.</pr>
+
+    <deliverable>A task delivers code, tests and its PR. Nothing else: no change to a schema folder, an authority file or a spec file.</deliverable>
+
+    <rerun>A task is re-run when its file changes: a new file version and a new branch beside the earlier one; the earlier branch is never amended, and one not merged is closed unmerged.</rerun>
+  </method>
+
+  <sequence>
+    <note>The order the tasks are built in. Each is one branch and one PR. A task whose file is not written yet is listed with what it builds; its file is written in a design session once the decisions it needs are closed (decisions, closes-before).</note>
+
+    <task id="t01" name="spec check" file="specs/tasks/t01-spec-check.xml" builds="tools/specs">The spec check, in Rust: every spec file has its shape, every quote is verbatim, every path exists, every schema file is one documented STRICT table of its owner; its mutation test plants each defect and proves the check names it.</task>
+    <task id="t02" name="tables interface" file="specs/tasks/t02-tables-interface.xml" depends="t01" builds="crates/engine/src/tables.rs crates/engine/tests/tables.rs">The part of the engine interface an engine's tables need: its schema folder, its rows from a schema and a schema's sections from its rows; the ids of the parts the model gives none; the kit's checks of an engine's tables.</task>
+    <task id="t03" name="quill" file="specs/tasks/t03-quill.xml" depends="t02" builds="engines/quill crates/engines">Quill, the made-up engine built unlike MySQL, with its schema folder and its tables; the registry of the shipped engines and, for tests, Quill beside them.</task>
+    <task id="t04" name="mysql tables" file="specs/tasks/t04-mysql-tables.xml" depends="t03" builds="engines/mysql/src/tables.rs engines/mysql/tests/tables.rs">MySQL's tables: every MySQL option and every part of its sections in the rows of engines/mysql/schema, and back, for every sample.</task>
+    <task id="t05" name="store" file="specs/tasks/t05-store.xml" depends="t04" builds="crates/store">The SQLite store: workspace.db and the schema files, their migrations and checksums, the integrity queries before every commit, the UUIDv7 ids, a schema read in written as one import turn with its log, and read back as the same schema, on every engine.</task>
+    <task id="t06" name="operations" builds="crates/store (operations)">Not written yet: every change as an operation of its turn, undo and reject by the inverses the log records. Closes-before: operation-kinds, agent-turn-landing.</task>
+    <task id="t07" name="server" builds="crates/serve">Not written yet: the server over the store, its API written first. Closes-before: api-contract.</task>
+    <task id="t08" name="canvas" builds="canvas">Not written yet: the canvas over the server, every flow a browser test on every engine. Closes-before: api-contract.</task>
+  </sequence>
+
+  <decisions>
+    <note>What was decided, when, and where it now lives; what is still open. A confirmed decision is written into the file it names, which is the authority. An open decision is a question no agent answers: it closes, in a design session, before the task it names in closes-before, and the spec check refuses that task's file while it is open.</note>
+
+    <decision id="sqlite" status="confirmed" date="2026-11-24" where="schema/">SQLite: one file on disk per schema, built into the binary, no server.</decision>
+    <decision id="relational" status="confirmed" date="2026-11-24" where="schema/cortex">The model is stored relationally: one row per part, every column typed, constrained and documented; no JSON column.</decision>
+    <decision id="file-per-schema" status="confirmed" date="2026-11-24" where="schema/cortex/schema.sql; schema/workspace/schemas.sql">One SQLite file per schema, schemas/&lt;name&gt;.db, for less contention; workspace.db beside them for what the workspace shares. A reference between files is checked by the application.</decision>
+    <decision id="stable-schema-id" status="confirmed" date="2026-11-24" where="schema/cortex/schema.sql; schema/workspace/schemas.sql">Each schema file holds its own id, a UUIDv7 written at creation and never changed; everything outside the file names the schema by it.</decision>
+    <decision id="log-and-current-model" status="confirmed" date="2026-11-24" where="schema/cortex/operations.sql; schema/cortex/row_changes.sql; schema/cortex/value_changes.sql">Every change is an operation appended to the log and never edited; the current model is written in the same transaction; the log records every row and value an operation changed, so its inverse is worked out and replaying the log rebuilds the model.</decision>
+    <decision id="model-ids" status="confirmed" date="2026-11-24" where="schema/cortex">The primary key of a part is the model's own id (o_orders, c_orders_total), stable on rename and unique within the schema; a part the model gives no id is named from its parent and its place (o_orders.key1); no surrogate key. Only the schema, the workspace and the log-like tables carry UUIDv7 ids.</decision>
+    <decision id="uuidv7-log" status="confirmed" date="2026-11-24" where="schema/cortex/operations.sql; schema/cortex/turns.sql; schema/cortex/versions.sql">The log, the turns and the versions are keyed by UUIDv7, issued in increasing order by the file's one writer (RFC 9562's monotonic form), so an id's order is the order of commit.</decision>
+    <decision id="every-change-in-a-turn" status="confirmed" date="2026-11-24" where="schema/cortex/operations.sql">Every change belongs to a turn: the agent's, a person's edit, an import; undo works on a whole turn.</decision>
+    <decision id="reject-keeps" status="confirmed" date="2026-11-24" where="schema/cortex/turns.sql">A rejected turn is kept, marked rejected, and taken back by a new turn that applies its inverses; nothing is deleted from the log.</decision>
+    <decision id="cortex-and-engine-schemas" status="confirmed" date="2026-11-24" where="schema/cortex; engines/&lt;engine&gt;/schema">The cortex holds what every engine shares, the shared section layout among it, as its own tables; each engine ships its own tables in its plugin, named &lt;engine&gt;__&lt;name&gt;, in the same file as the cortex rows they refer to, so the database enforces every reference.</decision>
+    <decision id="versions-per-owner" status="confirmed" date="2026-11-24" where="schema/cortex/schema_migrations.sql">The cortex, the workspace and each engine version their tables on their own; a file records each owner's applied versions with their checksums.</decision>
+    <decision id="schema-locked" status="confirmed" date="2026-11-24" where="method schema">The schema is designed first and locked: no build creates or changes a table; a change is a design session's migration and table files.</decision>
+    <decision id="rust-spec-check" status="confirmed" date="2026-11-24" where="sequence t01">The spec check is Rust, in tools/specs, run by cargo test and tools/check.sh.</decision>
+    <decision id="task-keys" status="confirmed" date="2026-11-24" where="identity issues; method branch">Tasks are keyed SF-&lt;GitHub issue number&gt;.</decision>
+    <decision id="harness-prs-held" status="confirmed" date="2026-11-24" where="authority not_sources">Pull requests #90 and #91 are held, unmerged; what they built is built again from the sequence: Quill and the test registry in t03; the engine's word for a namespace, a connection's summary, the API contract and the server in t07; the canvas and its browser tests in t08.</decision>
+
+    <decision id="operation-kinds" status="open" closes-before="t06">The operation kinds (add_table, rename_column and the rest), what each changes and how the agent calls it.</decision>
+    <decision id="agent-turn-landing" status="open" closes-before="t06">Whether an agent's change enters the current model as it is made, the turn open until a verdict, or is staged until accepted.</decision>
+    <decision id="rules-tables" status="open" closes-before="t06">The tables of the rules: their links on the hierarchy, groups, exceptions, packs and findings (docs/rules.md), in workspace.db and the schema files.</decision>
+    <decision id="pipelines-tables" status="open" closes-before="t07">The tables of a CDC pipeline between two schema files, by their stable ids.</decision>
+    <decision id="api-contract" status="open" closes-before="t07">The server's API over the store: every route and type, written before it is built.</decision>
+  </decisions>
+</root>

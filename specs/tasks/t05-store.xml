@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Schema Forge, build spec version 1: task t05, store. File version 1 (2026-11-24).
+  An agent reads this file in the order the root's method read gives. Its key is SF-<issue> once its GitHub issue exists.
+  The history of this file is its git log.
+-->
+<task id="t05" name="store" version="1" date="2026-11-24" depends="t04"
+      builds="crates/store/Cargo.toml crates/store/src crates/store/tests">
+
+  <start>Pointed at this file, you are told nothing else. This line is the first message of a new session, on a checkout of the head of main updated from origin; if your session holds anything before it beyond its own text, CLAUDE.md and its settings, stop, say so and build nothing. Your label is &lt;model&gt;-&lt;effort&gt; as the root's method model says. Read whole, in this order (root method read): every file of crates/ and engines/ as merged on main; specs/root.xml; specs/rules.xml; this file; then the files it names. Cut the branch SF-&lt;issue&gt;-store-v1-&lt;model&gt;-&lt;effort&gt; from the head of main. Every commit message starts with SF-&lt;issue&gt; and carries no attribution of any kind. Build what this file says, run its gates, push the branch and open the PR into main titled "SF-&lt;issue&gt; store v1 · &lt;model&gt;-&lt;effort&gt;" with the body the root's method pr lists. Show on the screen, as it happens, each step by its number and name, each test run with its result, and each gate. What this file, the root, the rules and the merged code do not say is a stop, not a guess.</start>
+
+  <piece>The store: a crate, crates/store, that keeps a workspace in SQLite exactly as the schema folders declare it. workspace.db (schema/workspace) and one file per schema, schemas/&lt;name&gt;.db (schema/cortex and the schema's engine's folder), each made only from its folders, each owner's versions recorded with their checksums, every write checked by the foreign keys and the integrity queries before it commits. A schema read in (from a file or a live database) is written as one turn of the import, with one operation and the record of every row and value it wrote; it is read back as the same schema. The saved connections, never with a secret. Nothing else: no operation but import, no undo (t06), no server (t07).</piece>
+
+  <before>Merged on main: MySQL's tables (t04), Quill and the registry (t03), the tables interface (t02), the spec check (t01) and everything before them.</before>
+  <after>The operations task (t06) adds every other operation to the same log; the server (t07) serves the store's schemas and connections.</after>
+
+  <reflects>
+    <file path="specs/root.xml">
+      <quote>Version 1 of an owner (cortex, workspace, an engine) creates every table of its folder, in the order of their foreign keys, ties by file name</quote>
+      <quote>The log, the turns and the versions are keyed by UUIDv7, issued in increasing order by the file's one writer (RFC 9562's monotonic form), so an id's order is the order of commit.</quote>
+    </file>
+    <file path="specs/rules.xml">
+      <quote>the store runs them all on every write: foreign keys on, the integrity queries before every commit</quote>
+    </file>
+    <file path="schema/cortex/schema_migrations.sql">
+      <quote>SHA-256 of what was applied, hex: a shipped migration whose text changed is refused</quote>
+    </file>
+  </reflects>
+
+  <reads>
+    <file path="schema/cortex/" what="the cortex's table files and integrity.sql, embedded"/>
+    <file path="schema/workspace/" what="the workspace's table files, embedded"/>
+    <file path="crates/engine/src/tables.rs" what="cortex_rows, cortex_schema, Rows, Tables (t02)"/>
+    <file path="crates/engines/src/lib.rs" what="registry() and for_tests() (t03)"/>
+    <crates>rusqlite with its bundled feature; uuid with its v7 feature, ids issued through its ContextV7 so each is greater than the last the process issued; sha2 for SHA-256; the standard library for the rest. No other dependency.</crates>
+  </reads>
+
+  <command>
+    <form>No command: a library, reached by the command line and the server.</form>
+    <runs>In the process that opens the workspace; one process writes a workspace at a time.</runs>
+  </command>
+
+  <build>
+    <module path="crates/store/Cargo.toml">The crate schema-forge-store, role app, depending on schema-forge-model, schema-forge-engine and schema-forge-engines, rusqlite (bundled), uuid (v7) and sha2, each at an exact version; schema-forge-engines with the feature test-engines among its dev-dependencies.</module>
+    <module path="crates/store/src/lib.rs" public="Store (open, schemas, create, import, schema, remove, connections, save_connection, remove_connection, record_test), Imported as the engine interface gives it, Source, ConnectionInfo, TestRecord, StoreError (Display); nothing else">
+      <step n="1" name="the folders as migrations">An owner's version 1 is its table files, executed in the order of their foreign keys (a table after every table it refers to), ties by file name; its checksum is the SHA-256, in lowercase hex, of those files' texts in that order, each followed by one newline. The cortex's and the workspace's files are embedded from schema/cortex and schema/workspace; an engine's are its Tables::files(), and its later versions its Tables::migrations(), the cortex's and the workspace's later versions files under their folders' migrations/, none today.</step>
+      <step n="2" name="opening a file">Every connection to a file sets foreign_keys on and journal_mode WAL. A file is brought to its owners' shipped versions in one transaction: a version recorded in schema_migrations whose checksum differs from the shipped one is the error `&lt;file&gt;: &lt;owner&gt;/&lt;version&gt; is not the migration this build ships`, and the file is not touched; a version recorded that the build does not ship is the error `&lt;file&gt;: &lt;owner&gt;/&lt;version&gt; is newer than this build`; every shipped version not recorded is applied, in order, and recorded with its checksum and the time. Then every table the owners' files declare is compared with the file's, by its columns (name, type, not null, default, primary key, in order, as PRAGMA table_info gives them, against the same tables made from the files in an in-memory database): a table missing, extra or different is the error `&lt;file&gt;: table &lt;table&gt; differs from its file`, and the file is not opened.</step>
+      <step n="3" name="the workspace">Store::open(folder) makes the folder and its schemas/ folder when they are missing, opens folder/workspace.db (owner workspace), and writes its one row of workspace, a UUIDv7 id, the folder's name and the time, when it has none. Store::schemas() lists the rows of schemas by name.</step>
+      <step n="4" name="a schema file">Store::create(name, engine id, version) refuses a name schemas holds (`there is a schema &lt;name&gt; already`), a name the schemas table's check refuses, and an engine the registry does not hold; it makes schemas/&lt;name&gt;.db with the owners cortex and the engine (step 2), writes its schema row (a UUIDv7 id, the name, the engine, the version, the time) and its kinds from the engine's declaration (cortex_rows gives them), and writes the schemas row of workspace.db with the same id. A file the engine has no Tables for cannot be made: `&lt;engine&gt; has no tables`.</step>
+      <step n="5" name="writing">Every write to a schema file is one transaction: the rows written, then every query of the cortex's integrity.sql and of the engine's integrity(), each by its block; a query that returns a row ends the transaction with the error `&lt;file&gt;: &lt;the query's name&gt;: &lt;the row's second column&gt;`, and nothing is written; a foreign key or a check that refuses a row ends it with the error `&lt;file&gt;: &lt;table&gt; &lt;row id&gt;: &lt;SQLite's message&gt;`. Rows are inserted table by table in the order of step 1, each table's rows in the order given.</step>
+      <step n="6" name="an import">Store::import(name, imported, source, replace) makes the schema's file (step 4; with replace, an existing schema of that name is removed first, step 8) and, in one write (step 5): a turn (a UUIDv7 id, by import, who the source as Source gives it, summary `read &lt;source&gt;`, state accepted, started_at, ended_at, decided_at the time, decided_by import); one operation (a UUIDv7 id after the turn's, that turn, kind import, summary `read &lt;n&gt; objects`, the time); the rows of cortex_rows(imported.schema, engine) and of the engine's rows(imported.schema); and, for every row written in that order, a row of row_changes (position its place, the table, the row's id, action insert) and, for every column of it that is not null, a row of value_changes (before null, after the value). The read's report is not kept in the file (it is the caller's).</step>
+      <step n="7" name="reading back">Store::schema(name) reads every row of every cortex model table (all but schema, schema_migrations, turns, operations, row_changes, value_changes and versions) and of the engine's tables, each table ordered by id, into Rows, and gives cortex_schema(rows, engine) with the engine's read(rows) applied. A schema written by an import reads back as imported.schema, its layout and format as cortex_schema gives them.</step>
+      <step n="8" name="removing">Store::remove(name) deletes its schemas row and its file (and the file's -wal and -shm when there); a name schemas does not hold is the error `there is no schema &lt;name&gt;`.</step>
+      <step n="9" name="connections">Store::save_connection(name, engine id, values) refuses an engine the registry does not hold or that has no live part, a value for a field the engine does not declare (`&lt;engine&gt; connections have no field &lt;key&gt;`) and a value for a field the engine declares secret (`&lt;key&gt; is a secret, kept by no one`); it writes the connection (a UUIDv7 id when new) and replaces its connection_values, one row per non-empty value. Store::connections() lists them by name with their values and their last test; remove_connection deletes one; record_test(name, outcome, steps) writes a connection_tests row and its connection_test_steps.</step>
+    </module>
+    <tests path="crates/store/tests/store.rs">
+      <how>Rust tests, each on a workspace in a temporary folder of its own, on every engine of schema_forge_engines::for_tests(); what each engine is tested on (its sample files, by path from the repository root) is data in crates/store/tests/fixtures/engines.json, never named in test code; an engine of the registry the fixtures do not name fails the test. A test that plants a bad row or a changed migration does it through its own rusqlite connection to the file. No test reaches the network or a service.</how>
+      <prove step="1">an owner's version 1 creates its tables in the order of their foreign keys, and its checksum is the SHA-256 of its files in that order</prove>
+      <prove step="2">a new file records every owner's version with its checksum, and opening it again applies nothing</prove>
+      <prove step="2">a recorded checksum that differs, and a recorded version the build does not ship, each refuse the file without touching it</prove>
+      <prove step="2">a table changed by hand refuses the file, naming the table</prove>
+      <prove step="3">opening an empty folder makes workspace.db with its one workspace row, and opening it again keeps that row</prove>
+      <prove step="4">a schema file holds one schema row whose id is its schemas row's id, and the kinds of its engine</prove>
+      <prove step="4">a name already taken, a name the check refuses and an engine the registry lacks are each refused</prove>
+      <prove step="5">a row breaking a foreign key, a check or an integrity query ends the write with the error naming it, and nothing is written</prove>
+      <prove step="6">every sample of every engine imported is one accepted turn by import with one operation of kind import, every row written recorded in row_changes and every value set in value_changes</prove>
+      <prove step="6">ids of turns and operations increase in the order they were written, many in one millisecond included</prove>
+      <prove step="7">every sample of every engine imported reads back as the schema imported</prove>
+      <prove step="8">removing a schema removes its row and its file, and an unknown name is refused</prove>
+      <prove step="9">a connection is saved with its values, never a secret field, which is refused, and its tests are recorded with their steps</prove>
+    </tests>
+  </build>
+
+  <agent-decides>The names and the decomposition of private code in crates/store; how a write and a read are structured within the steps; the exact versions of rusqlite, uuid and sha2 (each the newest release at least two weeks old); the fixtures' file within the samples the engines' own tests use; the granularity of the commits. Nothing else: no table, column, message, id, order or check other than these; no other operation; no file outside the workspace folder written.</agent-decides>
+
+  <gates>
+    <note>Every gate runs from the repository root.</note>
+    <gate id="Store" kind="local" proves="steps 1 to 9 on every engine">
+      <cmd>cargo test -p schema-forge-store</cmd>
+      <expect>every test passes, one per item, none ignored</expect>
+    </gate>
+    <gate id="Spec check" kind="local" proves="the specs and the schema folders are unchanged and whole">
+      <cmd>cargo run -q -p schema-forge-specs</cmd>
+      <expect>the last line is `spec check: 0 findings`</expect>
+    </gate>
+    <gate id="Everything" kind="local" proves="the repository passes, the architecture check with the store an app among it">
+      <cmd>tools/check.sh</cmd>
+      <expect>the last line is `== All checks passed`</expect>
+    </gate>
+  </gates>
+
+  <owns>crates/store/**; Cargo.lock.</owns>
+  <forbid>schema/**; engines/**; crates/model/**; crates/engine/**; crates/engines/**; specs/**; tools/**; docs/**.</forbid>
+
+  <done>crates/store on the branch; every gate green and in the PR; nothing outside owns touched. After this task a workspace is SQLite files made only from the schema folders, every schema read in is kept with its log and read back the same, on every engine, and nothing that breaks the schema can be written.</done>
+</task>

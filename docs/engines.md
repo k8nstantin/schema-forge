@@ -169,30 +169,17 @@ through its Arrow mapping.
 
 ## The plan
 
-Each piece of work is one issue, one branch and one pull request, in the milestone
-[Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7). An engine is one piece of work, with whatever
-it needs from the interface.
+The plan is the build spec: [specs/root.xml](../specs/root.xml) holds the sequence of tasks, the decisions with their
+dates, and the method every build follows; each task is one XML file under [specs/tasks/](../specs/tasks), one branch
+and one pull request, keyed `SF-<issue>`. The database comes first: its schema folders ([docs/store.md](store.md)) are
+designed and locked before any of it is built, and every task falls into them.
 
-**Done (6):** the foundation (the prototype tagged and cleared, the architecture checked by CI); the model; the engine
-interface with its registry and conformance kit; the base every engine fills (the section layout, kinds and options,
-the Arrow mapping); routines, triggers and events in the layout; **the MySQL engine**, whole
-([engines/mysql](../engines/mysql/README.md)): dumps, hand-written DDL and the live database (the interface gained
-`Live`), every kind of object and clause, written back in a form that loads into MySQL 8.0, 8.4, 9.7 and 26.10.
+**Done:** the foundation, the model, the engine interface with its registry and conformance kit, the section layout,
+and **the MySQL engine**, whole ([engines/mysql](../engines/mysql/README.md)).
 
-**To build (10), in order:**
-
-1. **The PostgreSQL engine**, whole, with the add-ons it ships (PostGIS, pgvector, citext, hstore).
-2. **The Iceberg engine**, whole: Spark SQL, a warehouse of `metadata.json`, and REST catalogs.
-3. **The DataFusion layer**: a schema as a DataFusion catalog, views planned, lineage, compatibility through Arrow.
-4. **The store** on the new model: schemas, versions, turns, undo, history.
-5. **The operations**: the skeleton's and each engine's, checked against what the agent saw.
-6. **The rules**: the machinery shared, each engine's rules its own.
-7. **The server, the MCP and the command line**, with the registry crate.
-8. **Connections in the app**: profiles, secrets, the Connections page, testing ([connections.md](connections.md)).
-9. **The canvas**, built from the agreed boards on the engines; then schemas imported and checked in the browser.
-10. **The guide to writing an engine and an add-on**, finished, with template crates.
-
-After them: schema management (drift, migrations planned and checked, versions in git), CDC pipelines, consistency,
-deploy, branches and merges; BigQuery, kept for developers outside the core to prove the guide.
+**Next, in the spec's order:** the spec check; the tables interface; Quill, the engine every test of shared code runs
+beside MySQL; MySQL's tables; the SQLite store; then, once their decisions are closed, the operations, the server and
+the canvas. After them: the PostgreSQL and Iceberg engines, each with its own tables; schema management, CDC pipelines,
+consistency, deploy.
 
 How to write an engine: [writing-an-engine.md](writing-an-engine.md).
