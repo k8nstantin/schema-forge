@@ -178,7 +178,7 @@ designed and locked before any of it is built, and every task falls into them.
 and **the MySQL engine**, whole ([engines/mysql](../engines/mysql/README.md)).
 
 **Next, in the spec's order:** the spec check; the tables interface; Quill, the engine every test of shared code runs
-beside MySQL; MySQL's tables; the SQLite store; then, once their decisions are closed, the operations, the server and
+beside MySQL; MySQL's tables; PostgreSQL 18 built by the project's CI; the store on that bundled PostgreSQL; then, once their decisions are closed, the operations, the server and
 the canvas. After them: the PostgreSQL and Iceberg engines, each with its own tables; schema management, CDC pipelines,
 consistency, deploy.
 

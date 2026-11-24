@@ -240,7 +240,16 @@ not conform. A part your engine does not have is not checked.
 The kit's own tests break the `example` engine on purpose, one way each, to prove it finds each mistake:
 [`crates/engine/tests/interface.rs`](../crates/engine/tests/interface.rs).
 
-## 11. Let people add onto your engine
+## 11. Your engine's own tables
+
+What your engine stores lives in its own tables, in its own namespace `engine_<id>` of every schema database whose engine
+it is, each referring to the cortex row it belongs to. Copy [the owner template](owner-template/README.md): its card
+(`owner.toml`), the five shapes a table can take, a rules folder and its versions. Pick the shape before you name a
+column, give every column its comment, and prove the round trip: every sample read, written into your tables and read
+back is the same schema. The tables are designed with the maintainer and then locked: once shipped, a change is a new
+version that adds.
+
+## 12. Let people add onto your engine
 
 Give your engine an add-on trait, so people extend it without forking it: a database extension's types, statements,
 kept statements and later rules, each from an add-on crate registered with one line (`YourDb::new().with(Extra)`).

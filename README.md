@@ -211,12 +211,15 @@ The design: [docs/engines.md](docs/engines.md) (engines), [docs/rules.md](docs/r
 
 ## Contributing
 
-Schema Forge is meant to grow by plugins. To add a database, write an **engine**: one crate, following
-[docs/writing-an-engine.md](docs/writing-an-engine.md) and, for its tables, [the owner template](docs/owner-template/README.md),
-checked by the conformance kit. To add onto a database (an
-extension's types, a company's conventions), write an **add-on** for its engine. Every change is one issue, one
-branch and one pull request; `cargo fmt --check`, `cargo clippy -- -D warnings` and `cargo test` (which includes the
-architecture check) must pass. See [CONTRIBUTING.md](CONTRIBUTING.md).
+**Everyone is welcome, and it is a chance to learn databases from the inside.** Write an engine and you learn a
+database's grammar, types and catalogs; add a feature's tables and you learn relational design, rules enforced at commit
+and versioned migrations; bring a dump that breaks a reader and you find the corners of SQL nobody documents. The design
+is written down ([the pages](#the-database-at-the-core), [specs/](specs/)), so you never have to guess, and questions are
+contributions too.
+
+Every change is one issue, one branch and one pull request; `tools/check.sh` (format, clippy, every test, the
+architecture check) must pass, and the database schema changes only by a design session, as a new version that adds.
+Where to start and what each way teaches: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Built with
 
