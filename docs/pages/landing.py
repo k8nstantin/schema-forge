@@ -98,8 +98,8 @@ body = f"""
 {card("Next to the tools you know", "Atlas, Bytebase and Flyway plan and apply migrations; dbdiagram and drawDB draw diagrams; Prisma defines a schema in application code. %PRODUCT% is for designing and managing the schema itself, with your own agent, under rules the database enforces. <a href='%REPO%/blob/main/docs/market.md'>More</a>")}
 </div></section>
 
-<section id="contribute"><div class="cta"><p class="kicker">Built with coding agents</p><h2>Contribute the way it is built.</h2>
-<p class="lede">Each piece of work is written down first as a task; one agent builds it; tests and a person's review decide. Point your agent at the project and it will show you what is open now. Anyone can take up the same task, and the best build is merged.</p>
+<section id="contribute"><div class="cta"><p class="kicker">A collaborative learning exercise</p><h2>Learn data products, agent coding and spec-driven development, by building one together.</h2>
+<p class="lede">%PRODUCT% is built in the open, the way it asks you to work: each piece of work is written down first as a task; one agent builds it; tests and a person's review decide; every lesson improves the method. Point your agent at the project and it will show you what is open now. Anyone can take up the same task, and the best build is merged.</p>
 <div class="btns"><a class="btn btn-primary" href="{e(L.get("contribute", "#"))}">Contribute with your agent</a>
 <a class="btn btn-outline" href="{e(L.get("home", "#"))}">Read the design</a></div></div></section>
 """
