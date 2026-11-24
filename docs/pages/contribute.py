@@ -57,6 +57,7 @@ architecture = [(p.get("name"), p.get("href") or "",
                  fill(flat(root.find("identity/repository")) if p.get("source") == "repository" else flat(p)))
                 for p in brief.find("architecture").findall("part")]
 start_steps = [fill(flat(s)) for s in brief.find("start").findall("step")]
+first_steps = [(s.get("name"), fill(flat(s))) for s in brief.find("first-steps").findall("step")]
 PROMPT = said("prompt")
 
 # what is wanted now: from the sequence (built, file, depends) and the open decisions
@@ -122,7 +123,10 @@ xl += ["    </queued>", f"    <design about={qa(said('wanted/design'))}>"]
 xl += [f"      <decision id={qa(i)} closes-before={qa(c)}/>" for i, c, _ in open_decisions]
 xl += ["    </design>", f"    <ahead about={qa(said('wanted/ahead'))}>"]
 xl += [f"      <task id={qa(t.get('id'))} name={qa(t.get('name'))}>{xesc(flat(t))}</task>" for t in ahead]
-xl += ["    </ahead>", f"    <issues href={qa(REPO_URL + '/issues')}>{xesc(said('wanted/issues'))}</issues>", "  </wanted>", "  <start>"]
+xl += ["    </ahead>", f"    <issues href={qa(REPO_URL + '/issues')}>{xesc(said('wanted/issues'))}</issues>", "  </wanted>",
+       f"  <first-steps>\n    <note>{xesc(said('first-steps/note'))}</note>"]
+xl += [f"    <step name={qa(n)}>{xesc(s)}</step>" for n, s in first_steps]
+xl += ["  </first-steps>", "  <start>"]
 xl += [f'    <step n="{i}">{xesc(s)}</step>' for i, s in enumerate(start_steps, 1)]
 xl += ["  </start>", f"  <method>\n    <note>{xesc(said('method/note'))}</note>"]
 xl += [f'    <step n="{i}" name={qa(n)}>{xesc(t)}</step>' for i, (n, _, t) in enumerate(method, 1)]
@@ -169,15 +173,18 @@ body = f"""
 <header class="hero">
   <p class="eyebrow">Contribute</p>
   <h1>Built with coding agents. Contributed the same way.</h1>
-  <p>{e(purpose)}</p>
-  <div class="btns"><a class="btn btn-primary" href="#start">Start with your agent</a>
+  <p>A collaborative learning exercise, in the open: learn a data product from the inside, coding with agents, and spec-driven development, by building one together. No experience needed: your agent reads the project for you, and nothing you do can break it.</p>
+  <div class="btns"><a class="btn btn-primary" href="#first">Start small</a>
+  <a class="btn btn-secondary" href="#start">Start with your agent</a>
   <a class="btn btn-secondary" href="{e(SITE_URL)}agents.xml">The brief for agents</a>
   <a class="btn btn-secondary" href="%REPO%/discussions">Discussions</a></div>
 </header>
 
-<section id="method"><p class="kicker">The method</p><h2>People and agents, each doing what they do best.</h2>
-<p class="lede">{e(said('method/note'))}</p>
-<figure>{method_svg}<figcaption>{' '.join(f'<b>{e(n)}</b>: {e(t)}' for n, _, t in method)}</figcaption></figure></section>
+<section id="first"><p class="kicker">Start small</p><h2>No experience needed, and you cannot break anything.</h2>
+<p class="lede">{e(said('first-steps/note'))}</p>
+<div class="cards">{''.join(f'<div class="card"><h3>{e(n[:1].upper() + n[1:])}</h3><p>{e(s)}</p></div>' for n, s in first_steps)}</div>
+<p class="lede" style="margin-top:14px">Every merged contribution carries your name, and is thanked in the notes of its release. We keep a <a href="%REPO%/blob/{e(BRANCH)}/CODE_OF_CONDUCT.md">code of conduct</a>: be kind, be patient, assume good intent.</p></section>
+
 
 <section id="wanted"><p class="kicker">Wanted now</p><h2>What the project needs today.</h2>
 <p class="lede">{e(said('wanted/note'))} Everyone may submit a build of a ready task; the maintainer reviews them side by side and merges the best.</p>
@@ -185,6 +192,10 @@ body = f"""
 {''.join(f'<a class="card" href="{e(href(t.get("file")))}"><p class="kicker">Queued</p><h3>{e(task_line(t))}</h3><p>{e(flat(t)[:180])}…</p><span class="go">Read ahead →</span></a>' for t in queued)}
 </div>
 <p class="lede" style="margin-top:14px"><b>Needs a design session:</b> {', '.join(f'<code>{e(i)}</code>' for i, _, _ in open_decisions)}. Bring your view to <a href="%REPO%/discussions">Discussions</a>.</p></section>
+
+<section id="method"><p class="kicker">The method</p><h2>People and agents, each doing what they do best.</h2>
+<p class="lede">{e(said('method/note'))}</p>
+<figure>{method_svg}<figcaption>{' '.join(f'<b>{e(n)}</b>: {e(t)}' for n, _, t in method)}</figcaption></figure></section>
 
 <section id="start"><p class="kicker">Step one, for everyone</p><h2>Let your agent read the whole spec.</h2>
 <pre class="prompt">{e(PROMPT)}</pre>
@@ -206,5 +217,5 @@ body = f"""
 <a class="btn btn-outline" href="%REPO%/blob/{e(BRANCH)}/CONTRIBUTING.md">CONTRIBUTING.md</a></div></div></section>
 """
 CSS = ".prompt{white-space:pre-wrap;font:14px/1.6 var(--mono);background:var(--surface);border:1.5px solid var(--accent);border-radius:12px;padding:16px 18px;color:var(--ink);overflow-wrap:anywhere}"
-sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("wanted", "Wanted now"), ("method", "The method"), ("start", "Start"), ("ways", "Three ways in"), ("reads", "What it reads"), ("by-hand", "Reading first")])
+sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("first", "Start small"), ("wanted", "Wanted now"), ("method", "The method"), ("start", "Start"), ("ways", "Three ways in"), ("reads", "What it reads"), ("by-hand", "Reading first")])
 HTML = page("contribute", "Contribute", CSS, body, sub)

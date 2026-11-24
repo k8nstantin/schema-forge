@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ask in Discussions
+    url: https://github.com/k8nstantin/schema-forge/discussions
+    about: Questions and ideas are welcome there too, and others can join in.
+  - name: The brief for coding agents
+    url: https://k8nstantin.github.io/schema-forge/agents.xml
+    about: Point your agent here first; it explains the project and lists what is open.

@@ -1,0 +1,11 @@
+name: A question
+description: Anything you want to understand about SchemaForge; no question is too small.
+labels: [question]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What you wanted to know, and where you looked.
+    validations:
+      required: true
