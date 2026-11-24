@@ -173,20 +173,18 @@ body = f"""
 <header class="hero">
   <p class="eyebrow">Contribute</p>
   <h1>Built with coding agents. Contributed the same way.</h1>
-  <p>{e(purpose)}</p>
-  <div class="btns"><a class="btn btn-primary" href="#start">Start with your agent</a>
+  <p>A collaborative learning exercise, in the open: learn a data product from the inside, coding with agents, and spec-driven development, by building one together. No experience needed: your agent reads the project for you, and nothing you do can break it.</p>
+  <div class="btns"><a class="btn btn-primary" href="#first">Start small</a>
+  <a class="btn btn-secondary" href="#start">Start with your agent</a>
   <a class="btn btn-secondary" href="{e(SITE_URL)}agents.xml">The brief for agents</a>
   <a class="btn btn-secondary" href="%REPO%/discussions">Discussions</a></div>
 </header>
-
-<section id="method"><p class="kicker">The method</p><h2>People and agents, each doing what they do best.</h2>
-<p class="lede">{e(said('method/note'))}</p>
-<figure>{method_svg}<figcaption>{' '.join(f'<b>{e(n)}</b>: {e(t)}' for n, _, t in method)}</figcaption></figure></section>
 
 <section id="first"><p class="kicker">Start small</p><h2>No experience needed, and you cannot break anything.</h2>
 <p class="lede">{e(said('first-steps/note'))}</p>
 <div class="cards">{''.join(f'<div class="card"><h3>{e(n[:1].upper() + n[1:])}</h3><p>{e(s)}</p></div>' for n, s in first_steps)}</div>
 <p class="lede" style="margin-top:14px">Every merged contribution carries your name, and is thanked in the notes of its release. We keep a <a href="%REPO%/blob/{e(BRANCH)}/CODE_OF_CONDUCT.md">code of conduct</a>: be kind, be patient, assume good intent.</p></section>
+
 
 <section id="wanted"><p class="kicker">Wanted now</p><h2>What the project needs today.</h2>
 <p class="lede">{e(said('wanted/note'))} Everyone may submit a build of a ready task; the maintainer reviews them side by side and merges the best.</p>
@@ -194,6 +192,10 @@ body = f"""
 {''.join(f'<a class="card" href="{e(href(t.get("file")))}"><p class="kicker">Queued</p><h3>{e(task_line(t))}</h3><p>{e(flat(t)[:180])}…</p><span class="go">Read ahead →</span></a>' for t in queued)}
 </div>
 <p class="lede" style="margin-top:14px"><b>Needs a design session:</b> {', '.join(f'<code>{e(i)}</code>' for i, _, _ in open_decisions)}. Bring your view to <a href="%REPO%/discussions">Discussions</a>.</p></section>
+
+<section id="method"><p class="kicker">The method</p><h2>People and agents, each doing what they do best.</h2>
+<p class="lede">{e(said('method/note'))}</p>
+<figure>{method_svg}<figcaption>{' '.join(f'<b>{e(n)}</b>: {e(t)}' for n, _, t in method)}</figcaption></figure></section>
 
 <section id="start"><p class="kicker">Step one, for everyone</p><h2>Let your agent read the whole spec.</h2>
 <pre class="prompt">{e(PROMPT)}</pre>
