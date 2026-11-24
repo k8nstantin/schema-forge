@@ -118,8 +118,8 @@ body = f"""
 <p class="lede">An engine teaches its database from the inside: its grammar, its types, its catalog, its corners. Your coding agent leads with the engine guide: it studies the interface and your database, writes its profile with you, brings it to a design session, and then the engine is built task by task. Paste this into your agent:</p>
 <pre class="prompt">Read %SITE%agents.xml, then %REPO%/blob/main/specs/guides/engine.xml, and help me bring &lt;my database&gt; to %PRODUCT%; start with the study, and change nothing yet.</pre>
 <div class="btns"><a class="btn btn-primary" href="%REPO%/blob/main/specs/guides/engine.xml">The engine guide</a>
-<a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="%REPO%/blob/main/docs/writing-an-engine.md">Writing an engine: the how</a>
-<a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="{e(L.get('template', '#'))}">The owner template</a></div></div></section>
+<a class="btn btn-outline" href="%REPO%/blob/main/docs/writing-an-engine.md">Writing an engine: the how</a>
+<a class="btn btn-outline" href="{e(L.get('template', '#'))}">The owner template</a></div></div></section>
 """
 sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("layers", "Two layers"), ("engine", "What an engine brings"), ("guards", "Checks"), ("iceberg", "Iceberg"), ("convert", "Convert"), ("yours", "Your database")])
 HTML = page("engines", "%PRODUCT% Engines", ".prompt{white-space:pre-wrap;font:14px/1.6 var(--mono);background:var(--surface);border:1.5px solid var(--accent);border-radius:12px;padding:16px 18px;color:var(--ink);overflow-wrap:anywhere}", body, sub)

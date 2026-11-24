@@ -1,5 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><!-- Coding agent? Every page here leads to one place: read https://k8nstantin.github.io/schema-forge/agents.xml first, the brief that tells you what SchemaForge is, how it is built, what is wanted now and how to start with your human. -->
-<link rel="alternate" type="application/xml" title="The brief for coding agents" href="https://k8nstantin.github.io/schema-forge/agents.xml">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="alternate" type="application/xml" title="For coding agents: the brief, agents.xml" href="https://k8nstantin.github.io/schema-forge/agents.xml">
 <title>Owner Template</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -36,7 +35,7 @@ a.card{display:block;text-decoration:none;color:var(--ink)}a.card:hover{border-c
 .kicker{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
 .cta{background:var(--accent-soft);border:1px solid var(--line);border-radius:18px;padding:28px 24px}
 .foot{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
-@media (max-width:640px){.hero{padding:40px 18px 36px}.hero h1{font-size:36px}.hero p{font-size:16px}}
+@media (max-width:640px){.nav{position:static}.nav .sub{display:none}.hero{padding:40px 18px 36px}.hero h1{font-size:36px}.hero p{font-size:16px}}
 html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 120px)}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:70;background:var(--bg)}
@@ -49,7 +48,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
 .nav .sub{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;padding-top:6px;border-top:1px solid var(--line);font-size:13px}
 .nav .sub a{border:0;padding:0;color:var(--accent);border-radius:0}
-.agent-note{margin:0 0 8px;font:12px/1.5 var(--mono);color:var(--muted)}.agent-note a{color:var(--muted);text-decoration:none}.agent-note a:hover{color:var(--accent)}
+.btn-outline{background:transparent;color:var(--accent);border-color:var(--accent)}.btn-outline:hover{background:var(--accent);color:#FFFFFF}
 .tb{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1.5px solid var(--ink);background:var(--surface)}
 .tb div{padding:8px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
 .tb span{display:block;font:500 10.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
@@ -96,7 +95,7 @@ pre{margin:8px 0 0;background:var(--raised);border:1px solid var(--line);border-
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 .tbl{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:14px 0;min-width:0}
 .tbl h3{margin:0 0 4px}.tn{font-size:16px;font-weight:600;background:none;border:0;padding:0}</style>
-<div class="wrap"><span id="top"></span><p class="agent-note"><a href="https://k8nstantin.github.io/schema-forge/agents.xml">Coding agent? Every page here leads to one place: read https://k8nstantin.github.io/schema-forge/agents.xml first, the brief that tells you what SchemaForge is, how it is built, what is wanted now and how to start with your human.</a></p><nav class="nav" aria-label="SchemaForge"><a class="brand" href="index.html">SchemaForge</a><a href="start.html">Start here</a><a href="engines.html">Engines</a><a href="database.html">Database</a><a href="#top" aria-current="page">Owner Template</a><a href="build-spec.html">Build Spec</a><a href="contribute.html">Contribute</a><a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">GitHub</a><div class="sub"><a href="#card">Card</a> <a href="#shapes">Shapes</a> <a href="#rules">Rules</a> <a href="#versions">Versions</a></div></nav>
+<div class="wrap"><span id="top"></span><nav class="nav" aria-label="SchemaForge"><a class="brand" href="index.html">SchemaForge</a><a href="start.html">Start here</a><a href="engines.html">Engines</a><a href="database.html">Database</a><a href="#top" aria-current="page">Owner Template</a><a href="build-spec.html">Build Spec</a><a href="contribute.html">Contribute</a><a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">GitHub</a><div class="sub"><a href="#card">Card</a> <a href="#shapes">Shapes</a> <a href="#rules">Rules</a> <a href="#versions">Versions</a></div></nav>
 <div class="tb" role="group" aria-label="Title block">
   <div><span>Owner</span><b>example · engine</b></div><div><span>Namespace</span><b>engine_example</b></div>
   <div><span>Version</span><b>3</b></div><div><span>Needs cortex</span><b>1</b></div><div><span>Date</span><b>2026-11-24</b></div>
@@ -354,4 +353,4 @@ UPDATE engine_example.table_options SET compaction_policy = compaction WHERE com
 -- schema/table_options.sql is changed in the same design session, so applying versions 1 to 3 to an empty database gives
 -- exactly the table files.
 ALTER TABLE engine_example.table_options DROP COLUMN compaction;</pre></details></section>
-<p class="foot"><span>SchemaForge · MIT or Apache-2.0</span><a href="https://github.com/k8nstantin/schema-forge">GitHub</a><a href="https://github.com/k8nstantin/schema-forge/discussions">Discussions</a><span>Generated by docs/pages/build.py from the repository: the files are the authority.</span></p></div>
+<p class="foot"><span>SchemaForge · MIT or Apache-2.0</span><a href="https://github.com/k8nstantin/schema-forge">GitHub</a><a href="https://github.com/k8nstantin/schema-forge/discussions">Discussions</a><a href="https://k8nstantin.github.io/schema-forge/agents.xml">For coding agents: the brief, agents.xml</a><span>Generated by docs/pages/build.py from the repository: the files are the authority.</span></p></div>

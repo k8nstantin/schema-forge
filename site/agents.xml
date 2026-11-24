@@ -34,6 +34,7 @@
       <decision id="pipelines-tables" closes-before="t08"/>
       <decision id="insight-layer" closes-before="t08"/>
       <decision id="steward" closes-before="t10"/>
+      <decision id="first-release-sequence" closes-before="t07"/>
       <decision id="api-contract" closes-before="t08"/>
     </design>
     <ahead about="Not written yet: the work after the queued tasks, each written as a task file once its decisions close. A feature you want to build may be here.">
@@ -130,6 +131,7 @@
     <decision id="pipelines-tables" closes-before="t08">The tables of a CDC pipeline between two schemas, by their stable ids.</decision>
     <decision id="insight-layer" closes-before="t08">What is worked out about the model, kept apart from it in a feature owner insight, so a person or an agent can search and question a design through the MCP: dependencies (calls, reads, writes, foreign keys, with evidence and unresolved names) for impact walks; cards composed mechanically from the model; annotations an agent writes, with the model and the input hash; embeddings (pgvector, HNSW) of cards and annotations, searched together with full-text and exact names and every hit confirmed against the model. Kept fresh from the log: an accepted turn's row_changes name the objects whose rows are redone. Rebuilt, never logged or migrated. The MCP's read tools: search (finds candidates), object (one object whole), impact (the walk), sql (every count and list, as a read-only role). The embedding model is the decision embedding-models. A semantic layer (business terms, measures) is authored, so it is its own owner, logged by turns; its embeddings are insight's.</decision>
     <decision id="steward" closes-before="t10">What the steward agent may do alone and what stays a person's: which pull requests it may merge (a task's build, a contributor's, a design session's never), what its review must prove beyond the gates, how often it runs and on what, how it records a lesson, how it starts the next build, and how a person stops or overrides it. Until it closes, a person reviews and merges, and no agent merges.</decision>
+    <decision id="first-release-sequence" closes-before="t07">The order of the work after the store toward the first release: which of the insight layer (dependencies and findings first), the rules, the MCP's read tools and the operations come before the canvas, and which tasks that makes.</decision>
     <decision id="api-contract" closes-before="t08">The server's API over the store: every route and type, written before it is built.</decision>
   </open>
   <rules>

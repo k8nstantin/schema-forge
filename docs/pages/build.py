@@ -26,6 +26,8 @@ for mode in ("artifact", "site"):
             os.makedirs(site, exist_ok=True)
             open(os.path.join(site, common.FILES[key]), "w", encoding="utf-8").write(mod.HTML)
 shutil.copy(os.path.join(here, "favicon.svg"), os.path.join(site, "favicon.svg"))
+os.makedirs(os.path.join(site, "screenshots"), exist_ok=True)
+shutil.copy(os.path.join(here, "..", "screenshots", "table-and-turn.jpg"), os.path.join(site, "screenshots", "table-and-turn.jpg"))
 brief = sys.modules["contribute"]
 open(os.path.join(site, "llms.txt"), "w", encoding="utf-8").write(brief.LLMS_TXT)
 open(os.path.join(site, "agents.xml"), "w", encoding="utf-8").write(brief.AGENTS_XML)

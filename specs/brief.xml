@@ -12,7 +12,7 @@
 
   <agent-file>You are in the %PRODUCT% repository. If the first message of this session is a task file's path (specs/tasks/&lt;file&gt;.xml), follow that file and nothing here. Otherwise read the brief, site/agents.xml in this checkout (the same as %SITE%agents.xml), and every file it lists, in its order; then tell your human what you understood before you change anything.</agent-file>
 
-  <page-note>Coding agent? Every page here leads to one place: read %SITE%agents.xml first, the brief that tells you what %PRODUCT% is, how it is built, what is wanted now and how to start with your human.</page-note>
+  <page-note>For coding agents: the brief, agents.xml</page-note>
 
   <intro>You were pointed here to understand %PRODUCT% or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (%REPO%, branch %BRANCH%); the files are the authority, this brief only orders them.</intro>
 

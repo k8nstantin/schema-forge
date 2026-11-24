@@ -203,7 +203,7 @@ body = f"""
 <section id="by-hand"><div class="cta"><p class="kicker">Reading first</p><h2>The same design, for people.</h2>
 <p class="lede">Every page of this site is drawn from the same files your agent reads.</p>
 <div class="btns"><a class="btn btn-primary" href="{e(L.get('home', '#'))}">Start here</a>
-<a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="%REPO%/blob/{e(BRANCH)}/CONTRIBUTING.md">CONTRIBUTING.md</a></div></div></section>
+<a class="btn btn-outline" href="%REPO%/blob/{e(BRANCH)}/CONTRIBUTING.md">CONTRIBUTING.md</a></div></div></section>
 """
 CSS = ".prompt{white-space:pre-wrap;font:14px/1.6 var(--mono);background:var(--surface);border:1.5px solid var(--accent);border-radius:12px;padding:16px 18px;color:var(--ink);overflow-wrap:anywhere}"
 sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("wanted", "Wanted now"), ("method", "The method"), ("start", "Start"), ("ways", "Three ways in"), ("reads", "What it reads"), ("by-hand", "Reading first")])

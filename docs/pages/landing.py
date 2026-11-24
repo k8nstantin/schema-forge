@@ -1,88 +1,102 @@
-"""The site's front page: what the product is, why its database is its strength, and the way into the design."""
-from common import Svg, database, e, links, page
+"""The site's front page: the first release first, what runs today, what comes after, and how to join."""
+import base64
+import common
+from common import REPO, Svg, e, links, page
 
-db, _ = database()
 L = links()
-ntab = sum(len(d["tables"]) for d in db.values())
-nrules = sum(len(d["rules"]) for d in db.values())
 
-g = Svg(1040, 300, "You on the canvas and the agent over MCP work on the same schema at the same time, through one server that keeps everything in one PostgreSQL with pgvector.")
-g.box("you", 30, 50, 220, 60, "you", "draw on the canvas", cls="box")
-g.box("agent", 30, 170, 220, 60, "your agent", "chats and designs over MCP", cls="box")
-g.box("serve", 360, 105, 230, 70, "schema-forge serve", "every change a checked operation", cls="pri")
-g.band(680, 20, 340, 260, "PostgreSQL 18 + pgvector")
-for key, y, title, sub in [("m", 60, "the model", "cortex · engine_<id>"), ("l", 130, "the log", "every turn, undoable"),
-                           ("v", 200, "insight", "dependencies · vectors")]:
-    g.box(key, 710, y, 280, 52, title, sub, cls="eng" if key == "v" else ("lg" if key == "l" else "pri"))
-g.arrow("you", "serve", "", cls="ea"); g.arrow("agent", "serve", "", cls="ea")
-g.parts.append('<line x1="592" y1="140" x2="676" y2="140" class="ea" marker-end="url(#mka)"/>')
-g.text(634, 128, "one place", "lb m", "middle")
+
+def shot(name, alt):
+    """A screenshot of the prototype: a file of the site, or the image itself in a private preview."""
+    if common.MODE == "site":
+        src = f"screenshots/{name}"
+    else:
+        src = "data:image/jpeg;base64," + base64.b64encode(open(f"{REPO}/docs/screenshots/{name}", "rb").read()).decode()
+    return f'<img class="shot" src="{src}" alt="{e(alt)}" loading="lazy">'
+
+
+def card(title, text):
+    return f'<div class="card"><h3>{title}</h3><p>{text}</p></div>'
+
+
+g = Svg(1040, 260, "Your agent reads the database into one PostgreSQL, where the model, its history and what is worked out about it can be asked together.")
+g.box("src", 30, 100, 210, 60, "your MySQL", "a dump, DDL or the live server", cls="box")
+g.box("agent", 30, 190, 210, 52, "your coding agent", "asks, over MCP", cls="box")
+g.band(330, 20, 690, 230, "one PostgreSQL 18, bundled")
+for k, x, title, sub in [("m", 360, "the model", "every object, column, key, rule"), ("l", 580, "its history", "every change, undoable"),
+                         ("i", 800, "what is worked out", "dependencies, findings, meaning")]:
+    g.box(k, x, 80, 200, 60, title, sub, cls="lg" if k == "l" else ("eng" if k == "i" else "pri"))
+g.arrow("src", "m", "read", cls="ea")
+g.parts.append('<line x1="242" y1="216" x2="560" y2="216" class="ea" marker-end="url(#mka)"/>')
+g.text(560, 236, "one SQL query, all three at once", "lb m", "middle")
 g.containers = set()
-how_svg = g.render()
+flow_svg = g.render()
 
-def card(title, text): return f'<div class="card"><h3>{title}</h3><p>{text}</p></div>'
-def link(key, title, text): return f'<a class="card" href="{e(L.get(key, "#"))}"><h3>{title}</h3><p>{text}</p><span class="go">Read →</span></a>'
+today = "".join(card(a, b) for a, b in [
+    ("Reads MySQL", "mysqldump files, hand-written DDL and a live MySQL server: every kind of object and clause, from MySQL 8.0 to 26.10."),
+    ("Writes it back", "SQL that loads into a real MySQL server, proved by loading it, dumping it again and reading back the same schema."),
+    ("Designed in the open", "The database it keeps its work in, every table and rule, and every task still to build, written down before the code."),
+])
+first = "".join(card(a, b) for a, b in [
+    ("How it is built", "Every database, table, view, routine, trigger and event, with their keys, indexes and partitions, as one model you can walk."),
+    ("What depends on what", "Foreign keys, and the links no key declares: which routine reads or writes which table, which view stands on which, what a change would reach."),
+    ("What it means", "What each object is for, kept up to date as the schema changes, and found by meaning: ask for the tables about billing and get them, with the evidence."),
+    ("What is wrong with it", "Tables without keys, money stored in floats, rules your team wrote that the database breaks: each a finding with its evidence."),
+])
+nxt = "".join(card(a, b) for a, b in [
+    ("The canvas, with your agent", "Your agent designs through MCP while you watch the schema change and edit it yourself. How your edits and an agent's open turn combine is still being designed."),
+    ("PostgreSQL and Iceberg", "More engines, each a plugin of its own; and converting a schema between them, naming every type kept, widened or lost."),
+    ("For a team", "The same code on a shared PostgreSQL server: one design, one history, one search index for everyone."),
+])
+SQL = """-- a sketch of the planned insight layer: tables about billing that refer to customers
+SELECT o.name, d.kind, d.from_object AS used_by
+FROM   cortex.objects o
+JOIN   insight.embeddings  v ON v.subject = o.id
+LEFT JOIN insight.dependencies d ON d.to_object = o.id      -- what reads or writes it
+WHERE  EXISTS (SELECT 1 FROM cortex.relationships r
+               WHERE r.from_object = o.id AND r.to_object = 'o_customers')
+ORDER  BY v.vector <=> embedding('tables about billing')   -- pgvector: by meaning
+LIMIT  10;"""
 
-one_place = "".join(card(a, b) for a, b in [
-    ("Real PostgreSQL, bundled", "PostgreSQL 18 with pgvector ships inside the app: nothing to install, nothing to configure. Each workspace runs its own private cluster."),
-    ("One person or a whole team", "Point it at a central PostgreSQL server and a team shares one design: the same code, the same schema, only the connection changes."),
-    ("Metadata and vectors together", "Every object, column, relationship and rule sits beside its embedding: one SQL query asks by meaning, by structure and by lineage at once."),
-    ("Fresh on every change", "The log knows exactly what each turn touched, so only that is embedded again: what the agent finds is what is on the canvas."),
-    ("Guarded by the database", "Foreign keys, typed and checked columns, and rules PostgreSQL enforces at every commit, whoever writes: you, your agent or your team."),
-    ("Grows by versions", "Every engine and every feature brings its own namespace and versions; every change adds, and every release upgrades the ones before."),
-])
-plugins = "".join(card(a, b) for a, b in [
-    ("MySQL", "Dumps, hand-written DDL and the live server read; every kind of object and clause written back for MySQL 8.0 to 26.10. Done."),
-    ("PostgreSQL and Apache Iceberg", "Next, each an engine of its own with its own tables. Iceberg brings the lakehouse: field ids, hidden partitioning, format versions 1 to 3."),
-    ("Your database", "An engine is one crate: its grammar, types and catalogs, and its tables from the owner template. No change to the core."),
-    ("Convert both ways", "Every engine maps into one shared model, so MySQL converts to Iceberg and Iceberg back to MySQL or PostgreSQL, with every type kept, widened or lost named."),
-])
-design = "".join([
-    link("home", "Start here", "What %PRODUCT% is, how it is built, and where it stands."),
-    link("database", "The database", f"Every one of its {ntab} tables and {nrules} rules, drawn and listed from the schema folders."),
-    link("template", "The owner template", "How an engine or a feature adds its tables: five shapes, rules and versions."),
-    link("build-spec", "The build spec", "How coding agents build it: one XML task per branch and pull request, every decision dated."),
-])
 body = f"""
 <header class="hero">
   <p class="eyebrow">Open source · Rust · PostgreSQL 18 + pgvector · MCP</p>
-  <h1>Design database schemas with your coding agent, under standards that hold.</h1>
-  <p>%PRODUCT% is collaborative schema design: your agent designs through MCP while you view and edit the same schema on the
-  canvas, at the same time. Every change, yours and the agent's, is checked against your team's rules, and nothing lands unchecked.</p>
-  <div class="btns"><a class="btn btn-primary" href="{e(L.get("home", "#"))}">Read the design</a>
+  <h1>Point it at your MySQL database. See how it is built, and what is wrong with it.</h1>
+  <p>%PRODUCT% reads a MySQL database (a dump, DDL or the live server) and works out what nobody wrote down: how it is put together, what depends on what, what it means, and where it breaks your rules. You ask in plain words, through your own coding agent.</p>
+  <div class="btns"><a class="btn btn-primary" href="#today">What runs today</a>
   <a class="btn btn-secondary" href="%REPO%">GitHub</a>
-  <a class="btn btn-secondary" href="%REPO%/discussions">Discussions</a></div>
-  <span class="note">Designed and specified, and being built now, in the open.</span>
+  <a class="btn btn-secondary" href="{e(L.get("contribute", "#"))}">Build it with us</a></div>
+  <span class="note">The first release is being built now, in the open. The MySQL engine works today.</span>
 </header>
 
-<section id="one-place"><p class="kicker">The database at the core</p>
-<h2>One PostgreSQL. Your design, its rules, its history and its vectors, in one place.</h2>
-<p class="lede">For one person on a laptop or a whole team on a server. The database is designed first and locked, so coding agents fall into it instead of drifting from it.</p>
-<div class="cards">{one_place}</div></section>
+<section id="today"><p class="kicker">What runs today</p><h2>The MySQL engine, whole.</h2>
+<div class="cards">{today}</div>
+<figure class="screen">{shot("table-and-turn.jpg", "The prototype's canvas: a table the agent designed, its turn waiting for a verdict")}<figcaption>The prototype, which proved the idea: the agent's design on the canvas, its turn waiting to be accepted or rejected. The product is being rebuilt on the design this site describes; the prototype stays as the <code>prototype</code> tag.</figcaption></figure></section>
 
-<section id="intelligence"><p class="kicker">Bring the database you have</p>
-<h2>Point it at your database. Get to know it.</h2>
-<p class="lede">Read in a live database, a dump or a folder of DDL, and %PRODUCT% works out what you never wrote down: how it is put together, what depends on what, and what it means. Ask it in plain words, through the canvas or your agent.</p>
-<div class="cards two"><div class="card"><h3>Its architecture</h3><p>Every namespace, table, view, routine, trigger and event, with their keys, indexes and partitions, laid out as one model you can see and walk.</p></div><div class="card"><h3>Its relationships</h3><p>Foreign keys, and what no key declares: which routine reads or writes which table, which view stands on which, what a change would reach.</p></div><div class="card"><h3>Its meaning</h3><p>What each object is for, in sentences kept up to date, and found by meaning: ask for the tables about billing and get them, with the evidence.</p></div><div class="card"><h3>Its problems</h3><p>Tables without keys, money in floats, rules your team wrote that the database breaks today: each a finding with its evidence and its fix.</p></div></div></section>
+<section id="first"><p class="kicker">The first release</p><h2>Understand the database you already have.</h2>
+<p class="lede">Read in your MySQL database and ask your agent about it. Reading a live server sends only statements that read, and no password is ever stored.</p>
+<div class="cards two">{first}</div></section>
 
-<section id="how"><p class="kicker">Collaborative design</p><h2>Your agent designs through MCP. You see it, and edit it, at the same time.</h2>
-<p class="lede">Ask your agent for a design and watch every table, column and relationship land on the canvas as it makes them. Move in beside it: point at anything, edit it by hand, steer the next prompt. You and the agent work on one live schema, through the same checks, into the same database; each of the agent's answers is a turn you accept or reject whole, and undo takes back any of it.</p>
-<figure>{how_svg}<figcaption>The canvas and the MCP are two doors into one server; everything it knows lives in one PostgreSQL.</figcaption></figure></section>
+<section id="one-place"><p class="kicker">How it works</p><h2>One PostgreSQL holds the model, its history and what is worked out about it.</h2>
+<figure>{flow_svg}<figcaption>Every change is recorded and can be undone; the database itself refuses any change that breaks a rule.</figcaption></figure>
+<pre class="sql">{e(SQL)}</pre>
+<div class="cards">
+{card("Your data stays yours", "Meaning is found with embeddings from a model you choose: one that runs on your machine, so nothing leaves it, or an embedding API you pick, per workspace.")}
+{card("Why PostgreSQL, not SQLite", "The database itself enforces every rule, the search index sits beside the model, and the same code serves a team server. The cost: a larger download, a small private server per open workspace, and upgrades the app handles for you.")}
+{card("Next to the tools you know", "Atlas, Bytebase and Flyway plan and apply migrations; dbdiagram and drawDB draw diagrams; Prisma defines a schema in application code. %PRODUCT% is for understanding and designing the schema itself, with your own agent, under rules the database enforces. <a href='%REPO%/blob/main/docs/market.md'>More</a>")}
+</div></section>
 
-<section id="plugins"><p class="kicker">Every database a plugin</p><h2>Choose a database first; everything follows it.</h2>
-<p class="lede">The canvas, the MCP, the rules and the store know no database. Each database is an engine: one crate with its versions, types, options, readers and writers, and its own tables, checked by the same conformance kit. <a href="{e(L.get("engines", "#"))}">How engines plug in, with Apache Iceberg as the example →</a></p>
-<div class="cards">{plugins}</div></section>
+<section id="next"><p class="kicker">What comes after</p><h2>Then design with your agent, and move between databases.</h2>
+<div class="cards">{nxt}</div>
+<p class="lede" style="margin-top:14px">Every database is a plugin: <a href="{e(L.get("engines", "#"))}">how engines plug in</a>, with Apache Iceberg as the example.</p></section>
 
-<section id="design"><p class="kicker">The design, written down</p><h2>Read how it is built, before a line of it is.</h2>
-<div class="cards">{design}</div></section>
-
-<section id="contribute"><div class="cta"><p class="kicker">Contribute</p><h2>Built with coding agents. Contribute the same way.</h2>
-<p class="lede">%PRODUCT% builds two things at once: the product, and the method where people and coding agents develop together. A design session writes the task, one agent builds it, gates and a person decide, and every lesson improves the method. Bring your own agent.</p>
-<p class="lede">Write an engine and learn a database's grammar, types and catalogs; add a feature's tables and learn relational design and rules enforced at commit; bring a dump that breaks a reader and find the corners of SQL nobody documents. Everyone is welcome.</p>
-
+<section id="contribute"><div class="cta"><p class="kicker">Built with coding agents</p><h2>Contribute the way it is built.</h2>
+<p class="lede">Each piece of work is written down first as a task; one agent builds it; tests and a person's review decide. Point your agent at the project and it will show you what is open now. Anyone can take up the same task, and the best build is merged.</p>
 <div class="btns"><a class="btn btn-primary" href="{e(L.get("contribute", "#"))}">Contribute with your agent</a>
-<a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="%REPO%/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>
-<a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="%REPO%/discussions">Ask a question</a></div></div></section>
+<a class="btn btn-outline" href="{e(L.get("home", "#"))}">Read the design</a></div></div></section>
 """
-sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("one-place", "One place"), ("intelligence", "Your database"), ("how", "Collaborative design"), ("plugins", "Plugins"), ("design", "The design"), ("contribute", "Contribute")])
-HTML = page("site", "%PRODUCT%", "", body, sub)
+CSS = """.shot{display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--line)}
+figure.screen svg{min-width:0}
+.sql{font:13px/1.6 var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--ink);overflow-x:auto;margin:14px 0 0}"""
+sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("today", "Today"), ("first", "First release"), ("one-place", "How it works"), ("next", "After"), ("contribute", "Contribute")])
+HTML = page("site", "%PRODUCT%", CSS, body, sub)
