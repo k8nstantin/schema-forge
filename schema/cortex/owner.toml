@@ -1,0 +1,5 @@
+# The owner's card: who it is, what it is, and its newest version.
+id = "cortex"
+kind = "core"
+namespace = "cortex"
+version = 1

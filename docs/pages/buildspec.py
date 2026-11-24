@@ -46,7 +46,7 @@ a(f'''<div class="tb" role="group" aria-label="Title block">
 the rules bind every task, and each task file says exactly what one build makes, how it is tested and what it may touch. Everything
 below is read from <code>specs/</code>.</p>''')
 a(f'<section id="read"><h2>How a build reads</h2><figure>{read_svg}<figcaption>The order is required; a session that reads out of order reads again from the start before it writes anything. {ticks(txt(root.find("method").find("silence")))}</figcaption></figure></section>')
-a(f'<section id="sequence"><h2>The sequence</h2><figure>{seq_svg}<figcaption>One branch and one pull request each, keyed by its GitHub issue.</figcaption></figure><div class="seq">')
+a(f'<section id="sequence"><h2>The sequence</h2><figure>{seq_svg}<figcaption>One branch and one pull request each, keyed by its GitHub issue once it has one.</figcaption></figure><div class="seq">')
 for t in seq:
     f = t.get("file"); key = t.get("key")
     a(f'<a class="card{"" if f else " todo"}" href="#{t.get("id") if f else "decisions"}"><span class="tid">{t.get("id")}</span><span class="tname">{e(t.get("name"))}</span>'
@@ -74,8 +74,10 @@ a('</div></section><section id="tasks"><h2>Task files</h2><p class="lede">What a
 for t in seq:
     if not t.get("file"): continue
     x = tasks[t.get("id")]; key = x.get("key")
-    a(f'<article class="task" id="{t.get("id")}"><header><span class="tid">{t.get("id")}</span><h3>{e(x.get("name"))}</h3><span class="tkey">{e(key)} · v{x.get("version")}</span>'
-      f'<a class="issue" href="%REPO%/issues/{key[3:]}" target="_blank" rel="noopener">issue #{key[3:]}</a><span class="path">{e(t.get("file"))}</span></header>'
+    issue = (f'<a class="issue" href="%REPO%/issues/{key[3:]}" target="_blank" rel="noopener">issue #{key[3:]}</a>' if key
+             else '<span class="issue">no issue yet</span>')
+    a(f'<article class="task" id="{t.get("id")}"><header><span class="tid">{t.get("id")}</span><h3>{e(x.get("name"))}</h3><span class="tkey">{e(key or t.get("id"))} · v{x.get("version")}</span>'
+      f'{issue}<span class="path">{e(t.get("file"))}</span></header>'
       f'<p class="lede">{ticks(txt(x.find("piece")))}</p><div class="ba"><div><span class="lab">Before</span><p>{ticks(txt(x.find("before")))}</p></div><div><span class="lab">After</span><p>{ticks(txt(x.find("after")))}</p></div></div>'
       '<details open><summary>Steps</summary><ol class="steps">')
     for s in x.iter("step"):

@@ -1,31 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  SchemaForge, build spec version 1: task t04, mysql tables. File version 1 (2026-11-24).
+  SchemaForge, build spec version 1: task t04, mysql tables. File version 2 (2026-11-24), written again whole for the
+  PostgreSQL design; version 1 (the SQLite design) was never built.
   An agent reads this file in the order the root's method read gives. Its key is SF-96, GitHub issue #96.
   The history of this file is its git log.
 -->
-<task id="t04" key="SF-96" name="mysql tables" version="1" date="2026-11-24" depends="t03"
+<task id="t04" key="SF-96" name="mysql tables" version="2" date="2026-11-24" depends="t03"
       builds="engines/mysql/src/tables.rs engines/mysql/tests/tables.rs">
 
-  <start>Pointed at this file, you are told nothing else. This line is the first message of a new session, on a checkout of the head of main updated from origin; if your session holds anything before it beyond its own text, CLAUDE.md and its settings, stop, say so and build nothing. Your label is &lt;model&gt;-&lt;effort&gt; as the root's method model says. Read whole, in this order (root method read): every .rs file and every Cargo.toml under crates/, engines/ and tools/ as merged on main; specs/root.xml; specs/rules.xml; this file; then the files it names. Cut the branch SF-96-mysql-tables-v1-&lt;model&gt;-&lt;effort&gt; from the head of main. Every commit message starts with SF-96 and carries no attribution of any kind. Build what this file says, run its gates, push the branch and open the PR into main titled "SF-96 mysql tables v1 · &lt;model&gt;-&lt;effort&gt;" with the body the root's method pr lists. Show on the screen, as it happens, each step by its number and name, each test run with its result, and each gate. What this file, the root, the rules and the merged code do not say is a stop, not a guess.</start>
+  <start>Pointed at this file, you are told nothing else. This line is the first message of a new session, on a checkout of the head of main updated from origin; if your session holds anything before it beyond its own text, CLAUDE.md and its settings, stop, say so and build nothing. Your label is &lt;model&gt;-&lt;effort&gt; as the root's method model says. Read whole, in this order (root method read): every .rs file and every Cargo.toml under crates/, engines/ and tools/ as merged on main; specs/root.xml; specs/rules.xml; this file; then the files it names. Cut the branch SF-96-mysql-tables-v2-&lt;model&gt;-&lt;effort&gt; from the head of main. Every commit message starts with SF-96 and carries no attribution of any kind. Build what this file says, run its gates, push the branch and open the PR into main titled "SF-96 mysql tables v2 · &lt;model&gt;-&lt;effort&gt;" with the body the root's method pr lists. Show on the screen, as it happens, each step by its number and name, each test run with its result, and each gate. What this file, the root, the rules and the merged code do not say is a stop, not a guess.</start>
 
-  <piece>MySQL's Tables (t02): every option the MySQL engine declares (engines/mysql/src/options.rs) written as rows of MySQL's own tables (engines/mysql/schema) and read back, so every MySQL sample goes through the cortex's rows and MySQL's and comes back the same. And the kit made to require Tables of an engine that reads. Nothing else: no option added, renamed or removed, no table of engines/mysql/schema changed, no SQLite (t05).</piece>
+  <piece>MySQL's Tables (t02): every option the MySQL engine declares (engines/mysql/src/options.rs) written as rows of its own tables in the namespace engine_mysql (engines/mysql/schema) and read back, so every MySQL sample goes through the cortex's rows and MySQL's and comes back the same. And the kit made to require Tables of an engine that reads. Nothing else: no option added, renamed or removed, no file of engines/mysql/schema changed, no database (t06).</piece>
 
-  <before>Merged on main: the tables interface (t02), Quill and the registry (t03), and everything before them; engines/mysql/schema, written by the design session.</before>
-  <after>The store (t05) keeps MySQL schemas in SQLite through these rows; every MySQL sample is in the store's round trip.</after>
+  <before>Merged on main: Quill and the registry (t03), the tables interface (t02), the spec check (t01) and everything before them; engines/mysql/owner.toml and engines/mysql/schema as the design session wrote them.</before>
+  <after>The store (t06) writes MySQL's rows into the namespace engine_mysql of a schema's database and reads them back, as it does Quill's.</after>
 
   <reflects>
     <file path="specs/rules.xml">
-      <quote>what is one engine's alone is that engine's, in its own tables in its own crate, named &lt;engine&gt;__&lt;name&gt;.</quote>
+      <quote>in its own tables in its own crate, in its own namespace engine_&lt;engine&gt; (engine_mysql.table_options).</quote>
     </file>
-    <file path="engines/mysql/schema/mysql__key_column_options.sql">
+    <file path="engines/mysql/schema/table_key_column_options.sql">
       <quote>how many characters or bytes of it the key holds (b(10)); NULL for the whole column</quote>
     </file>
   </reflects>
 
   <reads>
     <file path="engines/mysql/src/options.rs" what="every option MySQL declares: its part, key, kind and kinds"/>
-    <file path="engines/mysql/schema/" what="MySQL's tables, their columns and integrity.sql, embedded as its Tables"/>
+    <file path="engines/mysql/owner.toml" what="MySQL's card, embedded as Tables::card"/>
+    <file path="engines/mysql/schema/" what="MySQL's tables, their columns and types, and its rules, embedded as its Tables"/>
     <file path="engines/mysql/tests/" what="the samples every gate's round trip runs on"/>
     <crates>None added.</crates>
   </reads>
@@ -37,33 +39,34 @@
 
   <build>
     <module path="engines/mysql/src/tables.rs" public="nothing: Mysql's impl of Tables, reached by Engine::tables">
-      <step n="1" name="the files">files() is every table file of engines/mysql/schema, embedded with include_str!, by its name, in name order; integrity() is engines/mysql/schema/integrity.sql; migrations() is empty.</step>
-      <step n="2" name="values">An option's value goes to its column as the layout's JSON holds it: a flag as the integer 1 or 0, an integer as an integer, text and a word of one of as text, exactly as written; a column with no option is null. A flag whose column is NOT NULL DEFAULT 0 (linear and "columns" of mysql__partitioning_options, linear of mysql__subpartitionings, aggregate of mysql__loadable_functions, "desc" of mysql__key_column_options) is an option MySQL's reader writes only when true (engines/mysql/src/read/table.rs, read/program.rs, read/mod.rs): 1 is the option true, 0 the option absent, and read() sets it only on 1. A row is written only when at least one of its columns is not null, or a child row (steps 4 and 6) needs it as its parent; read() sets an option only for a column that is not null, so a row of nulls sets nothing.</step>
-      <step n="3" name="a database and a table">A namespace's options charset, collation, encryption and read_only go to mysql__database_options by their names. A table's options go to mysql__table_options, each to the column of its name (connection to "connection"), but union and outside_references: union, the list of the tables a MERGE table joins, is one row of mysql__merge_tables per entry, in order, its text in table_name (its parent row in mysql__table_options written for it); outside_references, the list of the foreign keys kept as written, one row of mysql__outside_references per entry, in order, its text in text.</step>
-      <step n="4" name="views and programs">A view's algorithm, check_option and security go to mysql__view_options; its column_list, one row of mysql__view_column_names per name, in order (its parent row written for it). definer, sql_mode, character_set_client, collation_connection, time_zone, follows, precedes and disabled_on_replica, on a view, procedure, function, trigger, event or library, go to mysql__program_context. A routine's data_access goes to mysql__routine_options and its imports, one row of mysql__routine_imports per library, in order. A loadable function's soname, aggregate and returns go to mysql__loadable_functions; a tablespace's datafile, file_block_size, engine, autoextend_size, encryption and engine_attribute to mysql__tablespaces; a spatial reference system's srid, definition, organization and organization_srid to mysql__spatial_reference_systems.</step>
-      <step n="5" name="columns, keys, indexes, checks, links">A column's options go to mysql__column_options by their names ("binary" quoted). A key's method, comment, key_block_size, invisible and engine_attribute go to mysql__key_options; its parts, one shape per column in order, each of length and desc, go to mysql__key_column_options, one row for each column whose shape holds either, its id the key column's id (t02 step 2), length its length or null, "desc" 1 when desc is true else 0; read() rebuilds parts with one shape per column of the key, JSON null for a column without a row (as MySQL's reader writes it), when the key has at least one row, and sets no parts otherwise. A key holds column parts only: MySQL's reader makes a unique key with an expression part an index, and a primary key holds no expression (engines/mysql/src/read/table.rs, its unique key), so parts and the key's columns are one for one. An index's comment, key_block_size, parser, invisible and engine_attribute go to mysql__index_options; an index part's length to mysql__index_part_options. A check's not_enforced to mysql__check_options. A link's inline to mysql__link_options.</step>
-      <step n="6" name="partitions">A partitioning's linear, algorithm, count and columns go to mysql__partitioning_options; its subpartition, an object of strategy, by, linear and count, to mysql__subpartitionings, by in by_text and linear 0 when absent. A partition's engine, comment, data_directory, index_directory, max_rows, min_rows and tablespace go to mysql__partition_options, its id the partition's; its subpartitions, each an object of name and those same options, are one row of mysql__subpartitions per entry, in order, id `&lt;partition&gt;.sub&lt;n&gt;`, and that subpartition's options a row of mysql__partition_options with its id.</step>
-      <step n="7" name="anything else">An option of any part that steps 3 to 6 do not place is the error of t02 step 5, naming the part and the option; none of the options of options.rs is such an option.</step>
+      <step n="1" name="the files">card() is engines/mysql/owner.toml; files() is every table file of engines/mysql/schema, each named by its table's full name (engine_mysql.table_options), in name order; rules() is every file of engines/mysql/schema/rules, each named by its rule; seeds() and migrations() are empty. Below, a table is named without its namespace, engine_mysql.</step>
+      <step n="2" name="values">An option's value goes to its column as the variant of the column's type (t02 step 1): a flag as Bool, an integer as Integer, text and a word of one of as Text, exactly as written; a column with no option is Null. A flag whose column is BOOLEAN NOT NULL DEFAULT false (linear and "columns" of table_partitioning_options, linear of subpartitionings, aggregate of loadable_functions, "desc" of table_key_column_options) is an option MySQL's reader writes only when true (engines/mysql/src/read/table.rs, read/program.rs, read/mod.rs): true is the option true, false the option absent, and read() sets it only on true. A flag whose column is BOOLEAN NOT NULL CHECK true (not_enforced of check_constraint_options, inline of relationship_options) is written as a row only when the option is true. A row is written only when at least one of its columns is not null, or a child row (steps 4 and 6) needs it as its parent; read() sets an option only for a column that is not null, so a row of nulls sets nothing.</step>
+      <step n="3" name="a database and a table">A namespace's options charset, collation, encryption and read_only go to database_options by their names ("collation" quoted). A table's options go to table_options, each to the column of its name ("collation" and "connection" quoted), but union and outside_references: union, the list of the tables a MERGE table joins, is one row of merge_tables per entry, in order, its text in table_name, its id `&lt;object&gt;.merge&lt;n&gt;` (its parent row in table_options written for it); outside_references, the list of the foreign keys kept as written, one row of outside_references per entry, in order, its text in text, its id `&lt;object&gt;.outside&lt;n&gt;`.</step>
+      <step n="4" name="views and programs">A view's algorithm, check_option and security go to view_options; its column_list, one row of view_column_names per name, in order, its id `&lt;object&gt;.name&lt;n&gt;` (its parent row written for it). definer, sql_mode, character_set_client, collation_connection, time_zone, follows, precedes and disabled_on_replica, on a view, procedure, function, trigger, event or library, go to program_context. A routine's data_access goes to routine_options and its imports, one row of routine_imports per library, in order, its id `&lt;routine&gt;.import&lt;n&gt;`. A loadable function's soname, aggregate and returns go to loadable_functions; a tablespace's datafile, file_block_size, engine, autoextend_size, encryption and engine_attribute to tablespaces; a spatial reference system's srid, definition, organization and organization_srid to spatial_reference_systems.</step>
+      <step n="5" name="columns, keys, indexes, checks, relationships">A column's options go to column_options by their names ("binary" and "collation" quoted). A key's method, comment, key_block_size, invisible and engine_attribute go to table_key_options; its parts, one shape per column in order, each of length and desc, go to table_key_column_options, one row for each column whose shape holds either, its id the key column's id (t02 step 2), length its length or null, "desc" true when desc is true else false; read() rebuilds parts with one shape per column of the key, JSON null for a column without a row (as MySQL's reader writes it), when the key has at least one row, and sets no parts otherwise. A key holds column parts only: MySQL's reader makes a unique key with an expression part an index, and a primary key holds no expression (engines/mysql/src/read/table.rs, its unique key), so parts and the key's columns are one for one. An index's comment, key_block_size, parser, invisible and engine_attribute go to index_options; an index part's length to index_part_options. A check's not_enforced to check_constraint_options. A link's inline to relationship_options.</step>
+      <step n="6" name="partitions">A partitioning's linear, algorithm, count and columns go to table_partitioning_options; its subpartition, an object of strategy, by, linear and count, to subpartitionings, by in by_text and linear false when absent. A partition's engine, comment, data_directory, index_directory, max_rows, min_rows and tablespace go to partition_options, its id the partition's; its subpartitions, each an object of name and those same options, are one row of subpartitions per entry, in order, id `&lt;partition&gt;.sub&lt;n&gt;`, and that subpartition's options a row of subpartition_options with its id.</step>
+      <step n="7" name="counters and anything else">Every numbered id of steps 3 to 6 is counted from 1 in the model's order, and rows() writes, for every counter id they use (t02 step 2), one row of cortex.id_counters holding the greatest number given under it. An option of any part that steps 3 to 6 do not place is the error of t02 step 5, naming the part and the option; none of the options of options.rs is such an option.</step>
     </module>
     <module path="crates/engine/src/kit.rs">
       <step n="8" name="the kit requires tables">An engine that reads (Engine::read is Some) and has no Tables is the kit's finding `it reads schemas, but has no tables to keep them in`.</step>
     </module>
     <tests path="engines/mysql/tests/tables.rs">
       <how>Rust tests on schemas the MySQL engine reads from SQL text of each test's own, and on the samples under engines/mysql/tests; the rows are inspected as Rows; no test reaches a database or the network.</how>
-      <prove step="1">files() holds every file of engines/mysql/schema but integrity.sql, by its name, and integrity() is its integrity.sql</prove>
-      <prove step="2">a flag is written as 1 or 0, a value exactly as written, and a row of nulls is never written nor sets an option</prove>
-      <prove step="2">a flag whose column is not null with default 0 comes back only when it was true, and is absent when it was absent</prove>
+      <prove step="1">files() holds every table file of engines/mysql/schema by its full name, and rules() every rule of its rules folder</prove>
+      <prove step="2">a flag is written as a boolean, a value exactly as written, and a row of nulls is never written nor sets an option</prove>
+      <prove step="2">a flag whose column is not null with default false comes back only when it was true, and is absent when it was absent</prove>
       <prove step="3">a table's options, its merge tables and its outside references are rows of their tables, in order, and come back the same</prove>
       <prove step="4">a view's options and column names, a program's context, a routine's data access and imports, a loadable function, a tablespace and a spatial reference system are rows of their tables and come back the same</prove>
       <prove step="5">a key's parts are rows only for the columns with a length or desc, and come back as one shape per column, null for a column without either</prove>
-      <prove step="5">column, index, index part, check and link options are rows of their tables and come back the same</prove>
+      <prove step="5">column, index, index part, check and relationship options are rows of their tables and come back the same</prove>
       <prove step="6">a subpartitioned table's partitions and subpartitions, with their options, are rows of their tables and come back the same</prove>
+      <prove step="7">every numbered id is counted in a counter row holding the greatest number given</prove>
       <prove step="7">an option no step places is the error naming the part and the option</prove>
       <prove step="8">the MySQL engine passes the conformance kit on every sample, its tables' round trip included, and the kit finds an engine that reads with no tables</prove>
     </tests>
   </build>
 
-  <agent-decides>The names and the decomposition of private code in engines/mysql/src/tables.rs and its tests; the SQL texts of the tests within the items; the granularity of the commits. Nothing else: no option, table, column or message other than these.</agent-decides>
+  <agent-decides>The names and the decomposition of private code in engines/mysql/src/tables.rs and its tests; the SQL texts of the tests within the items; the granularity of the commits. Nothing else: no option, table, column, id or message other than these.</agent-decides>
 
   <gates>
     <note>Every gate runs from the repository root. MySQL's live tests (engines/mysql/tests/live.rs) need Docker and are not run here: nothing of this task reaches a server.</note>
@@ -75,18 +78,18 @@
       <cmd>cargo test -p schema-forge-mysql</cmd>
       <expect>every test passes but the ones ignored for Docker, which are as many as on main</expect>
     </gate>
-    <gate id="Spec check" kind="local" proves="the specs and the schema folders are unchanged and whole">
+    <gate id="Spec check" kind="docker" proves="the specs and the owners' folders are unchanged and whole">
       <cmd>cargo run -q -p schema-forge-specs</cmd>
       <expect>the last line is `spec check: 0 findings`</expect>
     </gate>
-    <gate id="Everything" kind="local" proves="the repository passes, Quill's kit with tables required among it">
+    <gate id="Everything" kind="docker" proves="the repository passes, Quill's kit with tables required among it">
       <cmd>tools/check.sh</cmd>
       <expect>the last line is `== All checks passed`</expect>
     </gate>
   </gates>
 
   <owns>engines/mysql/src/tables.rs; engines/mysql/src/lib.rs (the module and Engine::tables); engines/mysql/tests/tables.rs; crates/engine/src/kit.rs (step 8); Cargo.lock.</owns>
-  <forbid>engines/mysql/schema/**; engines/mysql/src/options.rs and every other file of engines/mysql/src; schema/**; engines/quill/**; crates/model/**; every other file of crates/engine; specs/**; tools/**; docs/**.</forbid>
+  <forbid>engines/mysql/owner.toml; engines/mysql/schema/**; engines/mysql/src/options.rs and every other file of engines/mysql/src; schema/**; features/**; engines/quill/**; crates/model/**; every other file of crates/engine; specs/**; tools/**; docs/**.</forbid>
 
   <done>MySQL's Tables on the branch; every gate green and in the PR; nothing outside owns touched. After this task every MySQL sample goes to the cortex's rows and MySQL's and back with nothing lost, and no engine that reads can be registered without tables.</done>
 </task>

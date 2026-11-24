@@ -1,0 +1,21 @@
+# The PostgreSQL SchemaForge bundles: the sources it is built from, pinned, and the programs the project's CI built
+# from them, pinned by checksum. Written only in a design session (decision binaries-source); the fetch tool
+# (tools/postgres) refuses anything that differs from what it says.
+
+[postgresql]
+version = "18.7"
+url = "https://ftp.postgresql.org/pub/source/v18.7/postgresql-18.7.tar.bz2"
+sha256 = "441dfae4280cae3e0425e5f876f80559fb0731c140f1aae22b3e5a54d0411bfd"   # as postgresql.org publishes it beside the tarball
+
+[pgvector]
+version = "0.8.7"
+git = "https://github.com/pgvector/pgvector"
+tag = "v0.8.7"
+commit = "f37c13f68b57d2c3472b2214fbcff699d6d34876"   # the tag's commit: a build refuses a checkout of any other
+
+# The release the programs are published in, and each platform's archive: written by the design session after the
+# workflow .github/workflows/postgres.yml publishes them, from the SHA256SUMS it publishes beside them.
+[release]
+tag = "postgres-18.7-pgvector-0.8.7-1"
+
+[assets]

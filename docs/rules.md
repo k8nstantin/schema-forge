@@ -45,7 +45,7 @@ A rule is **linked** at a level and applies to every table under it:
 global (every schema of the workspace)
   └ schema
       └ namespace (and the namespaces inside it)
-          └ family (node__, ungrouped, …)
+          └ family (billing__, ungrouped, …)
               └ table
       └ group (tables picked by hand, across namespaces and families)
 ```
