@@ -6,5 +6,6 @@ CREATE TABLE object_reads (
   reads     TEXT    NOT NULL REFERENCES objects (id) ON DELETE CASCADE,        -- the object read
   UNIQUE (object, position),
   UNIQUE (object, reads),
+  CHECK (object <> reads),
   CHECK (id = object || '.read' || position)
 ) STRICT;

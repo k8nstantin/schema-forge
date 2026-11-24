@@ -6,6 +6,6 @@ CREATE TABLE namespaces (
   parent    TEXT    REFERENCES namespaces (id) ON DELETE CASCADE,             -- the namespace it sits in; NULL at the top
   position  INTEGER NOT NULL CHECK (position >= 1),                            -- its place among the namespaces, in the order they were made or read
   comment   TEXT,                                                              -- what it holds
-  UNIQUE (parent, name),
   UNIQUE (position)
 ) STRICT;
+CREATE UNIQUE INDEX namespaces_name ON namespaces (ifnull(parent, ''), name);  -- two namespaces beside each other never share a name, at the top too

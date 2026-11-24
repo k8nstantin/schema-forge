@@ -8,5 +8,5 @@ CREATE TABLE objects (
   comment    TEXT,                                                            -- what it holds, in a sentence or two: written into its SQL
   notes      TEXT,                                                            -- longer notes for people and the agent: never written into SQL
   area       TEXT    REFERENCES areas (id) ON DELETE SET NULL,                -- the area it belongs to; NULL for none
-  UNIQUE (namespace, kind, name)
+  UNIQUE (namespace, name)
 ) STRICT;

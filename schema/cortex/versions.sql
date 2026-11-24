@@ -7,6 +7,6 @@ CREATE TABLE versions (
   message       TEXT     NOT NULL CHECK (length(message) >= 1),              -- what the version is, in a sentence
   locked_by     TEXT     NOT NULL,                                           -- who locked it
   locked_at     TEXT     NOT NULL,                                           -- when, UTC, RFC 3339
-  git_commit    TEXT     CHECK (git_commit IS NULL OR length(git_commit) = 40),  -- the commit its definitions were written in; NULL outside a git repository
+  git_commit    TEXT     CHECK (git_commit IS NULL OR length(git_commit) IN (40, 64)),  -- the commit its definitions were written in (SHA-1 or SHA-256); NULL outside a git repository
   git_tag       TEXT                                                         -- the tag of that commit (schema/shop/v3); NULL outside a git repository
 ) STRICT;

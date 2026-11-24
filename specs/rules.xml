@@ -12,20 +12,20 @@
 
   <rule id="the-schema-decides">
     <from>the operator, 2026-11-24: "at the core stands the database schema ... after we design the schema we lock it in so the coding agents have to fall into compliance"</from>
-    <text>The schema folders (schema/cortex, schema/workspace, engines/&lt;engine&gt;/schema) are the database. Code reads and writes the tables they declare, with the columns they declare, and nothing else; it never creates, alters or drops a table, a column, an index or a constraint, and never works out at run time what a file declares. A table, a column or a value the schema has no place for is a stop, not a workaround.</text>
+    <text>The schema folders (schema/cortex, schema/workspace, engines/&lt;engine&gt;/schema) are the database. Code reads and writes the tables they declare, with the columns they declare, and nothing else; no code creates, alters or drops a table, a column, an index or a constraint but the store, which does it from these files alone, and no code works out at run time what a file declares. A table, a column or a value the schema has no place for is a stop, not a workaround.</text>
     <breach>the store, which creates a file only from the schema folders and refuses a file whose tables differ from them; the spec check over the schema folders; review</breach>
   </rule>
 
   <rule id="the-database-enforces">
     <from>the operator, 2026-11-24: "its both referential integrity and data consistency preventing drift"</from>
     <text>Every reference between rows is a foreign key, every value is constrained by its type and its checks (STRICT tables), every rule a foreign key cannot state is a query of an integrity.sql, and the store runs them all on every write: foreign keys on, the integrity queries before every commit. Nothing is checked by convention alone, and no code turns a check off.</text>
-    <breach>the store's tests, which plant a row breaking each constraint and each integrity query and prove the commit is refused; review</breach>
+    <breach>the store's tests, which plant a row breaking a foreign key and a check, and, for every query of every integrity.sql, the row its fixtures name, and prove each commit is refused; review</breach>
   </rule>
 
   <rule id="cortex-and-engines">
     <from>the operator, 2026-11-24: "a cortex schema global and schema per engine"; docs/engines.md</from>
     <text>What every engine shares is the cortex's; what is one engine's alone is that engine's, in its own tables in its own crate, named &lt;engine&gt;__&lt;name&gt;. Shared code (the model, the interface, the store, the server, the canvas) never names an engine, an engine table or an engine column; an engine never writes a cortex table's rows but through the interface, and never another engine's.</text>
-    <breach>the architecture check (a database named outside its engine); the spec check (an engine table outside its engine's folder, or named without its prefix); the kit</breach>
+    <breach>the architecture check (a database named outside its engine, an engine's table among them since each is named by its engine; and, from t03, every engine's field keys, kind ids, option keys, table and column names in shared code); the spec check (an engine table outside its engine's folder, or named without its prefix); the kit</breach>
   </rule>
 
   <rule id="nothing-lost">
@@ -43,13 +43,13 @@
   <rule id="engine-neutral-shared-code">
     <from>the operator, 2026-11-23: "this is not acceptable and create a harness to stop you"</from>
     <text>Shared code shows what an engine declares and never assumes one: no engine's connection field, kind, option, table or column is named in it. Every test of shared code runs on every engine of the test registry, and Quill, built unlike MySQL on purpose, is one of them; what each engine is tested on is data.</text>
-    <breach>the architecture check; the tests of shared code, run on every engine</breach>
+    <breach>the architecture check's vocabulary guard (built by t03): every engine's field keys, kind ids, option keys, table and column names, read from what each declares, refused in shared code; the tests of shared code, run on every engine</breach>
   </rule>
 
   <rule id="one-agent">
     <from>the operator, 2026-11-24</from>
     <text>One session, one agent, sequential: the agent that holds a task does every step itself. It never spawns, delegates to or messages another agent, subagent or session, and never asks another model to build or verify a part.</text>
-    <breach>the build session's settings, which deny the tools that spawn or message another agent; review of the PR's history</breach>
+    <breach>the operator's build configuration (root method session), which denies the tools that spawn or message another agent; review of the PR's history</breach>
   </rule>
 
   <rule id="agent-decides-only-what-is-listed">
@@ -61,7 +61,7 @@
   <rule id="no-attribution">
     <from>the operator, 2026-11-23</from>
     <text>No commit, branch, PR, file or comment carries an attribution to a coding agent or a model: no co-author line, no generated-by line, no trailer. The work is the operator's.</text>
-    <breach>the build session's settings (attribution off); review</breach>
+    <breach>the operator's build configuration (root method session), attribution off; review</breach>
   </rule>
 
   <rule id="one-check">

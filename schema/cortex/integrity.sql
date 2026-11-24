@@ -13,6 +13,10 @@ SELECT 'link-from-columns-on-from-object', lc.id FROM link_columns lc JOIN links
 SELECT 'link-to-columns-on-to-object', lc.id FROM link_columns lc JOIN links l ON l.id = lc.link
   JOIN columns c ON c.id = lc.to_column WHERE c.object <> l.to_object;
 
+-- name: link-has-columns
+-- Every link links at least one column.
+SELECT 'link-has-columns', l.id FROM links l WHERE NOT EXISTS (SELECT 1 FROM link_columns lc WHERE lc.link = l.id);
+
 -- name: key-columns-on-their-table
 -- Every column of a key is a column of the key's table.
 SELECT 'key-columns-on-their-table', kc.id FROM key_columns kc JOIN keys k ON k.id = kc.key
