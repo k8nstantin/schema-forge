@@ -1,5 +1,6 @@
 """The Engines page: how a database plugs into the product, with Apache Iceberg worked through as the example."""
 from common import Svg, database, e, links, page
+from docs import doc_href
 
 db, _ = database()
 L = links()
@@ -118,7 +119,7 @@ body = f"""
 <p class="lede">An engine teaches its database from the inside: its grammar, its types, its catalog, its corners. Your coding agent leads with the engine guide: it studies the interface and your database, writes its profile with you, brings it to a design session, and then the engine is built task by task. Paste this into your agent:</p>
 <pre class="prompt">Read %SITE%agents.xml, then %REPO%/blob/main/specs/guides/engine.xml, and help me bring &lt;my database&gt; to %PRODUCT%; start with the study, and change nothing yet.</pre>
 <div class="btns"><a class="btn btn-primary" href="%REPO%/blob/main/specs/guides/engine.xml">The engine guide</a>
-<a class="btn btn-outline" href="%REPO%/blob/main/docs/writing-an-engine.md">Writing an engine: the how</a>
+<a class="btn btn-outline" href="{doc_href('writing-an-engine')}">Writing an engine: the how</a>
 <a class="btn btn-outline" href="{e(L.get('template', '#'))}">The owner template</a></div></div></section>
 """
 sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("layers", "Two layers"), ("engine", "What an engine brings"), ("guards", "Checks"), ("iceberg", "Iceberg"), ("convert", "Convert"), ("yours", "Your database")])

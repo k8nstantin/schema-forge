@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doc id="owner-template" title="The owner template">
+  <p><b>Modularity and yet coherence.</b> Every engine and every feature brings its own tables, in its own namespace, versioned on its own, and never changes another owner's; every one of them is built the same way, refers to the cortex by foreign keys, and is enforced by the same database. This folder is a complete owner, <c>example</c>, to copy.</p>
+  <code><![CDATA[engines/<id>/            an engine (features/<id>/ for a feature: insight, semantic, rules, pipelines)
+  owner.toml             its id, kind, namespace, newest version and the cortex version it needs
+  schema/
+    <table>.sql          one CREATE TABLE per file, named after its table, in the namespace engine_<id> (a feature: <id>)
+    rules/<rule>.sql     one view per rule, broken_<rule>: the rows breaking it
+    migrations/          every version after the first: <version>_<name>.sql; and 1_tables.sql once version 2 exists]]></code>
+  <section title="The five shapes">
+    <p>Every table an owner needs is one of these. Pick the shape before naming a column.</p>
+    <table>
+      <head><cell>Shape</cell><cell>When</cell><cell>Its id</cell><cell>The example</cell></head>
+      <row><cell>1. Options of a cortex part</cell><cell>what the engine says of a table, a column, a key... beyond the cortex; at most one row per part</cell><cell>the part's own id, a foreign key</cell><cell><a href="schema/table_options.sql"><c>table_options.sql</c></a></cell></row>
+      <row><cell>2. An ordered list</cell><cell>many things per part, in order</cell><cell><c>&lt;parent&gt;.&lt;word&gt;&lt;n&gt;</c>, n from <c>cortex.id_counters</c></cell><cell><a href="schema/column_codecs.sql"><c>column_codecs.sql</c></a></cell></row>
+      <row><cell>3. A kind only this engine has</cell><cell>an object the cortex has no kind for (a pool, a tablespace)</cell><cell>the object's id: the object is a <c>cortex.objects</c> row of a kind the engine declares</cell><cell><a href="schema/storage_pools.sql"><c>storage_pools.sql</c></a></cell></row>
+      <row><cell>4. Open-ended properties</cell><cell>only where the engine itself lets anyone name a key (Iceberg's table properties)</cell><cell><c>&lt;parent&gt;.&lt;word&gt;&lt;n&gt;</c></cell><cell><a href="schema/table_properties.sql"><c>table_properties.sql</c></a></cell></row>
+      <row><cell>5. A tree</cell><cell>nested things (fields of a struct of structs)</cell><cell><c>&lt;parent&gt;.&lt;word&gt;&lt;n&gt;</c>, a <c>parent</c> column referring to the same table</cell><cell><a href="schema/nested_fields.sql"><c>nested_fields.sql</c></a></cell></row>
+    </table>
+    <p>A value the engine names belongs in a typed column of shape 1, never in shape 4: shape 4 is for keys nobody can list.</p>
+  </section>
+  <section title="Every file, every column">
+    <list>
+      <item>A header line <c>-- &lt;namespace&gt;.&lt;table&gt;: &lt;what one row is&gt;. Owner: &lt;id&gt;.</c>, then any lines more.</item>
+      <item>Every column on its own line, typed (<c>TEXT</c>, <c>INTEGER</c>, <c>BIGINT</c>, <c>NUMERIC</c>, <c>BOOLEAN</c>, <c>UUID</c>, <c>TIMESTAMPTZ</c>, <c>JSONB</c>), constrained, and commented: what it holds, and what <c>NULL</c> means when it may be null.</item>
+      <item>The <c>COMMENT ON</c> statements below the table are written from those comments by <c>python3 tools/schema_comments.py --write</c>; the check refuses a file where they differ, so the database documents itself (<c>\d+ engine_example.table_options</c>).</item>
+      <item>Every reference is a foreign key, with <c>ON DELETE CASCADE</c> when the row means nothing without its parent.</item>
+      <item>An order is a <c>NUMERIC</c> order key (<c>position</c>), unique within its list.</item>
+      <item>A number in an id comes from <c>cortex.id_counters</c> and is never given twice; the rule <c>ids-within-their-counters</c> lists every numbered table of the owner.</item>
+    </list>
+  </section>
+  <section title="Rules">
+    <p>A rule a foreign key cannot state is a view, <c>broken_&lt;rule&gt;</c>, listing the rows that break it, one file each in <c>rules/</c>. <c>cortex.enforce_rules('&lt;namespace&gt;')</c> puts the triggers on every table the view reads; nothing else is written. Every owner needs at least:</p>
+    <list>
+      <item>that its options belong to parts of the right kind (<a href="schema/rules/table-options-on-tables.sql"><c>table-options-on-tables</c></a>);</item>
+      <item>that its own kinds' rows are objects of that kind (<a href="schema/rules/pools-of-their-kind.sql"><c>pools-of-their-kind</c></a>);</item>
+      <item>that a tree stays within its parent (<a href="schema/rules/nested-fields-in-their-column.sql"><c>nested-fields-in-their-column</c></a>);</item>
+      <item>that its numbered ids came from their counters (<a href="schema/rules/ids-within-their-counters.sql"><c>ids-within-their-counters</c></a>).</item>
+    </list>
+  </section>
+  <section title="Versions">
+    <list>
+      <item><b>Version 1</b> is the table files and the rules. Until version 2 exists, nothing else is needed.</item>
+      <item><b>Every change adds.</b> A new table, a column that may be null or has a default, a rule, an index: one version.</item>
+      <item><b>A rename or a removal takes two versions</b>, shipped in different releases: the first adds the new and copies the data (<a href="schema/migrations/2_compaction_policy_add.sql"><c>2_compaction_policy_add.sql</c></a>), the later one removes the old (<a href="schema/migrations/3_compaction_policy_drop_old.sql"><c>3_compaction_policy_drop_old.sql</c></a>).</item>
+      <item><b>The table files always show the newest shape</b>, so the design session that writes version 2 first freezes version 1 as <a href="schema/migrations/1_tables.sql"><c>migrations/1_tables.sql</c></a>: the files and rules exactly as they shipped, never edited again.</item>
+      <item><b>A column a migration adds is written last</b> in its table file, where PostgreSQL puts it.</item>
+      <item><b>Proved, not hoped:</b> applying versions 1 to 3 of this folder to an empty database gives exactly what its table files and rules give (checked on PostgreSQL 18 with <c>pg_dump --schema-only</c>); every release proves it for every owner, and upgrades a database of every earlier version.</item>
+      <item>A shipped version is never edited: its checksum, kept in every database that applied it, refuses it.</item>
+    </list>
+  </section>
+</doc>

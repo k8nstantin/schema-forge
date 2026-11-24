@@ -40,7 +40,7 @@ We follow a [code of conduct](CODE_OF_CONDUCT.md): be kind, be patient, assume g
    folders and write the work down as a task file under [specs/tasks](specs/tasks), every decision dated in
    [specs/root.xml](specs/root.xml).
 2. **A build session**: one agent, in any session, on a checkout of `main`, pointed at the task file's path and
-   working from the files alone, as the project's service account. It reads in the order the root gives, builds only what the file says, decides only what it lists, and
+   working from the files alone, under your own GitHub account. It reads in the order the root gives, builds only what the file says, decides only what it lists, and
    stops when anything is missing or two files disagree.
 3. **The gates**: every gate the task file names runs (local, Docker, CI); their results go into the pull request.
 4. **The review**: a person reviews and merges. The agent never merges.
@@ -60,8 +60,8 @@ We follow a [code of conduct](CODE_OF_CONDUCT.md): be kind, be patient, assume g
   [the owner template](https://k8nstantin.github.io/schema-forge/template.html) ·
   [the build spec](https://k8nstantin.github.io/schema-forge/build-spec.html). The same pages are in
   [docs/pages/](docs/pages/).
-- **Read why it is built this way:** [docs/engines.md](docs/engines.md) (every database a plugin),
-  [docs/store.md](docs/store.md) (the database at the core).
+- **Read why it is built this way:** [docs/engines.xml](https://k8nstantin.github.io/schema-forge/doc-engines.html) (every database a plugin),
+  [docs/store.xml](https://k8nstantin.github.io/schema-forge/doc-store.html) (the database at the core).
 - **Ask.** Start a [discussion](https://github.com/k8nstantin/schema-forge/discussions) with your question; there are no silly ones. Saying what confused you is a
   contribution too: it shows where the docs are thin.
 
@@ -81,9 +81,9 @@ We follow a [code of conduct](CODE_OF_CONDUCT.md): be kind, be patient, assume g
 
 | You could | You will learn | Start from |
 |---|---|---|
-| **Add a database**: write an engine | that database's whole grammar, types, catalogs and quirks, and how to read a live server | [docs/writing-an-engine.md](docs/writing-an-engine.md), [engines/mysql](engines/mysql/README.md) as the worked example |
-| **Add a feature's tables** (insight, a semantic layer, rules, pipelines) | relational design, foreign keys, rules as triggers, versioned migrations | [the owner template](docs/owner-template/README.md) |
-| **Extend a database** (PostGIS, pgvector, a company's conventions): an add-on | how extensions change types and DDL | [docs/writing-an-engine.md](docs/writing-an-engine.md), section 12 |
+| **Add a database**: write an engine | that database's whole grammar, types, catalogs and quirks, and how to read a live server | [docs/writing-an-engine.xml](https://k8nstantin.github.io/schema-forge/doc-writing-an-engine.html), [engines/mysql](https://k8nstantin.github.io/schema-forge/doc-mysql.html) as the worked example |
+| **Add a feature's tables** (insight, a semantic layer, rules, pipelines) | relational design, foreign keys, rules as triggers, versioned migrations | [the owner template](https://k8nstantin.github.io/schema-forge/doc-owner-template.html) |
+| **Extend a database** (PostGIS, pgvector, a company's conventions): an add-on | how extensions change types and DDL | [docs/writing-an-engine.xml](https://k8nstantin.github.io/schema-forge/doc-writing-an-engine.html), section 12 |
 | **Bring real DDL**: a dump or schema that breaks a reader | the corners of SQL nobody documents | the samples under `engines/<engine>/tests/samples` |
 | **Review the spec**: a task file under [specs/tasks](specs/tasks) | how a system is designed before it is built | [specs/root.xml](specs/root.xml) |
 | **Fix, test or explain**: an issue, a missing test, a clearer page | the code around it | the issues labelled *good first issue* |
@@ -95,7 +95,7 @@ We follow a [code of conduct](CODE_OF_CONDUCT.md): be kind, be patient, assume g
   [specs/tasks](specs/tasks)), so no work is wasted.
 - **The database schema is designed first and locked.** The tables under `schema/`, `engines/*/schema` and `features/`
   change only through a design session with the maintainer, as a new version that adds
-  ([the owner template](docs/owner-template/README.md) shows how). A pull request that needs a table changed says so,
+  ([the owner template](https://k8nstantin.github.io/schema-forge/doc-owner-template.html) shows how). A pull request that needs a table changed says so,
   and the design is settled first.
 - **Every pull request passes `tools/check.sh`**: format, clippy and every test, including the **architecture check**
   (`tools/architecture`), which fails the build when a crate depends the wrong way, a database is named outside its

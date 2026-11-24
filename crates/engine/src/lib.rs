@@ -1,4 +1,4 @@
-//! The engine plugin interface (docs/engines.md). Every database Schema Forge designs for is an engine: a crate that
+//! The engine plugin interface (docs/engines.xml). Every database Schema Forge designs for is an engine: a crate that
 //! implements [`Engine`] and is registered in a [`Registry`]. The shared code asks the schema's engine; it never names
 //! a database itself.
 //!

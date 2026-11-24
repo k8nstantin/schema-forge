@@ -1,4 +1,4 @@
--- workspace.connection_test_steps: each step of a connection test, in order, and what it said (docs/connections.md). Owner: workspace.
+-- workspace.connection_test_steps: each step of a connection test, in order, and what it said (docs/connections.xml). Owner: workspace.
 CREATE TABLE workspace.connection_test_steps (
   id       TEXT NOT NULL PRIMARY KEY,                                                          -- <test>.<step>
   test     UUID NOT NULL REFERENCES workspace.connection_tests (id) ON DELETE CASCADE,         -- the test
@@ -9,7 +9,7 @@ CREATE TABLE workspace.connection_test_steps (
   CHECK (id = test || '.' || step)
 );
 
-COMMENT ON TABLE workspace.connection_test_steps IS 'each step of a connection test, in order, and what it said (docs/connections.md).';
+COMMENT ON TABLE workspace.connection_test_steps IS 'each step of a connection test, in order, and what it said (docs/connections.xml).';
 COMMENT ON COLUMN workspace.connection_test_steps.id IS '<test>.<step>';
 COMMENT ON COLUMN workspace.connection_test_steps.test IS 'the test';
 COMMENT ON COLUMN workspace.connection_test_steps.step IS 'the step';

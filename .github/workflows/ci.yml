@@ -3,6 +3,10 @@ name: ci
 on:
   push:
   pull_request:
+  # Every day on main as well (decision schema-dump): the database the design gives, compared with schema/dump.
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
 
 jobs:
   rust:

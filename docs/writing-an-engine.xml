@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doc id="writing-an-engine" title="Writing an engine">
+  <note><b>Building with a coding agent?</b> Point it at the engine guide, <a href="../specs/guides/engine.xml">specs/guides/engine.xml</a>: it leads the agent and you through the method, from studying the database to the merged engine. This page is the how it refers to.</note>
+  <p>How to add a database to SchemaForge. An engine is a Rust crate that tells SchemaForge everything about one database; nothing else in SchemaForge changes when you add one. The design behind it is <a href="engines.xml">engines.xml</a>; this is the how.</p>
+  <p>This guide grows with the interface: every change to the interface updates it in the same pull request. Today it covers what the interface has so far: identity, versions, types, reading, writing, queries, checks, the registry and the conformance kit. The worked example is <c>example</c>, a made-up engine small enough to read in one sitting: <a href="../crates/engine/tests/example/mod.rs"><c>crates/engine/tests/example/mod.rs</c></a>.</p>
+  <section title="1. Make the crate">
+    <p>An engine lives in <c>engines/&lt;database&gt;</c>, named <c>schema-forge-&lt;database&gt;</c>, and says what it is:</p>
+    <code lang="toml"><![CDATA[[package]
+name = "schema-forge-yourdb"
+version.workspace = true
+edition.workspace = true
+
+[package.metadata.schema-forge]
+role = "engine"
+database = "yourdb"
+
+[dependencies]
+schema-forge-model = { path = "../../crates/model" }
+schema-forge-engine = { path = "../../crates/engine" }]]></code>
+    <p>If yours is the first engine in <c>engines/</c>, add <c>"engines/*"</c> to the workspace's <c>members</c> in the top <c>Cargo.toml</c> (cargo refuses a member pattern that matches nothing, so the folder joins with its first crate).</p>
+    <p>The architecture check (<c>tools/architecture</c>, run by every <c>cargo test</c>) holds you to the design:</p>
+    <list>
+      <item>an engine depends on the model, the interface and helper crates, <b>never on another engine</b>;</item>
+      <item><b>one crate per database</b>: its versions live inside it, never in a crate of their own;</item>
+      <item>your database's name belongs in your crate; no shared crate may name it, not even inside an identifier (<c>readYourDb</c>) or a comment;</item>
+      <item>your <c>database</c> id is lowercase letters, digits and <c>_</c>.</item>
+    </list>
+  </section>
+  <section title="2. Say who it is, and its versions">
+    <code lang="rust"><![CDATA[impl Engine for YourDb {
+    fn id(&self) -> &'static str { "yourdb" }          // as schemas name it: never changes
+    fn name(&self) -> &'static str { "YourDB" }        // as people say it
+    fn versions(&self) -> &[Version] { VERSIONS }      // oldest first
+    fn types(&self) -> &dyn Types { self }
+}]]></code>
+    <p>Every feature of your engine says the version it came in (<c>Availability::since("4")</c>) and, if one took it away, the version that did. A schema is designed for one version and is offered exactly that version's features. When your database releases a new version, add it to <c>versions()</c> and mark the features it brings; nothing else changes.</p>
+  </section>
+  <section title="3. Its types">
+    <p>What you give the interface is made with its constructor, never by naming every field: <c>Version::new("3", "format 3")</c>, <c>TypeGroup::new("whole", "Whole numbers")</c>, <c>TypeSpec::new("decimal(P,S)", "exact", "An exact number…", "decimal(18,2)").since("2")</c>, <c>Parsed::new(…)</c>, <c>TypeError::not_in_version(…)</c>, <c>Report::new("statements")</c>, <c>Unread::new(…)</c>, <c>Imported::new(…)</c>, and the model's <c>Namespace::new</c>, <c>Object::new</c>, <c>Column::new</c>, <c>Link::new</c>, <c>Area::new</c>, with the rest set by field (<c>object.comment = Some(…)</c>). The section layout's parts are made with <c>Default</c> and set by field (<c>let mut key = Key::default(); key.columns = …</c>). That is what lets the interface and the model grow without breaking your engine: a field added later gets a default, and your code still builds. For the same reason, match a <c>TypeError</c> with a wildcard arm.</p>
+    <p><c>Types</c> gives the palette its groups and types, and reads a type written as text:</p>
+    <list>
+      <item><b><c>groups()</c></b>: the palette's groups, in order (whole numbers, exact decimals, text, dates and times…).</item>
+      <item><b><c>catalog()</c></b>: every type, in palette order: its name as your database writes it (a family that takes parameters is written with letters, <c>decimal(P,S)</c>), its group, what it holds in a plain sentence, an <b>example</b> that is a real type a column could have (<c>decimal(18,2)</c>), and the versions that have it.</item>
+      <item><b><c>parse(text, version)</c></b>: reads a column's type and returns its family and its text as your database writes it. Reading the text it returns gives the same text again. It refuses with a <c>TypeError</c>: <c>NotAType</c> when the text is not one of your types, <c>NotInVersion</c> (with the version it came in) when it is one the schema's version does not have, so the canvas can say "comes in version 3" instead of "not a type".</item>
+      <item><b>Examples are written exactly as you write them</b>: <c>decimal(18,2)</c>, never <c>DECIMAL( 18 , 2 )</c>; the palette puts the example into a column as it is.</item>
+    </list>
+    <p><c>types_in(version)</c> (from the <c>Offered</c> trait, on any engine) gives the types a schema at that version may use, in palette order. It is worked out from your catalog and versions, not something you write or can override, so it cannot disagree with them. When <c>parse</c> refuses a type as <c>NotInVersion</c>, <c>since</c> is exactly the version your catalog says it came in (or <c>None</c> when a version took it away): that is what the canvas tells the person.</p>
+    <p>A column holds its type as your text; only your engine reads it.</p>
+  </section>
+  <section title="4. Where your data goes: the section layout and your options">
+    <p>Everything your engine stores on a schema goes in the parts' engine sections, and every engine's sections follow one layout, <c>schema_forge_engine::sections</c>: fill the slots your database has (<c>ObjectSection.keys</c>, <c>.checks</c>, <c>.indexes</c>, <c>.partitioning</c>, <c>.order</c>, <c>.query</c>…; <c>ColumnSection.default</c>, <c>.identity</c>, <c>.generated</c>; <c>LinkSection</c>; <c>SchemaSection.kept</c>, <c>.requires</c>, <c>.format</c>) and leave the rest out. Read a section with <c>sections::read</c>, write it with <c>sections::write</c>. Do not invent slots: a slot the layout does not have is refused.</p>
+    <p>What is your database's alone goes in an element's <c>options</c>, and <b>you declare every option</b> your engine may hold, as data, in <c>Engine::options()</c>:</p>
+    <code lang="rust"><![CDATA[const OPTIONS: &[OptionSpec] = &[
+    OptionSpec::new(Part::Object, "fillfactor", OptionKind::Integer, "How full each page is filled, in percent")
+        .for_kinds(&["table"]),
+    OptionSpec::new(Part::Key, "nulls_not_distinct", OptionKind::Flag, "Nulls count as equal").since("15"),
+];]]></code>
+    <p>That list is your engine's own schema over the shared layout: the kit refuses an option you do not declare, one of the wrong kind, or one the schema's version does not have, and the canvas builds its option forms from it. If what you need does not fit a slot or an option, that is a finding about the layout: propose it upstream, never store it elsewhere.</p>
+    <p>Declare your <b>kinds of object</b> the same way, in <c>Engine::kinds()</c>, each with the slots it uses:</p>
+    <code lang="rust"><![CDATA[const KINDS: &[ObjectKind] = &[
+    ObjectKind::new("table", "Table", &[Slot::Keys, Slot::Checks, Slot::Indexes]),
+    ObjectKind::new("view", "View", &[Slot::Query]),
+];]]></code>
+    <p>An object of a kind you do not declare, or a slot its kind does not use (a view with indexes, a table with a query), is refused; the canvas shows your kinds by their names. Account for <b>every kind of object your database has</b>: tables and views, and also its procedures and functions (<c>Slot::Routine</c>), triggers (<c>Slot::Trigger</c>), scheduled events (<c>Slot::Event</c>), sequences and types. Keep as written only what belongs to the server rather than the schema (accounts, roles, grants), counted by kind, and say why in your engine's plan.</p>
+    <p>When your engine changes how it stores its options, raise <c>Engine::format()</c> and <c>SchemaSection.format</c>, and read what your earlier versions wrote. The layout itself has a version too (<c>sections::LAYOUT</c>): check a schema with <c>sections::layout_of</c> before reading it, so a schema written by a newer SchemaForge is refused whole, never read with something dropped.</p>
+  </section>
+  <section title="5. Your types as Arrow's">
+    <p>Implement <c>Portable</c>: <c>arrow_type</c> gives each of your types as an Apache Arrow type, and <c>engine_type</c> gives your type for an Arrow type, each saying how faithful it is: <c>Mapped::exact</c> when it comes back as the same type, <c>Mapped::approximate</c> when a detail is not kept (say which), <c>Mapped::lost</c> when nothing holds it (say what is lost). That mapping is how your engine meets every other engine and the DataFusion layer: compatibility, conversion, planned views and lineage work for your engine through it, so every engine has one. The kit holds an exact mapping to coming back as the same type, and every column type in your samples to mapping. Depend on <c>arrow-schema</c> only; never on DataFusion or the rest of Arrow.</p>
+  </section>
+  <section title="6. Reading files">
+    <p><c>Read</c> turns your database's files into a schema:</p>
+    <list>
+      <item><b><c>reads()</c></b>: what it reads, for people ("schema-only dumps").</item>
+      <item><b><c>recognises(input)</c></b>: whether an input is yours, by what it says (a header, a folder's layout), never by its name. When no engine or more than one recognises an input, the person is asked which engine it is for.</item>
+      <item><b><c>read(input)</c></b>: the schema, and a <c>Report</c> that accounts for everything read: <c>read = modelled + kept + data + machinery</c>. What the model does not describe is <b>kept exactly as written</b> (in your engine section), with <b>where it was</b>, and written back in its place; data is left out and counted; so is what a dump's own format does around the schema (saving and restoring settings, dropping before making, placeholders). Spacing between units (blank lines) is not content; say what your unit is (<c>statements</c>, <c>non-blank lines</c>, <c>files</c>). Something not understood is kept and listed, never an error: an error is only for an input that cannot be read at all. A credential (a password in a <c>CREATE USER</c>) is never kept: keep the statement without it, or leave it out and count it.</item>
+    </list>
+    <p>What the first engine learned, which yours will meet too:</p>
+    <list>
+      <item>The layout's types are non-exhaustive: make each from its default and set its fields (the MySQL engine's <c>with!</c> macro does it in one expression), so a field added to the layout later breaks nothing.</item>
+      <item>Store options in the order of their keys, so a schema is the same file however its SQL ordered the clauses; and remove a key with <c>shift_remove</c>, which keeps the order of the rest.</item>
+      <item>An object made again under the same name (a dump's placeholder view, <c>CREATE OR REPLACE</c>) keeps its id.</item>
+      <item>Resolve references once everything is read: a dump writes a table before the tables its foreign keys name.</item>
+      <item>Never let a value change the statement around it: write every string as your database writes one, and check that every value written outside quotes (an engine, a collation, a size) is one word, or refuse to write it.</item>
+      <item>Refuse what is not your database's rather than misread it (a fork's dump, a mode in which strings mean something else), and refuse a live read that would come back with something missing because the account cannot see it.</item>
+      <item>Prove the writer against the database itself: load what it writes into a real server, dump it again with the database's own tool, and read that dump as the same schema (<c>engines/mysql/tests/samples/shop/roundtrip.sh</c>).</item>
+    </list>
+  </section>
+  <section title="7. Reading the live database">
+    <p><c>Live</c> reads a schema from a running database (see <a href="connections.xml">connections.xml</a>):</p>
+    <list>
+      <item><b><c>fields()</c></b>: what a connection needs, as data (<c>Field::new(key, label, kind, help)</c>, <c>.required()</c>, <c>.default(…)</c>), at most one of them the secret. The Connections page and the agent's tools are built from them.</item>
+      <item><b><c>test(profile, secret)</c></b>: the five steps, in order, each passed, warned, failed or skipped with what happened: reach, secure, sign in, version, rights. Stop at the first that fails and skip the rest; a warning (TLS not checked, an account that can change things) lets the rest run.</item>
+      <item><b><c>read(profile, secret, which)</c></b>: send only statements that read, and read what the database says through the same reader as its files, so a schema read live and one read from a dump of the same database are the same model.</item>
+    </list>
+    <p>The secret comes as a <c>Secret</c>, which never prints; never log it, never put it in an error, never store it. Test the live part against the real database in containers, each version you support (<c>engines/mysql/tests/live.rs</c>).</p>
+  </section>
+  <section title="8. Writing, queries and checks">
+    <list>
+      <item><b><c>Write</c></b>: one object's definition, and the whole schema, as your SQL. What your reader keeps, your writer writes back. Writing returns an error rather than drop anything: a section that does not read is an error, never an empty one.</item>
+      <item><b><c>Queries</c></b>: what a view's query reads, as name parts.</item>
+      <item><b><c>Checks</c></b>: what makes a schema wrong for your database at its version, beyond the model's own checks.</item>
+    </list>
+    <p>Each is optional: an engine without a writer simply cannot export yet.</p>
+  </section>
+  <section title="9. Register it">
+    <p>Add one line to the registry crate:</p>
+    <code lang="rust"><![CDATA[Registry::new()
+    .with(schema_forge_yourdb::YourDb)]]></code>
+  </section>
+  <section title="10. Pass the conformance kit">
+    <p>Give your crate sample files (<c>tests/samples/</c>) and one test:</p>
+    <code lang="rust"><![CDATA[use schema_forge_engine::kit::{self, QuerySample, Sample, Samples};
+
+#[test]
+fn the_engine_conforms() {
+    let files = [
+        Sample::written_back(Path::new("tests/samples/shop.sql")),
+        Sample::read_only(Path::new("tests/samples/metadata")),
+    ];
+    let queries = [QuerySample::new("select * from sales.orders", &[&["sales", "orders"]])];
+    kit::assert_conforms(&YourDb, &Samples::new(&files, &queries));
+}]]></code>
+    <p>A <c>written_back</c> sample is in the form your engine writes, exactly as it writes it: read and written again, it must come back as <b>the same text</b>, line for line (blank lines aside), and read back to the same schema. That is how the kit knows kept text goes back in its place. A form you only read (table metadata, a dump made by another tool) is <c>read_only</c>. Every part your engine has needs samples that exercise it: reading needs a sample file, writing a written-back sample when it also reads, reading queries a sample query. An engine that writes but does not read is checked on its identity, versions and types until the interface gives it schemas to write.</p>
+    <p>The kit checks your identity and versions; every type (its example reads back exactly as itself in the versions that have it, and is refused as <c>NotInVersion</c> by the others); every sample (recognised, read with a report that adds up, a sound schema of your engine at one of its versions, every section in the layout and every id it names in the schema, every option declared, every column's type your own, every object with a definition, and, when written back, the same schema written the same way); and every sample query. It names everything that does not conform. A part your engine does not have is not checked.</p>
+    <p>The kit's own tests break the <c>example</c> engine on purpose, one way each, to prove it finds each mistake: <a href="../crates/engine/tests/interface.rs"><c>crates/engine/tests/interface.rs</c></a>.</p>
+  </section>
+  <section title="11. Your engine's own tables">
+    <p>What your engine stores lives in its own tables, in its own namespace <c>engine_&lt;id&gt;</c> of every schema database whose engine it is, each referring to the cortex row it belongs to. Copy <a href="owner-template/README.xml">the owner template</a>: its card (<c>owner.toml</c>), the five shapes a table can take, a rules folder and its versions. Pick the shape before you name a column, give every column its comment, and prove the round trip: every sample read, written into your tables and read back is the same schema. The tables are designed with the maintainer and then locked: once shipped, a change is a new version that adds.</p>
+  </section>
+  <section title="12. Let people add onto your engine">
+    <p>Give your engine an add-on trait, so people extend it without forking it: a database extension's types, statements, kept statements and later rules, each from an add-on crate registered with one line (<c>YourDb::new().with(Extra)</c>). Build your engine's tables (types, statement handlers, kept kinds) from your built-ins and its add-ons, never as fixed lists. Write the extensions you ship support for as add-ons themselves, using only what your crate makes public: they are your add-on authors' examples. The MySQL engine's <c>AddOn</c> trait and its test of a compatible system's types (<c>engines/mysql/tests/addon.rs</c>) are the worked example; the PostgreSQL engine's add-ons (PostGIS, pgvector, citext, hstore) will be the next.</p>
+  </section>
+</doc>

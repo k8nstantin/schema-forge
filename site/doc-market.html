@@ -1,0 +1,99 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="alternate" type="application/xml" title="For coding agents: the brief, agents.xml" href="https://k8nstantin.github.io/schema-forge/agents.xml">
+<title>Market scan (2026-11-20)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F8F4FB;--surface:#FFFFFF;--raised:#FBF8FD;--ink:#1F062A;--ink2:#3B2447;--muted:#6B5A74;--line:#E3D9EA;
+  --accent:#9500BF;--accent-soft:#F3E3FA;--engine:#0E7C86;--engine-soft:#DDF2F3;--log:#8A5A00;--log-soft:#FBF0DA;
+  --crit:#B42318;--crit-soft:#FDECEA;
+  --head:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;--sans:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"JetBrains Mono","Fira Code",ui-monospace,SFMono-Regular,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+  --bg:#1F062A;--surface:#2A0F38;--raised:#331545;--ink:#FFFFFF;--ink2:#E3D6EC;--muted:#ADACAC;--line:#45285A;
+  --accent:#CC66FF;--accent-soft:#3C1452;--engine:#4FD1C5;--engine-soft:#123B3B;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#1F062A;--surface:#2A0F38;--raised:#331545;--ink:#FFFFFF;--ink2:#E3D6EC;--muted:#ADACAC;--line:#45285A;
+  --accent:#CC66FF;--accent-soft:#3C1452;--engine:#4FD1C5;--engine-soft:#123B3B;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}
+*{box-sizing:border-box}
+.hero{background:linear-gradient(160deg,#1F062A 0%,#2A0838 55%,#3A0A4D 100%);color:#FFFFFF;border-radius:18px;padding:56px 28px 48px;margin:0 0 8px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(closest-side,rgba(204,102,255,.35),transparent);pointer-events:none}
+.hero .eyebrow{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#CC66FF;margin:0 0 14px}
+.hero h1{color:#FFFFFF;font-size:52px;margin:0 0 16px;max-width:22ch}
+.hero p{color:#E3D6EC;font-size:18px;max-width:62ch;margin:0 0 24px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;position:relative;z-index:1}
+.btn{display:inline-block;font:600 15px/1 var(--sans);padding:13px 20px;border-radius:10px;text-decoration:none;border:1.5px solid transparent}
+.btn-primary{background:#9500BF;color:#FFFFFF;border-color:#9500BF}.btn-primary:hover{background:#B500BA;border-color:#B500BA;color:#FFFFFF}
+.btn-secondary{background:transparent;color:#FFFFFF;border-color:rgba(255,255,255,.35)}.btn-secondary:hover{border-color:#CC66FF;color:#CC66FF}
+.note{display:inline-block;margin-top:22px;font:500 12.5px var(--mono);color:#ADACAC;position:relative;z-index:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;margin-top:18px}
+.cards.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;min-width:0}
+.card h3{margin:0 0 6px;font-size:18px}.card p{margin:0;color:var(--ink2);font-size:14.5px}
+a.card{display:block;text-decoration:none;color:var(--ink)}a.card:hover{border-color:var(--accent)}a.card .go{display:block;margin-top:10px;color:var(--accent);font:600 13px var(--mono)}
+.kicker{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+.cta{background:var(--accent-soft);border:1px solid var(--line);border-radius:18px;padding:28px 24px}
+.foot{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
+@media (max-width:640px){.nav{position:static}.nav .sub{display:none}.hero{padding:40px 18px 36px}.hero h1{font-size:36px}.hero p{font-size:16px}}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 120px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:70;background:var(--bg)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 80px}
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:60;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 14px;padding:8px 10px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.nav .brand{font:600 15px/1 var(--head);color:var(--ink);border:0;padding:5px 8px 5px 2px}.nav .brand::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);margin-right:8px;vertical-align:0}
+.nav .l{font:500 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 4px 0 2px}
+.nav a{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;white-space:nowrap}
+.nav a:hover{border-color:var(--accent);color:var(--accent)}
+.nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.nav .sub{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;padding-top:6px;border-top:1px solid var(--line);font-size:13px}
+.nav .sub a{border:0;padding:0;color:var(--accent);border-radius:0}
+.agents{margin-top:56px;border:1px dashed var(--accent);border-radius:14px;padding:18px 20px;background:var(--surface)}.agents p{margin:0 0 12px;max-width:80ch;color:var(--ink2)}.agents .kicker{margin-bottom:6px}
+.btn-outline{background:transparent;color:var(--accent);border-color:var(--accent)}.btn-outline:hover{background:var(--accent);color:#FFFFFF}
+.tb{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1.5px solid var(--ink);background:var(--surface)}
+.tb div{padding:8px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.tb span{display:block;font:500 10.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tb b{font:500 14px/1.4 var(--mono);overflow-wrap:anywhere}.tb a{color:var(--accent)}
+h1{font:600 44px/1.08 var(--head);letter-spacing:-.01em;margin:22px 0 8px;text-wrap:balance}
+h2{font:600 28px/1.15 var(--head);letter-spacing:-.01em;margin:0 0 8px;text-wrap:balance;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+h3{font:600 21px/1.2 var(--head);margin:22px 0 6px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+h4{margin:0 0 6px;font-size:15px}
+.draft{font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--log);background:var(--log-soft);border:1px solid var(--log);border-radius:999px;padding:2px 10px;vertical-align:middle}
+.path{font:400 12.5px var(--mono);color:var(--muted)}
+.lede{color:var(--ink2);max-width:78ch;margin:0 0 14px}
+p{max-width:82ch}
+.small{font-size:13px;color:var(--muted)}
+code{font:13px var(--mono);background:var(--raised);border:1px solid var(--line);border-radius:4px;padding:0 4px;overflow-wrap:anywhere}
+a{color:var(--accent)}a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{margin:52px 0 0}
+figure{margin:14px 0 0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:680px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:10px;max-width:86ch}
+.d text{fill:var(--ink);font:12.5px var(--sans)}.d .m{font-family:var(--mono);font-size:12px}.d .b6{font-weight:600}
+.d .lb{font-size:11px;fill:var(--muted)}.d .cap{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;fill:var(--muted)}
+.d .halo{paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.d .box{fill:var(--surface);stroke:var(--ink2);stroke-width:1.2}
+.d .pri{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.d .eng{fill:var(--engine-soft);stroke:var(--engine);stroke-width:1.4}
+.d .lg{fill:var(--log-soft);stroke:var(--log);stroke-width:1.4}
+.d .file{fill:var(--raised);stroke:var(--ink);stroke-width:1.5}
+.d .band{fill:none;stroke:var(--line);stroke-width:1.2;stroke-dasharray:5 4}
+.d .ea{stroke:var(--accent);stroke-width:1.4;fill:none}.d .es{stroke:var(--muted);stroke-width:1.1;fill:none;stroke-dasharray:4 3}
+.d .mkf{fill:var(--accent)}.d .mkm{fill:var(--muted)}
+.d a:hover rect{stroke-width:2.4}
+table.t{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line)}
+table.t th{text-align:left;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);background:var(--raised)}
+table.t td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+.scroll{overflow-x:auto}
+.pill{display:inline-block;font:500 11.5px var(--mono);border-radius:999px;padding:1px 9px;white-space:nowrap;border:1px solid var(--line);color:var(--ink2);background:var(--raised)}
+.pill.ok{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+.pill.open{color:var(--log);background:var(--log-soft);border-color:transparent}
+.pill.eng{color:var(--engine);background:var(--engine-soft);border-color:transparent}
+.lab{font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+details{border-top:1px solid var(--line);padding:8px 0}summary{cursor:pointer;font-weight:600}
+pre{margin:8px 0 0;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font:12.5px/1.55 var(--mono);color:var(--ink2);overflow:auto;white-space:pre}
+@media (max-width:640px){h1{font-size:34px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+.doc{max-width:860px}.doc h2{margin-top:36px}.doc h3{margin-top:24px}.doc ul,.doc ol{padding-left:22px}
+.doc li{margin:6px 0}.doc pre{overflow-x:auto}.doc .src{margin:4px 0 22px}</style>
+<div class="wrap"><span id="top"></span><nav class="nav" aria-label="SchemaForge"><a class="brand" href="index.html">SchemaForge</a><a href="start.html">Start here</a><a href="engines.html">Engines</a><a href="database.html">Database</a><a href="template.html">Owner Template</a><a href="build-spec.html">Build Spec</a><a href="contribute.html">Contribute</a><a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">GitHub</a></nav><header class="doc"><h1>Market scan (2026-11-20)</h1><p class="small src">The source, for people and agents alike: <a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/market.xml"><code>docs/market.xml</code></a></p></header><article class="doc"><p>What exists near SchemaForge, from a web scan on 2026-11-20. Feature claims come from each project&#x27;s own pages and listings; nothing here was installed or tested.</p><h2 id="mcp-plus-er-diagrams-the-direct-neighbours">MCP plus ER diagrams: the direct neighbours</h2><div class="scroll"><table class="t"><tr><th>Tool</th><th>What it is</th><th>Rules / standards</th><th>Iceberg, CDC</th><th>Licence</th></tr><tr><td><a href="https://github.com/anatoly-lab/drawdb-mcp">drawDB + MCP</a></td><td>a fork of drawDB whose backend holds the diagram; MCP tools (export SQL/DBML, import DBML, import/export the diagram); a connected editor stays in sync, and edits in the editor go back</td><td>none mentioned</td><td>no</td><td>AGPL-3.0</td></tr><tr><td><a href="https://www.drawdb.app/">drawDB</a> official MCP</td><td>read-only access to diagrams</td><td>none</td><td>no</td><td>AGPL-3.0 (drawDB)</td></tr><tr><td><a href="https://schemasketch.dev/">SchemaSketch</a> (<a href="https://dev.to/schemasketch/your-ai-agent-can-now-design-edit-and-export-database-schemas-with-mcp-27f4">post</a>)</td><td>hosted; about 15 MCP tools to create, update and export diagrams; imports SQL, Mermaid, PlantUML</td><td>none mentioned</td><td>no</td><td>hosted service</td></tr><tr><td><a href="https://erflow.io/en">ER Flow</a></td><td>visual modeler with an MCP server for Claude Code, Cursor, Windsurf; generates migrations</td><td>none mentioned</td><td>no</td><td>commercial</td></tr><tr><td><a href="https://glama.ai/mcp/servers/sqemo/sqemo-mcp">Sqemo</a></td><td>the closest: 36 MCP tools to model, lint and export; names derived from a team word list and naming rules; domains define types; lint, diff, migration scripts, drift against PostgreSQL and MySQL</td><td>naming rules, word lists, domains</td><td>no</td><td>MIT server, commercial cloud and Pro tools; listed as inactive</td></tr></table></div><h2 id="ai-schema-design-with-its-own-agent">AI schema design, with its own agent</h2><ul><li><a href="https://github.com/liam-hq/liam">Liam</a> (Apache-2.0, about 4.9k stars): ER diagrams from existing schemas, and an AI design system of its own agents (requirements, schema design, QA) built on LangGraph, storing sessions in Supabase (<a href="https://deepwiki.com/liam-hq/liam">DeepWiki</a>). Its agent, not yours.</li><li><a href="https://sql-designer.com/blog/best-free-erd-tools">ChartDB</a>: mostly documents existing schemas, with AI explanations.</li><li>drawDB Pro, <a href="https://drawsql.app/">DrawSQL</a>: AI assistants inside the diagram tool.</li><li>Text-to-ER generators (<a href="https://miro.com/ai/erd-diagram-ai/">Miro</a>, <a href="https://cloudairy.com/ai/ai-er-diagram-generator">Cloudairy</a>, <a href="https://mockflow.com/ai/database-diagram-generator/">MockFlow</a>): a description in, a diagram out.</li></ul><h2 id="standards-in-classic-modelers">Standards in classic modelers</h2><p>Enterprise modelers enforce naming standards: <a href="https://www.oracle.com/technetwork/developer-tools/datamodeler/datamodelernamingstandards-167685.pdf">Oracle SQL Developer Data Modeler</a> (naming patterns and design rules), <a href="https://docwiki.embarcadero.com/ERStudioDA/211/en/Enforcing_Naming_Standards_Using_Naming_Standards_Templates">ER/Studio</a> (naming standards templates). They are built for people editing by hand, not for agents. A <a href="https://blog.quest.com/the-90-second-data-model-why-ai-generated-data-models-arent-a-modeling-practice/">Quest post</a> makes the same point we do: AI that suggests a convention without enforcing it is not modelling.</p><p>Teams also write conventions as a markdown file for their agent (<a href="https://claudecodeguides.com/claude-md-for-database-conventions-and-patterns/">example</a>): guidance the agent may follow, nothing that refuses a bad change.</p><h2 id="mysql-to-iceberg-through-cdc">MySQL to Iceberg through CDC</h2><p>No tool was found that designs Iceberg tables from a MySQL schema under standards. What exists runs the pipeline and creates or evolves tables automatically: <a href="https://estuary.dev/blog/mysql-to-apache-iceberg/">Estuary</a>, <a href="https://dev.to/bladepipe/how-to-load-data-from-mysql-to-iceberg-in-real-time-2f">BladePipe</a>, <a href="https://docs.snowflake.com/en/user-guide/data-integration/openflow/connectors/mysql/iceberg">Snowflake Openflow</a>, <a href="https://docs.cloudera.com/dataflow/cloud/readyflow-overview-mysqlcdc-iceberg/topics/cdf-readyflow-mysqlcdc-iceberg.html">Cloudera</a>, <a href="https://aws.amazon.com/blogs/big-data/use-amazon-msk-connect-and-iceberg-kafka-connect-to-build-a-real-time-data-lake">Iceberg Kafka Connect on MSK</a>, <a href="https://memiiso.github.io/debezium-server-iceberg/migration">Debezium Server Iceberg</a>, and a published <a href="https://docs.amazonaws.cn/en_us/firehose/latest/dev/database-as-source-supported-datatypes.html">MySQL-to-Iceberg type table</a> for Firehose. None of them shows the source&#x27;s inconsistencies first, or lets you decide the target design before data flows.</p><h2 id="where-schemaforge-stands-apart">Where SchemaForge stands apart</h2><ol><li><strong>Your agent, any agent.</strong> It works with any coding agent that speaks MCP; Claude Code first. The MCP is the enforcer, not a convenience: every change goes through it and is checked.</li><li><strong>You direct, and can edit by hand.</strong> The user sees, points and instructs, with references to everything, or makes the change in the perspectives, under the same rules as the agent.</li><li><strong>Standards by type:</strong> type standards, naming, keys, patterns such as SCD Type 2, the Debezium pack; enforced on every operation, not suggested.</li><li><strong>Inconsistencies surfaced</strong> across the whole schema, before they become data problems.</li><li><strong>Iceberg first-class</strong>, and <strong>CDC designed</strong>: MySQL to Iceberg through Debezium, every column decided by rule, the connector&#x27;s settings written to match.</li><li><strong>Local and open source</strong> (MIT or Apache-2.0).</li></ol><h2 id="what-to-watch">What to watch</h2><p>drawDB + MCP and Sqemo show the idea of an agent editing an ER model through MCP is already out there. SchemaForge&#x27;s difference has to stay where the list above puts it: enforced standards, CDC and Iceberg, the many perspectives, and the agent as the only editor.</p></article><aside class="agents" aria-label="For coding agents"><p class="kicker">For coding agents</p><p>Everything a coding agent needs to work on SchemaForge is in one place: the brief, https://k8nstantin.github.io/schema-forge/agents.xml. It explains what SchemaForge is and how it is built, lists every contribution open now, and leads to the spec, the rules and the task files, in the order to read them. Read it before you act on this page, and let your human choose what to do.</p><a class="btn btn-outline" href="https://k8nstantin.github.io/schema-forge/agents.xml">The brief: agents.xml</a></aside><p class="foot"><span>SchemaForge · MIT or Apache-2.0</span><a href="https://github.com/k8nstantin/schema-forge">GitHub</a><a href="https://github.com/k8nstantin/schema-forge/discussions">Discussions</a><a href="https://k8nstantin.github.io/schema-forge/agents.xml">For coding agents: the brief, agents.xml</a><span>Generated by docs/pages/build.py from the repository: the files are the authority.</span></p></div>

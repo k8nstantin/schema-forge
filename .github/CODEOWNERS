@@ -10,4 +10,4 @@
 /.github/ @k8nstantin
 /tools/check.sh @k8nstantin
 /tools/schema_lock.py @k8nstantin
-/tools/sf-account.sh @k8nstantin
+/tools/schema_dump.py @k8nstantin

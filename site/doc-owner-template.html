@@ -1,0 +1,104 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="alternate" type="application/xml" title="For coding agents: the brief, agents.xml" href="https://k8nstantin.github.io/schema-forge/agents.xml">
+<title>The owner template</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F8F4FB;--surface:#FFFFFF;--raised:#FBF8FD;--ink:#1F062A;--ink2:#3B2447;--muted:#6B5A74;--line:#E3D9EA;
+  --accent:#9500BF;--accent-soft:#F3E3FA;--engine:#0E7C86;--engine-soft:#DDF2F3;--log:#8A5A00;--log-soft:#FBF0DA;
+  --crit:#B42318;--crit-soft:#FDECEA;
+  --head:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;--sans:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"JetBrains Mono","Fira Code",ui-monospace,SFMono-Regular,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+  --bg:#1F062A;--surface:#2A0F38;--raised:#331545;--ink:#FFFFFF;--ink2:#E3D6EC;--muted:#ADACAC;--line:#45285A;
+  --accent:#CC66FF;--accent-soft:#3C1452;--engine:#4FD1C5;--engine-soft:#123B3B;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#1F062A;--surface:#2A0F38;--raised:#331545;--ink:#FFFFFF;--ink2:#E3D6EC;--muted:#ADACAC;--line:#45285A;
+  --accent:#CC66FF;--accent-soft:#3C1452;--engine:#4FD1C5;--engine-soft:#123B3B;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}
+*{box-sizing:border-box}
+.hero{background:linear-gradient(160deg,#1F062A 0%,#2A0838 55%,#3A0A4D 100%);color:#FFFFFF;border-radius:18px;padding:56px 28px 48px;margin:0 0 8px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(closest-side,rgba(204,102,255,.35),transparent);pointer-events:none}
+.hero .eyebrow{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#CC66FF;margin:0 0 14px}
+.hero h1{color:#FFFFFF;font-size:52px;margin:0 0 16px;max-width:22ch}
+.hero p{color:#E3D6EC;font-size:18px;max-width:62ch;margin:0 0 24px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;position:relative;z-index:1}
+.btn{display:inline-block;font:600 15px/1 var(--sans);padding:13px 20px;border-radius:10px;text-decoration:none;border:1.5px solid transparent}
+.btn-primary{background:#9500BF;color:#FFFFFF;border-color:#9500BF}.btn-primary:hover{background:#B500BA;border-color:#B500BA;color:#FFFFFF}
+.btn-secondary{background:transparent;color:#FFFFFF;border-color:rgba(255,255,255,.35)}.btn-secondary:hover{border-color:#CC66FF;color:#CC66FF}
+.note{display:inline-block;margin-top:22px;font:500 12.5px var(--mono);color:#ADACAC;position:relative;z-index:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;margin-top:18px}
+.cards.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;min-width:0}
+.card h3{margin:0 0 6px;font-size:18px}.card p{margin:0;color:var(--ink2);font-size:14.5px}
+a.card{display:block;text-decoration:none;color:var(--ink)}a.card:hover{border-color:var(--accent)}a.card .go{display:block;margin-top:10px;color:var(--accent);font:600 13px var(--mono)}
+.kicker{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+.cta{background:var(--accent-soft);border:1px solid var(--line);border-radius:18px;padding:28px 24px}
+.foot{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
+@media (max-width:640px){.nav{position:static}.nav .sub{display:none}.hero{padding:40px 18px 36px}.hero h1{font-size:36px}.hero p{font-size:16px}}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 120px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:70;background:var(--bg)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 80px}
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:60;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 14px;padding:8px 10px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.nav .brand{font:600 15px/1 var(--head);color:var(--ink);border:0;padding:5px 8px 5px 2px}.nav .brand::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);margin-right:8px;vertical-align:0}
+.nav .l{font:500 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 4px 0 2px}
+.nav a{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;white-space:nowrap}
+.nav a:hover{border-color:var(--accent);color:var(--accent)}
+.nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.nav .sub{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;padding-top:6px;border-top:1px solid var(--line);font-size:13px}
+.nav .sub a{border:0;padding:0;color:var(--accent);border-radius:0}
+.agents{margin-top:56px;border:1px dashed var(--accent);border-radius:14px;padding:18px 20px;background:var(--surface)}.agents p{margin:0 0 12px;max-width:80ch;color:var(--ink2)}.agents .kicker{margin-bottom:6px}
+.btn-outline{background:transparent;color:var(--accent);border-color:var(--accent)}.btn-outline:hover{background:var(--accent);color:#FFFFFF}
+.tb{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1.5px solid var(--ink);background:var(--surface)}
+.tb div{padding:8px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.tb span{display:block;font:500 10.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tb b{font:500 14px/1.4 var(--mono);overflow-wrap:anywhere}.tb a{color:var(--accent)}
+h1{font:600 44px/1.08 var(--head);letter-spacing:-.01em;margin:22px 0 8px;text-wrap:balance}
+h2{font:600 28px/1.15 var(--head);letter-spacing:-.01em;margin:0 0 8px;text-wrap:balance;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+h3{font:600 21px/1.2 var(--head);margin:22px 0 6px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+h4{margin:0 0 6px;font-size:15px}
+.draft{font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--log);background:var(--log-soft);border:1px solid var(--log);border-radius:999px;padding:2px 10px;vertical-align:middle}
+.path{font:400 12.5px var(--mono);color:var(--muted)}
+.lede{color:var(--ink2);max-width:78ch;margin:0 0 14px}
+p{max-width:82ch}
+.small{font-size:13px;color:var(--muted)}
+code{font:13px var(--mono);background:var(--raised);border:1px solid var(--line);border-radius:4px;padding:0 4px;overflow-wrap:anywhere}
+a{color:var(--accent)}a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{margin:52px 0 0}
+figure{margin:14px 0 0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:680px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:10px;max-width:86ch}
+.d text{fill:var(--ink);font:12.5px var(--sans)}.d .m{font-family:var(--mono);font-size:12px}.d .b6{font-weight:600}
+.d .lb{font-size:11px;fill:var(--muted)}.d .cap{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;fill:var(--muted)}
+.d .halo{paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.d .box{fill:var(--surface);stroke:var(--ink2);stroke-width:1.2}
+.d .pri{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.d .eng{fill:var(--engine-soft);stroke:var(--engine);stroke-width:1.4}
+.d .lg{fill:var(--log-soft);stroke:var(--log);stroke-width:1.4}
+.d .file{fill:var(--raised);stroke:var(--ink);stroke-width:1.5}
+.d .band{fill:none;stroke:var(--line);stroke-width:1.2;stroke-dasharray:5 4}
+.d .ea{stroke:var(--accent);stroke-width:1.4;fill:none}.d .es{stroke:var(--muted);stroke-width:1.1;fill:none;stroke-dasharray:4 3}
+.d .mkf{fill:var(--accent)}.d .mkm{fill:var(--muted)}
+.d a:hover rect{stroke-width:2.4}
+table.t{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line)}
+table.t th{text-align:left;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);background:var(--raised)}
+table.t td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+.scroll{overflow-x:auto}
+.pill{display:inline-block;font:500 11.5px var(--mono);border-radius:999px;padding:1px 9px;white-space:nowrap;border:1px solid var(--line);color:var(--ink2);background:var(--raised)}
+.pill.ok{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+.pill.open{color:var(--log);background:var(--log-soft);border-color:transparent}
+.pill.eng{color:var(--engine);background:var(--engine-soft);border-color:transparent}
+.lab{font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+details{border-top:1px solid var(--line);padding:8px 0}summary{cursor:pointer;font-weight:600}
+pre{margin:8px 0 0;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font:12.5px/1.55 var(--mono);color:var(--ink2);overflow:auto;white-space:pre}
+@media (max-width:640px){h1{font-size:34px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+.doc{max-width:860px}.doc h2{margin-top:36px}.doc h3{margin-top:24px}.doc ul,.doc ol{padding-left:22px}
+.doc li{margin:6px 0}.doc pre{overflow-x:auto}.doc .src{margin:4px 0 22px}</style>
+<div class="wrap"><span id="top"></span><nav class="nav" aria-label="SchemaForge"><a class="brand" href="index.html">SchemaForge</a><a href="start.html">Start here</a><a href="engines.html">Engines</a><a href="database.html">Database</a><a href="template.html">Owner Template</a><a href="build-spec.html">Build Spec</a><a href="contribute.html">Contribute</a><a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">GitHub</a></nav><header class="doc"><h1>The owner template</h1><p class="small src">The source, for people and agents alike: <a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/README.xml"><code>docs/owner-template/README.xml</code></a></p></header><article class="doc"><p><strong>Modularity and yet coherence.</strong> Every engine and every feature brings its own tables, in its own namespace, versioned on its own, and never changes another owner&#x27;s; every one of them is built the same way, refers to the cortex by foreign keys, and is enforced by the same database. This folder is a complete owner, <code>example</code>, to copy.</p><pre>engines/&lt;id&gt;/            an engine (features/&lt;id&gt;/ for a feature: insight, semantic, rules, pipelines)
+  owner.toml             its id, kind, namespace, newest version and the cortex version it needs
+  schema/
+    &lt;table&gt;.sql          one CREATE TABLE per file, named after its table, in the namespace engine_&lt;id&gt; (a feature: &lt;id&gt;)
+    rules/&lt;rule&gt;.sql     one view per rule, broken_&lt;rule&gt;: the rows breaking it
+    migrations/          every version after the first: &lt;version&gt;_&lt;name&gt;.sql; and 1_tables.sql once version 2 exists</pre><h2 id="the-five-shapes">The five shapes</h2><p>Every table an owner needs is one of these. Pick the shape before naming a column.</p><div class="scroll"><table class="t"><tr><th>Shape</th><th>When</th><th>Its id</th><th>The example</th></tr><tr><td>1. Options of a cortex part</td><td>what the engine says of a table, a column, a key... beyond the cortex; at most one row per part</td><td>the part&#x27;s own id, a foreign key</td><td><a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/table_options.sql"><code>table_options.sql</code></a></td></tr><tr><td>2. An ordered list</td><td>many things per part, in order</td><td><code>&lt;parent&gt;.&lt;word&gt;&lt;n&gt;</code>, n from <code>cortex.id_counters</code></td><td><a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/column_codecs.sql"><code>column_codecs.sql</code></a></td></tr><tr><td>3. A kind only this engine has</td><td>an object the cortex has no kind for (a pool, a tablespace)</td><td>the object&#x27;s id: the object is a <code>cortex.objects</code> row of a kind the engine declares</td><td><a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/storage_pools.sql"><code>storage_pools.sql</code></a></td></tr><tr><td>4. Open-ended properties</td><td>only where the engine itself lets anyone name a key (Iceberg&#x27;s table properties)</td><td><code>&lt;parent&gt;.&lt;word&gt;&lt;n&gt;</code></td><td><a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/table_properties.sql"><code>table_properties.sql</code></a></td></tr><tr><td>5. A tree</td><td>nested things (fields of a struct of structs)</td><td><code>&lt;parent&gt;.&lt;word&gt;&lt;n&gt;</code>, a <code>parent</code> column referring to the same table</td><td><a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/nested_fields.sql"><code>nested_fields.sql</code></a></td></tr></table></div><p>A value the engine names belongs in a typed column of shape 1, never in shape 4: shape 4 is for keys nobody can list.</p><h2 id="every-file-every-column">Every file, every column</h2><ul><li>A header line <code>-- &lt;namespace&gt;.&lt;table&gt;: &lt;what one row is&gt;. Owner: &lt;id&gt;.</code>, then any lines more.</li><li>Every column on its own line, typed (<code>TEXT</code>, <code>INTEGER</code>, <code>BIGINT</code>, <code>NUMERIC</code>, <code>BOOLEAN</code>, <code>UUID</code>, <code>TIMESTAMPTZ</code>, <code>JSONB</code>), constrained, and commented: what it holds, and what <code>NULL</code> means when it may be null.</li><li>The <code>COMMENT ON</code> statements below the table are written from those comments by <code>python3 tools/schema_comments.py --write</code>; the check refuses a file where they differ, so the database documents itself (<code>\d+ engine_example.table_options</code>).</li><li>Every reference is a foreign key, with <code>ON DELETE CASCADE</code> when the row means nothing without its parent.</li><li>An order is a <code>NUMERIC</code> order key (<code>position</code>), unique within its list.</li><li>A number in an id comes from <code>cortex.id_counters</code> and is never given twice; the rule <code>ids-within-their-counters</code> lists every numbered table of the owner.</li></ul><h2 id="rules">Rules</h2><p>A rule a foreign key cannot state is a view, <code>broken_&lt;rule&gt;</code>, listing the rows that break it, one file each in <code>rules/</code>. <code>cortex.enforce_rules(&#x27;&lt;namespace&gt;&#x27;)</code> puts the triggers on every table the view reads; nothing else is written. Every owner needs at least:</p><ul><li>that its options belong to parts of the right kind (<a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/rules/table-options-on-tables.sql"><code>table-options-on-tables</code></a>);</li><li>that its own kinds&#x27; rows are objects of that kind (<a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/rules/pools-of-their-kind.sql"><code>pools-of-their-kind</code></a>);</li><li>that a tree stays within its parent (<a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/rules/nested-fields-in-their-column.sql"><code>nested-fields-in-their-column</code></a>);</li><li>that its numbered ids came from their counters (<a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/rules/ids-within-their-counters.sql"><code>ids-within-their-counters</code></a>).</li></ul><h2 id="versions">Versions</h2><ul><li><strong>Version 1</strong> is the table files and the rules. Until version 2 exists, nothing else is needed.</li><li><strong>Every change adds.</strong> A new table, a column that may be null or has a default, a rule, an index: one version.</li><li><strong>A rename or a removal takes two versions</strong>, shipped in different releases: the first adds the new and copies the data (<a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/migrations/2_compaction_policy_add.sql"><code>2_compaction_policy_add.sql</code></a>), the later one removes the old (<a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/migrations/3_compaction_policy_drop_old.sql"><code>3_compaction_policy_drop_old.sql</code></a>).</li><li><strong>The table files always show the newest shape</strong>, so the design session that writes version 2 first freezes version 1 as <a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/owner-template/schema/migrations/1_tables.sql"><code>migrations/1_tables.sql</code></a>: the files and rules exactly as they shipped, never edited again.</li><li><strong>A column a migration adds is written last</strong> in its table file, where PostgreSQL puts it.</li><li><strong>Proved, not hoped:</strong> applying versions 1 to 3 of this folder to an empty database gives exactly what its table files and rules give (checked on PostgreSQL 18 with <code>pg_dump --schema-only</code>); every release proves it for every owner, and upgrades a database of every earlier version.</li><li>A shipped version is never edited: its checksum, kept in every database that applied it, refuses it.</li></ul></article><aside class="agents" aria-label="For coding agents"><p class="kicker">For coding agents</p><p>Everything a coding agent needs to work on SchemaForge is in one place: the brief, https://k8nstantin.github.io/schema-forge/agents.xml. It explains what SchemaForge is and how it is built, lists every contribution open now, and leads to the spec, the rules and the task files, in the order to read them. Read it before you act on this page, and let your human choose what to do.</p><a class="btn btn-outline" href="https://k8nstantin.github.io/schema-forge/agents.xml">The brief: agents.xml</a></aside><p class="foot"><span>SchemaForge · MIT or Apache-2.0</span><a href="https://github.com/k8nstantin/schema-forge">GitHub</a><a href="https://github.com/k8nstantin/schema-forge/discussions">Discussions</a><a href="https://k8nstantin.github.io/schema-forge/agents.xml">For coding agents: the brief, agents.xml</a><span>Generated by docs/pages/build.py from the repository: the files are the authority.</span></p></div>
