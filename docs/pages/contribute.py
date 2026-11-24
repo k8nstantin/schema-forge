@@ -53,12 +53,21 @@ method = [(s.get("name"), s.get("short"), fill(flat(s))) for s in brief.find("me
 ways = [(w.get("name"), w.get("kicker"), w.get("title"), fill(flat(w.find("for-agent"))), fill(flat(w.find("for-people"))))
         for w in brief.find("ways").findall("way")]
 helping = [fill(flat(d)) for d in brief.find("helping").findall("do")]
+architecture = [(p.get("name"), p.get("href") or "",
+                 fill(flat(root.find("identity/repository")) if p.get("source") == "repository" else flat(p)))
+                for p in brief.find("architecture").findall("part")]
+start_steps = [fill(flat(s)) for s in brief.find("start").findall("step")]
 PROMPT = said("prompt")
 
 # what is wanted now: from the sequence (built, file, depends) and the open decisions
 built = {t.get("id") for t in sequence if t.get("built")}
 ready = [t for t in sequence if t.get("file") and not t.get("built") and all(d in built for d in (t.get("depends") or "").split())]
 queued = [t for t in sequence if t.get("file") and not t.get("built") and t not in ready]
+ahead = [t for t in sequence if not t.get("file")]
+
+
+def issue(t):
+    return f"{REPO_URL}/issues/{t.get('key')[3:]}" if t.get("key") else ""
 
 
 def task_line(t):
@@ -87,13 +96,19 @@ read = [(g.get("name"), group_files(g)) for g in brief.find("read").findall("gro
 # --- agents.md, and the same for the repository's agent files ----------------------------------------------------------
 def render_md(link_md, head):
     """The brief in Markdown: head first, then every section, each file linked by link_md."""
-    md = head + [said("intro"), "",
-          "## If you were pointed at a task file", "", said("if-task-file"), "",
-          f"## What {PRODUCT} is", "", identity, "", purpose, "",
-          "## Wanted now", "", said("wanted/note"), "", f"**Ready to build**: {said('wanted/ready')}", ""]
-    md += [f"- {task_line(t)}: {link_md(t.get('file'))}. {flat(t)}" for t in ready] or ["- none just now"]
-    md += ["", f"**Queued**: {said('wanted/queued')}", ""] + [f"- {task_line(t)}: {link_md(t.get('file'))}" for t in queued]
+    md = head + [said("welcome"), "", said("intro"), "",
+                 "## If you were pointed at a task file", "", said("if-task-file"), "",
+                 "## The mission", "", identity, "", purpose, "",
+                 "## The architecture", "", said("architecture/note"), ""]
+    md += [f"- **{n}**" + (f" ({link_md(h)})" if h else "") + f": {x}" for n, h, x in architecture]
+    md += ["", "## Wanted now", "", said("wanted/note"), "", f"**Ready to build**: {said('wanted/ready')}", ""]
+    md += [f"- {task_line(t)}: {link_md(t.get('file'))}" + (f", issue {issue(t)}" if issue(t) else "") + f". {flat(t)}" for t in ready] or ["- none just now"]
+    md += ["", f"**Queued**: {said('wanted/queued')}", ""]
+    md += [f"- {task_line(t)}: {link_md(t.get('file'))}" + (f", issue {issue(t)}" if issue(t) else "") for t in queued]
+    md += ["", f"**Ahead**: {said('wanted/ahead')}", ""] + [f"- {task_line(t)}: {flat(t)}" for t in ahead]
     md += ["", f"**Needs a design session**: {said('wanted/design')}", ""] + [f"- **{i}** (before {c})" for i, c, _ in open_decisions]
+    md += ["", f"**Issues**: {said('wanted/issues')}", "", "## How to start", ""]
+    md += [f"{i}. {s}" for i, s in enumerate(start_steps, 1)]
     md += ["", "## The method you are joining", "", said("method/note"), ""]
     md += [f"{i}. **{n}**: {t}" for i, (n, _, t) in enumerate(method, 1)] + ["", "## How your human contributes through you", ""]
     md += [f"- **{n}**: {a}" for n, _, _, a, _ in ways] + ["", "## Read, in this order", ""]
@@ -128,16 +143,24 @@ xl = ['<?xml version="1.0" encoding="UTF-8"?>',
       f"the same as {SITE_URL}agents.md. -->",
       f"<brief product={qa(PRODUCT)} repository={qa(REPO_URL)} branch={qa(BRANCH)} brief-version={qa(brief.get('version'))} "
       f"root-version={qa(root.get('version'))} date={qa(brief.get('date'))}>",
+      f"  <welcome>{xesc(said('welcome'))}</welcome>",
       f"  <intro>{xesc(said('intro'))}</intro>", f"  <if-task-file>{xesc(said('if-task-file'))}</if-task-file>",
-      f"  <product>{xesc(identity)}</product>", f"  <purpose>{xesc(purpose)}</purpose>",
+      f"  <mission>\n    <product>{xesc(identity)}</product>\n    <purpose>{xesc(purpose)}</purpose>\n  </mission>",
+      f"  <architecture>\n    <note>{xesc(said('architecture/note'))}</note>"]
+xl += [f"    <part name={qa(n)}" + (f" href={qa(href(h))}" if h else "") + f">{xesc(x)}</part>" for n, h, x in architecture]
+xl += ["  </architecture>",
       f"  <wanted>\n    <note>{xesc(said('wanted/note'))}</note>",
       f"    <ready about={qa(said('wanted/ready'))}>"]
-xl += [f"      <task id={qa(t.get('id'))} name={qa(t.get('name'))} href={qa(href(t.get('file')))}>{xesc(flat(t))}</task>" for t in ready]
+xl += [f"      <task id={qa(t.get('id'))} name={qa(t.get('name'))} href={qa(href(t.get('file')))}" + (f" issue={qa(issue(t))}" if issue(t) else "") + f">{xesc(flat(t))}</task>" for t in ready]
 xl += ["    </ready>", f"    <queued about={qa(said('wanted/queued'))}>"]
 xl += [f"      <task id={qa(t.get('id'))} name={qa(t.get('name'))} href={qa(href(t.get('file')))}/>" for t in queued]
 xl += ["    </queued>", f"    <design about={qa(said('wanted/design'))}>"]
 xl += [f"      <decision id={qa(i)} closes-before={qa(c)}/>" for i, c, _ in open_decisions]
-xl += ["    </design>", "  </wanted>", f"  <method>\n    <note>{xesc(said('method/note'))}</note>"]
+xl += ["    </design>", f"    <ahead about={qa(said('wanted/ahead'))}>"]
+xl += [f"      <task id={qa(t.get('id'))} name={qa(t.get('name'))}>{xesc(flat(t))}</task>" for t in ahead]
+xl += ["    </ahead>", f"    <issues href={qa(REPO_URL + '/issues')}>{xesc(said('wanted/issues'))}</issues>", "  </wanted>", "  <start>"]
+xl += [f'    <step n="{i}">{xesc(s)}</step>' for i, s in enumerate(start_steps, 1)]
+xl += ["  </start>", f"  <method>\n    <note>{xesc(said('method/note'))}</note>"]
 xl += [f'    <step n="{i}" name={qa(n)}>{xesc(t)}</step>' for i, (n, _, t) in enumerate(method, 1)]
 xl += ["  </method>", "  <ways>"] + [f"    <way name={qa(n)}>{xesc(a)}</way>" for n, _, _, a, _ in ways] + ["  </ways>", "  <read>"]
 for i, (group, files) in enumerate(read, 1):
