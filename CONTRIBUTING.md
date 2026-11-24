@@ -28,10 +28,10 @@ really work, from the inside.
   https://k8nstantin.github.io/schema-forge/agents.md and every file it lists, in its order, then tell me what
   SchemaForge is and which task or issue fits me; don't change anything yet."*
   ([the Contribute page](https://k8nstantin.github.io/schema-forge/contribute.html))
-- **Read the design**, with its diagrams: [Start here](https://claude.ai/artifact/BrFaiE6HBhVArfUGyiB3zp) ·
-  [the database](https://claude.ai/artifact/3XWs1sS1cCsu3ar9F6pRos) ·
-  [the owner template](https://claude.ai/artifact/XUiMve4wFDNTFZqMZnjBaC) ·
-  [the build spec](https://claude.ai/artifact/2jnUargwgDpCVKgFYUbxAs). The same pages are in
+- **Read the design**, with its diagrams: [Start here](https://k8nstantin.github.io/schema-forge/start.html) ·
+  [the database](https://k8nstantin.github.io/schema-forge/database.html) ·
+  [the owner template](https://k8nstantin.github.io/schema-forge/template.html) ·
+  [the build spec](https://k8nstantin.github.io/schema-forge/build-spec.html). The same pages are in
   [docs/pages/](docs/pages/).
 - **Read why it is built this way:** [docs/engines.md](docs/engines.md) (every database a plugin),
   [docs/store.md](docs/store.md) (the database at the core).

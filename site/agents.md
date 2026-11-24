@@ -1,8 +1,8 @@
 # SchemaForge: the brief for coding agents
 
-You were pointed here to understand SchemaForge or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (https://github.com/k8nstantin/schema-forge, branch main); the files are the authority, this brief only orders them.
-
 The same brief in the method's own format: https://k8nstantin.github.io/schema-forge/agents.xml.
+
+You were pointed here to understand SchemaForge or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (https://github.com/k8nstantin/schema-forge, branch main); the files are the authority, this brief only orders them.
 
 ## If you were pointed at a task file
 
@@ -132,7 +132,7 @@ Every rule of specs/rules.xml binds you. In short:
 - **agent-decides-only-what-is-listed**: A task file lists under agent-decides the only things its agent decides: the names and the decomposition of private code inside the files it owns, the standard means of a step, the contents of its fixtures within the cases listed, its commit granularity. Everything else is written in the task file, the root, these rules, the schema folders or the merged code; a build that decides anything else is closed, and the step it departed from is named in the review.
 - **no-attribution**: No commit, branch, PR, file or comment carries an attribution to a coding agent or a model: no co-author line, no generated-by line, no trailer. The work is the operator's.
 - **one-check**: tools/check.sh is the one command every change passes, the same locally and in CI: formatting, lint, every test (the kit, the architecture check and the spec check among them). Nothing is done until it passes; its last line is in the PR.
-- **kickoff**: A build starts with a model pointed at one task file, specs/tasks/<file>.xml, as the first message of a new session on a checkout of the head of main updated from origin; nothing else is said. A session that holds anything before that line beyond what the harness gives every session (its own text, CLAUDE.md, its settings) stops, says so and builds nothing. The task file's start element names the branch, the PR title and the read order; the agent writes its own label.
+- **kickoff**: A build starts with a model pointed at one task file, specs/tasks/<file>.xml, as the first message of a new session on a checkout of the head of main updated from origin; nothing else is said. A session that holds anything before that line beyond what the harness gives every session (its own text, the repository's agent files (AGENTS.md, CLAUDE.md, .github/copilot-instructions.md, rendered from specs/brief.xml), its settings) stops, says so and builds nothing. The task file's start element names the branch, the PR title and the read order; the agent writes its own label.
 - **every-rule-binds**: Every rule here binds every task, whether or not a gate of the task names it.
 
 ## When you help someone contribute

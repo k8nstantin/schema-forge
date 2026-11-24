@@ -33,7 +33,7 @@
     <code path="engines/mysql/" decides="the MySQL engine: its versions, types, kinds, options, readers and writer">Read first.</code>
     <doc path="docs/engines.md" decides="the plugin design: what is shared and what is each engine's, the crates and their roles"/>
     <doc path="docs/connections.md" decides="connections: what an engine declares, profiles without secrets, the five test steps"/>
-    <not_sources>Earlier branches and their pull requests (#90, #91 among them), the prototype tag, conversations, the README files, CLAUDE.md, every file of docs/ but docs/engines.md and docs/connections.md, any page, any document outside the repository.</not_sources>
+    <not_sources>Earlier branches and their pull requests (#90, #91 among them), the prototype tag, conversations, the README files, the agent files (AGENTS.md, CLAUDE.md, .github/copilot-instructions.md: they only point to the brief), every file of docs/ but docs/engines.md and docs/connections.md, any page, any document outside the repository.</not_sources>
   </authority>
 
   <method>

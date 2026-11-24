@@ -84,31 +84,43 @@ def group_files(g):
 
 read = [(g.get("name"), group_files(g)) for g in brief.find("read").findall("group")]
 
-# --- agents.md ----------------------------------------------------------------------------------------------------------
-md = [f"# {PRODUCT}: the brief for coding agents", "", said("intro"), "",
-      f"The same brief in the method's own format: {SITE_URL}agents.xml.", "",
-      "## If you were pointed at a task file", "", said("if-task-file"), "",
-      f"## What {PRODUCT} is", "", identity, "", purpose, "",
-      "## Wanted now", "", said("wanted/note"), "", f"**Ready to build**: {said('wanted/ready')}", ""]
-md += [f"- {task_line(t)}: {link_md(t.get('file'))}. {flat(t)}" for t in ready] or ["- none just now"]
-md += ["", f"**Queued**: {said('wanted/queued')}", ""] + [f"- {task_line(t)}: {link_md(t.get('file'))}" for t in queued]
-md += ["", f"**Needs a design session**: {said('wanted/design')}", ""] + [f"- **{i}** (before {c})" for i, c, _ in open_decisions]
-md += ["", "## The method you are joining", "", said("method/note"), ""]
-md += [f"{i}. **{n}**: {t}" for i, (n, _, t) in enumerate(method, 1)] + ["", "## How your human contributes through you", ""]
-md += [f"- **{n}**: {a}" for n, _, _, a, _ in ways] + ["", "## Read, in this order", ""]
-for i, (group, files) in enumerate(read, 1):
-    if len(files) == 1 and files[0][1]:
-        md.append(f"{i}. {link_md(files[0][0])}: {files[0][1]}.")
-        continue
-    md.append(f"{i}. {group[:1].upper() + group[1:]}:")
-    md += ["   - " + (link_md(p) if p else "") + (": " if p and w else "") + w for p, w in files]
-md += ["", "## The database at the core", "", said("database"), ""] + [f"- {link_md(o)}" for o in owners]
-md += ["", "## Still open", "", "These are decided by the maintainer in a design session, never by an agent. Do not build around them:", ""]
-md += [f"- **{i}** (before {c}): {t}" for i, c, t in open_decisions]
-md += ["", "## The rules you work under", "", "Every rule of specs/rules.xml binds you. In short:", ""]
-md += [f"- **{i}**: {t}" for i, t in rule_list] + ["", "## When you help someone contribute", ""]
-md += [f"- {h}" for h in helping] + [""]
-AGENTS_MD = "\n".join(md)
+# --- agents.md, and the same for the repository's agent files ----------------------------------------------------------
+def render_md(link_md, head):
+    """The brief in Markdown: head first, then every section, each file linked by link_md."""
+    md = head + [said("intro"), "",
+          "## If you were pointed at a task file", "", said("if-task-file"), "",
+          f"## What {PRODUCT} is", "", identity, "", purpose, "",
+          "## Wanted now", "", said("wanted/note"), "", f"**Ready to build**: {said('wanted/ready')}", ""]
+    md += [f"- {task_line(t)}: {link_md(t.get('file'))}. {flat(t)}" for t in ready] or ["- none just now"]
+    md += ["", f"**Queued**: {said('wanted/queued')}", ""] + [f"- {task_line(t)}: {link_md(t.get('file'))}" for t in queued]
+    md += ["", f"**Needs a design session**: {said('wanted/design')}", ""] + [f"- **{i}** (before {c})" for i, c, _ in open_decisions]
+    md += ["", "## The method you are joining", "", said("method/note"), ""]
+    md += [f"{i}. **{n}**: {t}" for i, (n, _, t) in enumerate(method, 1)] + ["", "## How your human contributes through you", ""]
+    md += [f"- **{n}**: {a}" for n, _, _, a, _ in ways] + ["", "## Read, in this order", ""]
+    for i, (group, files) in enumerate(read, 1):
+        if len(files) == 1 and files[0][1]:
+            md.append(f"{i}. {link_md(files[0][0])}: {files[0][1]}.")
+            continue
+        md.append(f"{i}. {group[:1].upper() + group[1:]}:")
+        md += ["   - " + (link_md(p) if p else "") + (": " if p and w else "") + w for p, w in files]
+    md += ["", "## The database at the core", "", said("database"), ""] + [f"- {link_md(o)}" for o in owners]
+    md += ["", "## Still open", "", "These are decided by the maintainer in a design session, never by an agent. Do not build around them:", ""]
+    md += [f"- **{i}** (before {c}): {t}" for i, c, t in open_decisions]
+    md += ["", "## The rules you work under", "", "Every rule of specs/rules.xml binds you. In short:", ""]
+    md += [f"- **{i}**: {t}" for i, t in rule_list] + ["", "## When you help someone contribute", ""]
+    md += [f"- {h}" for h in helping] + [""]
+    return "\n".join(md)
+
+
+AGENTS_MD = render_md(link_md, [f"# {PRODUCT}: the brief for coding agents", "",
+                                    f"The same brief in the method's own format: {SITE_URL}agents.xml.", ""])
+REPO_AGENTS_MD = render_md(lambda p: f"[{p}]({p.split('<')[0]})", [
+    f"# {PRODUCT}: for the coding agent opened in this repository", "",
+    "<!-- Rendered from specs/brief.xml, specs/root.xml and specs/rules.xml by docs/pages/build.py: edit those, never this. -->", "",
+    f"You are in the {PRODUCT} repository. If the first message of this session is a task file's path, follow that file and nothing here. "
+    f"Otherwise this is the same brief as {SITE_URL}agents.md, with the files linked where they are in this checkout.", ""])
+CLAUDE_MD = (f"<!-- Rendered by docs/pages/build.py from specs/brief.xml: edit that, never this. -->\n"
+             f"Read @AGENTS.md: the brief for the coding agent opened in the {PRODUCT} repository.\n")
 
 # --- agents.xml ---------------------------------------------------------------------------------------------------------
 xl = ['<?xml version="1.0" encoding="UTF-8"?>',
