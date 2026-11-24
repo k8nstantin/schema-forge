@@ -8,11 +8,11 @@ Start with the brief for coding agents: https://k8nstantin.github.io/schema-forg
 
 - [specs/root.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/root.xml): identity and purpose, authority (which files decide), method (how every task is built), the sequence of tasks and every decision with its date
 - [specs/rules.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/rules.xml): every rule, where it comes from, and what catches a breach
-- [t01 spec check](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-93.xml)
-- [t02 tables interface](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-94.xml)
-- [t03 quill](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-95.xml)
-- [t04 mysql tables](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-96.xml)
-- [t05 postgres](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/t05-postgres.xml)
+- [t01 · spec check: every spec file and owner folder checked, and loaded on PostgreSQL 18](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-93.xml)
+- [t02 · tables interface: a schema as typed rows of the cortex and back, with no database](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-94.xml)
+- [t03 · quill: the made-up engine every shared test runs beside MySQL](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-95.xml)
+- [t04 · mysql tables: every MySQL option kept in engine_mysql's tables, and read back](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-96.xml)
+- [t05 · postgres: PostgreSQL 18 with pgvector, built by our CI for five platforms](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/t05-postgres.xml)
 
 ## Authority
 

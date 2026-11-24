@@ -5,7 +5,7 @@ import glob
 import os
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape as xesc, quoteattr as qa
-from common import BRANCH, PRODUCT, RAW_URL, REPO, REPO_URL, SITE_URL, Svg, e, links, page
+from common import BRANCH, PRODUCT, RAW_URL, REPO, REPO_URL, SITE_URL, Svg, e, links, page, task_title
 
 L = links()
 root = ET.parse(f"{REPO}/specs/root.xml").getroot()
@@ -71,7 +71,7 @@ def issue(t):
 
 
 def task_line(t):
-    return f"{t.get('id')} {t.get('name')}" + (f" ({t.get('key')})" if t.get("key") else "")
+    return task_title(t) + (f" ({t.get('key')})" if t.get("key") else "")
 
 
 def group_files(g):
@@ -84,8 +84,7 @@ def group_files(g):
     if source == "authority":
         return authority
     if source == "sequence":
-        return [(t.get("file") or "", f"{t.get('id')} {t.get('name')}" + (f" ({t.get('key')})" if t.get("key") else "")
-                 + f": {flat(t)}") for t in sequence]
+        return [(t.get("file") or "", task_line(t) + f". {flat(t)}") for t in sequence]
     if source == "docs":
         return [(d, "") for d in docs]
     raise SystemExit(f"specs/brief.xml: group {g.get('name')} has no files")
@@ -181,7 +180,7 @@ lt = [f"# {PRODUCT}", "", f"> {identity}", "",
       f"Start with the brief for coding agents: {SITE_URL}agents.md (the same in XML: {SITE_URL}agents.xml). "
       "The files below are the authority.", "", "## Spec", ""]
 lt += [f"- [{p}]({href(p)}): {w}" for group, files in read[:2] for p, w in files]
-lt += [f"- [{t.get('id')} {t.get('name')}]({href(t.get('file'))})" for t in sequence if t.get("file")]
+lt += [f"- [{task_title(t)}]({href(t.get('file'))})" for t in sequence if t.get("file")]
 lt += ["", "## Authority", ""] + [f"- {link_md(p)}: {d}" for p, d in authority]
 lt += ["", "## Docs", ""] + [f"- {link_md(d)}" for d in docs]
 LLMS_TXT = "\n".join(lt) + "\n"

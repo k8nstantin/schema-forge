@@ -205,6 +205,11 @@ BRANCH = PARAMS["product.branch"]
 RAW_URL = REPO_URL.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/" + BRANCH
 
 
+def task_title(task):
+    """A task's title as the root's naming convention gives it: <id> · <name>: <title>."""
+    return f"{task.get('id')} · {task.get('name')}: {task.get('title')}"
+
+
 MODE = "artifact"   # "artifact": links to the published pages; "site": relative links between the site's files
 FILES = {"site": "index.html", "home": "start.html", "database": "database.html", "template": "template.html",
          "build-spec": "build-spec.html", "engines": "engines.html", "contribute": "contribute.html"}
