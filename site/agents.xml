@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- SchemaForge: the brief for coding agents, rendered from specs/brief.xml, specs/root.xml and specs/rules.xml; the same as https://k8nstantin.github.io/schema-forge/agents.md. -->
+<!-- SchemaForge: the brief for coding agents, rendered from specs/brief.xml, specs/root.xml and specs/rules.xml; the one brief, as decision xml-for-agents says. -->
 <brief product="SchemaForge" repository="https://github.com/k8nstantin/schema-forge" branch="main" brief-version="1" root-version="1" date="2026-11-24">
   <welcome>Welcome. You have joined SchemaForge, and the person who brought you here is about to work with you on it. This brief gives you, in order, the mission, the architecture, what is needed now and how to start; then the method, everything to read, and the rules. Take it in whole, tell your human what you understood, and the two of you can start.</welcome>
   <intro>You were pointed here to understand SchemaForge or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (https://github.com/k8nstantin/schema-forge, branch main); the files are the authority, this brief only orders them.</intro>
@@ -61,7 +61,7 @@
   </method>
   <ways>
     <way name="build a wanted task">Any task listed as wanted is open to everyone at once: your human opens a new session on a fresh checkout of main whose first and only message is the task file's path (specs/tasks/&lt;file&gt;.xml), and submits the pull request it opens. Others may build the same task; the maintainer reviews the builds side by side and merges the best. That session is not this one.</way>
-    <way name="bring something new">An engine, a feature, a fix: your human opens an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above.</way>
+    <way name="bring something new">An engine, a feature, a fix: for a new database, follow specs/guides/engine.xml from its first phase; otherwise your human opens an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above.</way>
     <way name="improve the method">A lesson, a rule that would have caught a mistake, a clearer step: proposed in Discussions, decided in a design session.</way>
   </ways>
   <read>
@@ -95,10 +95,13 @@
       <file>t09 · canvas: the canvas over the server, every flow tested in a browser. Not written yet: the canvas over the server, every flow a browser test on every engine.</file>
       <file>t10 · steward: the agent that reviews, merges the best build and starts the next. Not written yet: the XML instruction for an agent that runs on a schedule, reviews and QAs every open pull request against its task file, its gates and the rules, merges what passes, records each build's lesson, and starts the next build of the sequence.</file>
     </group>
-    <group n="5" name="the lessons">
+    <group n="5" name="the guides, one for each kind of contribution, read when you take one up">
+      <file path="specs/guides/engine.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/guides/engine.xml">a coding agent whose human wants SchemaForge to support a new database</file>
+    </group>
+    <group n="6" name="the lessons">
       <file path="specs/lessons.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/lessons.xml">what each build taught</file>
     </group>
-    <group n="6" name="the design for people, read after the authority and never instead of it">
+    <group n="7" name="the design for people, read after the authority and never instead of it">
       <file path="docs/cdc.md" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.md"/>
       <file path="docs/market.md" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/market.md"/>
       <file path="docs/perspectives.md" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/perspectives.md"/>
@@ -107,7 +110,7 @@
       <file path="docs/versions.md" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/versions.md"/>
       <file path="docs/writing-an-engine.md" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/writing-an-engine.md"/>
     </group>
-    <group n="7" name="the code as merged, when you need it">
+    <group n="8" name="the code as merged, when you need it">
       <file path="crates/" href="https://github.com/k8nstantin/schema-forge/tree/main/crates"/>
       <file path="engines/" href="https://github.com/k8nstantin/schema-forge/tree/main/engines"/>
       <file path="tools/" href="https://github.com/k8nstantin/schema-forge/tree/main/tools"/>

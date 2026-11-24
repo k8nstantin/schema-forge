@@ -225,7 +225,7 @@ task file; one agent builds it in one session; gates and a person's review decid
 method. You contribute exactly the way the maintainer builds, with your own agent, and the method is yours to improve
 too. Everyone is welcome, and every part you touch teaches databases from the inside.
 
-**With a coding agent?** Point it at the brief: *"Read https://k8nstantin.github.io/schema-forge/agents.md and every
+**With a coding agent?** Point it at the brief: *"Read https://k8nstantin.github.io/schema-forge/agents.xml and every
 file it lists, in its order, then tell me what SchemaForge is and which task or issue fits me."* It reads the whole
 spec, in order, and reports back before anything changes ([how it goes](https://k8nstantin.github.io/schema-forge/contribute.html)).
 

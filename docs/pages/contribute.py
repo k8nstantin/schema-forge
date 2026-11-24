@@ -1,5 +1,5 @@
-"""Renders specs/brief.xml, with specs/root.xml and specs/rules.xml, as the brief coding agents read (agents.md,
-agents.xml, llms.txt) and the Contribute page people read. Every word of the brief is in specs/brief.xml; every name
+"""Renders specs/brief.xml, with specs/root.xml and specs/rules.xml, as the brief coding agents read (agents.xml), its
+index (llms.txt), the repository's agent files (pointers to it) and the Contribute page people read. Every word of the brief is in specs/brief.xml; every name
 and address is a parameter; this file only lays them out."""
 import glob
 import os
@@ -85,6 +85,9 @@ def group_files(g):
         return authority
     if source == "sequence":
         return [(t.get("file") or "", task_line(t) + f". {flat(t)}") for t in sequence]
+    if source == "guides":
+        return [(os.path.relpath(p, REPO), ET.parse(p).getroot().get("for"))
+                for p in sorted(glob.glob(f"{REPO}/specs/guides/*.xml"))]
     if source == "docs":
         return [(d, "") for d in docs]
     raise SystemExit(f"specs/brief.xml: group {g.get('name')} has no files")
@@ -92,54 +95,16 @@ def group_files(g):
 
 read = [(g.get("name"), group_files(g)) for g in brief.find("read").findall("group")]
 
-# --- agents.md, and the same for the repository's agent files ----------------------------------------------------------
-def render_md(link_md, head):
-    """The brief in Markdown: head first, then every section, each file linked by link_md."""
-    md = head + [said("welcome"), "", said("intro"), "",
-                 "## If you were pointed at a task file", "", said("if-task-file"), "",
-                 "## The mission", "", identity, "", purpose, "",
-                 "## The architecture", "", said("architecture/note"), ""]
-    md += [f"- **{n}**" + (f" ({link_md(h)})" if h else "") + f": {x}" for n, h, x in architecture]
-    md += ["", "## Wanted now", "", said("wanted/note"), "", f"**Ready to build**: {said('wanted/ready')}", ""]
-    md += [f"- {task_line(t)}: {link_md(t.get('file'))}" + (f", issue {issue(t)}" if issue(t) else "") + f". {flat(t)}" for t in ready] or ["- none just now"]
-    md += ["", f"**Queued**: {said('wanted/queued')}", ""]
-    md += [f"- {task_line(t)}: {link_md(t.get('file'))}" + (f", issue {issue(t)}" if issue(t) else "") for t in queued]
-    md += ["", f"**Ahead**: {said('wanted/ahead')}", ""] + [f"- {task_line(t)}: {flat(t)}" for t in ahead]
-    md += ["", f"**Needs a design session**: {said('wanted/design')}", ""] + [f"- **{i}** (before {c})" for i, c, _ in open_decisions]
-    md += ["", f"**Issues**: {said('wanted/issues')}", "", "## How to start", ""]
-    md += [f"{i}. {s}" for i, s in enumerate(start_steps, 1)]
-    md += ["", "## The method you are joining", "", said("method/note"), ""]
-    md += [f"{i}. **{n}**: {t}" for i, (n, _, t) in enumerate(method, 1)] + ["", "## How your human contributes through you", ""]
-    md += [f"- **{n}**: {a}" for n, _, _, a, _ in ways] + ["", "## Read, in this order", ""]
-    for i, (group, files) in enumerate(read, 1):
-        if len(files) == 1 and files[0][1]:
-            md.append(f"{i}. {link_md(files[0][0])}: {files[0][1]}.")
-            continue
-        md.append(f"{i}. {group[:1].upper() + group[1:]}:")
-        md += ["   - " + (link_md(p) if p else "") + (": " if p and w else "") + w for p, w in files]
-    md += ["", "## The database at the core", "", said("database"), ""] + [f"- {link_md(o)}" for o in owners]
-    md += ["", "## Still open", "", "These are decided by the maintainer in a design session, never by an agent. Do not build around them:", ""]
-    md += [f"- **{i}** (before {c}): {t}" for i, c, t in open_decisions]
-    md += ["", "## The rules you work under", "", "Every rule of specs/rules.xml binds you. In short:", ""]
-    md += [f"- **{i}**: {t}" for i, t in rule_list] + ["", "## When you help someone contribute", ""]
-    md += [f"- {h}" for h in helping] + [""]
-    return "\n".join(md)
+# --- the repository's agent files: a pointer to the brief, never a copy of it ------------------------------------------
+NOTE = "<!-- Rendered by docs/pages/build.py from specs/brief.xml (agent-file): edit that, never this. -->"
+AGENT_FILE = f"# {PRODUCT}\n\n{NOTE}\n\n{said('agent-file')}\n"
+CLAUDE_MD = f"{NOTE}\nRead @AGENTS.md first.\n"
 
-
-AGENTS_MD = render_md(link_md, [f"# {PRODUCT}: the brief for coding agents", "",
-                                    f"The same brief in the method's own format: {SITE_URL}agents.xml.", ""])
-REPO_AGENTS_MD = render_md(lambda p: f"[{p}]({p.split('<')[0]})", [
-    f"# {PRODUCT}: for the coding agent opened in this repository", "",
-    "<!-- Rendered from specs/brief.xml, specs/root.xml and specs/rules.xml by docs/pages/build.py: edit those, never this. -->", "",
-    f"You are in the {PRODUCT} repository. If the first message of this session is a task file's path, follow that file and nothing here. "
-    f"Otherwise this is the same brief as {SITE_URL}agents.md, with the files linked where they are in this checkout.", ""])
-CLAUDE_MD = (f"<!-- Rendered by docs/pages/build.py from specs/brief.xml: edit that, never this. -->\n"
-             f"Read @AGENTS.md: the brief for the coding agent opened in the {PRODUCT} repository.\n")
 
 # --- agents.xml ---------------------------------------------------------------------------------------------------------
 xl = ['<?xml version="1.0" encoding="UTF-8"?>',
       f"<!-- {PRODUCT}: the brief for coding agents, rendered from specs/brief.xml, specs/root.xml and specs/rules.xml; "
-      f"the same as {SITE_URL}agents.md. -->",
+      "the one brief, as decision xml-for-agents says. -->",
       f"<brief product={qa(PRODUCT)} repository={qa(REPO_URL)} branch={qa(BRANCH)} brief-version={qa(brief.get('version'))} "
       f"root-version={qa(root.get('version'))} date={qa(brief.get('date'))}>",
       f"  <welcome>{xesc(said('welcome'))}</welcome>",
@@ -177,7 +142,7 @@ AGENTS_XML = "\n".join(xl)
 
 # --- llms.txt -----------------------------------------------------------------------------------------------------------
 lt = [f"# {PRODUCT}", "", f"> {identity}", "",
-      f"Start with the brief for coding agents: {SITE_URL}agents.md (the same in XML: {SITE_URL}agents.xml). "
+      f"Start with the brief for coding agents: {SITE_URL}agents.xml. "
       "The files below are the authority.", "", "## Spec", ""]
 lt += [f"- [{p}]({href(p)}): {w}" for group, files in read[:2] for p, w in files]
 lt += [f"- [{task_title(t)}]({href(t.get('file'))})" for t in sequence if t.get("file")]
@@ -206,8 +171,7 @@ body = f"""
   <h1>Built with coding agents. Contributed the same way.</h1>
   <p>{e(purpose)}</p>
   <div class="btns"><a class="btn btn-primary" href="#start">Start with your agent</a>
-  <a class="btn btn-secondary" href="{e(SITE_URL)}agents.md">The brief (Markdown)</a>
-  <a class="btn btn-secondary" href="{e(SITE_URL)}agents.xml">The brief (XML)</a>
+  <a class="btn btn-secondary" href="{e(SITE_URL)}agents.xml">The brief for agents</a>
   <a class="btn btn-secondary" href="%REPO%/discussions">Discussions</a></div>
 </header>
 
@@ -224,7 +188,7 @@ body = f"""
 
 <section id="start"><p class="kicker">Step one, for everyone</p><h2>Let your agent read the whole spec.</h2>
 <pre class="prompt">{e(PROMPT)}</pre>
-<p class="lede">Your agent reads <a href="{e(SITE_URL)}agents.md">agents.md</a> (or the same brief in the method's own format, <a href="{e(SITE_URL)}agents.xml">agents.xml</a>) and follows its links, then explains the project back to you before anything changes.</p></section>
+<p class="lede">Your agent reads <a href="{e(SITE_URL)}agents.xml">agents.xml</a>, the brief in the method's own format, and follows its links, then explains the project back to you before anything changes. Everything an agent acts on here is XML: the spec, the brief, the guides, every task.</p></section>
 
 <section id="ways"><p class="kicker">Then</p><h2>Three ways in.</h2><div class="cards">{way_cards}</div>
 <p class="lede">To build a task, the first and only message of a new session is its path, for example:</p>
