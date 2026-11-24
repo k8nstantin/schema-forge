@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 QUOTE = {"desc", "binary", "columns", "column", "index", "trigger", "on", "unique", "deferrable", "connection", "collation"}
 TYPES = {"TEXT", "INTEGER", "NUMERIC", "BOOLEAN", "UUID", "TIMESTAMPTZ", "JSONB", "BIGINT"}
 COLUMN = re.compile(r'^(\s+)("?[a-z_]+"?)\s+([A-Z]+)\b(.*)$')
@@ -94,7 +94,7 @@ def main():
             else:
                 wrong.append(str(f.relative_to(ROOT)))
     for w in wrong:
-        print(f"{w}: its COMMENT ON statements or alignment differ from its comments; run python3 tools/schema/comments.py --write")
+        print(f"{w}: its COMMENT ON statements or alignment differ from its comments; run python3 tools/schema_comments.py --write")
     return 1 if wrong else 0
 
 
