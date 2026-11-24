@@ -53,6 +53,7 @@ Every part of the product is built this way, by the maintainer and by every cont
    - t07 operations: Not written yet: every change as an operation of its turn, undo and reject by the inverses the log records.
    - t08 server: Not written yet: the server over the store, its API written first, the MCP's tools among it.
    - t09 canvas: Not written yet: the canvas over the server, every flow a browser test on every engine.
+   - t10 steward: Not written yet: the XML instruction for an agent that runs on a schedule, reviews and QAs every open pull request against its task file, its gates and the rules, merges what passes, records each build's lesson, and starts the next build of the sequence.
 5. [specs/lessons.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/lessons.xml): what each build taught.
 6. The design for people, read after the authority and never instead of it:
    - [docs/cdc.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.md)
@@ -84,6 +85,7 @@ These are decided by the maintainer in a design session, never by an agent. Do n
 - **rules-tables** (before t07): The tables of the rules: their links on the hierarchy, groups, exceptions, packs and findings (docs/rules.md), in the workspace's database and the schemas' databases.
 - **pipelines-tables** (before t08): The tables of a CDC pipeline between two schemas, by their stable ids.
 - **insight-layer** (before t08): What is worked out about the model, kept apart from it in a feature owner insight, so a person or an agent can search and question a design through the MCP: dependencies (calls, reads, writes, foreign keys, with evidence and unresolved names) for impact walks; cards composed mechanically from the model; annotations an agent writes, with the model and the input hash; embeddings (pgvector, HNSW) of cards and annotations, searched together with full-text and exact names and every hit confirmed against the model. Kept fresh from the log: an accepted turn's row_changes name the objects whose rows are redone. Rebuilt, never logged or migrated. The MCP's read tools: search (finds candidates), object (one object whole), impact (the walk), sql (every count and list, as a read-only role). The embedding model is the decision embedding-models. A semantic layer (business terms, measures) is authored, so it is its own owner, logged by turns; its embeddings are insight's.
+- **steward** (before t10): What the steward agent may do alone and what stays a person's: which pull requests it may merge (a task's build, a contributor's, a design session's never), what its review must prove beyond the gates, how often it runs and on what, how it records a lesson, how it starts the next build, and how a person stops or overrides it. Until it closes, a person reviews and merges, and no agent merges.
 - **api-contract** (before t08): The server's API over the store: every route and type, written before it is built.
 
 ## The rules you work under
