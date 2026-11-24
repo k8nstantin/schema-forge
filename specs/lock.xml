@@ -58,9 +58,9 @@
   <file path="schema/cortex/columns.sql" sha256="70ac6685dbfb8b67ff392ba6dfe1223f9089b586c6dcfeb4575dd5fa30b9819a"/>
   <file path="schema/cortex/composite_type_fields.sql" sha256="d47c67846b1edadb362af266fcb1cd32824fe0d06f6dc10c048ed8ae489f027e"/>
   <file path="schema/cortex/domains.sql" sha256="491407534506f090eb9ca947d009ba13700fd81bb14b9eb8a105e4f0b75ef654"/>
-  <file path="schema/cortex/enforce_rules.sql" sha256="79e26eef77088e722287a6a665355dbbae99c32df7f2fe3589ffef33217aa571"/>
+  <file path="schema/cortex/enforce_rules.sql" sha256="72d22b023be1c8e03cf3f0a929b79287d9f5f880dcd754c8834b135548a84308"/>
   <file path="schema/cortex/enum_values.sql" sha256="053d9d990b4f7f363341a1c571e3eb0187688fef5b2ecf123ec5ae1a6bd41ddf"/>
-  <file path="schema/cortex/grant_roles.sql" sha256="28f3de4d61b540f35b4f8eae642112632f15a1552386608d5030d0911f600b04"/>
+  <file path="schema/cortex/grant_roles.sql" sha256="314bd200fe87a4d5f3da3fae843d3e9765c00e8c8f6c59c6d0aee8c2668c7f37"/>
   <file path="schema/cortex/id_counters.sql" sha256="d56c66f0e9c0d128c3dd0c3cc6e87a204d94723c17445daa66c37cdcc0bbd51f"/>
   <file path="schema/cortex/index_includes.sql" sha256="25cb4867d84481ca4fdd961fabf67bf487b301a13db2ab6fed8a0ff048a0e320"/>
   <file path="schema/cortex/index_parts.sql" sha256="9ceca00e5ccdcb38e930f00e6f7b383e33358821ce4eaf94f4a8e213966b9e09"/>
@@ -117,7 +117,7 @@
   <file path="schema/workspace/connection_tests.sql" sha256="a2c8c016f69bf432ae79c31913cbb7d027f411b400f47de1542fa451ff54f843"/>
   <file path="schema/workspace/connection_values.sql" sha256="600e3caf196edbf81a540af4a39e98f365c8fd447e81acec39f04edec821e115"/>
   <file path="schema/workspace/connections.sql" sha256="2c4928e5347aa35017f403d3350ccdf800210a73a7f02c98c6d039f4e9721d77"/>
-  <file path="schema/workspace/grants.sql" sha256="b8ab3c5b16aa8cadd28555f30e534d957322278e6fdc275b452b2f9d5662bdf9"/>
+  <file path="schema/workspace/grants.sql" sha256="7a14690c3a86f2b79d42808fec9211ff11300a778b48bcff866873d460eada6f"/>
   <file path="schema/workspace/owner.toml" sha256="c5eaa5f600dee679a37cb0f09601b1e1f8811eb154a25b8364384c93b860fce0"/>
   <file path="schema/workspace/parameters.sql" sha256="d486cce9defdbce36c0905c54aa566fb337b49c711dc9cd3d001779d030b7b3f"/>
   <file path="schema/workspace/schema_migrations.sql" sha256="6875b57dfa2c85960103e47b5933b64ba49d296cbee8f4342d6c2c2a1364fac8"/>
