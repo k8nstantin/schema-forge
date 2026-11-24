@@ -306,6 +306,65 @@ COMMENT ON COLUMN workspace.parameters.changed_by IS 'who changed it; NULL while
 
 
 --
+-- Name: schema_connections; Type: TABLE; Schema: workspace; Owner: sf_owner
+--
+
+CREATE TABLE workspace.schema_connections (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    schema_id uuid NOT NULL,
+    connection_id uuid NOT NULL,
+    database_name text NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    CONSTRAINT schema_connections_database_name_check CHECK ((length(database_name) >= 1)),
+    CONSTRAINT schema_connections_id_check CHECK ((uuid_extract_version(id) = 7))
+);
+
+
+ALTER TABLE workspace.schema_connections OWNER TO sf_owner;
+
+--
+-- Name: TABLE schema_connections; Type: COMMENT; Schema: workspace; Owner: sf_owner
+--
+
+COMMENT ON TABLE workspace.schema_connections IS 'the saved connection a schema is read from, and which database on it.';
+
+
+--
+-- Name: COLUMN schema_connections.id; Type: COMMENT; Schema: workspace; Owner: sf_owner
+--
+
+COMMENT ON COLUMN workspace.schema_connections.id IS 'UUIDv7';
+
+
+--
+-- Name: COLUMN schema_connections.schema_id; Type: COMMENT; Schema: workspace; Owner: sf_owner
+--
+
+COMMENT ON COLUMN workspace.schema_connections.schema_id IS 'the schema, by its id';
+
+
+--
+-- Name: COLUMN schema_connections.connection_id; Type: COMMENT; Schema: workspace; Owner: sf_owner
+--
+
+COMMENT ON COLUMN workspace.schema_connections.connection_id IS 'the saved connection it is read from';
+
+
+--
+-- Name: COLUMN schema_connections.database_name; Type: COMMENT; Schema: workspace; Owner: sf_owner
+--
+
+COMMENT ON COLUMN workspace.schema_connections.database_name IS 'the database on that server it is read from, as the server names it (shop)';
+
+
+--
+-- Name: COLUMN schema_connections.created_at; Type: COMMENT; Schema: workspace; Owner: sf_owner
+--
+
+COMMENT ON COLUMN workspace.schema_connections.created_at IS 'when the schema was tied to it';
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: workspace; Owner: sf_owner
 --
 
@@ -550,6 +609,22 @@ ALTER TABLE ONLY workspace.parameters
 
 
 --
+-- Name: schema_connections schema_connections_pkey; Type: CONSTRAINT; Schema: workspace; Owner: sf_owner
+--
+
+ALTER TABLE ONLY workspace.schema_connections
+    ADD CONSTRAINT schema_connections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: schema_connections schema_connections_schema_id_key; Type: CONSTRAINT; Schema: workspace; Owner: sf_owner
+--
+
+ALTER TABLE ONLY workspace.schema_connections
+    ADD CONSTRAINT schema_connections_schema_id_key UNIQUE (schema_id);
+
+
+--
 -- Name: schema_migrations schema_migrations_owner_version_key; Type: CONSTRAINT; Schema: workspace; Owner: sf_owner
 --
 
@@ -622,6 +697,22 @@ ALTER TABLE ONLY workspace.connection_values
 
 
 --
+-- Name: schema_connections schema_connections_connection_id_fkey; Type: FK CONSTRAINT; Schema: workspace; Owner: sf_owner
+--
+
+ALTER TABLE ONLY workspace.schema_connections
+    ADD CONSTRAINT schema_connections_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES workspace.connections(id) ON DELETE CASCADE;
+
+
+--
+-- Name: schema_connections schema_connections_schema_id_fkey; Type: FK CONSTRAINT; Schema: workspace; Owner: sf_owner
+--
+
+ALTER TABLE ONLY workspace.schema_connections
+    ADD CONSTRAINT schema_connections_schema_id_fkey FOREIGN KEY (schema_id) REFERENCES workspace.workspace_schemas(id) ON DELETE CASCADE;
+
+
+--
 -- Name: SCHEMA workspace; Type: ACL; Schema: -; Owner: sf_owner
 --
 
@@ -667,6 +758,14 @@ GRANT SELECT ON TABLE workspace.connections TO sf_reader;
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE workspace.parameters TO sf_service;
 GRANT SELECT ON TABLE workspace.parameters TO sf_reader;
+
+
+--
+-- Name: TABLE schema_connections; Type: ACL; Schema: workspace; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE workspace.schema_connections TO sf_service;
+GRANT SELECT ON TABLE workspace.schema_connections TO sf_reader;
 
 
 --

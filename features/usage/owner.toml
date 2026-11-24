@@ -1,0 +1,6 @@
+# The owner's card: who it is, what it is, and its newest version.
+id = "usage"
+kind = "feature"
+namespace = "usage"
+version = 1
+requires_cortex = 1           # the lowest cortex version its tables are written against
