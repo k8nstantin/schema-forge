@@ -87,6 +87,15 @@ What the perspectives group and draw is computed by the engine (`schema_forge_co
   table.
 - **Shared keys:** a table that more than max(25, 15% of the namespace) tables refer to is noted, not drawn.
 
+## What the canvas keeps
+
+The canvas is shared by every engine, and what it keeps is part of the design, in the cortex (decision
+canvas-state): pinned notes (`cortex.pinned_notes`), custom perspectives and what they show
+(`cortex.custom_perspectives`, `cortex.perspective_members`), a table's place pinned in a view
+(`cortex.layout_pins`) and a table put in a family by hand (`cortex.family_assignments`). Every layout is worked out
+afresh, so only pins are kept; every change to these is an operation of a turn, undoable. The selection and the view
+on screen belong to the session and are never stored.
+
 ## The perspectives
 
 | Perspective | What it answers | Shows |
