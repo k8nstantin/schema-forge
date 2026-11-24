@@ -15,7 +15,7 @@ COLUMN = re.compile(r'^(\s+)("?[a-z_]+"?)\s+([A-Z]+)\b(.*)$')
 
 
 def files():
-    for pattern in ("schema/*/*.sql", "engines/*/schema/*.sql"):
+    for pattern in ("schema/*/*.sql", "engines/*/schema/*.sql", "features/*/schema/*.sql", "docs/owner-template/schema/*.sql"):
         for f in sorted(ROOT.glob(pattern)):
             yield f
 

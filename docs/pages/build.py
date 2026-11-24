@@ -8,12 +8,12 @@ _init = common.Svg.__init__
 def _track(self, *a, **k):
     _init(self, *a, **k); made.append(self)
 common.Svg.__init__ = _track
-import home, database, buildspec
+import home, database, buildspec, template
 bad = [(s.label, s.check()) for s in made if s.check()]
 for label, problems in bad:
     print(f"layout: {label[:70]}", *problems, sep="\n  ")
 here = os.path.dirname(os.path.abspath(__file__))
-for name, mod in (("home", home), ("database", database), ("build-spec", buildspec)):
+for name, mod in (("home", home), ("database", database), ("template", template), ("build-spec", buildspec)):
     open(os.path.join(here, f"{name}.html"), "w", encoding="utf-8").write(mod.HTML)
 print(f"{len(made)} diagrams, {len(bad)} with layout problems; pages written")
 sys.exit(1 if bad else 0)

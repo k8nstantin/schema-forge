@@ -1,0 +1,6 @@
+# The owner's card: who it is, what it is, and which cortex it is written against.
+id = "example"                 # lowercase, a to z, 0 to 9, _: the engine's or the feature's id
+kind = "engine"                # engine (engines/<id>/schema) or feature (features/<id>/schema)
+namespace = "engine_example"   # engine_<id> for an engine; the id itself for a feature (insight)
+version = 3                    # the owner's newest version: 1 is the table files, each later one a file of migrations/
+requires_cortex = 1            # the lowest cortex version its tables are written against

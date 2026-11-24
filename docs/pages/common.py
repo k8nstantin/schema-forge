@@ -188,7 +188,7 @@ class Svg:
 
 
 # --- the look and the shared head ---------------------------------------------------------------------------------
-PAGES = [("home", "Start here"), ("database", "Database"), ("build-spec", "Build Spec")]
+PAGES = [("home", "Start here"), ("database", "Database"), ("template", "Owner Template"), ("build-spec", "Build Spec")]
 
 
 def links():

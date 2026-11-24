@@ -127,6 +127,46 @@ The prototype's MCP tools, which the product keeps:
 | new rules | `propose_rules` (a new rule as a sentence, a catalog rule to link, an exception with its reason), `proposals` |
 | a design | `new_schema`; `start_turn`; `change`: operations (`add_table`, `add_column`, `alter_column`, `relate`, `add_index`, `set_identifier_fields`, `set_partition_spec`, `set_property`, views, renames, drops) applied as one change, all or none; refused with the rule and the reason when it breaks a hard rule; destructive ones need a yes |
 
+## The database at the core
+
+**One PostgreSQL. Your design, its rules, its history and its vectors, in one place, for one person or a whole team.**
+
+> Designed and specified ([specs/](specs/)), and being built now, in the order the spec gives.
+
+- **Real PostgreSQL, bundled.** Schema Forge ships PostgreSQL 18 with **pgvector** inside the app: nothing to install,
+  nothing to configure. On a laptop, each workspace runs its own private cluster behind a Unix socket. For a team, point
+  it at a central PostgreSQL server: **the same code, the same schema, only the connection changes.**
+- **The metadata and the vectors in one database.** Every object, column, relationship and rule sits beside its
+  embedding. One SQL query can ask by meaning (*tables about billing*), by structure (*with a key to customers*) and by
+  lineage (*and everything that reads them*) together, with no second store to sync and no index left out of date.
+- **Fresh on every change.** The log knows exactly which objects a turn touched, so only those are embedded again. What
+  the agent finds is what is on the canvas, as you draw or as it designs.
+- **Guarded by the database itself.** Foreign keys, typed and checked columns, and rules PostgreSQL enforces at every
+  commit hold for one user and for a hundred: two people's changes can never together break what each one kept, because
+  every write runs `SERIALIZABLE`.
+- **Your choice of embeddings, like your choice of server.** A model bundled and run locally, so nothing leaves the
+  machine, or a remote one, an API or the team server's own, so everyone shares one model and one index.
+
+The database is **designed first and locked**, so coding agents fall into it instead of drifting from it
+([the Database page](docs/pages/database.html), [docs/store.md](docs/store.md)):
+
+- **Every owner in its own namespace.** `cortex` is what every engine shares (objects, columns, relationships, keys,
+  indexes, the log); each engine brings `engine_<id>` (`engine_mysql.table_options`); each future feature brings its own
+  (`insight`, `semantic`, `rules`, `pipelines`). Nothing reaches into another owner's tables.
+- **The database enforces it.** Every reference is a foreign key, every value typed and checked, every column documented
+  in the database itself. A rule a foreign key cannot state is a view of the rows breaking it, which PostgreSQL turns into
+  a deferred trigger: a commit that breaks a rule is refused, whoever wrote it.
+- **Every change is logged.** An operation of a turn, with every row and value it changed, so undo and reject apply its
+  inverse and the log rebuilds the model.
+- **It grows by versions.** Each owner versions its own tables; every change adds, a rename takes two versions, and
+  every release upgrades a database of every earlier version. A new database or feature starts from
+  [the owner template](docs/owner-template/README.md): five table shapes, rules, migrations, proved on PostgreSQL.
+- **Ready to be talked to.** An `insight` layer (dependencies, annotations, embeddings) lets a person or an agent
+  search and question a design through the MCP, in plain words.
+
+The build itself is specified ahead: [specs/](specs/) holds the root, the rules and one XML task file per branch and
+pull request, which a coding agent builds from and nothing else.
+
 ## Where it stands
 
 **The prototype is done.** Everything in [See it](#see-it) runs in it: the canvas, the agent's MCP, turns and undo,
@@ -164,14 +204,16 @@ The design: [docs/engines.md](docs/engines.md) (engines), [docs/rules.md](docs/r
 ## Contributing
 
 Schema Forge is meant to grow by plugins. To add a database, write an **engine**: one crate, following
-[docs/writing-an-engine.md](docs/writing-an-engine.md), checked by the conformance kit. To add onto a database (an
+[docs/writing-an-engine.md](docs/writing-an-engine.md) and, for its tables, [the owner template](docs/owner-template/README.md),
+checked by the conformance kit. To add onto a database (an
 extension's types, a company's conventions), write an **add-on** for its engine. Every change is one issue, one
 branch and one pull request; `cargo fmt --check`, `cargo clippy -- -D warnings` and `cargo test` (which includes the
 architecture check) must pass. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Built with
 
-Pure Rust, no C libraries. Today: **Apache Arrow**'s type system, which every engine maps its types to;
+The app is Rust; its store is a **PostgreSQL 18** it bundles, with **pgvector**, built by the project's CI from the
+official source and pinned by checksums. Today: **Apache Arrow**'s type system, which every engine maps its types to;
 **sqlparser** for each engine's SQL; **serde** for the model. Next: **Apache DataFusion** as the query layer. The
 prototype used **rmcp** for the MCP, **axum** and **tokio** for the server, **redb** for storage, and a React and
 TypeScript canvas.
