@@ -5,69 +5,78 @@ import glob, html, json, os, re
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 e = html.escape
 OWNERS = [("cortex", "schema/cortex"), ("workspace", "schema/workspace")] + [
-    (os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO))
+    ("engine_" + os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO))
     for d in sorted(glob.glob(f"{REPO}/engines/*/schema"))]
-COLDEF = re.compile(r'^\s+("?[a-z_]+"?)\s+(TEXT|INTEGER|REAL|BLOB|ANY)\b(.*?)(?:--\s*(.*))?$')
+TYPES = "TEXT|INTEGER|BIGINT|NUMERIC|BOOLEAN|UUID|TIMESTAMPTZ|JSONB"
+COLDEF = re.compile(r'^\s+("?[a-z_]+"?)\s+(' + TYPES + r')\b(.*?)(?:--\s*(.*))?$')
+
+
+def short(name):
+    """A table's name without its namespace: cortex.objects is objects."""
+    return name.split(".", 1)[1] if "." in name else name
 
 
 def table_files(folder):
-    """Every table of a schema folder: its name, what it holds, its columns, its keys and references, its text."""
+    """Every table of a schema folder: its full name (namespace.table), what it holds, its columns, its keys and
+    references, its text. A file of the folder that creates no table (enforce_rules.sql) is not a table."""
     out = []
     for f in sorted(glob.glob(f"{REPO}/{folder}/*.sql")):
-        if f.endswith("integrity.sql"):
-            continue
         text = open(f, encoding="utf-8").read()
+        m = re.search(r"^CREATE TABLE ([\w.]+) \(", text, re.M)
+        if not m:
+            continue
+        name = m.group(1)
         lines = text.splitlines()
-        name = os.path.basename(f)[:-4]
-        about = re.sub(r"\s*Owner: [\w]+\.\s*$", "", lines[0].split(":", 1)[1].strip())
-        notes = [l[3:].strip() for l in lines[1:] if l.startswith("-- ") and not l.startswith("-- Owner:")
-                 and "CREATE" not in l]
+        first = next(i for i, l in enumerate(lines) if l.startswith("CREATE TABLE"))
+        head = [l[3:].strip() for l in lines[:first] if l.startswith("-- ")]
+        about = re.sub(r"\s*Owner: [\w]+\.\s*$", "", head[0].split(":", 1)[1].strip())
+        notes = [re.sub(r"^Owner: \w+\.\s*", "", h) for h in head[1:]]
+        notes = [n for n in notes if n]
         cols, constraints, indexes = [], [], []
         in_table = False
         for l in lines:
             if l.startswith("CREATE TABLE"):
                 in_table = True
                 continue
-            if l.startswith(") STRICT"):
+            if l.startswith(");"):
                 in_table = False
                 continue
-            m = COLDEF.match(l) if in_table else None
-            if m:
-                body = m.group(3)
-                ref = re.search(r"REFERENCES (\w+) \((\w+)\)(?: ON DELETE (CASCADE|SET NULL))?", body)
+            c = COLDEF.match(l) if in_table else None
+            if c:
+                body = c.group(3)
+                ref = re.search(r"REFERENCES ([\w.]+) \((\w+)\)(?: ON DELETE (CASCADE|SET NULL))?", body)
                 chk = re.search(r"CHECK \((.*)\)\s*,?\s*$", body)
                 cols.append({
-                    "name": m.group(1).strip('"'), "type": m.group(2),
+                    "name": c.group(1).strip('"'), "type": c.group(2),
                     "pk": "PRIMARY KEY" in body, "not_null": "NOT NULL" in body, "unique": " UNIQUE" in body,
-                    "default": (re.search(r"DEFAULT (\S+)", body) or [None, None])[1],
+                    "default": (re.search(r"DEFAULT (\S+?),?(?:\s|$)", body) or [None, None])[1],
                     "ref": ref.group(1) if ref else None, "ref_col": ref.group(2) if ref else None,
                     "on_delete": ref.group(3) if ref and ref.group(3) else None,
-                    "check": chk.group(1) if chk else None, "comment": (m.group(4) or "").strip()})
+                    "check": chk.group(1) if chk else None, "comment": (c.group(4) or "").strip()})
             elif in_table and l.strip().startswith(("UNIQUE", "CHECK")):
-                constraints.append(l.strip().rstrip(","))
+                constraints.append(l.split("--")[0].strip().rstrip(","))
             elif l.startswith("CREATE") and "INDEX" in l:
                 indexes.append(l.split("--")[0].strip())
-        out.append({"name": name, "about": about, "notes": notes, "columns": cols, "constraints": constraints,
-                    "indexes": indexes, "text": text, "file": os.path.relpath(f, REPO)})
+        out.append({"name": name, "short": short(name), "about": about, "notes": notes, "columns": cols,
+                    "constraints": constraints, "indexes": indexes, "text": text, "file": os.path.relpath(f, REPO)})
     return out
 
 
-def integrity(folder):
-    p = f"{REPO}/{folder}/integrity.sql"
-    if not os.path.exists(p):
-        return []
+def rules(folder):
+    """Every rule of a schema folder's rules/: its name, what it requires, its view and the view's query."""
     q = []
-    for block in re.split(r"\n(?=-- name: )", open(p, encoding="utf-8").read()):
-        m = re.match(r"-- name: (\S+)\n((?:-- .*\n)+)(.*)", block, re.S)
-        if m:
-            q.append({"name": m.group(1), "says": " ".join(l[3:] for l in m.group(2).splitlines()),
-                      "sql": m.group(3).strip()})
+    for f in sorted(glob.glob(f"{REPO}/{folder}/rules/*.sql")):
+        text = open(f, encoding="utf-8").read()
+        m = re.match(r"-- ([a-z0-9-]+): (.*?) Owner: \w+\.\n", text)
+        v = re.search(r"CREATE VIEW ([\w.]+) AS\n(.*?);\n", text, re.S)
+        q.append({"name": m.group(1), "says": m.group(2), "view": v.group(1), "sql": v.group(2).strip(),
+                  "file": os.path.relpath(f, REPO)})
     return q
 
 
 def database():
-    """Every owner's tables and integrity queries, and every reference between tables."""
-    db = {o: {"folder": f, "tables": table_files(f), "integrity": integrity(f)} for o, f in OWNERS}
+    """Every owner's tables and rules, and every reference between tables, by full name."""
+    db = {o: {"folder": f, "tables": table_files(f), "rules": rules(f)} for o, f in OWNERS}
     edges = []
     for o, d in db.items():
         for t in d["tables"]:
