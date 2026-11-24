@@ -1,0 +1,6 @@
+-- grants: the workspace's namespace given to the roles, as cortex.grant_roles gives an owner's in a schema's database. Owner: workspace.
+-- The workspace's database holds no cortex, so its version 1 ends with these statements (decision database-roles).
+REVOKE ALL ON SCHEMA workspace FROM PUBLIC;
+GRANT USAGE ON SCHEMA workspace TO sf_service, sf_reader;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA workspace TO sf_service;
+GRANT SELECT ON ALL TABLES IN SCHEMA workspace TO sf_reader;
