@@ -73,6 +73,7 @@
     <list>
       <item><b>Versions</b>: decided (decision mysql-versions): 5.7, 8.0, 8.4 and 9.7; the engine work that adds 5.7, and its live read the 5.7 way, is a task to write.</item>
       <item><b>Where the usage is kept</b>: snapshots per table, index and digest, each with the server's uptime and the time read, in the cortex (shared by every engine: rows, reads, writes, size) and the engine's tables (what only MySQL measures); decision insight-layer.</item>
+      <item><b>The version facts, as data</b>: what each version has and lacks (its types, kinds of object, options, catalog tables and grants, the facts this research measured), kept as rows of the engine's tables, one per version and feature, so the agent can ask them: design for a target version, plan an upgrade (what changes from 5.7 to 8.0 or 8.4 for this schema), check a schema meant for several versions, and read usage beside them. The engine's code holds these facts today (engines/mysql/src/versions.rs); the session decides their tables and how they stay one source.</item>
       <item><b>When it is read</b>: on opening, on demand, and on a schedule while the app runs, each a snapshot, never a reset.</item>
       <item><b>The other engines</b>: each declares its catalog for the structure and its source for the usage (PostgreSQL: <c>pg_catalog</c> and <c>pg_stat_user_tables</c>, <c>pg_stat_user_indexes</c>, <c>pg_stat_statements</c>; Iceberg: its catalog and metadata files), so the shared part of the flow names none of them.</item>
     </list>
