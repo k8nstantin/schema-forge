@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <doc id="live-mysql" title="Reading a live MySQL: what to extract, and how">
-  <p>Research for the first feature of every engine, MySQL first: <b>open a schema from a saved connection and fill it from the database's own catalogs</b>, its structure from <c>information_schema</c> and, when it is on, its usage from <c>performance_schema</c>. Reading a dump comes next, as its own feature; every other engine follows the same order with its own catalogs. Measured on MySQL 5.7.44, 8.0.46 and 8.4.13 in Docker (2026-11-24), checked against the manuals. Nothing here is decided: it is what a design session decides from (see the end).</p>
+  <p>Research for the first feature of every engine, MySQL first: <b>open a schema from a saved connection and fill it from the database's own catalogs</b>, its structure from <c>information_schema</c> and, when it is on, its usage from <c>performance_schema</c>. Reading a dump comes next, as its own feature; every other engine follows the same order with its own catalogs. Measured on MySQL 5.7.44, 8.0.46 and 8.4.13 in Docker (2026-11-24), checked against the manuals. The order and the versions are decided (decisions live-first and mysql-versions); the rest is what a design session decides from (see the end).</p>
 
   <section title="The flow">
     <steps>
@@ -71,11 +71,11 @@
 
   <section title="For the design session">
     <list>
-      <item><b>Versions</b>: 5.7 joins 8.0 and 8.4, its live read asking it the 5.7 way; whether 9.7 stays.</item>
+      <item><b>Versions</b>: decided (decision mysql-versions): 5.7, 8.0, 8.4 and 9.7; the engine work that adds 5.7, and its live read the 5.7 way, is a task to write.</item>
       <item><b>Where the usage is kept</b>: snapshots per table, index and digest, each with the server's uptime and the time read, in the cortex (shared by every engine: rows, reads, writes, size) and the engine's tables (what only MySQL measures); decision insight-layer.</item>
       <item><b>When it is read</b>: on opening, on demand, and on a schedule while the app runs, each a snapshot, never a reset.</item>
       <item><b>The other engines</b>: each declares its catalog for the structure and its source for the usage (PostgreSQL: <c>pg_catalog</c> and <c>pg_stat_user_tables</c>, <c>pg_stat_user_indexes</c>, <c>pg_stat_statements</c>; Iceberg: its catalog and metadata files), so the shared part of the flow names none of them.</item>
     </list>
-    <p>Test servers for this work, local only: <c>sf-mysql-5-7</c> on 127.0.0.1:33057, <c>sf-mysql-8-0</c> on 33080, <c>sf-mysql-8-4</c> on 33084 (Docker, restarting with Docker).</p>
+    <p>Test servers for this work, local only: <c>sf-mysql-5-7</c> on 127.0.0.1:33057, <c>sf-mysql-8-0</c> on 33080, <c>sf-mysql-8-4</c> on 33084, <c>sf-mysql-9-7</c> on 33097 (Docker, restarting with Docker).</p>
   </section>
 </doc>
