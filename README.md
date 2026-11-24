@@ -221,8 +221,7 @@ The design: [docs/engines.md](docs/engines.md) (engines), [docs/rules.md](docs/r
 
 ## Contributing
 
-**A collaborative learning exercise: data products, coding with agents and spec-driven development, learned by
-building one together.** It is built with coding agents, and contributed the same way. SchemaForge builds two things at once: the product, and
+**Built with coding agents, and contributed the same way.** SchemaForge builds two things at once: the product, and
 the method it is built by, where people and coding agents develop together. A design session writes the work as a
 task file; one agent builds it in one session; gates and a person's review decide; a build's lesson improves the
 method. You contribute exactly the way the maintainer builds, with your own agent, and the method is yours to improve
