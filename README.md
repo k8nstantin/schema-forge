@@ -15,6 +15,7 @@ the agent's and the architect's, is checked against **rules**: the team's design
 > **Status:** a working prototype proved the whole loop (see it below; tag
 > [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype)). The product is being rebuilt in the open
 > on a plugin architecture, with Apache DataFusion at its center: [where it stands](#where-it-stands).
+> The design, with its diagrams: [the database at the core](#the-database-at-the-core).
 
 ![Home: start a schema, open one, or manage your rules](docs/screenshots/home.jpg)
 
@@ -132,6 +133,13 @@ The prototype's MCP tools, which the product keeps:
 **One PostgreSQL. Your design, its rules, its history and its vectors, in one place, for one person or a whole team.**
 
 > Designed and specified ([specs/](specs/)), and being built now, in the order the spec gives.
+
+**Read the design**, with its diagrams, every table and every decision:
+[Start here](https://claude.ai/artifact/BrFaiE6HBhVArfUGyiB3zp) ·
+[The database](https://claude.ai/artifact/3XWs1sS1cCsu3ar9F6pRos) ·
+[The owner template](https://claude.ai/artifact/XUiMve4wFDNTFZqMZnjBaC) (how an engine or a feature adds its tables) ·
+[The build spec](https://claude.ai/artifact/2jnUargwgDpCVKgFYUbxAs) (how coding agents build it). The same pages are in
+[docs/pages/](docs/pages/), generated from the repository.
 
 - **Real PostgreSQL, bundled.** Schema Forge ships PostgreSQL 18 with **pgvector** inside the app: nothing to install,
   nothing to configure. On a laptop, each workspace runs its own private cluster behind a Unix socket. For a team, point
