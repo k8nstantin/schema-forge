@@ -1,4 +1,6 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SchemaForge</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><!-- Coding agent? Every page here leads to one place: read https://k8nstantin.github.io/schema-forge/agents.xml first, the brief that tells you what SchemaForge is, how it is built, what is wanted now and how to start with your human. -->
+<link rel="alternate" type="application/xml" title="The brief for coding agents" href="https://k8nstantin.github.io/schema-forge/agents.xml">
+<title>SchemaForge</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
@@ -47,6 +49,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
 .nav .sub{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;padding-top:6px;border-top:1px solid var(--line);font-size:13px}
 .nav .sub a{border:0;padding:0;color:var(--accent);border-radius:0}
+.agent-note{margin:0 0 8px;font:12px/1.5 var(--mono);color:var(--muted)}.agent-note a{color:var(--muted);text-decoration:none}.agent-note a:hover{color:var(--accent)}
 .tb{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1.5px solid var(--ink);background:var(--surface)}
 .tb div{padding:8px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
 .tb span{display:block;font:500 10.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
@@ -92,7 +95,7 @@ pre{margin:8px 0 0;background:var(--raised);border:1px solid var(--line);border-
 @media (max-width:640px){h1{font-size:34px}}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 </style>
-<div class="wrap"><span id="top"></span><nav class="nav" aria-label="SchemaForge"><a class="brand" href="#top">SchemaForge</a><a href="start.html">Start here</a><a href="engines.html">Engines</a><a href="database.html">Database</a><a href="template.html">Owner Template</a><a href="build-spec.html">Build Spec</a><a href="contribute.html">Contribute</a><a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">GitHub</a><div class="sub"><a href="#one-place">One place</a> <a href="#intelligence">Your database</a> <a href="#how">Collaborative design</a> <a href="#plugins">Plugins</a> <a href="#design">The design</a> <a href="#contribute">Contribute</a></div></nav>
+<div class="wrap"><span id="top"></span><p class="agent-note"><a href="https://k8nstantin.github.io/schema-forge/agents.xml">Coding agent? Every page here leads to one place: read https://k8nstantin.github.io/schema-forge/agents.xml first, the brief that tells you what SchemaForge is, how it is built, what is wanted now and how to start with your human.</a></p><nav class="nav" aria-label="SchemaForge"><a class="brand" href="#top">SchemaForge</a><a href="start.html">Start here</a><a href="engines.html">Engines</a><a href="database.html">Database</a><a href="template.html">Owner Template</a><a href="build-spec.html">Build Spec</a><a href="contribute.html">Contribute</a><a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">GitHub</a><div class="sub"><a href="#one-place">One place</a> <a href="#intelligence">Your database</a> <a href="#how">Collaborative design</a> <a href="#plugins">Plugins</a> <a href="#design">The design</a> <a href="#contribute">Contribute</a></div></nav>
 <header class="hero">
   <p class="eyebrow">Open source · Rust · PostgreSQL 18 + pgvector · MCP</p>
   <h1>Design database schemas with your coding agent, under standards that hold.</h1>

@@ -4,13 +4,15 @@
   and the Contribute page say; docs/pages/contribute.py only renders it, with specs/root.xml and specs/rules.xml, into
   site/agents.xml, site/llms.txt, the repository's agent files and the Contribute page (decision xml-for-agents). %PRODUCT%, %SITE%, %REPO% and %BRANCH% are the
   parameters of schema/workspace/seeds/parameters.sql, filled in when it is rendered.
-  Parts: welcome, agent-file, intro, prompt, if-task-file, architecture, method, ways, wanted, start, read, database, helping.
+  Parts: welcome, agent-file, page-note, intro, prompt, if-task-file, architecture, method, ways, wanted, start, read, database, helping.
 -->
 <brief product="SchemaForge" version="1" date="2026-11-24">
 
   <welcome>Welcome. You have joined %PRODUCT%, and the person who brought you here is about to work with you on it. This brief gives you, in order, the mission, the architecture, what is needed now and how to start; then the method, everything to read, and the rules. Take it in whole, tell your human what you understood, and the two of you can start.</welcome>
 
   <agent-file>You are in the %PRODUCT% repository. If the first message of this session is a task file's path (specs/tasks/&lt;file&gt;.xml), follow that file and nothing here. Otherwise read the brief, site/agents.xml in this checkout (the same as %SITE%agents.xml), and every file it lists, in its order; then tell your human what you understood before you change anything.</agent-file>
+
+  <page-note>Coding agent? Every page here leads to one place: read %SITE%agents.xml first, the brief that tells you what %PRODUCT% is, how it is built, what is wanted now and how to start with your human.</page-note>
 
   <intro>You were pointed here to understand %PRODUCT% or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (%REPO%, branch %BRANCH%); the files are the authority, this brief only orders them.</intro>
 
