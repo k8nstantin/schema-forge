@@ -5,7 +5,7 @@ resolver = "3"
 # Every crate declares its role in `[package.metadata.schema-forge]`; tools/architecture fails the build when the
 # roles depend on each other in a way docs/engines.md does not allow, or a database is named outside its engine.
 members = ["crates/*", "engines/*", "tools/*"]
-# engines/quill holds Quill's schema folder before its crate exists (specs/tasks/t03-quill.xml builds it and removes this).
+# engines/quill holds Quill's schema folder before its crate exists (specs/tasks/SF-95.xml builds it and removes this).
 exclude = ["engines/quill"]
 
 [workspace.package]
