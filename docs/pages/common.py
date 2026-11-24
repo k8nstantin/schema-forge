@@ -191,30 +191,58 @@ class Svg:
 PAGES = [("home", "Start here"), ("database", "Database"), ("template", "Owner Template"), ("build-spec", "Build Spec")]
 
 
+MODE = "artifact"   # "artifact": links to the published pages; "site": relative links between the site's files
+FILES = {"site": "index.html", "home": "start.html", "database": "database.html", "template": "template.html",
+         "build-spec": "build-spec.html"}
+
+
 def links():
+    """Where each page is: the published pages' links, or the site's own files (relative, so any domain serves it)."""
+    if MODE == "site":
+        return dict(FILES)
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "links.json")
     return json.load(open(p)) if os.path.exists(p) else {}
 
 
 CSS = r"""
 :root{
-  --bg:#F2F4F3;--surface:#FFFFFF;--raised:#F8FAF9;--ink:#15202B;--ink2:#3A4652;--muted:#5C6873;--line:#D4DBD8;
-  --accent:#0B6B66;--accent-soft:#DCEEEA;--engine:#6A4FA3;--engine-soft:#ECE7F6;--log:#8A5A00;--log-soft:#FBF0DA;
+  --bg:#F8F4FB;--surface:#FFFFFF;--raised:#FBF8FD;--ink:#1F062A;--ink2:#3B2447;--muted:#6B5A74;--line:#E3D9EA;
+  --accent:#9500BF;--accent-soft:#F3E3FA;--engine:#0E7C86;--engine-soft:#DDF2F3;--log:#8A5A00;--log-soft:#FBF0DA;
   --crit:#B42318;--crit-soft:#FDECEA;
-  --head:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;--sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  --head:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;--sans:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"JetBrains Mono","Fira Code",ui-monospace,SFMono-Regular,Menlo,monospace}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
-  --bg:#0F1519;--surface:#151D22;--raised:#1A2329;--ink:#E1E7EB;--ink2:#C0C9D0;--muted:#93A0AA;--line:#2A353D;
-  --accent:#4FB6AE;--accent-soft:#143330;--engine:#B39DEB;--engine-soft:#2A2340;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}}
+  --bg:#1F062A;--surface:#2A0F38;--raised:#331545;--ink:#FFFFFF;--ink2:#E3D6EC;--muted:#ADACAC;--line:#45285A;
+  --accent:#CC66FF;--accent-soft:#3C1452;--engine:#4FD1C5;--engine-soft:#123B3B;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}}
 :root[data-theme="dark"]{color-scheme:dark;
-  --bg:#0F1519;--surface:#151D22;--raised:#1A2329;--ink:#E1E7EB;--ink2:#C0C9D0;--muted:#93A0AA;--line:#2A353D;
-  --accent:#4FB6AE;--accent-soft:#143330;--engine:#B39DEB;--engine-soft:#2A2340;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}
+  --bg:#1F062A;--surface:#2A0F38;--raised:#331545;--ink:#FFFFFF;--ink2:#E3D6EC;--muted:#ADACAC;--line:#45285A;
+  --accent:#CC66FF;--accent-soft:#3C1452;--engine:#4FD1C5;--engine-soft:#123B3B;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}
 *{box-sizing:border-box}
+.hero{background:linear-gradient(160deg,#1F062A 0%,#2A0838 55%,#3A0A4D 100%);color:#FFFFFF;border-radius:18px;padding:56px 28px 48px;margin:0 0 8px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(closest-side,rgba(204,102,255,.35),transparent);pointer-events:none}
+.hero .eyebrow{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#CC66FF;margin:0 0 14px}
+.hero h1{color:#FFFFFF;font-size:52px;margin:0 0 16px;max-width:22ch}
+.hero p{color:#E3D6EC;font-size:18px;max-width:62ch;margin:0 0 24px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;position:relative;z-index:1}
+.btn{display:inline-block;font:600 15px/1 var(--sans);padding:13px 20px;border-radius:10px;text-decoration:none;border:1.5px solid transparent}
+.btn-primary{background:#9500BF;color:#FFFFFF;border-color:#9500BF}.btn-primary:hover{background:#B500BA;border-color:#B500BA;color:#FFFFFF}
+.btn-secondary{background:transparent;color:#FFFFFF;border-color:rgba(255,255,255,.35)}.btn-secondary:hover{border-color:#CC66FF;color:#CC66FF}
+.note{display:inline-block;margin-top:22px;font:500 12.5px var(--mono);color:#ADACAC;position:relative;z-index:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;margin-top:18px}
+.cards.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;min-width:0}
+.card h3{margin:0 0 6px;font-size:18px}.card p{margin:0;color:var(--ink2);font-size:14.5px}
+a.card{display:block;text-decoration:none;color:var(--ink)}a.card:hover{border-color:var(--accent)}a.card .go{display:block;margin-top:10px;color:var(--accent);font:600 13px var(--mono)}
+.kicker{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+.cta{background:var(--accent-soft);border:1px solid var(--line);border-radius:18px;padding:28px 24px}
+.foot{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
+@media (max-width:640px){.hero{padding:40px 18px 36px}.hero h1{font-size:36px}.hero p{font-size:16px}}
 html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 120px)}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:70;background:var(--bg)}
 .wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 80px}
 .nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:60;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 14px;padding:8px 10px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.nav .brand{font:600 15px/1 var(--head);color:var(--ink);border:0;padding:5px 8px 5px 2px}.nav .brand::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);margin-right:8px;vertical-align:0}
 .nav .l{font:500 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 4px 0 2px}
 .nav a{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;white-space:nowrap}
 .nav a:hover{border-color:var(--accent);color:var(--accent)}
@@ -225,9 +253,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tb div{padding:8px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
 .tb span{display:block;font:500 10.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .tb b{font:500 14px/1.4 var(--mono);overflow-wrap:anywhere}.tb a{color:var(--accent)}
-h1{font:700 44px/1.05 var(--head);margin:22px 0 8px;text-wrap:balance}
-h2{font:700 28px/1.15 var(--head);margin:0 0 8px;text-wrap:balance;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
-h3{font:700 21px/1.2 var(--head);margin:22px 0 6px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+h1{font:600 44px/1.08 var(--head);letter-spacing:-.01em;margin:22px 0 8px;text-wrap:balance}
+h2{font:600 28px/1.15 var(--head);letter-spacing:-.01em;margin:0 0 8px;text-wrap:balance;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+h3{font:600 21px/1.2 var(--head);margin:22px 0 6px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
 h4{margin:0 0 6px;font-size:15px}
 .draft{font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--log);background:var(--log-soft);border:1px solid var(--log);border-radius:999px;padding:2px 10px;vertical-align:middle}
 .path{font:400 12.5px var(--mono);color:var(--muted)}
@@ -268,21 +296,27 @@ pre{margin:8px 0 0;background:var(--raised);border:1px solid var(--line);border-
 """
 
 FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-         '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">')
+         '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">')
 
 
 def page(key, title, css, body, sub=""):
     L = links()
-    nav = '<nav class="nav" aria-label="The Schema Forge pack"><span class="l">Schema Forge</span>'
+    site = L.get("site", "#")
+    nav = (f'<nav class="nav" aria-label="Schema Forge"><a class="brand" href="{"#top" if key == "site" else site}"'
+           f'{"" if key == "site" or MODE == "site" else ' target="_blank" rel="noopener"'}>Schema Forge</a>')
     for k, name in PAGES:
         href = L.get(k, "#")
-        cur = ' aria-current="page"' if k == key else ' target="_blank" rel="noopener"'
+        cur = ' aria-current="page"' if k == key else ("" if MODE == "site" else ' target="_blank" rel="noopener"')
         nav += f'<a href="{"#top" if k == key else href}"{cur}>{e(name)}</a>'
-    nav += f'<a href="https://github.com/k8nstantin/schema-forge/pull/92" target="_blank" rel="noopener">PR #92</a>'
+    nav += '<a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">GitHub</a>'
     if sub:
         nav += f'<div class="sub">{sub}</div>'
     nav += "</nav>"
-    return (f'<title>{e(title)}</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n{FONTS}\n'
+    icon = '<link rel="icon" href="favicon.svg" type="image/svg+xml">\n' if MODE == "site" else ""
+    head = ('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+            if MODE == "site" else "")
+    return (f'{head}<title>{e(title)}</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n{icon}{FONTS}\n'
             f'<style>{CSS}{css}</style>\n<div class="wrap"><span id="top"></span>{nav}{body}'
-            '<p class="small" style="margin-top:56px">Generated by docs/pages/build.py from the repository (specs/ and the schema folders), '
-            'branch design-database-and-specs. The files are the authority; a change is made there and the pages built again.</p></div>')
+            '<p class="foot"><span>Schema Forge · MIT or Apache-2.0</span><a href="https://github.com/k8nstantin/schema-forge">GitHub</a>'
+            '<a href="https://github.com/k8nstantin/schema-forge/discussions">Discussions</a>'
+            '<span>Generated by docs/pages/build.py from the repository: the files are the authority.</span></p></div>')

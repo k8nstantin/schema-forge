@@ -134,6 +134,8 @@ The prototype's MCP tools, which the product keeps:
 
 > Designed and specified ([specs/](specs/)), and being built now, in the order the spec gives.
 
+**Visit the site:** [k8nstantin.github.io/schema-forge](https://k8nstantin.github.io/schema-forge/) (live once this design reaches `main`).
+
 **Read the design**, with its diagrams, every table and every decision:
 [Start here](https://claude.ai/artifact/BrFaiE6HBhVArfUGyiB3zp) ·
 [The database](https://claude.ai/artifact/3XWs1sS1cCsu3ar9F6pRos) ·
@@ -154,6 +156,11 @@ The prototype's MCP tools, which the product keeps:
   every write runs `SERIALIZABLE`.
 - **Your choice of embeddings, like your choice of server.** A model bundled and run locally, so nothing leaves the
   machine, or a remote one, an API or the team server's own, so everyone shares one model and one index.
+
+**Point it at the database you have, and get to know it.** Read in a live database, a dump or a folder of DDL, and
+Schema Forge works out what nobody wrote down: its architecture (every object, key, index and partition as one model),
+its relationships (what reads and writes what, what a change would reach), its meaning (what each object is for, found
+by meaning) and its problems (each a finding with its evidence). Ask in plain words, on the canvas or through your agent.
 
 The database is **designed first and locked**, so coding agents fall into it instead of drifting from it
 ([the Database page](docs/pages/database.html), [docs/store.md](docs/store.md)):
