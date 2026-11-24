@@ -23,7 +23,7 @@ for i, (k, t, s) in enumerate(steps):
     g.box(k, 20 + i * 206, 50, 180, 50, t, s, cls="pri" if k == "task" else "box")
 for a, b in zip(steps, steps[1:]):
     g.arrow(a[0], b[0])
-g.text(20, 30, "kickoff: one line, the task file's path, the first message of a new session on main", "lb m")
+g.text(20, 30, "kickoff: an agent pointed at the task file, in any session, building from the files alone", "lb m")
 g.text(20, 140, "nothing else is read: no earlier branch, no conversation, no page; what the files do not say is a stop, not a guess", "lb")
 read_svg = g.render()
 

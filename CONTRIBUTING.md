@@ -39,8 +39,8 @@ We follow a [code of conduct](CODE_OF_CONDUCT.md): be kind, be patient, assume g
 1. **A design session**: a person and an agent, with the maintainer, design or change the database in the owners'
    folders and write the work down as a task file under [specs/tasks](specs/tasks), every decision dated in
    [specs/root.xml](specs/root.xml).
-2. **A build session**: one agent, in a new session on a checkout of `main`, whose first and only message is the task
-   file's path. It reads in the order the root gives, builds only what the file says, decides only what it lists, and
+2. **A build session**: one agent, in any session, on a checkout of `main`, pointed at the task file's path and
+   working from the files alone, as the project's service account. It reads in the order the root gives, builds only what the file says, decides only what it lists, and
    stops when anything is missing or two files disagree.
 3. **The gates**: every gate the task file names runs (local, Docker, CI); their results go into the pull request.
 4. **The review**: a person reviews and merges. The agent never merges.
@@ -68,8 +68,8 @@ We follow a [code of conduct](CODE_OF_CONDUCT.md): be kind, be patient, assume g
 ## Three ways in
 
 - **Build a wanted task.** The [Contribute page](https://k8nstantin.github.io/schema-forge/contribute.html) and the
-  brief list what is wanted now. Nobody assigns it: open a new session on a fresh checkout of `main` and give your
-  agent one line, the task file's path (`specs/tasks/SF-93.xml`). It builds, runs the gates and opens the pull
+  brief list what is wanted now. Nobody assigns it: on a fresh checkout of `main`, point your agent at the task file's
+  path (`specs/tasks/SF-93.xml`), in any session; it builds from the files alone. It builds, runs the gates and opens the pull
   request; you review it, then submit. Others may build the same task: the maintainer reviews the builds side by
   side, merges the best, and what their differences teach improves the method.
 - **Bring something new**: an engine for a database you know, a feature, a fix. Open an issue or a discussion; you,
