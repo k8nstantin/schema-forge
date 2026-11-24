@@ -12,10 +12,12 @@ design, and nothing lands unchecked. The agent designs through **MCP** (the prot
 work with tools); the architect watches every change land on a live canvas, steers it, or edits by hand. Every change,
 the agent's and the architect's, is checked against **rules**: the team's design standards, written down once.
 
-> **Status:** a working prototype proved the whole loop (see it below; tag
-> [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype)). The product is being rebuilt in the open
-> on a plugin architecture, with Apache DataFusion at its center: [where it stands](#where-it-stands).
-> The design, with its diagrams: [the database at the core](#the-database-at-the-core).
+> **Status:** the MySQL engine works today: it reads dumps, DDL and live servers, and writes back SQL that loads
+> into MySQL 8.0 to 26.10. **The first release**, being built now: point it at your MySQL database and understand it
+> (how it is built, what depends on what, what it means, what is wrong with it), through your own coding agent. The
+> canvas, designing with your agent at the same time, conversion and more engines come after. A working prototype
+> proved the loop (tag [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype)); the design is on
+> [the site](https://k8nstantin.github.io/schema-forge/).
 
 ![Home: start a schema, open one, or manage your rules](docs/screenshots/home.jpg)
 
