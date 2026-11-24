@@ -30,6 +30,7 @@ Start with the brief for coding agents: https://k8nstantin.github.io/schema-forg
 ## Docs
 
 - [docs/cdc.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.xml)
+- [docs/live-mysql.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/live-mysql.xml)
 - [docs/market.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/market.xml)
 - [docs/perspectives.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/perspectives.xml)
 - [docs/rules.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/rules.xml)

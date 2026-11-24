@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doc id="live-mysql" title="Reading a live MySQL: what to extract, and how">
+  <p>Research for the first feature of every engine, MySQL first: <b>open a schema from a saved connection and fill it from the database's own catalogs</b>, its structure from <c>information_schema</c> and, when it is on, its usage from <c>performance_schema</c>. Reading a dump comes next, as its own feature; every other engine follows the same order with its own catalogs. Measured on MySQL 5.7.44, 8.0.46 and 8.4.13 in Docker (2026-11-24), checked against the manuals. Nothing here is decided: it is what a design session decides from (see the end).</p>
+
+  <section title="The flow">
+    <steps>
+      <item><b>The saved connection.</b> A profile in the workspace (host, port, user, database, TLS), its secret in the operating system's keychain, never in the workspace, never seen by the agent (<a href="connections.xml">connections.xml</a>). Tested in the five steps before anything is read.</item>
+      <item><b>Which databases.</b> <c>information_schema.SCHEMATA</c>, the system ones (<c>mysql</c>, <c>information_schema</c>, <c>performance_schema</c>, <c>sys</c>) left out; the person picks.</item>
+      <item><b>The structure</b>, per database: the catalog for names and attributes, <c>SHOW CREATE</c> for each object's exact DDL, read by the same reader as a dump, so a live read and a dump of the same database give the same schema (the engine does this today, <c>engines/mysql/src/live.rs</c>).</item>
+      <item><b>The statistics</b>: rows, data and index size per table, as estimates, with their age.</item>
+      <item><b>The usage</b>, when <c>performance_schema</c> is on: per table and per index reads and writes, and the queries by digest. Off, the schema is read without it and says so.</item>
+      <item><b>One import turn</b>: everything read lands in the cortex and the engine's tables as one logged operation, undoable, with what was read, from where, when, and as which user.</item>
+    </steps>
+  </section>
+
+  <section title="The three versions">
+    <table>
+      <head><cell></cell><cell>5.7</cell><cell>8.0</cell><cell>8.4</cell></head>
+      <row><cell>status</cell><cell>end of life (October 2023), still widely run</cell><cell>end of life April 2026</cell><cell>long-term support</cell></row>
+      <row><cell><c>information_schema</c> tables</cell><cell>61</cell><cell>79</cell><cell>78</cell></row>
+      <row><cell><c>performance_schema</c> tables</cell><cell>88</cell><cell>111</cell><cell>114</cell></row>
+      <row><cell><c>sys</c> views</cell><cell>101</cell><cell>101</cell><cell>101</cell></row>
+      <row><cell>catalog</cell><cell>files (<c>.frm</c>), read when queried</cell><cell>the transactional data dictionary: catalog queries are views over it</cell><cell>the same</cell></row>
+      <row><cell>on this Mac</cell><cell>runs emulated (amd64 image only)</cell><cell>native</cell><cell>native</cell></row>
+    </table>
+    <p>What 8.0 added that the read needs, and 5.7 lacks: <c>CHECK_CONSTRAINTS</c> (5.7 parses a CHECK and ignores it), <c>INNODB_TABLESPACES</c> (5.7: <c>INNODB_SYS_TABLESPACES</c>), <c>ST_SPATIAL_REFERENCE_SYSTEMS</c>, <c>ST_GEOMETRY_COLUMNS</c>, <c>VIEW_TABLE_USAGE</c> and <c>VIEW_ROUTINE_USAGE</c> (what a view reads, without parsing it), <c>COLUMN_STATISTICS</c> (histograms), roles, invisible columns, functional indexes. 8.0 removed <c>INNODB_SYS_*</c>, <c>INNODB_LOCKS</c> and the status and variable tables of <c>information_schema</c> (now in <c>performance_schema</c>). 8.0 and 8.4 differ in the catalog only by <c>TABLESPACES</c>, gone in 8.4.</p>
+    <note>The engine today supports 8.0, 8.4 and 9.7 (<c>engines/mysql/src/versions.rs</c>), and its live read queries tables 5.7 does not have. Supporting 5.7 is engine work: its versions, what it lacks, and a live read that asks a 5.7 the 5.7 way.</note>
+  </section>
+
+  <section title="The structure: how to read it">
+    <list>
+      <item><b>Always one database at a time, its name a constant</b> (<c>WHERE TABLE_SCHEMA = ?</c>). On 5.7 a catalog query without it scans the data directory and opens every table's files; with it, the server opens only that database's (<a href="https://docs.oracle.com/cd/E17952_01/mysql-5.7-en/information-schema-optimization.html">5.7 manual</a>). Joining <c>TABLES</c> to <c>COLUMNS</c> is about 30 times faster on 8.0 than 5.7 (<a href="https://dev.mysql.com/blog-archive/mysql-8-0-scaling-and-performance-of-information_schema/">MySQL blog</a>): query each catalog table once per database and join in the engine, never in SQL.</item>
+      <item><b>The DDL from <c>SHOW CREATE</c></b>, as the server would write it, read by the dump reader: one reader, one truth. Measured with 1,000 tables, 5,000 columns, 5,000 indexes and 1,000 foreign keys in one database, one session: each catalog query 0.07 to 0.09 s on 8.4 and 0.12 to 0.27 s on 5.7 (emulated); 1,000 <c>SHOW CREATE TABLE</c> 0.3 s on both.</item>
+      <item><b>The catalog for what the DDL does not say</b>: a view's definer and security, a routine's characteristics, a trigger's order, an event's schedule and status, and on 8.0 what a view reads (<c>VIEW_TABLE_USAGE</c>).</item>
+      <item><b>Read only.</b> No <c>ANALYZE TABLE</c>, no <c>FLUSH</c>, no <c>TRUNCATE</c> of <c>performance_schema</c>: each writes or resets something the server's owner relies on.</item>
+    </list>
+  </section>
+
+  <section title="The statistics: estimates, with their age">
+    <p><c>TABLE_ROWS</c>, <c>DATA_LENGTH</c>, <c>INDEX_LENGTH</c> and <c>CARDINALITY</c> are InnoDB's estimates. On 8.0 and 8.4 they are also cached, for <c>information_schema_stats_expiry</c> seconds (one day by default), and a table never analysed can show NULL (<a href="https://dev.mysql.com/doc/refman/8.0/en/information-schema-optimization.html">8.0 manual</a>, <a href="https://bugs.mysql.com/bug.php?id=86170">bug 86170</a>). The read sets the session's expiry to 0 to ask InnoDB directly (slower, still read only), and keeps each number as an estimate with the time it was read; 5.7 asks InnoDB every time.</p>
+  </section>
+
+  <section title="The usage: performance_schema">
+    <p>On by default in 5.7, 8.0 and 8.4 (<c>SELECT @@performance_schema</c>). On Amazon RDS it is on when Performance Insights manages it, and turning it on or off needs a reboot (<a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PerfInsights.EnableMySQL.RDS.html">AWS</a>); a managed server may have it off, and the read never changes it.</p>
+    <table>
+      <head><cell>What</cell><cell>Where</cell><cell>Gives</cell></head>
+      <row><cell>per table</cell><cell><c>table_io_waits_summary_by_table</c></cell><cell>rows read, written, inserted, updated, deleted, and the time spent: hot and cold tables</cell></row>
+      <row><cell>per index</cell><cell><c>table_io_waits_summary_by_index_usage</c></cell><cell>reads per index (INDEX_NAME NULL: rows read without one): an index never read since the server started is a candidate to drop, never a verdict</cell></row>
+      <row><cell>per query</cell><cell><c>events_statements_summary_by_digest</c></cell><cell>each normalised statement: how often, rows examined against rows sent, no index used, temporary tables, sorts; 8.0 and 8.4 add the 95th, 99th and 99.9th percentile, CPU time and a sample of the text</cell></row>
+      <row><cell>locks</cell><cell><c>table_lock_waits_summary_by_table</c></cell><cell>time waited on each table's locks</cell></row>
+      <row><cell>since when</cell><cell><c>global_status</c> Uptime</cell><cell>every counter counts from the server's start: each read keeps the uptime, so two reads give a difference over a known time, and a restart between them shows</cell></row>
+    </table>
+    <list>
+      <item>Measured: the same small workload on 5.7 and 8.4 gave the same counts per table, per index and per digest.</item>
+      <item>The digest table has a fixed size (<c>performance_schema_digests_size</c>); when it is full, new statements go to one row with no digest. The read says when that row is not empty: the query list is then incomplete.</item>
+      <item>The base tables, not <c>sys</c>: <c>sys</c> is views over them (present on all three here), may be missing on a managed server, and its views change between versions. What <c>sys.schema_unused_indexes</c> and <c>sys.schema_redundant_indexes</c> say, the engine works out from the base tables and the structure it read.</item>
+    </list>
+  </section>
+
+  <section title="The account: least privilege, tested">
+    <table>
+      <head><cell>Grant</cell><cell>5.7</cell><cell>8.0 and 8.4</cell><cell>Why</cell></head>
+      <row><cell><c>SELECT, SHOW VIEW, TRIGGER, EVENT ON db.*</c></cell><cell>yes</cell><cell>yes</cell><cell>tables, view definitions, triggers, events</cell></row>
+      <row><cell><c>SELECT ON performance_schema.*</c></cell><cell>yes</cell><cell>yes</cell><cell>the usage</cell></row>
+      <row><cell><c>PROCESS ON *.*</c></cell><cell>yes</cell><cell>yes</cell><cell>InnoDB's tablespaces and files</cell></row>
+      <row><cell><c>SELECT ON mysql.proc</c></cell><cell>yes</cell><cell>no</cell><cell>5.7: without it a routine not defined by the account is invisible (tested: <c>PROCEDURE does not exist</c>)</cell></row>
+      <row><cell><c>SHOW_ROUTINE ON *.*</c></cell><cell>no</cell><cell>yes (8.0.20 on)</cell><cell>routine bodies; without it <c>ROUTINE_DEFINITION</c> is NULL (<a href="https://dev.mysql.com/doc/refman/8.4/en/information-schema-routines-table.html">8.4 manual</a>)</cell></row>
+    </table>
+    <p>The Connections page shows these grants for the server's version, and the connection test's last step says which are missing and what will be read without them.</p>
+  </section>
+
+  <section title="For the design session">
+    <list>
+      <item><b>Versions</b>: 5.7 joins 8.0 and 8.4, its live read asking it the 5.7 way; whether 9.7 stays.</item>
+      <item><b>Where the usage is kept</b>: snapshots per table, index and digest, each with the server's uptime and the time read, in the cortex (shared by every engine: rows, reads, writes, size) and the engine's tables (what only MySQL measures); decision insight-layer.</item>
+      <item><b>When it is read</b>: on opening, on demand, and on a schedule while the app runs, each a snapshot, never a reset.</item>
+      <item><b>The other engines</b>: each declares its catalog for the structure and its source for the usage (PostgreSQL: <c>pg_catalog</c> and <c>pg_stat_user_tables</c>, <c>pg_stat_user_indexes</c>, <c>pg_stat_statements</c>; Iceberg: its catalog and metadata files), so the shared part of the flow names none of them.</item>
+    </list>
+    <p>Test servers for this work, local only: <c>sf-mysql-5-7</c> on 127.0.0.1:33057, <c>sf-mysql-8-0</c> on 33080, <c>sf-mysql-8-4</c> on 33084 (Docker, restarting with Docker).</p>
+  </section>
+</doc>

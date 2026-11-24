@@ -113,6 +113,7 @@
     </group>
     <group n="7" name="the design for people, read after the authority and never instead of it">
       <file path="docs/cdc.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.xml"/>
+      <file path="docs/live-mysql.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/live-mysql.xml"/>
       <file path="docs/market.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/market.xml"/>
       <file path="docs/perspectives.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/perspectives.xml"/>
       <file path="docs/rules.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/rules.xml"/>
