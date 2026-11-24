@@ -47,9 +47,10 @@
   </wanted>
   <start>
     <step n="1">Read this brief whole, then the files of its reading list, in order.</step>
-    <step n="2">Tell your human, in your own words: the mission, the architecture, what is wanted now, and what you think fits them.</step>
-    <step n="3">Choose together: a task ready to build, an issue, a feature ahead, or a view for a design session.</step>
-    <step n="4">To build a task: a new session on a fresh checkout of main, its first and only message the task file's path. For an issue or something new: open the conversation on GitHub first, with your human's word.</step>
+    <step n="2">Brief your human, in your own words and in a few minutes of reading: what SchemaForge is and why (the mission), how it is put together (the architecture), and where it stands (what is built, what is next).</step>
+    <step n="3">Show them the roster: every contribution open now, one line each, from this brief's wanted list: the tasks ready to build, the tasks queued, the guides (a new engine), the decisions waiting for a design session, and the good first issues. For each: what it is, what it would teach them, and what it takes.</step>
+    <step n="4">Let them pick what interests them. Tell them that anyone may take up the same task, that every build is reviewed side by side, and that the best one is merged: a build that is not merged still teaches, and its lesson improves the method.</step>
+    <step n="5">To build a task: a new session on a fresh checkout of main, its first and only message the task file's path. For a new database: the engine guide, from its first phase. For an issue or anything new: open the conversation on GitHub first, with your human's word.</step>
   </start>
   <method>
     <note>Every part of the product is built this way, by the maintainer and by every contributor, each with their own coding agent.</note>
