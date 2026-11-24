@@ -138,6 +138,7 @@ The prototype's MCP tools, which the product keeps:
 
 **Read the design**, with its diagrams, every table and every decision:
 [Start here](https://claude.ai/artifact/BrFaiE6HBhVArfUGyiB3zp) ·
+[Engines](https://claude.ai/artifact/VMBFif9AQqowMA8ZZQUQWv) (every database a plugin; Iceberg; converting both ways) ·
 [The database](https://claude.ai/artifact/3XWs1sS1cCsu3ar9F6pRos) ·
 [The owner template](https://claude.ai/artifact/XUiMve4wFDNTFZqMZnjBaC) (how an engine or a feature adds its tables) ·
 [The build spec](https://claude.ai/artifact/2jnUargwgDpCVKgFYUbxAs) (how coding agents build it). The same pages are in

@@ -33,8 +33,9 @@ one_place = "".join(card(a, b) for a, b in [
 ])
 plugins = "".join(card(a, b) for a, b in [
     ("MySQL", "Dumps, hand-written DDL and the live server read; every kind of object and clause written back for MySQL 8.0 to 26.10. Done."),
-    ("PostgreSQL and Iceberg", "Next, each an engine of its own with its own tables, checked by the same conformance kit."),
+    ("PostgreSQL and Apache Iceberg", "Next, each an engine of its own with its own tables. Iceberg brings the lakehouse: field ids, hidden partitioning, format versions 1 to 3."),
     ("Your database", "An engine is one crate: its grammar, types and catalogs, and its tables from the owner template. No change to the core."),
+    ("Convert both ways", "Every engine maps into one shared model, so MySQL converts to Iceberg and Iceberg back to MySQL or PostgreSQL, with every type kept, widened or lost named."),
 ])
 design = "".join([
     link("home", "Start here", "What Schema Forge is, how it is built, and where it stands."),
@@ -69,6 +70,7 @@ body = f"""
 <figure>{how_svg}<figcaption>The canvas and the MCP are two doors into one server; everything it knows lives in one PostgreSQL.</figcaption></figure></section>
 
 <section id="plugins"><p class="kicker">Every database a plugin</p><h2>Choose a database first; everything follows it.</h2>
+<p class="lede">The canvas, the MCP, the rules and the store know no database. Each database is an engine: one crate with its versions, types, options, readers and writers, and its own tables, checked by the same conformance kit. <a href="{e(L.get("engines", "#"))}">How engines plug in, with Apache Iceberg as the example →</a></p>
 <div class="cards">{plugins}</div></section>
 
 <section id="design"><p class="kicker">The design, written down</p><h2>Read how it is built, before a line of it is.</h2>

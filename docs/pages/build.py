@@ -12,8 +12,8 @@ def _track(self, *a, **k):
 common.Svg.__init__ = _track
 here = os.path.dirname(os.path.abspath(__file__))
 site = os.path.join(here, "..", "..", "site")
-NAMES = ("landing", "home", "database", "template", "buildspec")
-KEYS = {"landing": "site", "home": "home", "database": "database", "template": "template", "buildspec": "build-spec"}
+NAMES = ("landing", "home", "engines", "database", "template", "buildspec")
+KEYS = {"landing": "site", "home": "home", "engines": "engines", "database": "database", "template": "template", "buildspec": "build-spec"}
 for mode in ("artifact", "site"):
     common.MODE = mode
     for name in NAMES:

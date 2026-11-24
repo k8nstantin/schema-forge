@@ -188,12 +188,12 @@ class Svg:
 
 
 # --- the look and the shared head ---------------------------------------------------------------------------------
-PAGES = [("home", "Start here"), ("database", "Database"), ("template", "Owner Template"), ("build-spec", "Build Spec")]
+PAGES = [("home", "Start here"), ("engines", "Engines"), ("database", "Database"), ("template", "Owner Template"), ("build-spec", "Build Spec")]
 
 
 MODE = "artifact"   # "artifact": links to the published pages; "site": relative links between the site's files
 FILES = {"site": "index.html", "home": "start.html", "database": "database.html", "template": "template.html",
-         "build-spec": "build-spec.html"}
+         "build-spec": "build-spec.html", "engines": "engines.html"}
 
 
 def links():
