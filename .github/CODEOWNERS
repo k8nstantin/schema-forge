@@ -1,0 +1,12 @@
+# The design is locked (specs/root.xml, decision schema-lock): a change here needs the operator's review.
+/specs/ @k8nstantin
+/schema/ @k8nstantin
+/engines/*/schema/ @k8nstantin
+/engines/*/owner.toml @k8nstantin
+/features/*/schema/ @k8nstantin
+/features/*/owner.toml @k8nstantin
+/docs/owner-template/ @k8nstantin
+/postgres/ @k8nstantin
+/.github/ @k8nstantin
+/tools/check.sh @k8nstantin
+/tools/schema_lock.py @k8nstantin

@@ -4,23 +4,32 @@
 -- puts two triggers on every one of them:
 --   rule:<owner>.<rule>        a constraint trigger, DEFERRABLE INITIALLY DEFERRED, for each row inserted, updated or
 --                              deleted: at commit it reads the view and refuses the commit (check_violation) naming the
---                              rule and the first rows breaking it; it reads the view once per commit, not once per row
+--                              rule and the first rows breaking it; it reads the view once per commit, not once per row,
+--                              keeping its marks where only sf_owner writes (cortex.rule_marks), so no writer can skip it
 --   rule:<owner>.<rule>:again  a statement trigger: any later write to the table marks the rule to be read again
 -- No list of tables is written by hand: the view says what it reads, so a rule cannot miss a table it depends on.
 -- Migrations run cortex.enforce_rules after their rules; running it again replaces the triggers.
 
-CREATE FUNCTION cortex.rule_flag(rule text) RETURNS text LANGUAGE sql IMMUTABLE AS
-$$ SELECT 'schema_forge.rule_' || md5(rule) $$;
+CREATE FUNCTION cortex.rule_marks() RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $$
+BEGIN
+  -- The marks of the rules read and held in this transaction: a temporary table this function's owner (sf_owner) makes
+  -- and alone may write, emptied at every commit. A table of that name another role made first is refused, so no
+  -- writer can mark a rule held that was not read.
+  CREATE TEMPORARY TABLE IF NOT EXISTS rule_marks (rule text PRIMARY KEY) ON COMMIT DELETE ROWS;
+  IF (SELECT c.relowner FROM pg_class c WHERE c.oid = 'pg_temp.rule_marks'::regclass) <> (SELECT oid FROM pg_roles WHERE rolname = current_user) THEN
+    RAISE EXCEPTION 'pg_temp.rule_marks was made by another role: the rules cannot be held' USING ERRCODE = 'insufficient_privilege';
+  END IF;
+END $$;
 
-COMMENT ON FUNCTION cortex.rule_flag(text) IS 'the transaction setting that says a rule was read and held since the last write to its tables';
+COMMENT ON FUNCTION cortex.rule_marks() IS 'makes, or checks, the session''s table of rules held in this transaction, which only sf_owner writes';
 
-CREATE FUNCTION cortex.rule_check() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION cortex.rule_check() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $$
 DECLARE
   rule   text := TG_ARGV[0];
-  flag   text := cortex.rule_flag(TG_ARGV[0]);
   broken text;
 BEGIN
-  IF current_setting(flag, true) = 'held' THEN
+  PERFORM cortex.rule_marks();
+  IF EXISTS (SELECT 1 FROM pg_temp.rule_marks m WHERE m.rule = TG_ARGV[0]) THEN
     RETURN NULL;
   END IF;
   EXECUTE format('SELECT string_agg(id, '', '') FROM (SELECT id FROM %s ORDER BY id LIMIT 5) b', rule) INTO broken;
@@ -28,15 +37,16 @@ BEGIN
     RAISE EXCEPTION 'rule % is broken by %', rule, broken
       USING ERRCODE = 'check_violation', HINT = format('SELECT * FROM %s lists every row breaking it', rule);
   END IF;
-  PERFORM set_config(flag, 'held', true);
+  INSERT INTO pg_temp.rule_marks (rule) VALUES (TG_ARGV[0]) ON CONFLICT DO NOTHING;
   RETURN NULL;
 END $$;
 
-COMMENT ON FUNCTION cortex.rule_check() IS 'at commit, refuses the commit when the rule view named by the trigger lists a row; once held, it is not read again until a write marks it';
+COMMENT ON FUNCTION cortex.rule_check() IS 'at commit, refuses the commit when the rule view named by the trigger lists a row; once held, it is not read again until a write marks it; it runs as sf_owner, so no writer can skip it';
 
-CREATE FUNCTION cortex.rule_again() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION cortex.rule_again() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $$
 BEGIN
-  PERFORM set_config(cortex.rule_flag(TG_ARGV[0]), 'again', true);
+  PERFORM cortex.rule_marks();
+  DELETE FROM pg_temp.rule_marks m WHERE m.rule = TG_ARGV[0];
   RETURN NULL;
 END $$;
 

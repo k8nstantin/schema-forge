@@ -6,7 +6,7 @@
   <if-task-file>Stop reading this brief. A task file (specs/tasks/*.xml) is a complete instruction: follow its start element exactly, from a new session, as the root's method says. Nothing here adds to or overrides it.</if-task-file>
   <mission>
     <product>An open-source, intelligent, multi-engine schema design and management tool, where a coding agent and an architect work on the same live design through MCP, and nothing lands unchecked: a schema designed from scratch, reverse-engineered from a database, converted from one engine to another, its intelligence stored with it. Every database is an engine plugin; at the centre stands the database SchemaForge keeps its work in: one PostgreSQL database per schema, in the PostgreSQL 18 bundled with the app, holding the cortex every engine shares and each engine's own tables, each owner in its own namespace, designed before any of it is built and locked so every build falls into it.</product>
-    <purpose>SchemaForge builds two things together: the product, and the method it is built by, in which people and coding agents develop together: a design session fixes the database and writes a task file; one agent builds it in one session; gates and a person's review decide; a build's lesson changes the method. Every contributor works the same way, with their own coding agent, and the method is theirs to improve too.</purpose>
+    <purpose>SchemaForge builds two things together: the product, and the method it is built by, in which people and coding agents develop together: a design session fixes the database and writes a task file; one agent builds it in one session; gates and a person's review decide; a build's lesson changes the method. Every contributor works the same way, with their own coding agent, and the method is theirs to improve too. And it is a collaborative learning exercise, in the open: people learn a data product from the inside (database design, engines, conversion, CDC, a schema's intelligence), coding with agents, and spec-driven development, by building one together.</purpose>
   </mission>
   <architecture>
     <note>How SchemaForge is put together, each part with the file that decides it. Read those files before you rely on any of this.</note>
@@ -46,10 +46,18 @@
     </ahead>
     <issues href="https://github.com/k8nstantin/schema-forge/issues">Smaller work, fixes and questions are issues: https://github.com/k8nstantin/schema-forge/issues, and the ones labelled good first issue are the place to begin.</issues>
   </wanted>
+  <first-steps>
+    <note>You do not need to know Rust, databases or this project to start, and you cannot break anything: every change goes through checks that catch mistakes, and a person reviews it before it lands. Small first steps are real contributions.</note>
+    <step name="ask a question">In Discussions: what confused you shows where the docs are thin.</step>
+    <step name="tell us what your agent understood">Point your agent at this brief and tell us what it got right and wrong: that improves the brief for the next person.</step>
+    <step name="bring real DDL">A dump or hand-written schema of a database you know, schema only, no data and no secrets, as a sample the engines are tested on.</step>
+    <step name="fix a page or a doc">A sentence that was hard to read, a link that is wrong.</step>
+    <step name="build a task">When you are ready: anything listed as ready to build, and many may build the same one.</step>
+  </first-steps>
   <start>
     <step n="1">Read this brief whole, then the files of its reading list, in order.</step>
     <step n="2">Brief your human, in your own words and in a few minutes of reading: what SchemaForge is and why (the mission), how it is put together (the architecture), and where it stands (what is built, what is next).</step>
-    <step n="3">Show them the roster: every contribution open now, one line each, from this brief's wanted list: the tasks ready to build, the tasks queued, the guides (a new engine), the decisions waiting for a design session, and the good first issues. For each: what it is, what it would teach them, and what it takes.</step>
+    <step n="3">Tell them they need no experience to start and cannot break anything, and show them the roster: the small first steps, then every contribution open now, one line each, from this brief's wanted list: the tasks ready to build, the tasks queued, the guides (a new engine), the decisions waiting for a design session, and the good first issues. For each: what it is, what it would teach them, and what it takes.</step>
     <step n="4">Let them pick what interests them. Tell them that anyone may take up the same task, that every build is reviewed side by side, and that the best one is merged: a build that is not merged still teaches, and its lesson improves the method.</step>
     <step n="5">To build a task: a new session on a fresh checkout of main, its first and only message the task file's path. For a new database: the engine guide, from its first phase. For an issue or anything new: open the conversation on GitHub first, with your human's word.</step>
   </start>

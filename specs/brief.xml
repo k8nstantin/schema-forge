@@ -4,7 +4,7 @@
   and the Contribute page say; docs/pages/contribute.py only renders it, with specs/root.xml and specs/rules.xml, into
   site/agents.xml, site/llms.txt, the repository's agent files and the Contribute page (decision xml-for-agents). %PRODUCT%, %SITE%, %REPO% and %BRANCH% are the
   parameters of schema/workspace/seeds/parameters.sql, filled in when it is rendered.
-  Parts: welcome, agent-file, page-note, page-agent, intro, prompt, if-task-file, architecture, method, ways, wanted, start, read, database, helping.
+  Parts: welcome, agent-file, page-note, page-agent, intro, prompt, if-task-file, architecture, method, ways, wanted, first-steps, start, read, database, helping.
 -->
 <brief product="SchemaForge" version="1" date="2026-11-24">
 
@@ -64,10 +64,19 @@
     <design>Waiting for a design session with the maintainer: bring your view to Discussions.</design>
   </wanted>
 
+  <first-steps>
+    <note>You do not need to know Rust, databases or this project to start, and you cannot break anything: every change goes through checks that catch mistakes, and a person reviews it before it lands. Small first steps are real contributions.</note>
+    <step name="ask a question">In Discussions: what confused you shows where the docs are thin.</step>
+    <step name="tell us what your agent understood">Point your agent at this brief and tell us what it got right and wrong: that improves the brief for the next person.</step>
+    <step name="bring real DDL">A dump or hand-written schema of a database you know, schema only, no data and no secrets, as a sample the engines are tested on.</step>
+    <step name="fix a page or a doc">A sentence that was hard to read, a link that is wrong.</step>
+    <step name="build a task">When you are ready: anything listed as ready to build, and many may build the same one.</step>
+  </first-steps>
+
   <start>
     <step>Read this brief whole, then the files of its reading list, in order.</step>
     <step>Brief your human, in your own words and in a few minutes of reading: what %PRODUCT% is and why (the mission), how it is put together (the architecture), and where it stands (what is built, what is next).</step>
-    <step>Show them the roster: every contribution open now, one line each, from this brief's wanted list: the tasks ready to build, the tasks queued, the guides (a new engine), the decisions waiting for a design session, and the good first issues. For each: what it is, what it would teach them, and what it takes.</step>
+    <step>Tell them they need no experience to start and cannot break anything, and show them the roster: the small first steps, then every contribution open now, one line each, from this brief's wanted list: the tasks ready to build, the tasks queued, the guides (a new engine), the decisions waiting for a design session, and the good first issues. For each: what it is, what it would teach them, and what it takes.</step>
     <step>Let them pick what interests them. Tell them that anyone may take up the same task, that every build is reviewed side by side, and that the best one is merged: a build that is not merged still teaches, and its lesson improves the method.</step>
     <step>To build a task: a new session on a fresh checkout of main, its first and only message the task file's path. For a new database: the engine guide, from its first phase. For an issue or anything new: open the conversation on GitHub first, with your human's word.</step>
   </start>

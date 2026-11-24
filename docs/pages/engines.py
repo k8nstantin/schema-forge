@@ -13,7 +13,7 @@ for i, (k, t, s) in enumerate([("canvas", "canvas", "draw, view, edit"), ("mcp",
     g.box(k, 30 + i * 200, 50, 180, 56, t, s, cls="pri")
 g.box("iface", 360, 160, 320, 50, "the engine interface", "registry · conformance kit · architecture check", cls="box")
 g.band(10, 230, 1020, 90, "engines: one crate each, sharing nothing with each other")
-for i, (k, t, s) in enumerate([("my", "MySQL", "built"), ("pg", "PostgreSQL", "next"), ("ice", "Apache Iceberg", "next"),
+for i, (k, t, s) in enumerate([("my", "MySQL", "built"), ("ice", "Apache Iceberg", "next"), ("pg", "PostgreSQL", "after Iceberg"),
                                ("yours", "your database", "one crate")]):
     g.box(k, 40 + i * 250, 256, 210, 52, t, s, cls="eng")
 g.parts.append('<line x1="520" y1="108" x2="520" y2="158" class="ea" marker-end="url(#mka)"/>')
@@ -47,7 +47,7 @@ def card(t, s): return f'<div class="card"><h3>{t}</h3><p>{s}</p></div>'
 # --- converting: every engine to the hub, never engine to engine --------------------------------------------------------
 g = Svg(1040, 400, "Every engine maps once into the shared model and Arrow's types; any engine converts to any other through it, with a report of what each move keeps, widens, approximates or loses.")
 g.box("hub", 370, 125, 300, 110, "the shared model", "cortex rows · Arrow types · the rules", cls="pri")
-for k, x, y, t2, s2 in [("my", 40, 30, "MySQL", "built"), ("pg", 40, 250, "PostgreSQL", "next"),
+for k, x, y, t2, s2 in [("my", 40, 30, "MySQL", "built"), ("pg", 40, 250, "PostgreSQL", "after Iceberg"),
                         ("ice", 790, 30, "Apache Iceberg", "next"), ("more", 790, 250, "BigQuery, Snowflake…", "later")]:
     g.box(k, x, y, 210, 60, t2, s2, cls="eng")
 for k in ("my", "pg", "ice", "more"):
@@ -96,7 +96,7 @@ body = f"""
 
 <section id="layers"><p class="kicker">Two layers</p><h2>The process is shared. The database is its engine's.</h2>
 <p class="lede">Adding a database needs no change to the core, and a problem in one engine is found in that engine and never breaks another: engines share nothing with each other but the interface.</p>
-<figure>{layers_svg}<figcaption>MySQL is built, whole. PostgreSQL and Apache Iceberg are next, each an engine of its own. BigQuery, Snowflake and ClickHouse after them.</figcaption></figure></section>
+<figure>{layers_svg}<figcaption>MySQL is built, whole. Apache Iceberg is next, then PostgreSQL, each an engine of its own. BigQuery, Snowflake and ClickHouse after them.</figcaption></figure></section>
 
 <section id="engine"><p class="kicker">What an engine brings</p><h2>One crate, all of its database.</h2>
 <div class="cards">{engine_is}</div></section>

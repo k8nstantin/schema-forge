@@ -1,0 +1,24 @@
+name: Real DDL to test on
+description: A dump or hand-written schema of a database you know, as a sample the engines are tested on.
+labels: [good first issue, samples]
+body:
+  - type: input
+    id: database
+    attributes:
+      label: Database and version
+      placeholder: MySQL 8.4, PostgreSQL 17, an Iceberg table's Spark SQL…
+    validations:
+      required: true
+  - type: textarea
+    id: ddl
+    attributes:
+      label: The DDL
+      description: Schema only, no data, no passwords or other secrets.
+      render: sql
+    validations:
+      required: true
+  - type: textarea
+    id: covers
+    attributes:
+      label: What it covers
+      description: The kinds of object and clause it shows, if you know.

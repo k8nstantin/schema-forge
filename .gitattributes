@@ -1,0 +1,8 @@
+# The design is locked by the SHA-256 of its bytes (specs/lock.xml): keep its files LF on every platform.
+schema/** text eol=lf
+engines/*/schema/** text eol=lf
+engines/*/owner.toml text eol=lf
+features/** text eol=lf
+docs/owner-template/** text eol=lf
+postgres/** text eol=lf
+specs/** text eol=lf
