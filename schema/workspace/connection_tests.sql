@@ -1,7 +1,13 @@
--- connection_tests: each test of a saved connection, and how it went. Owner: workspace.
-CREATE TABLE connection_tests (
-  id          TEXT  NOT NULL PRIMARY KEY CHECK (length(id) = 36 AND substr(id, 15, 1) = '7'),  -- UUIDv7, issued when the test ran
-  connection  TEXT  NOT NULL REFERENCES connections (id) ON DELETE CASCADE,    -- the connection tested
-  outcome     TEXT  NOT NULL CHECK (outcome IN ('passed', 'warning', 'failed')),  -- passed, passed with a warning, or failed
-  tested_at   TEXT  NOT NULL                                                   -- UTC, RFC 3339
-) STRICT;
+-- workspace.connection_tests: each test of a saved connection, and how it went. Owner: workspace.
+CREATE TABLE workspace.connection_tests (
+  id          UUID        NOT NULL PRIMARY KEY CHECK (uuid_extract_version(id) = 7),         -- UUIDv7, issued when the test ran
+  connection  UUID        NOT NULL REFERENCES workspace.connections (id) ON DELETE CASCADE,  -- the connection tested
+  outcome     TEXT        NOT NULL CHECK (outcome IN ('passed', 'warning', 'failed')),       -- passed, passed with a warning, or failed
+  tested_at   TIMESTAMPTZ NOT NULL                                                           -- when
+);
+
+COMMENT ON TABLE workspace.connection_tests IS 'each test of a saved connection, and how it went.';
+COMMENT ON COLUMN workspace.connection_tests.id IS 'UUIDv7, issued when the test ran';
+COMMENT ON COLUMN workspace.connection_tests."connection" IS 'the connection tested';
+COMMENT ON COLUMN workspace.connection_tests.outcome IS 'passed, passed with a warning, or failed';
+COMMENT ON COLUMN workspace.connection_tests.tested_at IS 'when';

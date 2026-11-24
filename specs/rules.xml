@@ -6,26 +6,26 @@
     from    - where it comes from: a file of the repository, the merged code, or the operator's ruling with its date
     text    - the rule, as it binds every task and every agent
     breach  - what catches a breach: a guard that exists or that a task of the sequence builds (the spec check, the
-              architecture check, the kit, the store's integrity queries, a test, a gate) or the operator's review
+              architecture check, the kit, the database's rule triggers, a test, a gate) or the operator's review
 -->
 <rules product="Schema Forge" version="1" date="2026-11-24">
 
   <rule id="the-schema-decides">
     <from>the operator, 2026-11-24: "at the core stands the database schema ... after we design the schema we lock it in so the coding agents have to fall into compliance"</from>
     <text>The schema folders (schema/cortex, schema/workspace, engines/&lt;engine&gt;/schema) are the database. Code reads and writes the tables they declare, with the columns they declare, and nothing else; no code creates, alters or drops a table, a column, an index or a constraint but the store, which does it from these files alone, and no code works out at run time what a file declares. A table, a column or a value the schema has no place for is a stop, not a workaround.</text>
-    <breach>the store, which creates a file only from the schema folders and refuses a file whose tables differ from them; the spec check over the schema folders; review</breach>
+    <breach>the store, which creates a database only from the schema folders and refuses a database whose tables, comments or rules differ from them; the spec check over the schema folders; review</breach>
   </rule>
 
   <rule id="the-database-enforces">
     <from>the operator, 2026-11-24: "its both referential integrity and data consistency preventing drift"</from>
-    <text>Every reference between rows is a foreign key, every value is constrained by its type and its checks (STRICT tables), every rule a foreign key cannot state is a query of an integrity.sql, and the store runs them all on every write: foreign keys on, the integrity queries before every commit. Nothing is checked by convention alone, and no code turns a check off.</text>
-    <breach>the store's tests, which plant a row breaking a foreign key and a check, and, for every query of every integrity.sql, the row its fixtures name, and prove each commit is refused; review</breach>
+    <text>Every reference between rows is a foreign key, every value is constrained by its type and its checks, and every rule a foreign key cannot state is a rule view of its owner's rules folder (broken_&lt;rule&gt;, the rows breaking it), which cortex.enforce_rules turns into deferred constraint triggers: the database itself refuses any commit that breaks one, whatever code or tool wrote it. Nothing is checked by convention alone, and no code turns a check off, disables a trigger or sets session_replication_role.</text>
+    <breach>the store's tests, which plant a row breaking a foreign key and a check, and, for every rule view of every rules folder, the row its fixtures name, and prove each commit is refused; review</breach>
   </rule>
 
   <rule id="cortex-and-engines">
     <from>the operator, 2026-11-24: "a cortex schema global and schema per engine"; docs/engines.md</from>
-    <text>What every engine shares is the cortex's; what is one engine's alone is that engine's, in its own tables in its own crate, named &lt;engine&gt;__&lt;name&gt;. Shared code (the model, the interface, the store, the server, the canvas) never names an engine, an engine table or an engine column; an engine never writes a cortex table's rows but through the interface, and never another engine's.</text>
-    <breach>the architecture check (a database named outside its engine, an engine's table among them since each is named by its engine; and, from t03, every engine's field keys, kind ids, option keys, table and column names in shared code); the spec check (an engine table outside its engine's folder, or named without its prefix); the kit</breach>
+    <text>What every engine shares is the cortex's; what is one engine's alone is that engine's, in its own tables in its own crate, in its own namespace engine_&lt;engine&gt; (engine_mysql.table_options). Shared code (the model, the interface, the store, the server, the canvas) never names an engine, an engine table or an engine column; an engine never writes a cortex table's rows but through the interface, and never another engine's.</text>
+    <breach>the architecture check (a database named outside its engine, an engine's table among them since each is named by its engine; and, from t03, every engine's field keys, kind ids, option keys, table and column names in shared code); the spec check (an engine table outside its engine's folder, or outside its engine's namespace); the kit</breach>
   </rule>
 
   <rule id="nothing-lost">
