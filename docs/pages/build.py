@@ -28,6 +28,7 @@ shutil.copy(os.path.join(here, "favicon.svg"), os.path.join(site, "favicon.svg")
 brief = sys.modules["contribute"]
 open(os.path.join(site, "agents.md"), "w", encoding="utf-8").write(brief.AGENTS_MD)
 open(os.path.join(site, "llms.txt"), "w", encoding="utf-8").write(brief.LLMS_TXT)
+open(os.path.join(site, "agents.xml"), "w", encoding="utf-8").write(brief.AGENTS_XML)
 bad = [(s.label, s.check()) for s in made if s.check()]
 for label, problems in bad:
     print(f"layout: {label[:70]}", *problems, sep="\n  ")

@@ -98,7 +98,8 @@ pre{margin:8px 0 0;background:var(--raised);border:1px solid var(--line);border-
   <h1>Built with coding agents. Contributed the same way.</h1>
   <p>SchemaForge builds two things at once: the product, and the method it is built by, where people and coding agents develop together. Every part is designed in a session, written as a task file, built by one agent, and decided by gates and a person's review. You contribute exactly the way it is built, with your own agent, and the method is yours to improve too.</p>
   <div class="btns"><a class="btn btn-primary" href="#start">Start with your agent</a>
-  <a class="btn btn-secondary" href="https://k8nstantin.github.io/schema-forge/agents.md">The brief for agents</a>
+  <a class="btn btn-secondary" href="https://k8nstantin.github.io/schema-forge/agents.md">The brief (Markdown)</a>
+  <a class="btn btn-secondary" href="https://k8nstantin.github.io/schema-forge/agents.xml">The brief (XML)</a>
   <a class="btn btn-secondary" href="https://github.com/k8nstantin/schema-forge/discussions">Discussions</a></div>
 </header>
 
@@ -108,7 +109,7 @@ pre{margin:8px 0 0;background:var(--raised);border:1px solid var(--line);border-
 
 <section id="start"><p class="kicker">Step one, for everyone</p><h2>Let your agent read the whole spec.</h2>
 <pre class="prompt">Read https://k8nstantin.github.io/schema-forge/agents.md and every file it lists, in its order. Then tell me, in your own words, what SchemaForge is, how it is built, and which open task or issue you think fits me; don&#x27;t change anything yet.</pre>
-<p class="lede">Your agent reads <a href="https://k8nstantin.github.io/schema-forge/agents.md">agents.md</a> and follows its links: the root, the rules, the files that decide, every task in build order. It explains the project back to you before anything changes.</p></section>
+<p class="lede">Your agent reads <a href="https://k8nstantin.github.io/schema-forge/agents.md">agents.md</a> (or the same brief in the method's own format, <a href="https://k8nstantin.github.io/schema-forge/agents.xml">agents.xml</a>) and follows its links: the root, the rules, the files that decide, every task in build order. It explains the project back to you before anything changes.</p></section>
 
 <section id="ways"><p class="kicker">Then</p><h2>Three ways in.</h2><div class="cards"><div class="card"><p class="kicker">Build</p><h3>A task already written</h3><p>Claim its issue; once it is yours, open a new session on a fresh checkout of main and give your agent one line: the task file's path. It reads, builds, runs the gates and opens the pull request; you review it before the maintainer does.</p></div><div class="card"><p class="kicker">Design</p><h3>Something new</h3><p>An engine for a database you know, a feature, a fix: open an issue or a discussion. You, your agent and the maintainer design it and write its task file; then it is built like any other.</p></div><div class="card"><p class="kicker">Method</p><h3>The way we work</h3><p>A lesson from your build, a rule that would have caught a mistake, a clearer step: propose it in Discussions. The method is built in the open, like the code.</p></div></div>
 <p class="lede">To build a task, the first and only message of a new session is its path, for example:</p>

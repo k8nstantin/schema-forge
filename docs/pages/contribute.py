@@ -42,75 +42,102 @@ def link_path(path):
     return f"[{path}]({raw(path)})"
 
 
-# --- agents.md: the brief a coding agent reads --------------------------------------------------------------------------
-md = [f"# {PRODUCT}: the brief for coding agents", "",
-      f"You were pointed here to understand {PRODUCT} or to help someone contribute to it. Read this file whole, then "
-      "the files below in the order given, then report back to your human before you change anything. Everything "
-      f"here is read from the repository ({REPO_URL}, branch {BRANCH}); the files are the authority, this brief only orders them.", "",
-      "## If you were pointed at a task file", "",
-      "Stop reading this brief. A task file (specs/tasks/*.xml) is a complete instruction: follow its start element "
-      "exactly, from a new session, as the root's method says. Nothing here adds to or overrides it.", "",
+# --- the brief: one set of data, written as agents.md and agents.xml ------------------------------------------------------
+INTRO = (f"You were pointed here to understand {PRODUCT} or to help someone contribute to it. Read this brief whole, then "
+         "the files it lists in the order given, then report back to your human before you change anything. Everything "
+         f"here is read from the repository ({REPO_URL}, branch {BRANCH}); the files are the authority, this brief only orders them.")
+TASK_FILE = ("Stop reading this brief. A task file (specs/tasks/*.xml) is a complete instruction: follow its start element "
+             "exactly, from a new session, as the root's method says. Nothing here adds to or overrides it.")
+METHOD = [
+    ("design session", "a person and an agent, with the maintainer, design or change the database in the owners' folders and write the work down as a task file under specs/tasks, every decision dated in specs/root.xml"),
+    ("build session", "one agent, in a new session on a checkout of main, pointed at one task file and told nothing else; it reads in the order the root gives, builds only what the file says, decides only what it lists, and stops when anything is missing or two files disagree, rather than guess"),
+    ("gates", "every gate of the task file runs (local, Docker, CI), and their results go into the pull request"),
+    ("review", "a person reviews and merges; the agent never merges"),
+    ("lesson", "what a build taught is added to specs/lessons.xml, and a design session changes the method or the rules because of it; the method is open to improvement like the code"),
+]
+WAYS = [
+    ("build a task already written", "they claim its issue and the maintainer assigns it; then they open a new session on a fresh checkout of main whose first and only message is the task file's path (specs/tasks/<file>.xml); that session is not this one"),
+    ("bring something new", "an engine, a feature, a fix: they open an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above"),
+    ("improve the method", "a lesson, a rule that would have caught a mistake, a clearer step: proposed in Discussions, decided in a design session"),
+]
+READ = [  # (group, [(path, what)])
+    ("the root", [("specs/root.xml", "identity and purpose, authority (which files decide), method (how every task is built), the sequence of tasks and every decision with its date")]),
+    ("the rules", [("specs/rules.xml", "every rule, where it comes from, and what catches a breach")]),
+    ("the files that decide", authority),
+    ("the task files, in the order they are built",
+     [(t.get("file") or "", f"{t.get('id')} {t.get('name')}" + (f" ({t.get('key')})" if t.get("key") else "") + f": {flat(t)}") for t in sequence]),
+    ("the lessons", [("specs/lessons.xml", "what each build taught")]),
+    ("the design for people, read after the authority and never instead of it", [(d, "") for d in docs]),
+    ("the code as merged, when you need it", [("crates/", ""), ("engines/", ""), ("tools/", "")]),
+]
+DATABASE = ("Every table is a file of an owner's folder, one CREATE TABLE each, every column commented, its comments also "
+            "in the database. Read a folder's files to know its tables; the owner template explains the shapes.")
+HELP = [
+    "Report what you understood first, in your own words, and ask your human what they want to do.",
+    f"Start from an issue ({REPO_URL}/issues, good first issue for a start) or a question in Discussions ({REPO_URL}/discussions). Larger work is agreed with the maintainer before code, often as a task file.",
+    "Never change specs/, an owner's folder (schema/, engines/*/schema, features/), owner.toml or postgres/manifest.toml: they change only in a design session with the maintainer.",
+    "One issue, one branch, one pull request; tools/check.sh passes before you push (it needs Docker).",
+    "No attribution of any kind in commits or pull requests: your human is the author, and answers for every line.",
+    "Ask your human before you open an issue, push, comment or open a pull request: those speak for them.",
+]
+
+
+def href(path):
+    if not path:
+        return ""
+    return tree(path.split("<")[0]) if path.endswith("/") or "<" in path else raw(path)
+
+
+# agents.md
+md = [f"# {PRODUCT}: the brief for coding agents", "", INTRO, "",
+      f"The same brief in the method's own format: {SITE_URL}agents.xml.", "",
+      "## If you were pointed at a task file", "", TASK_FILE, "",
       f"## What {PRODUCT} is", "", identity, "", purpose, "",
       "## The method you are joining", "",
-      "Every part of the product is built this way, by the maintainer and by every contributor, each with their own coding agent:", "",
-      "1. **A design session** (a person and an agent, with the maintainer): the database is designed or changed in the "
-      "owners' folders, and the work is written down as a task file under specs/tasks, every decision dated in specs/root.xml.",
-      "2. **A build session**: one agent, in a new session on a checkout of main, pointed at one task file and told nothing "
-      "else. It reads in the order the root gives, builds only what the file says, decides only what it lists, and stops "
-      "when anything is missing or two files disagree, rather than guess.",
-      "3. **The gates**: every gate of the task file runs (local, Docker, CI), and their results go into the pull request.",
-      "4. **The review**: a person reviews and merges; the agent never merges.",
-      "5. **The lesson**: what a build taught is added to specs/lessons.xml, and a design session changes the method or the "
-      "rules because of it. The method is open to improvement like the code.", "",
-      "## How your human contributes through you", "",
-      "- **Build a task already written**: they claim its issue and the maintainer assigns it; then they open a new session "
-      "on a fresh checkout of main whose first and only message is the task file's path (specs/tasks/<file>.xml). That session "
-      "is not this one.",
-      "- **Bring something new** (an engine, a feature, a fix): they open an issue or a discussion; the design is agreed in a "
-      "design session and written as a task file; then it is built as above.",
-      "- **Improve the method**: a lesson, a rule that would have caught a mistake, a clearer step: proposed in Discussions, "
-      "decided in a design session.", "",
-      "## Read, in this order", "",
-      f"1. {link_path('specs/root.xml')}: identity, authority (which files decide), method (how every task is built), "
-      "the sequence of tasks and every decision with its date.",
-      f"2. {link_path('specs/rules.xml')}: every rule, where it comes from, and what catches a breach.",
-      "3. The files that decide, as the root's authority lists them:"]
-for path, decides in authority:
-    md.append(f"   - {link_path(path)}: {decides}")
-md += [f"4. The task files, in the order they are built:"]
-for t in sequence:
-    f = t.get("file")
-    head = f"{t.get('id')} {t.get('name')}" + (f" ({t.get('key')})" if t.get("key") else "")
-    md.append(f"   - {head}: " + (f"{link_path(f)}. {flat(t)}" if f else flat(t)))
-md += [f"5. {link_path('specs/lessons.xml')}: what each build taught.",
-       "6. The design for people, read after the authority and never instead of it:"]
-md += [f"   - {link_path(d)}" for d in docs]
-md += ["7. The code as merged, when you need it: "
-       f"{link_path('crates/')}, {link_path('engines/')}, {link_path('tools/')}.", "",
-       "## The database at the core", "",
-       "Every table is a file of an owner's folder, one CREATE TABLE each, every column commented, its comments also "
-       "in the database. Read a folder's files to know its tables; the owner template explains the shapes.", ""]
-md += [f"- {link_path(o)}" for o in owners] + [""]
-md += ["## Still open", "",
-       "These are decided by the maintainer in a design session, never by an agent. Do not build around them:", ""]
+      "Every part of the product is built this way, by the maintainer and by every contributor, each with their own coding agent:", ""]
+md += [f"{i}. **{name}**: {text}." for i, (name, text) in enumerate(METHOD, 1)] + ["", "## How your human contributes through you", ""]
+md += [f"- **{name}**: {text}." for name, text in WAYS] + ["", "## Read, in this order", ""]
+for i, (group, items) in enumerate(READ, 1):
+    if len(items) == 1 and items[0][1]:
+        md.append(f"{i}. {link_path(items[0][0])}: {items[0][1]}.")
+        continue
+    md.append(f"{i}. {group[:1].upper() + group[1:]}:")
+    md += [f"   - " + (f"{link_path(p)}" if p else "") + (": " if p and w else "") + w for p, w in items]
+md += ["", "## The database at the core", "", DATABASE, ""] + [f"- {link_path(o)}" for o in owners] + [""]
+md += ["## Still open", "", "These are decided by the maintainer in a design session, never by an agent. Do not build around them:", ""]
 md += [f"- **{d.get('id')}** (before {d.get('closes-before')}): {flat(d)}" for d in open_decisions] + [""]
-md += ["## The rules you work under", "",
-       "Every rule of specs/rules.xml binds you. In short:", ""]
-md += [f"- **{rid}**: {text}" for rid, text in rule_list] + [""]
-md += ["## When you help someone contribute", "",
-       "- Report what you understood first, in your own words, and ask your human what they want to do.",
-       f"- Start from an issue ({REPO_URL}/issues, *good first issue* for a start) or a question in Discussions "
-       f"({REPO_URL}/discussions). Larger work is agreed with the maintainer before code, often as a task file.",
-       "- Never change specs/, an owner's folder (schema/, engines/*/schema, features/), owner.toml or "
-       "postgres/manifest.toml: they change only in a design session with the maintainer.",
-       "- One issue, one branch, one pull request; `tools/check.sh` passes before you push (it needs Docker).",
-       "- No attribution of any kind in commits or pull requests: your human is the author, and answers for every line.",
-       "- Ask your human before you open an issue, push, comment or open a pull request: those speak for them.", ""]
+md += ["## The rules you work under", "", "Every rule of specs/rules.xml binds you. In short:", ""]
+md += [f"- **{rid}**: {text}" for rid, text in rule_list] + ["", "## When you help someone contribute", ""]
+md += [f"- {h}" for h in HELP] + [""]
 AGENTS_MD = "\n".join(md)
+
+# agents.xml
+from xml.sax.saxutils import escape as x, quoteattr as qa
+xl = ['<?xml version="1.0" encoding="UTF-8"?>',
+      f"<!-- {PRODUCT}: the brief for coding agents, generated from the repository by docs/pages/contribute.py; the same as {SITE_URL}agents.md. -->",
+      f'<brief product={qa(PRODUCT)} repository={qa(REPO_URL)} branch={qa(BRANCH)} root-version={qa(root.get("version"))} date={qa(root.get("date"))}>',
+      f"  <intro>{x(INTRO)}</intro>",
+      f"  <if-task-file>{x(TASK_FILE)}</if-task-file>",
+      f"  <product>{x(identity)}</product>",
+      f"  <purpose>{x(purpose)}</purpose>",
+      "  <method>"]
+xl += [f'    <step n="{i}" name={qa(n)}>{x(s)}</step>' for i, (n, s) in enumerate(METHOD, 1)]
+xl += ["  </method>", "  <ways>"] + [f"    <way name={qa(n)}>{x(s)}</way>" for n, s in WAYS] + ["  </ways>", "  <read>"]
+for i, (group, items) in enumerate(READ, 1):
+    xl.append(f'    <group n="{i}" name={qa(group)}>')
+    for p, w in items:
+        attrs = (f" path={qa(p)} href={qa(href(p))}" if p else "")
+        xl.append(f"      <file{attrs}>{x(w)}</file>" if w else f"      <file{attrs}/>")
+    xl.append("    </group>")
+xl += ["  </read>", f"  <database>{x(DATABASE)}"] + [f"    <folder path={qa(o)} href={qa(href(o))}/>" for o in owners] + ["  </database>", "  <open>"]
+xl += [f"    <decision id={qa(d.get('id'))} closes-before={qa(d.get('closes-before'))}>{x(flat(d))}</decision>" for d in open_decisions]
+xl += ["  </open>", "  <rules>"] + [f"    <rule id={qa(rid)}>{x(text)}</rule>" for rid, text in rule_list]
+xl += ["  </rules>", "  <helping>"] + [f"    <do>{x(h)}</do>" for h in HELP] + ["  </helping>", "</brief>", ""]
+AGENTS_XML = "\n".join(xl)
 
 # --- llms.txt: the index in the format agents look for ------------------------------------------------------------------
 lt = [f"# {PRODUCT}", "", f"> {identity}", "",
-      f"Start with the brief for coding agents: {SITE_URL}agents.md. The files below are the authority.", "",
+      f"Start with the brief for coding agents: {SITE_URL}agents.md (the same in XML: {SITE_URL}agents.xml). The files below are the authority.", "",
       "## Spec", "",
       f"- [root.xml]({raw('specs/root.xml')}): identity, authority, method, sequence, decisions",
       f"- [rules.xml]({raw('specs/rules.xml')}): the rules and their guards"]
@@ -145,7 +172,8 @@ body = f"""
   <h1>Built with coding agents. Contributed the same way.</h1>
   <p>%PRODUCT% builds two things at once: the product, and the method it is built by, where people and coding agents develop together. Every part is designed in a session, written as a task file, built by one agent, and decided by gates and a person's review. You contribute exactly the way it is built, with your own agent, and the method is yours to improve too.</p>
   <div class="btns"><a class="btn btn-primary" href="#start">Start with your agent</a>
-  <a class="btn btn-secondary" href="{e(SITE_URL)}agents.md">The brief for agents</a>
+  <a class="btn btn-secondary" href="{e(SITE_URL)}agents.md">The brief (Markdown)</a>
+  <a class="btn btn-secondary" href="{e(SITE_URL)}agents.xml">The brief (XML)</a>
   <a class="btn btn-secondary" href="%REPO%/discussions">Discussions</a></div>
 </header>
 
@@ -155,7 +183,7 @@ body = f"""
 
 <section id="start"><p class="kicker">Step one, for everyone</p><h2>Let your agent read the whole spec.</h2>
 <pre class="prompt">{e(PROMPT)}</pre>
-<p class="lede">Your agent reads <a href="{e(SITE_URL)}agents.md">agents.md</a> and follows its links: the root, the rules, the files that decide, every task in build order. It explains the project back to you before anything changes.</p></section>
+<p class="lede">Your agent reads <a href="{e(SITE_URL)}agents.md">agents.md</a> (or the same brief in the method's own format, <a href="{e(SITE_URL)}agents.xml">agents.xml</a>) and follows its links: the root, the rules, the files that decide, every task in build order. It explains the project back to you before anything changes.</p></section>
 
 <section id="ways"><p class="kicker">Then</p><h2>Three ways in.</h2><div class="cards">{ways}</div>
 <p class="lede">To build a task, the first and only message of a new session is its path, for example:</p>
