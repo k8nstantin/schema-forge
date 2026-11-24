@@ -1,6 +1,6 @@
 -- workspace.connection_tests: each test of a saved connection, and how it went. Owner: workspace.
 CREATE TABLE workspace.connection_tests (
-  id          UUID        NOT NULL PRIMARY KEY CHECK (uuid_extract_version(id) = 7),         -- UUIDv7, issued when the test ran
+  id          UUID        NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),  -- UUIDv7, issued when the test ran
   connection  UUID        NOT NULL REFERENCES workspace.connections (id) ON DELETE CASCADE,  -- the connection tested
   outcome     TEXT        NOT NULL CHECK (outcome IN ('passed', 'warning', 'failed')),       -- passed, passed with a warning, or failed
   tested_at   TIMESTAMPTZ NOT NULL                                                           -- when

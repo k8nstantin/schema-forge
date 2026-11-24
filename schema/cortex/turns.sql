@@ -1,7 +1,7 @@
 -- cortex.turns: one round of work: the agent's answer to one prompt, a person's edit, an import, an undo. Every change belongs to one (decision 8). Owner: cortex.
 -- A turn is accepted or rejected whole; a rejected or undone turn stays, and the turn that takes it back names it in undoes (decision 9).
 CREATE TABLE cortex.turns (
-  id          UUID        NOT NULL PRIMARY KEY CHECK (uuid_extract_version(id) = 7),             -- UUIDv7, issued in increasing order by the store, the database's one writer: its order is the order turns began
+  id          UUID        NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),  -- UUIDv7, issued by the database (uuidv7()), increasing within a session: its order is the order turns began
   by          TEXT        NOT NULL CHECK (by IN ('agent', 'person', 'import')),                  -- who made it
   who         TEXT        NOT NULL CHECK (length(who) >= 1),                                     -- the agent's label (claude-opus-5-5), the person's name, or the source read (a file path, a connection name)
   summary     TEXT        NOT NULL CHECK (length(summary) >= 1),                                 -- what it does, in one line, as its maker gives it
@@ -17,7 +17,7 @@ CREATE TABLE cortex.turns (
 );
 
 COMMENT ON TABLE cortex.turns IS 'one round of work: the agent''s answer to one prompt, a person''s edit, an import, an undo. Every change belongs to one (decision 8). A turn is accepted or rejected whole; a rejected or undone turn stays, and the turn that takes it back names it in undoes (decision 9).';
-COMMENT ON COLUMN cortex.turns.id IS 'UUIDv7, issued in increasing order by the store, the database''s one writer: its order is the order turns began';
+COMMENT ON COLUMN cortex.turns.id IS 'UUIDv7, issued by the database (uuidv7()), increasing within a session: its order is the order turns began';
 COMMENT ON COLUMN cortex.turns.by IS 'who made it';
 COMMENT ON COLUMN cortex.turns.who IS 'the agent''s label (claude-opus-5-5), the person''s name, or the source read (a file path, a connection name)';
 COMMENT ON COLUMN cortex.turns.summary IS 'what it does, in one line, as its maker gives it';
