@@ -2,17 +2,21 @@
 <!--
   The brief: what a coding agent, and the person who points it here, read first. The one source of every word the brief
   and the Contribute page say; docs/pages/contribute.py only renders it, with specs/root.xml and specs/rules.xml, into
-  site/agents.md, site/agents.xml, site/llms.txt and the Contribute page. %PRODUCT%, %SITE%, %REPO% and %BRANCH% are the
+  site/agents.xml, site/llms.txt, the repository's agent files and the Contribute page (decision xml-for-agents). %PRODUCT%, %SITE%, %REPO% and %BRANCH% are the
   parameters of schema/workspace/seeds/parameters.sql, filled in when it is rendered.
-  Parts: welcome, intro, prompt, if-task-file, architecture, method, ways, wanted, start, read, database, helping.
+  Parts: welcome, agent-file, page-note, intro, prompt, if-task-file, architecture, method, ways, wanted, start, read, database, helping.
 -->
 <brief product="SchemaForge" version="1" date="2026-11-24">
 
   <welcome>Welcome. You have joined %PRODUCT%, and the person who brought you here is about to work with you on it. This brief gives you, in order, the mission, the architecture, what is needed now and how to start; then the method, everything to read, and the rules. Take it in whole, tell your human what you understood, and the two of you can start.</welcome>
 
+  <agent-file>You are in the %PRODUCT% repository. If the first message of this session is a task file's path (specs/tasks/&lt;file&gt;.xml), follow that file and nothing here. Otherwise read the brief, site/agents.xml in this checkout (the same as %SITE%agents.xml), and every file it lists, in its order; then tell your human what you understood before you change anything.</agent-file>
+
+  <page-note>Coding agent? Every page here leads to one place: read %SITE%agents.xml first, the brief that tells you what %PRODUCT% is, how it is built, what is wanted now and how to start with your human.</page-note>
+
   <intro>You were pointed here to understand %PRODUCT% or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (%REPO%, branch %BRANCH%); the files are the authority, this brief only orders them.</intro>
 
-  <prompt>Read %SITE%agents.md and every file it lists, in its order. Then tell me, in your own words, what %PRODUCT% is, how it is built, and which open task or issue you think fits me; don't change anything yet.</prompt>
+  <prompt>Read %SITE%agents.xml and every file it lists, in its order. Then tell me, in your own words, what %PRODUCT% is, how it is built, and which open task or issue you think fits me; don't change anything yet.</prompt>
 
   <if-task-file>Stop reading this brief. A task file (specs/tasks/*.xml) is a complete instruction: follow its start element exactly, from a new session, as the root's method says. Nothing here adds to or overrides it.</if-task-file>
 
@@ -40,8 +44,8 @@
       <for-people>Pick a task from the wanted list; nobody needs to assign it. Open a new session on a fresh checkout of main and give your agent one line: the task file's path. It reads, builds, runs the gates and opens the pull request; you review it, then submit. Others may build the same task: the maintainer merges the best, and what the builds teach improves the method.</for-people>
     </way>
     <way name="bring something new" kicker="Design" title="Something new">
-      <for-agent>An engine, a feature, a fix: your human opens an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above.</for-agent>
-      <for-people>An engine for a database you know, a feature, a fix: open an issue or a discussion. You, your agent and the maintainer design it and write its task file; then it is built like any other.</for-people>
+      <for-agent>An engine, a feature, a fix: for a new database, follow specs/guides/engine.xml from its first phase; otherwise your human opens an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above.</for-agent>
+      <for-people>An engine for a database you know (point your agent at the engine guide, specs/guides/engine.xml), a feature, a fix: open an issue or a discussion. You, your agent and the maintainer design it and write its task file; then it is built like any other.</for-people>
     </way>
     <way name="improve the method" kicker="Method" title="The way we work">
       <for-agent>A lesson, a rule that would have caught a mistake, a clearer step: proposed in Discussions, decided in a design session.</for-agent>
@@ -60,17 +64,19 @@
 
   <start>
     <step>Read this brief whole, then the files of its reading list, in order.</step>
-    <step>Tell your human, in your own words: the mission, the architecture, what is wanted now, and what you think fits them.</step>
-    <step>Choose together: a task ready to build, an issue, a feature ahead, or a view for a design session.</step>
-    <step>To build a task: a new session on a fresh checkout of main, its first and only message the task file's path. For an issue or something new: open the conversation on GitHub first, with your human's word.</step>
+    <step>Brief your human, in your own words and in a few minutes of reading: what %PRODUCT% is and why (the mission), how it is put together (the architecture), and where it stands (what is built, what is next).</step>
+    <step>Show them the roster: every contribution open now, one line each, from this brief's wanted list: the tasks ready to build, the tasks queued, the guides (a new engine), the decisions waiting for a design session, and the good first issues. For each: what it is, what it would teach them, and what it takes.</step>
+    <step>Let them pick what interests them. Tell them that anyone may take up the same task, that every build is reviewed side by side, and that the best one is merged: a build that is not merged still teaches, and its lesson improves the method.</step>
+    <step>To build a task: a new session on a fresh checkout of main, its first and only message the task file's path. For a new database: the engine guide, from its first phase. For an issue or anything new: open the conversation on GitHub first, with your human's word.</step>
   </start>
 
   <read>
-    <note>Each group lists files; a group with a source takes its files from it: authority, the root's authority; sequence, the root's tasks in build order; docs, every file of docs/ but the authority's.</note>
+    <note>Each group lists files; a group with a source takes its files from it: authority, the root's authority; sequence, the root's tasks in build order; guides, every guide of specs/guides; docs, every file of docs/ but the authority's.</note>
     <group name="the root" path="specs/root.xml">identity and purpose, authority (which files decide), method (how every task is built), the sequence of tasks and every decision with its date</group>
     <group name="the rules" path="specs/rules.xml">every rule, where it comes from, and what catches a breach</group>
     <group name="the files that decide" source="authority"/>
     <group name="the task files, in the order they are built" source="sequence"/>
+    <group name="the guides, one for each kind of contribution, read when you take one up" source="guides"/>
     <group name="the lessons" path="specs/lessons.xml">what each build taught</group>
     <group name="the design for people, read after the authority and never instead of it" source="docs"/>
     <group name="the code as merged, when you need it" paths="crates/ engines/ tools/"/>

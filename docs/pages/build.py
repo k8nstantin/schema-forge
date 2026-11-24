@@ -27,13 +27,12 @@ for mode in ("artifact", "site"):
             open(os.path.join(site, common.FILES[key]), "w", encoding="utf-8").write(mod.HTML)
 shutil.copy(os.path.join(here, "favicon.svg"), os.path.join(site, "favicon.svg"))
 brief = sys.modules["contribute"]
-open(os.path.join(site, "agents.md"), "w", encoding="utf-8").write(brief.AGENTS_MD)
 open(os.path.join(site, "llms.txt"), "w", encoding="utf-8").write(brief.LLMS_TXT)
 open(os.path.join(site, "agents.xml"), "w", encoding="utf-8").write(brief.AGENTS_XML)
 top = os.path.join(here, "..", "..")
-open(os.path.join(top, "AGENTS.md"), "w", encoding="utf-8").write(brief.REPO_AGENTS_MD)
+open(os.path.join(top, "AGENTS.md"), "w", encoding="utf-8").write(brief.AGENT_FILE)
 open(os.path.join(top, "CLAUDE.md"), "w", encoding="utf-8").write(brief.CLAUDE_MD)
-open(os.path.join(top, ".github", "copilot-instructions.md"), "w", encoding="utf-8").write(brief.REPO_AGENTS_MD)
+open(os.path.join(top, ".github", "copilot-instructions.md"), "w", encoding="utf-8").write(brief.AGENT_FILE)
 bad = [(s.label, s.check()) for s in made if s.check()]
 for label, problems in bad:
     print(f"layout: {label[:70]}", *problems, sep="\n  ")

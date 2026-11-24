@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The guide for a new engine: an instruction for a coding agent whose human wants SchemaForge to support a database
+  it does not support yet. Read after the brief (specs/brief.xml, served as site/agents.xml). It leads the agent and
+  its human through the method from the first reading to the merged engine; it never replaces a task file, and it
+  never lets the agent decide what a design session decides.
+  Parts: start, goal, boundaries, phases (study, profile, design session, builds, lessons), whole, stop, reference.
+-->
+<guide id="engine" for="a coding agent whose human wants SchemaForge to support a new database" version="1" date="2026-11-24">
+
+  <start>Your human wants SchemaForge to support a database it does not support yet, and pointed you here. If you have not read the brief (site/agents.xml, or specs/brief.xml with the root and the rules), read it first. Then read this guide whole, and work through its phases in order with your human. Each phase ends with something your human sees before the next begins.</start>
+
+  <goal>A new engine, merged: one crate, engines/&lt;database&gt;, that tells SchemaForge everything about one database (its versions, types, kinds of object, options, how it is read from files and from a live server, how it is written back, and its own tables), passing the conformance kit and the architecture check, so that nothing else in SchemaForge changes when it arrives. It is reached the way everything here is: designed first, written as task files, built by agents, decided by review.</goal>
+
+  <boundaries>
+    <rule>You change nothing of specs/, an owner's folder or the shared code on your own: what the engine's tables are and what its task files say is decided in a design session with your human and the maintainer (phase 3).</rule>
+    <rule>Nothing about the new database may enter shared code: not its name, not its words, not a branch of logic for it. If the interface lacks something the database needs, that is a finding for the design session, never a workaround in the engine or in shared code.</rule>
+    <rule>Everything you claim about the database comes from its own documentation or from running it, and you say which. A guess is a question for the design session.</rule>
+    <rule>Ask your human before anything that speaks for them: a discussion, an issue, a comment, a pull request.</rule>
+  </boundaries>
+
+  <phase n="1" name="study">
+    <do>Read the engine interface as merged: crates/engine (the Engine trait and its parts, the section layout in src/sections.rs, kinds, options, types, the conformance kit in src/kit.rs) and crates/model.</do>
+    <do>Read the MySQL engine, engines/mysql, as the worked example of a whole engine: its versions, types, kinds, options, readers, writer, its tables (engines/mysql/schema) and its tests and samples.</do>
+    <do>Read Quill (engines/quill, or crates/engine/tests/example before task t03 is built): the made-up engine, unlike MySQL on purpose, every shared test runs beside.</do>
+    <do>Read docs/engines.md (why every database is a plugin), docs/writing-an-engine.md (the how, section by section) and the owner template (docs/owner-template/README.md: the five shapes of an engine's tables).</do>
+    <do>Read the new database's own documentation: its versions and what each brought; its types and every spelling a dump uses; its DDL grammar; its dump formats; its catalog (the views or tables that describe a live schema); its kinds of object.</do>
+    <ends>Nothing changed. Tell your human what you learned and what surprised you.</ends>
+  </phase>
+
+  <phase n="2" name="the profile">
+    <do>Write the database's profile with your human, following the profile below, every claim with its source (a page of the database's documentation, or what a running server answered).</do>
+    <do>Bring real DDL: dumps and hand-written schemas of the database, as many kinds of object and clause as you can find, without data and without secrets. They become the engine's samples.</do>
+    <do>Post the profile, with your human's word, as a discussion in the repository (titled `engine: &lt;database&gt;`), asking for a design session.</do>
+    <profile>
+      <section name="identity">The database's id (lowercase, a to z, 0 to 9, _) and name, and the versions to support first, oldest first, with what each brought.</section>
+      <section name="types">Every type, in the database's own spelling with its parameters, grouped as the palette groups them, each mapped to an Apache Arrow type as exact, widened, approximated or lost, with the versions that have it.</section>
+      <section name="kinds">Every kind of object (tables, views, routines, triggers, events, and those only this database has), each with the slots of the section layout it fills (keys, checks, indexes, partitioning, order, query, sequence, values, domain, fields, routine, trigger, event).</section>
+      <section name="options">For each part (a namespace, an object, a column, a key, an index, a check, a relationship, a partition), every option the database has beyond the layout: its key, its kind (a flag, a whole number, a decimal, text, one of a list), what it means, and its versions.</section>
+      <section name="findings">What has no place in the layout or the interface: each with an example, and what it would need. These are the design session's first questions.</section>
+      <section name="reading">The files it reads (dump formats, DDL, a folder of definitions) and how each is recognised by what it says; what a dump does around the schema (settings, placeholders) and is counted, not modelled; what is kept exactly as written.</section>
+      <section name="live">The connection fields (as data: key, label, kind, help, secret or not), the five test steps as this database answers them, and the read-only statements that read a live schema, with the privilege each needs.</section>
+      <section name="writing">How a schema is written back as the database's SQL, and how the writer is proved against a running server (write, load, dump again with the database's own tool, read back the same).</section>
+      <section name="tables">The engine's own tables, in its namespace engine_&lt;id&gt;, each one of the owner template's five shapes (options of a cortex part, an ordered list, a kind only it has, open-ended properties, a tree), with every column and what it holds.</section>
+      <section name="samples">The real DDL brought, each with what it covers.</section>
+      <section name="risks">What is hard, uncertain or unlike the engines there are.</section>
+    </profile>
+    <ends>The profile posted; nothing in the repository changed.</ends>
+  </phase>
+
+  <phase n="3" name="the design session">
+    <do>With your human and the maintainer, go through the profile: the findings first, then the tables, the options and the order of the work.</do>
+    <do>The session writes, on a branch the maintainer merges: engines/&lt;database&gt;/owner.toml and engines/&lt;database&gt;/schema (its tables and rules, from the owner template); the engine's samples; its tasks in specs/root.xml's sequence, each with a title; and their task files, written as the task files there are. An engine is usually built in three tasks: the engine (identity, versions, types, kinds, options, reading files, writing), its tables (as task t04 is for MySQL), and its live part.</do>
+    <do>You may draft what the session asks for, on the session's branch; what is merged is the maintainer's decision.</do>
+    <ends>The engine's folder, samples and task files merged; its tasks listed as wanted.</ends>
+  </phase>
+
+  <phase n="4" name="the builds">
+    <do>Each task is built as every task is: a new session on a fresh checkout of main, its first and only message the task file's path. That session follows the task file and nothing else; this guide does not travel with it.</do>
+    <do>Any number of contributors may build the same task; the maintainer merges the best build.</do>
+    <ends>Every task of the engine merged; the engine registered and passing the conformance kit on every sample.</ends>
+  </phase>
+
+  <phase n="5" name="lessons">
+    <do>Tell the maintainer, in the discussion, what the work taught: what the profile missed, where a task file was read two ways, what the interface lacked. It becomes a lesson, and the next engine's guide is better for it.</do>
+    <ends>The lesson recorded in specs/lessons.xml by a design session.</ends>
+  </phase>
+
+  <whole>
+    <mark>One crate, engines/&lt;database&gt;, depending on the model, the interface and its own helper crates only, never on another engine.</mark>
+    <mark>Its versions as data: every type, option, kind and capability marked with the version that brought it and the one that took it away.</mark>
+    <mark>Its types mapped to Arrow, every spelling a dump uses read.</mark>
+    <mark>Everything read accounted for: modelled, kept exactly as written, data, or a dump's machinery; nothing dropped, no credential kept.</mark>
+    <mark>Its writer proved against a running server: what it writes loads, and the database's own dump of it reads back the same.</mark>
+    <mark>Its tables in its namespace, every option a row of them and back, the round trip proved by the kit.</mark>
+    <mark>Its live part reading only, refusing a read that would come back with something missing.</mark>
+    <mark>Registered, and passing the conformance kit and the architecture check, with no shared file changed.</mark>
+  </whole>
+
+  <stop>Stop and tell your human, instead of going on, when: the database needs something the interface or the layout has no place for; its documentation and a running server disagree; the profile cannot be finished without a guess; or anything here, the brief, the root or the rules disagree. Each is a question for the design session.</stop>
+
+  <reference path="docs/writing-an-engine.md">The how, for people and agents alike: the crate, versions, types, the layout and options, Arrow, reading files, reading the live database, writing, registering, the conformance kit, the engine's own tables, add-ons.</reference>
+</guide>

@@ -1,5 +1,9 @@
 # Writing an engine
 
+> **Building with a coding agent?** Point it at the engine guide,
+> [specs/guides/engine.xml](../specs/guides/engine.xml): it leads the agent and you through the method, from studying the
+> database to the merged engine. This page is the how it refers to.
+
 How to add a database to SchemaForge. An engine is a Rust crate that tells SchemaForge everything about one
 database; nothing else in SchemaForge changes when you add one. The design behind it is
 [engines.md](engines.md); this is the how.

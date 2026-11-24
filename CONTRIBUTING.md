@@ -23,9 +23,9 @@ really work, from the inside.
 ## Where to start
 
 - **Using a coding agent?** Most people do. Point it at the brief written for agents,
-  [agents.md](https://k8nstantin.github.io/schema-forge/agents.md): it lists the whole spec in the order to read it,
+  [agents.xml](https://k8nstantin.github.io/schema-forge/agents.xml): it lists the whole spec in the order to read it,
   the decisions still open, and the rules an agent works under here. Paste: *"Read
-  https://k8nstantin.github.io/schema-forge/agents.md and every file it lists, in its order, then tell me what
+  https://k8nstantin.github.io/schema-forge/agents.xml and every file it lists, in its order, then tell me what
   SchemaForge is and which task or issue fits me; don't change anything yet."*
   ([the Contribute page](https://k8nstantin.github.io/schema-forge/contribute.html))
 - **Read the design**, with its diagrams: [Start here](https://k8nstantin.github.io/schema-forge/start.html) ·
