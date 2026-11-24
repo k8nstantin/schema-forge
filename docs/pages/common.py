@@ -269,6 +269,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
 .nav .sub{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;padding-top:6px;border-top:1px solid var(--line);font-size:13px}
 .nav .sub a{border:0;padding:0;color:var(--accent);border-radius:0}
+.agents{margin-top:56px;border:1px dashed var(--accent);border-radius:14px;padding:18px 20px;background:var(--surface)}.agents p{margin:0 0 12px;max-width:80ch;color:var(--ink2)}.agents .kicker{margin-bottom:6px}
 .btn-outline{background:transparent;color:var(--accent);border-color:var(--accent)}.btn-outline:hover{background:var(--accent);color:#FFFFFF}
 .tb{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1.5px solid var(--ink);background:var(--surface)}
 .tb div{padding:8px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
@@ -336,10 +337,14 @@ def page(key, title, css, body, sub=""):
     icon = '<link rel="icon" href="favicon.svg" type="image/svg+xml">\n' if MODE == "site" else ""
     note = " ".join("".join(_BRIEF.find("page-note").itertext()).split()).replace("%SITE%", SITE_URL).replace("%PRODUCT%", PRODUCT)
     agent = f'<link rel="alternate" type="application/xml" title="{e(note)}" href="{e(SITE_URL)}agents.xml">\n'
+    said = " ".join("".join(_BRIEF.find("page-agent").itertext()).split()).replace("%SITE%", SITE_URL).replace("%PRODUCT%", PRODUCT)
+    box = (f'<aside class="agents" aria-label="For coding agents"><p class="kicker">For coding agents</p><p>{e(said)}</p>'
+           f'<a class="btn btn-outline" href="{e(SITE_URL)}agents.xml">The brief: agents.xml</a></aside>'
+           )
     head = ('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             if MODE == "site" else "")
     out = (f'{head}{agent}<title>{e(title)}</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n{icon}{FONTS}\n'
-            f'<style>{CSS}{css}</style>\n<div class="wrap"><span id="top"></span>{nav}{body}'
+            f'<style>{CSS}{css}</style>\n<div class="wrap"><span id="top"></span>{nav}{body}{box}'
             '<p class="foot"><span>%PRODUCT% · MIT or Apache-2.0</span><a href="%REPO%">GitHub</a>'
             '<a href="%REPO%/discussions">Discussions</a>'
             f'<a href="{e(SITE_URL)}agents.xml">{e(note)}</a>'
