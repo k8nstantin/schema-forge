@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doc id="engines" title="Engines: every database is a plugin">
+  <p>The design of SchemaForge as a product, and every decision behind it. It decides whether SchemaForge can grow: MySQL, Apache Iceberg and PostgreSQL first, in that order; BigQuery, Snowflake, ClickHouse, Iceberg format 4 and whatever comes next after. A new database is one new plugin; a new version of a database touches only its plugin; and people add onto a plugin without forking it.</p>
+  <section title="Where we are">
+    <p>The prototype proved SchemaForge can be built: the canvas from the designs, the rules engine, the agent's MCP, reading PostgreSQL dumps and Iceberg's Spark SQL. It is kept as the tag <a href="https://github.com/k8nstantin/schema-forge/tree/prototype"><c>prototype</c></a>. The product is built new, to this design, from an empty tree; the prototype is reference and test material, never code to wrap or move.</p>
+  </section>
+  <section title="The decisions">
+    <part title="1. The process is shared; the database is its engine's">
+      <p>Two layers that never mix. <b>The process</b> is how an architect works, and every database shares it: Home, a new schema, opening a file, the Tables, Categories, Map and Rules perspectives, the palette and the edit forms as components, turns, undo, history, references (<c>@orders.id</c>), the store, the MCP, and the rules machinery (linking, hard and soft, exceptions, the agent's proposals, verification). <b>The database</b> is everything that differs between databases (table kinds, types, keys, constraints, indexes, defaults, options, partitioning, order, the operations that change them, the rules about them, the SQL they are written in, how they are read in) and it belongs to its engine plugin. A schema chooses its engine first; everything follows from it.</p>
+    </part>
+    <part title="2. The shared model is a skeleton">
+      <p><c>schema-forge-model</c> holds only what every database has, the same way for all: a schema (its engine and the engine's version), namespaces nested by parent, objects (an id, a kind the engine defines, a name, a comment, notes, tags, an area, the objects it reads), columns (an id, a name, its type as the engine's text, null or not null, a comment), links between columns of two objects, and areas. Every part has an id that never changes when it is renamed, and an <b>engine section</b> the model stores and versions without reading. The file is JSON, format 2. Nothing in the model names a database.</p>
+    </part>
+    <part title="3. One layout every engine fills, and a schema of its own per engine">
+      <p>So that no engine grows a storage of its own, every engine's sections follow <b>one layout</b> (<c>schema_forge_engine::sections</c>), the template: a table's <c>keys</c> (primary, unique, identifier), <c>checks</c>, <c>indexes</c>, <c>partitioning</c>, <c>partition_of</c>, <c>order</c>; a view's <c>query</c>; a <c>sequence</c>; the schema's own types (<c>values</c>, <c>domain</c>, <c>fields</c>); a <c>routine</c> (a procedure or function: its parameters, what it returns, its language and characteristics), a <c>trigger</c> (its timing, the changes it fires on, the table it is on), an <c>event</c> (its schedule), each with its body exactly as written; a column's <c>default</c>, <c>identity</c>, <c>generated</c>; a link's <c>enforced</c>, <c>on_delete</c>, <c>on_update</c>, <c>match</c>, <c>deferrable</c>; the schema's <c>format</c> (the engine's storage version, for upgrades), <c>kept</c> (what the model does not describe, exactly as written, with where it goes back) and <c>requires</c>. An engine fills the slots its database has and leaves the rest out. A slot the layout does not have is refused.</p>
+      <p><b>Every object a database has is accounted for.</b> Each engine's plan inventories every kind of object its database has, and each is modelled as a kind (visible in the canvas, referenced by the agent, open to rules) or, when it belongs to the server rather than the schema (accounts, roles, grants), kept exactly as written and counted by kind, with the reason in the engine's plan. Nothing is dropped, and nothing is lumped into "other" by default.</p>
+      <p>Each engine also <b>declares its kinds of object</b> and the slots each uses (a table its keys and indexes, a view its query), so a view with partitioning or a table with a query is refused. The layout has a version; a schema written with a later one is refused whole by an older build, never read with something dropped.</p>
+      <p>What belongs to one database alone has one home: each element's <c>options</c>. Each engine <b>declares its options as data</b> (<c>schema_forge_engine::options</c>): for each part, every key, its kind (a flag, a whole number, a decimal, text, one of a list), what it means, and the versions that have it. That declaration is the engine's own schema; the conformance kit refuses an option it does not declare, and the canvas builds its option forms from it.</p>
+      <table>
+        <head><cell>Slot</cell><cell>PostgreSQL</cell><cell>MySQL</cell><cell>Iceberg</cell></head>
+        <row><cell><c>keys.primary</c>, <c>keys.unique</c></cell><cell>✓</cell><cell>✓</cell><cell></cell></row>
+        <row><cell><c>keys.identifier</c></cell><cell></cell><cell></cell><cell>identifier fields</cell></row>
+        <row><cell><c>checks</c>, <c>indexes</c></cell><cell>✓</cell><cell>✓</cell><cell></cell></row>
+        <row><cell><c>partitioning</c></cell><cell>range, list, hash</cell><cell>range, list, hash, key</cell><cell><c>day</c>, <c>bucket[16]</c>, <c>truncate[4]</c>…</cell></row>
+        <row><cell><c>partition_of</c></cell><cell>a partition's parent and bounds</cell><cell></cell><cell></cell></row>
+        <row><cell><c>order</c></cell><cell></cell><cell></cell><cell>the sort order</cell></row>
+        <row><cell><c>options</c></cell><cell>unlogged, tablespace, fillfactor…</cell><cell>engine, charset, row format…</cell><cell>format version, write modes…</cell></row>
+      </table>
+    </part>
+    <part title="4. One crate per database, its versions inside it">
+      <p>Each engine is one crate, <c>engines/&lt;database&gt;</c>. Versions of a database share nearly everything, so they live in its crate: its versions are a table, and every feature (a type, an option, a capability) is marked with the version that brought it and the one that took it away. A schema is designed for one version and is offered exactly that version's features. Iceberg format 4 is new rows in the Iceberg crate. Never a crate per version: the architecture check fails the build when two crates say the same database.</p>
+    </part>
+    <part title="5. One engine, one PR, all of it enclosed">
+      <p>An engine is built whole (versions, types, options, reading and writing) in one crate and one PR. Engines share nothing with each other but the interface: no shared helper crates, so a problem in one engine is found in that engine and never breaks another. Each parses SQL with <c>sqlparser</c> (Apache DataFusion's parser, pure Rust) directly, in its own dialect, with its own statement reader for its own dump format. Iceberg's <c>metadata.json</c> is read with the engine's own types, written from the Iceberg spec.</p>
+    </part>
+    <part title="6. What grows is data">
+      <p>Inside an engine, what grows is tables, never branches: its versions and features, its types (with every spelling a dump uses), its options, the kinds of statement it reads (a handler each, registered in one place), the kinds of statement it keeps. Nothing tests a version number or lists types in code paths.</p>
+    </part>
+    <part title="7. Add-ons: people add onto an engine without forking it">
+      <p>Each engine has a public add-on trait: an add-on is its own crate contributing what a database extension brings (types; statement handlers; kinds of kept statement; later, rules), registered with one line (<c>Postgres::new().with(PostGis)</c>). The engine's tables are built from its built-ins and its add-ons. The extensions an engine ships support for are written as add-ons themselves: the worked examples, and the proof.</p>
+    </part>
+    <part title="8. The interface grows without breaking anyone">
+      <p>The engine interface (<c>schema-forge-engine</c>) is one trait with a required core (identity, versions, types) and optional parts with defaults. A part joins the interface when something first uses it, shaped by that use. Every data type an engine makes, in the interface and the model, is made with constructors and may gain fields (<c>#[non_exhaustive]</c>); errors may gain variants. So a part, a field or a variant added later breaks no engine and no add-on. Engine ids are strings; the engines SchemaForge ships with are registered in one place.</p>
+    </part>
+    <part title="9. Checked, not trusted">
+      <list>
+        <item><b>The conformance kit</b>, which every engine runs in its own tests: identity and versions; every type (its example reads back exactly as itself, in exactly the versions that have it, and is refused as not in the version by the others); every option declared, of its kind, in its versions; every section in the layout, every id a section names in the schema; every sample read with a report that adds up, sound, typed with the engine's own types; every object with a definition; a sample in the form the engine writes written back as <b>the same text</b> and read back to the same schema; every sample query reading what it says. Every part an engine has needs samples that exercise it.</item>
+        <item><b>The architecture check</b> (<c>tools/architecture</c>), run by <c>cargo test</c> in CI: every crate declares its role; roles depend only the way this design allows (an engine never on another; the store, server, MCP and command line never on one engine); a database is named only in its engine, not even inside an identifier or a comment; only engines parse SQL; only the query layer depends on DataFusion; one crate per database.</item>
+      </list>
+    </part>
+    <part title="10. Reading in: files and live">
+      <p>Every engine reads its files (a dump, definition files, table metadata) and, with credentials, the live database. Credentials come from the machine (<c>~/.pgpass</c>, <c>~/.my.cnf</c>, gcloud application default credentials, an AWS profile), are never stored in the workspace, never seen by the agent, and every live read is read-only. Every read accounts for everything it read (modelled, kept as written, or left out as data) and the counts add up; what is not understood is kept whole, never half read, and written back in its place.</p>
+    </part>
+    <part title="11. Apache DataFusion at the center, as the query layer">
+      <p>Every engine maps its types to <b>Apache Arrow's</b> and back (<c>schema_forge_engine::portable</c>), saying how faithful each mapping is: exact (it comes back as the same type), approximate (the kind of value kept, a detail such as a length lost) or lost. Arrow is the vocabulary Apache DataFusion and Iceberg's Rust library speak, and it is the one place engines meet: any two engines are compared or converted through it, never through a map written for the pair, and a new engine is comparable with every other once it maps its own types.</p>
+      <p>On top of it sits <b>the DataFusion layer</b> (<c>schema-forge-query</c>): a designed schema, of any engine, exposed to DataFusion as a catalog. With it:</p>
+      <list>
+        <item>a view's query is <b>planned</b>, not only parsed: each of its columns gets a type, its lineage is known (this column comes from <c>orders.total</c>), and whether it still works after a change is the planner's answer;</item>
+        <item><b>compatibility and conversion</b> between engines go through Arrow types, and queries are written for another engine with DataFusion's dialect unparsers;</item>
+        <item><b>live sources</b> come through the DataFusion ecosystem (Iceberg catalogs, community table providers for PostgreSQL, MySQL and others) beside each engine's own native reader, which stays the source of truth for its DDL;</item>
+        <item><b>schema management</b> grows from here: comparing a design with a live database, finding drift, planning and checking a migration before it is applied.</item>
+      </list>
+      <p>DataFusion is not the model: it describes tables as Arrow schemas, without lengths, unsigned integers, keys, indexes or partitions, the fidelity a designer needs. The model and the engines keep that; DataFusion is the shared layer that plans and connects. Engines depend on <c>arrow-schema</c> only, never on DataFusion; only the query layer does, and the architecture check holds that. As DataFusion grows (new dialects, connectors, functions), every engine gains it through its Arrow mapping.</p>
+    </part>
+  </section>
+  <section title="The crates">
+    <table>
+      <head><cell>Crate</cell><cell>Folder</cell><cell>Role</cell><cell>What it is</cell></head>
+      <row><cell><c>schema-forge-model</c></cell><cell><c>crates/model</c></cell><cell>model</cell><cell>the skeleton</cell></row>
+      <row><cell><c>schema-forge-engine</c></cell><cell><c>crates/engine</c></cell><cell>interface</cell><cell>the trait, the section layout, the option schema, the Arrow mapping, the registry, the conformance kit</cell></row>
+      <row><cell><c>schema-forge-postgres</c>, <c>-mysql</c>, <c>-iceberg</c></cell><cell><c>engines/&lt;database&gt;</c></cell><cell>engine</cell><cell>the engines, each with its add-on trait and bundled add-ons</cell></row>
+      <row><cell><c>schema-forge-engines</c></cell><cell><c>crates/engines</c></cell><cell>registry</cell><cell>the engines SchemaForge ships with, registered</cell></row>
+      <row><cell><c>schema-forge-query</c></cell><cell><c>crates/query</c></cell><cell>app</cell><cell>the DataFusion layer: a schema as a DataFusion catalog, planned views, lineage, Arrow-type compatibility, live sources</cell></row>
+      <row><cell><c>schema-forge-store</c>, <c>-ops</c>, <c>-rules</c>, <c>-serve</c>, <c>-mcp</c>, <c>-cli</c></cell><cell><c>crates/…</c></cell><cell>app</cell><cell>they ask the registry, never one engine</cell></row>
+      <row><cell><c>schema-forge-architecture</c></cell><cell><c>tools/architecture</c></cell><cell>tool</cell><cell>the design, checked on the code</cell></row>
+      <row><cell>the canvas</cell><cell><c>canvas/</c></cell><cell></cell><cell>the shared screens, drawn from what each engine describes (<c>/api/engines</c>)</cell></row>
+    </table>
+  </section>
+  <section title="The plan">
+    <p>The plan is the build spec: <a href="../specs/root.xml">specs/root.xml</a> holds the sequence of tasks, the decisions with their dates, and the method every build follows; each task is one XML file under <a href="../specs/tasks">specs/tasks/</a>, one branch and one pull request, keyed <c>SF-&lt;issue&gt;</c>. The database comes first: its schema folders (<a href="store.xml">docs/store.md</a>) are designed and locked before any of it is built, and every task falls into them.</p>
+    <p><b>Done:</b> the foundation, the model, the engine interface with its registry and conformance kit, the section layout, and <b>the MySQL engine</b>, whole (<a href="../engines/mysql/README.xml">engines/mysql</a>).</p>
+    <p><b>Next, in the spec's order:</b> the spec check; the tables interface; Quill, the engine every test of shared code runs beside MySQL; MySQL's tables; PostgreSQL 18 built by the project's CI; the store on that bundled PostgreSQL; then, once their decisions are closed, the operations, the server and the canvas. After them: the Apache Iceberg engine, then the PostgreSQL engine, each with its own tables; schema management, CDC pipelines, consistency, deploy.</p>
+    <p>How to write an engine: <a href="writing-an-engine.xml">writing-an-engine.md</a>.</p>
+  </section>
+</doc>

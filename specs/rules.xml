@@ -23,7 +23,7 @@
   </rule>
 
   <rule id="cortex-and-engines">
-    <from>the operator, 2026-11-24: "a cortex schema global and schema per engine"; docs/engines.md</from>
+    <from>the operator, 2026-11-24: "a cortex schema global and schema per engine"; docs/engines.xml</from>
     <text>What every engine shares is the cortex's; what is one engine's alone is that engine's, in its own tables in its own crate, in its own namespace engine_&lt;engine&gt; (engine_mysql.table_options). Shared code (the model, the interface, the store, the server, the canvas) never names an engine, an engine table or an engine column; an engine never writes a cortex table's rows but through the interface, and never another engine's.</text>
     <breach>the architecture check (a database named outside its engine, an engine's table among them since each is named by its engine; and, from t03, every engine's field keys, kind ids, option keys, table and column names in shared code); the spec check (an engine table outside its engine's folder, or outside its engine's namespace); the kit</breach>
   </rule>
@@ -41,7 +41,7 @@
   </rule>
 
   <rule id="nothing-lost">
-    <from>docs/engines.md; the MySQL engine as merged</from>
+    <from>docs/engines.xml; the MySQL engine as merged</from>
     <text>A schema written into the store and read back is the same schema: every part, every value, every order. What the model does not describe is kept exactly as written and written back in its place. Nothing is dropped, truncated, defaulted or summarised on the way in or out.</text>
     <breach>the kit's round trip of every sample through an engine's tables; the store's round trip of every sample of every engine</breach>
   </rule>
@@ -72,7 +72,7 @@
 
   <rule id="no-attribution">
     <from>the operator, 2026-11-23</from>
-    <text>No commit, branch, PR, file or comment carries an attribution to a coding agent or a model: no co-author line, no generated-by line, no trailer. The work is the project's: its commits are the project's service account's (decision service-accounts), reviewed and merged by the operator.</text>
+    <text>No commit, branch, PR, file or comment carries an attribution to a coding agent or a model: no co-author line, no generated-by line, no trailer. The work is the project's: its commits are pushed under the GitHub account of whoever runs the build (decision service-accounts), reviewed and merged by the operator.</text>
     <breach>the operator's build configuration (root method session), attribution off; review</breach>
   </rule>
 
@@ -84,7 +84,7 @@
 
   <rule id="kickoff">
     <from>the operator, 2026-11-24</from>
-    <text>A build starts when a model is pointed at one task file, specs/tasks/&lt;file&gt;.xml, in any session the operator chooses (a new one, one that holds other work, or another agent's) on a checkout of the head of main updated from origin. Before it writes anything it reads, whole and in the order the root's method read gives, the files that order names, and from then on it works from them alone: nothing said earlier in the session, and nothing remembered from other work, is authority, and what the files do not say is a stop. It acts only through the project's service accounts (decision service-accounts). The task file's start element names the branch, the PR title and the read order; the agent writes its own label.</text>
+    <text>A build starts when a model is pointed at one task file, specs/tasks/&lt;file&gt;.xml, in any session the operator chooses (a new one, one that holds other work, or another agent's) on a checkout of the head of main updated from origin. Before it writes anything it reads, whole and in the order the root's method read gives, the files that order names, and from then on it works from them alone: nothing said earlier in the session, and nothing remembered from other work, is authority, and what the files do not say is a stop. In the database it acts only through the database's service accounts, sf_owner, sf_service and sf_reader (decision service-accounts). The task file's start element names the branch, the PR title and the read order; the agent writes its own label.</text>
     <breach>the PR body's statement of the session it ran in, the order the files were read and the account it acted as; review of the branch name, the PR title and every claim the PR makes against the files</breach>
   </rule>
 

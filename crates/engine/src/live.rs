@@ -1,4 +1,4 @@
-//! Reading a schema from the live database (docs/connections.md). An engine declares the fields a connection needs as
+//! Reading a schema from the live database (docs/connections.xml). An engine declares the fields a connection needs as
 //! data, tests a connection step by step, and reads the schema read-only. The app keeps the profiles and their secrets
 //! and builds the Connections page from the declared fields; the engine never stores a secret, and the agent never
 //! sees one.

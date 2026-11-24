@@ -3,7 +3,7 @@ resolver = "3"
 # crates/: what every database shares. engines/: one crate per database. tools/: checks of the code itself. Each folder
 # joins the members with its first crate (cargo refuses a pattern that matches nothing).
 # Every crate declares its role in `[package.metadata.schema-forge]`; tools/architecture fails the build when the
-# roles depend on each other in a way docs/engines.md does not allow, or a database is named outside its engine.
+# roles depend on each other in a way docs/engines.xml does not allow, or a database is named outside its engine.
 members = ["crates/*", "engines/*", "tools/*"]
 # engines/quill holds Quill's schema folder before its crate exists (specs/tasks/SF-95.xml builds it and removes this).
 exclude = ["engines/quill"]

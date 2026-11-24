@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doc id="market" title="Market scan (2026-11-20)">
+  <p>What exists near SchemaForge, from a web scan on 2026-11-20. Feature claims come from each project's own pages and listings; nothing here was installed or tested.</p>
+  <section title="MCP plus ER diagrams: the direct neighbours">
+    <table>
+      <head><cell>Tool</cell><cell>What it is</cell><cell>Rules / standards</cell><cell>Iceberg, CDC</cell><cell>Licence</cell></head>
+      <row><cell><a href="https://github.com/anatoly-lab/drawdb-mcp">drawDB + MCP</a></cell><cell>a fork of drawDB whose backend holds the diagram; MCP tools (export SQL/DBML, import DBML, import/export the diagram); a connected editor stays in sync, and edits in the editor go back</cell><cell>none mentioned</cell><cell>no</cell><cell>AGPL-3.0</cell></row>
+      <row><cell><a href="https://www.drawdb.app/">drawDB</a> official MCP</cell><cell>read-only access to diagrams</cell><cell>none</cell><cell>no</cell><cell>AGPL-3.0 (drawDB)</cell></row>
+      <row><cell><a href="https://schemasketch.dev/">SchemaSketch</a> (<a href="https://dev.to/schemasketch/your-ai-agent-can-now-design-edit-and-export-database-schemas-with-mcp-27f4">post</a>)</cell><cell>hosted; about 15 MCP tools to create, update and export diagrams; imports SQL, Mermaid, PlantUML</cell><cell>none mentioned</cell><cell>no</cell><cell>hosted service</cell></row>
+      <row><cell><a href="https://erflow.io/en">ER Flow</a></cell><cell>visual modeler with an MCP server for Claude Code, Cursor, Windsurf; generates migrations</cell><cell>none mentioned</cell><cell>no</cell><cell>commercial</cell></row>
+      <row><cell><a href="https://glama.ai/mcp/servers/sqemo/sqemo-mcp">Sqemo</a></cell><cell>the closest: 36 MCP tools to model, lint and export; names derived from a team word list and naming rules; domains define types; lint, diff, migration scripts, drift against PostgreSQL and MySQL</cell><cell>naming rules, word lists, domains</cell><cell>no</cell><cell>MIT server, commercial cloud and Pro tools; listed as inactive</cell></row>
+    </table>
+  </section>
+  <section title="AI schema design, with its own agent">
+    <list>
+      <item><a href="https://github.com/liam-hq/liam">Liam</a> (Apache-2.0, about 4.9k stars): ER diagrams from existing schemas, and an AI design system of its own agents (requirements, schema design, QA) built on LangGraph, storing sessions in Supabase (<a href="https://deepwiki.com/liam-hq/liam">DeepWiki</a>). Its agent, not yours.</item>
+      <item><a href="https://sql-designer.com/blog/best-free-erd-tools">ChartDB</a>: mostly documents existing schemas, with AI explanations.</item>
+      <item>drawDB Pro, <a href="https://drawsql.app/">DrawSQL</a>: AI assistants inside the diagram tool.</item>
+      <item>Text-to-ER generators (<a href="https://miro.com/ai/erd-diagram-ai/">Miro</a>, <a href="https://cloudairy.com/ai/ai-er-diagram-generator">Cloudairy</a>, <a href="https://mockflow.com/ai/database-diagram-generator/">MockFlow</a>): a description in, a diagram out.</item>
+    </list>
+  </section>
+  <section title="Standards in classic modelers">
+    <p>Enterprise modelers enforce naming standards: <a href="https://www.oracle.com/technetwork/developer-tools/datamodeler/datamodelernamingstandards-167685.pdf">Oracle SQL Developer Data Modeler</a> (naming patterns and design rules), <a href="https://docwiki.embarcadero.com/ERStudioDA/211/en/Enforcing_Naming_Standards_Using_Naming_Standards_Templates">ER/Studio</a> (naming standards templates). They are built for people editing by hand, not for agents. A <a href="https://blog.quest.com/the-90-second-data-model-why-ai-generated-data-models-arent-a-modeling-practice/">Quest post</a> makes the same point we do: AI that suggests a convention without enforcing it is not modelling.</p>
+    <p>Teams also write conventions as a markdown file for their agent (<a href="https://claudecodeguides.com/claude-md-for-database-conventions-and-patterns/">example</a>): guidance the agent may follow, nothing that refuses a bad change.</p>
+  </section>
+  <section title="MySQL to Iceberg through CDC">
+    <p>No tool was found that designs Iceberg tables from a MySQL schema under standards. What exists runs the pipeline and creates or evolves tables automatically: <a href="https://estuary.dev/blog/mysql-to-apache-iceberg/">Estuary</a>, <a href="https://dev.to/bladepipe/how-to-load-data-from-mysql-to-iceberg-in-real-time-2f">BladePipe</a>, <a href="https://docs.snowflake.com/en/user-guide/data-integration/openflow/connectors/mysql/iceberg">Snowflake Openflow</a>, <a href="https://docs.cloudera.com/dataflow/cloud/readyflow-overview-mysqlcdc-iceberg/topics/cdf-readyflow-mysqlcdc-iceberg.html">Cloudera</a>, <a href="https://aws.amazon.com/blogs/big-data/use-amazon-msk-connect-and-iceberg-kafka-connect-to-build-a-real-time-data-lake">Iceberg Kafka Connect on MSK</a>, <a href="https://memiiso.github.io/debezium-server-iceberg/migration">Debezium Server Iceberg</a>, and a published <a href="https://docs.amazonaws.cn/en_us/firehose/latest/dev/database-as-source-supported-datatypes.html">MySQL-to-Iceberg type table</a> for Firehose. None of them shows the source's inconsistencies first, or lets you decide the target design before data flows.</p>
+  </section>
+  <section title="Where SchemaForge stands apart">
+    <steps>
+      <item><b>Your agent, any agent.</b> It works with any coding agent that speaks MCP; Claude Code first. The MCP is the enforcer, not a convenience: every change goes through it and is checked.</item>
+      <item><b>You direct, and can edit by hand.</b> The user sees, points and instructs, with references to everything, or makes the change in the perspectives, under the same rules as the agent.</item>
+      <item><b>Standards by type:</b> type standards, naming, keys, patterns such as SCD Type 2, the Debezium pack; enforced on every operation, not suggested.</item>
+      <item><b>Inconsistencies surfaced</b> across the whole schema, before they become data problems.</item>
+      <item><b>Iceberg first-class</b>, and <b>CDC designed</b>: MySQL to Iceberg through Debezium, every column decided by rule, the connector's settings written to match.</item>
+      <item><b>Local and open source</b> (MIT or Apache-2.0).</item>
+    </steps>
+  </section>
+  <section title="What to watch">
+    <p>drawDB + MCP and Sqemo show the idea of an agent editing an ER model through MCP is already out there. SchemaForge's difference has to stay where the list above puts it: enforced standards, CDC and Iceberg, the many perspectives, and the agent as the only editor.</p>
+  </section>
+</doc>

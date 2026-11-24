@@ -1,0 +1,99 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="alternate" type="application/xml" title="For coding agents: the brief, agents.xml" href="https://k8nstantin.github.io/schema-forge/agents.xml">
+<title>Connections: reading a schema from the live database</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F8F4FB;--surface:#FFFFFF;--raised:#FBF8FD;--ink:#1F062A;--ink2:#3B2447;--muted:#6B5A74;--line:#E3D9EA;
+  --accent:#9500BF;--accent-soft:#F3E3FA;--engine:#0E7C86;--engine-soft:#DDF2F3;--log:#8A5A00;--log-soft:#FBF0DA;
+  --crit:#B42318;--crit-soft:#FDECEA;
+  --head:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;--sans:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"JetBrains Mono","Fira Code",ui-monospace,SFMono-Regular,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+  --bg:#1F062A;--surface:#2A0F38;--raised:#331545;--ink:#FFFFFF;--ink2:#E3D6EC;--muted:#ADACAC;--line:#45285A;
+  --accent:#CC66FF;--accent-soft:#3C1452;--engine:#4FD1C5;--engine-soft:#123B3B;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#1F062A;--surface:#2A0F38;--raised:#331545;--ink:#FFFFFF;--ink2:#E3D6EC;--muted:#ADACAC;--line:#45285A;
+  --accent:#CC66FF;--accent-soft:#3C1452;--engine:#4FD1C5;--engine-soft:#123B3B;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}
+*{box-sizing:border-box}
+.hero{background:linear-gradient(160deg,#1F062A 0%,#2A0838 55%,#3A0A4D 100%);color:#FFFFFF;border-radius:18px;padding:56px 28px 48px;margin:0 0 8px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(closest-side,rgba(204,102,255,.35),transparent);pointer-events:none}
+.hero .eyebrow{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#CC66FF;margin:0 0 14px}
+.hero h1{color:#FFFFFF;font-size:52px;margin:0 0 16px;max-width:22ch}
+.hero p{color:#E3D6EC;font-size:18px;max-width:62ch;margin:0 0 24px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;position:relative;z-index:1}
+.btn{display:inline-block;font:600 15px/1 var(--sans);padding:13px 20px;border-radius:10px;text-decoration:none;border:1.5px solid transparent}
+.btn-primary{background:#9500BF;color:#FFFFFF;border-color:#9500BF}.btn-primary:hover{background:#B500BA;border-color:#B500BA;color:#FFFFFF}
+.btn-secondary{background:transparent;color:#FFFFFF;border-color:rgba(255,255,255,.35)}.btn-secondary:hover{border-color:#CC66FF;color:#CC66FF}
+.note{display:inline-block;margin-top:22px;font:500 12.5px var(--mono);color:#ADACAC;position:relative;z-index:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;margin-top:18px}
+.cards.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;min-width:0}
+.card h3{margin:0 0 6px;font-size:18px}.card p{margin:0;color:var(--ink2);font-size:14.5px}
+a.card{display:block;text-decoration:none;color:var(--ink)}a.card:hover{border-color:var(--accent)}a.card .go{display:block;margin-top:10px;color:var(--accent);font:600 13px var(--mono)}
+.kicker{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+.cta{background:var(--accent-soft);border:1px solid var(--line);border-radius:18px;padding:28px 24px}
+.foot{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
+@media (max-width:640px){.nav{position:static}.nav .sub{display:none}.hero{padding:40px 18px 36px}.hero h1{font-size:36px}.hero p{font-size:16px}}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 120px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:70;background:var(--bg)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 80px}
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:60;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 14px;padding:8px 10px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.nav .brand{font:600 15px/1 var(--head);color:var(--ink);border:0;padding:5px 8px 5px 2px}.nav .brand::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);margin-right:8px;vertical-align:0}
+.nav .l{font:500 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 4px 0 2px}
+.nav a{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;white-space:nowrap}
+.nav a:hover{border-color:var(--accent);color:var(--accent)}
+.nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.nav .sub{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;padding-top:6px;border-top:1px solid var(--line);font-size:13px}
+.nav .sub a{border:0;padding:0;color:var(--accent);border-radius:0}
+.agents{margin-top:56px;border:1px dashed var(--accent);border-radius:14px;padding:18px 20px;background:var(--surface)}.agents p{margin:0 0 12px;max-width:80ch;color:var(--ink2)}.agents .kicker{margin-bottom:6px}
+.btn-outline{background:transparent;color:var(--accent);border-color:var(--accent)}.btn-outline:hover{background:var(--accent);color:#FFFFFF}
+.tb{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1.5px solid var(--ink);background:var(--surface)}
+.tb div{padding:8px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.tb span{display:block;font:500 10.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tb b{font:500 14px/1.4 var(--mono);overflow-wrap:anywhere}.tb a{color:var(--accent)}
+h1{font:600 44px/1.08 var(--head);letter-spacing:-.01em;margin:22px 0 8px;text-wrap:balance}
+h2{font:600 28px/1.15 var(--head);letter-spacing:-.01em;margin:0 0 8px;text-wrap:balance;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+h3{font:600 21px/1.2 var(--head);margin:22px 0 6px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+h4{margin:0 0 6px;font-size:15px}
+.draft{font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--log);background:var(--log-soft);border:1px solid var(--log);border-radius:999px;padding:2px 10px;vertical-align:middle}
+.path{font:400 12.5px var(--mono);color:var(--muted)}
+.lede{color:var(--ink2);max-width:78ch;margin:0 0 14px}
+p{max-width:82ch}
+.small{font-size:13px;color:var(--muted)}
+code{font:13px var(--mono);background:var(--raised);border:1px solid var(--line);border-radius:4px;padding:0 4px;overflow-wrap:anywhere}
+a{color:var(--accent)}a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{margin:52px 0 0}
+figure{margin:14px 0 0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:680px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:10px;max-width:86ch}
+.d text{fill:var(--ink);font:12.5px var(--sans)}.d .m{font-family:var(--mono);font-size:12px}.d .b6{font-weight:600}
+.d .lb{font-size:11px;fill:var(--muted)}.d .cap{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;fill:var(--muted)}
+.d .halo{paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.d .box{fill:var(--surface);stroke:var(--ink2);stroke-width:1.2}
+.d .pri{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.d .eng{fill:var(--engine-soft);stroke:var(--engine);stroke-width:1.4}
+.d .lg{fill:var(--log-soft);stroke:var(--log);stroke-width:1.4}
+.d .file{fill:var(--raised);stroke:var(--ink);stroke-width:1.5}
+.d .band{fill:none;stroke:var(--line);stroke-width:1.2;stroke-dasharray:5 4}
+.d .ea{stroke:var(--accent);stroke-width:1.4;fill:none}.d .es{stroke:var(--muted);stroke-width:1.1;fill:none;stroke-dasharray:4 3}
+.d .mkf{fill:var(--accent)}.d .mkm{fill:var(--muted)}
+.d a:hover rect{stroke-width:2.4}
+table.t{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line)}
+table.t th{text-align:left;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);background:var(--raised)}
+table.t td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+.scroll{overflow-x:auto}
+.pill{display:inline-block;font:500 11.5px var(--mono);border-radius:999px;padding:1px 9px;white-space:nowrap;border:1px solid var(--line);color:var(--ink2);background:var(--raised)}
+.pill.ok{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+.pill.open{color:var(--log);background:var(--log-soft);border-color:transparent}
+.pill.eng{color:var(--engine);background:var(--engine-soft);border-color:transparent}
+.lab{font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+details{border-top:1px solid var(--line);padding:8px 0}summary{cursor:pointer;font-weight:600}
+pre{margin:8px 0 0;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font:12.5px/1.55 var(--mono);color:var(--ink2);overflow:auto;white-space:pre}
+@media (max-width:640px){h1{font-size:34px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+.doc{max-width:860px}.doc h2{margin-top:36px}.doc h3{margin-top:24px}.doc ul,.doc ol{padding-left:22px}
+.doc li{margin:6px 0}.doc pre{overflow-x:auto}.doc .src{margin:4px 0 22px}</style>
+<div class="wrap"><span id="top"></span><nav class="nav" aria-label="SchemaForge"><a class="brand" href="index.html">SchemaForge</a><a href="start.html">Start here</a><a href="engines.html">Engines</a><a href="database.html">Database</a><a href="template.html">Owner Template</a><a href="build-spec.html">Build Spec</a><a href="contribute.html">Contribute</a><a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">GitHub</a></nav><header class="doc"><h1>Connections: reading a schema from the live database</h1><p class="small src">The source, for people and agents alike: <a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/connections.xml"><code>docs/connections.xml</code></a></p></header><article class="doc"><p>Every engine reads its schemas two ways: from <strong>files</strong> (a dump, definition files, table metadata) and from <strong>the live database</strong>, over a connection. This is the design for the live side, agreed before any code: what an engine provides, what the app shares across engines, how credentials are kept, and how a connection is set up and tested.</p><h2 id="what-is-shared-and-what-is-the-engines">What is shared, and what is the engine&#x27;s</h2><div class="scroll"><table class="t"><tr><th>Shared by every engine (the app)</th><th>Each engine&#x27;s own (<code>engines/&lt;database&gt;</code>)</th></tr><tr><td>connection profiles, and where their secrets are kept</td><td>the fields a connection needs, declared as data</td></tr><tr><td>the Connections page: list, add, edit, test, remove</td><td>how to test a connection: reach, secure, sign in, version, rights</td></tr><tr><td>testing: running the engine&#x27;s test and showing every step</td><td>how to read the live schema, read-only</td></tr><tr><td>reading: the engine&#x27;s live read, with the same report as a file import</td><td>the driver, the queries, the parsing</td></tr><tr><td>the agent&#x27;s view: connection names only, never a secret</td><td></td></tr></table></div><h2 id="profiles-and-secrets">Profiles and secrets</h2><p>A <strong>connection profile</strong> is a name, an engine, and the values of the fields that engine declares (host, port, user, database, TLS mode…). Profiles live in the workspace, and <strong>never hold a secret</strong>.</p><p>A <strong>secret</strong> (a password, a token) is kept in one of these, chosen per profile:</p><ol><li><strong>the operating system&#x27;s keychain</strong> (macOS Keychain, Windows Credential Manager, the Linux secret service): the default when the secret is typed on the Connections page;</li><li><strong>a file the database&#x27;s own tools already use</strong>, by reference: <code>~/.my.cnf</code> or a <code>mysql_config_editor</code> login path for MySQL, <code>~/.pgpass</code> or a service file for PostgreSQL;</li><li><strong>an environment variable</strong>, by name;</li><li><strong>ambient credentials</strong> the database&#x27;s cloud provides (gcloud application default credentials, an AWS profile), for the engines whose catalogs use them.</li></ol><p>A secret is never written to the workspace, never logged, never put in a URL, never returned by the server&#x27;s API and never seen by the agent. The server serves this machine only (it already refuses other hosts and origins).</p><h2 id="the-connections-page">The Connections page</h2><p>One page in the canvas, shared by every engine, drawn from what each engine declares:</p><ul><li><strong>the list</strong>: each connection&#x27;s name, engine, where it points (host and database, never the secret), when it was last tested and how that went;</li><li><strong>adding or editing</strong>: choose the engine, and its form appears, built from the fields it declares (each with its label, kind, default and help); the secret field says where the secret will be kept;</li><li><strong>Test</strong>: runs the engine&#x27;s test and shows <strong>each step</strong> with what happened, so a failure says exactly where it failed: 1. <strong>reach</strong>: the host answers on the port; 2. <strong>secure</strong>: TLS as the profile asks (required, verified, or off), and the certificate; 3. <strong>sign in</strong>: the user and the secret are accepted; 4. <strong>version</strong>: the server&#x27;s version, and the engine version a schema read from it will be designed for; 5. <strong>rights</strong>: the user can read the schema&#x27;s definitions, and whether it can also change anything (a read-only user is recommended, and the test says so when it is not);</li><li><strong>Read the schema</strong>: reads it into a new schema, or into an existing one to compare, with the same report a file import gives.</li></ul><h2 id="what-an-engine-provides">What an engine provides</h2><p>A new optional part of the engine interface, <code>Live</code>:</p><ul><li><strong>its connection fields</strong>, as data: key, label, kind (text, number, one of a list, secret), default, help, required; so the Connections page and the agent&#x27;s tools are built from them, and a new engine&#x27;s connection form needs no canvas code;</li><li><strong><code>test(profile, secret) -&gt; steps</code></strong>: the five steps above, each passed or failed with what happened;</li><li><strong><code>read(profile, secret, which) -&gt; the schema and its report</code></strong>: read-only, every object the engine models, with the report adding up exactly as a file read&#x27;s does; <code>which</code> names the databases (or namespaces) to read.</li></ul><p>Every live read uses only statements that read. An engine reads the definitions the way its database writes them when it can (<code>SHOW CREATE TABLE</code>, <code>SHOW CREATE PROCEDURE</code> in MySQL), through the same reader its dumps go through, so a schema read live and one read from a dump of the same database are the same model.</p><h2 id="the-agent">The agent</h2><p>The agent sees connection names, their engines and where they point, and can ask to read a schema from one; the server connects, with the secret it keeps. The agent never sees, sends or chooses a secret, and cannot create a profile; the person does that on the Connections page.</p><h2 id="where-it-is-built">Where it is built</h2><ul><li><strong>Each engine&#x27;s live part</strong> (its connection fields, its test, its live read, and the <code>Live</code> part of the interface the first engine needs) is built in that engine&#x27;s own branch and pull request, with its dump reader: the MySQL engine first.</li><li><strong>Connections in the app</strong> (profiles in the workspace, secrets in the keychain or referenced, the Connections page with its test, the agent&#x27;s tools) is its own piece of work, built with the server and the canvas.</li></ul></article><aside class="agents" aria-label="For coding agents"><p class="kicker">For coding agents</p><p>Everything a coding agent needs to work on SchemaForge is in one place: the brief, https://k8nstantin.github.io/schema-forge/agents.xml. It explains what SchemaForge is and how it is built, lists every contribution open now, and leads to the spec, the rules and the task files, in the order to read them. Read it before you act on this page, and let your human choose what to do.</p><a class="btn btn-outline" href="https://k8nstantin.github.io/schema-forge/agents.xml">The brief: agents.xml</a></aside><p class="foot"><span>SchemaForge · MIT or Apache-2.0</span><a href="https://github.com/k8nstantin/schema-forge">GitHub</a><a href="https://github.com/k8nstantin/schema-forge/discussions">Discussions</a><a href="https://k8nstantin.github.io/schema-forge/agents.xml">For coding agents: the brief, agents.xml</a><span>Generated by docs/pages/build.py from the repository: the files are the authority.</span></p></div>

@@ -107,7 +107,7 @@ but that interface: a problem in one is found in that one and never breaks anoth
 with add-ons (PostGIS types, a company's conventions) without forking it. A **conformance kit** checks every engine,
 and **CI checks the architecture itself**: a database named outside its engine, or one engine depending on another,
 fails the build. **Adding a database needs no change to the core.** Every decision and why:
-[docs/engines.md](docs/engines.md); how to write one: [docs/writing-an-engine.md](docs/writing-an-engine.md).
+[docs/engines.xml](https://k8nstantin.github.io/schema-forge/doc-engines.html); how to write one: [docs/writing-an-engine.xml](https://k8nstantin.github.io/schema-forge/doc-writing-an-engine.html).
 
 ## How it works
 
@@ -166,7 +166,7 @@ its relationships (what reads and writes what, what a change would reach), its m
 by meaning) and its problems (each a finding with its evidence). Ask in plain words, on the canvas or through your agent.
 
 The database is **designed first and locked**, so coding agents fall into it instead of drifting from it
-([the Database page](docs/pages/database.html), [docs/store.md](docs/store.md)):
+([the Database page](docs/pages/database.html), [docs/store.xml](https://k8nstantin.github.io/schema-forge/doc-store.html)):
 
 - **Every owner in its own namespace.** `cortex` is what every engine shares (objects, columns, relationships, keys,
   indexes, the log); each engine brings `engine_<id>` (`engine_mysql.table_options`); each future feature brings its own
@@ -178,7 +178,7 @@ The database is **designed first and locked**, so coding agents fall into it ins
   inverse and the log rebuilds the model.
 - **It grows by versions.** Each owner versions its own tables; every change adds, a rename takes two versions, and
   every release upgrades a database of every earlier version. A new database or feature starts from
-  [the owner template](docs/owner-template/README.md): five table shapes, rules, migrations, proved on PostgreSQL.
+  [the owner template](https://k8nstantin.github.io/schema-forge/doc-owner-template.html): five table shapes, rules, migrations, proved on PostgreSQL.
 - **Ready to be talked to.** An `insight` layer (dependencies, annotations, embeddings) lets a person or an agent
   search and question a design through the MCP, in plain words.
 
@@ -191,10 +191,10 @@ pull request, which a coding agent builds from and nothing else.
 the rules engine with hard and soft rules, exceptions, goals, compatibility and CDC packs, agent-proposed rules with
 verification, reading pg_dumps and Iceberg Spark SQL, and writing PostgreSQL and Iceberg SQL.
 
-**The product is being rebuilt now**, in the open, on the design in [docs/engines.md](docs/engines.md): every
+**The product is being rebuilt now**, in the open, on the design in [docs/engines.xml](https://k8nstantin.github.io/schema-forge/doc-engines.html): every
 database a plugin, Apache DataFusion at the center, the architecture checked by CI. Built so far: the model, the
 engine interface with its registry and conformance kit, the layout every engine fills, the architecture check, and
-the first engine, [MySQL](engines/mysql/README.md): dumps, DDL and the live database read, every kind of object and
+the first engine, [MySQL](https://k8nstantin.github.io/schema-forge/doc-mysql.html): dumps, DDL and the live database read, every kind of object and
 clause, written back in a form that loads into MySQL 8.0 to 26.10. Next, in the order of
 [the build spec](specs/root.xml): the spec check, the tables interface, Quill (the engine every shared test runs
 beside), MySQL's tables, PostgreSQL built for the store, the store, the operations, the server and the MCP, the
@@ -216,10 +216,10 @@ claude mcp add --transport http schema-forge http://127.0.0.1:7410/mcp
 `schema-forge import <pg_dump or Iceberg folder> --schema <name>` or **Open a file or folder** on Home. Then ask
 your agent: *"Design `@orders_lake`: orders and customers landed from the shop's PostgreSQL by Debezium."*
 
-The design: [docs/engines.md](docs/engines.md) (engines), [docs/rules.md](docs/rules.md) (rules),
-[docs/perspectives.md](docs/perspectives.md) (the canvas), [docs/cdc.md](docs/cdc.md) (CDC to Iceberg),
-[docs/store.md](docs/store.md) (storage), [docs/versions.md](docs/versions.md) (versions),
-[docs/market.md](docs/market.md) (how it compares).
+The design: [docs/engines.xml](https://k8nstantin.github.io/schema-forge/doc-engines.html) (engines), [docs/rules.xml](https://k8nstantin.github.io/schema-forge/doc-rules.html) (rules),
+[docs/perspectives.xml](https://k8nstantin.github.io/schema-forge/doc-perspectives.html) (the canvas), [docs/cdc.xml](https://k8nstantin.github.io/schema-forge/doc-cdc.html) (CDC to Iceberg),
+[docs/store.xml](https://k8nstantin.github.io/schema-forge/doc-store.html) (storage), [docs/versions.xml](https://k8nstantin.github.io/schema-forge/doc-versions.html) (versions),
+[docs/market.xml](https://k8nstantin.github.io/schema-forge/doc-market.html) (how it compares).
 
 ## Contributing
 

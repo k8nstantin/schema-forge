@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doc id="cdc" title="CDC to Iceberg through Debezium">
+  <p>You capture changes from a MySQL or PostgreSQL database with Debezium and land them in Iceberg tables. The hard part is not the pipeline; it is knowing, column by column, what each MySQL type becomes on the way, and finding the inconsistencies in the source before they turn into broken or silently wrong data.</p>
+  <p>SchemaForge designs the Iceberg side from the source side, under rules, and shows every inconsistency first.</p>
+  <section title="The idea">
+    <code><![CDATA[ source schema ──► consistency check ──► pipeline (rules, Debezium's included) ──► Iceberg schema
+ (MySQL or        every problem shown      every column mapped, decided once       + mapping report
+                                                                                     + Debezium settings]]></code>
+    <list>
+      <item>The source follows the <b>Debezium rule pack</b> (<a href="rules.xml#debezium-a-rule-pack">rules.md</a>), which a pipeline adds to it.</item>
+      <item>A <b>pipeline</b> links two schemas in SchemaForge: a MySQL or PostgreSQL source and an Iceberg target.</item>
+      <item>Each side has its own collection of rule packs: the source, its type's defaults and the Debezium pack; the target, Iceberg's defaults and whatever packs you add (SCD, star schema, your naming). It carries the rules for the mapping, including the Debezium rule pack's connector settings.</item>
+      <item>The Iceberg tables are generated from the source by those rules; you and the agent then refine them (partitions, sort orders, extra columns) like any schema.</item>
+      <item>When the source changes, the pipeline shows what the Iceberg side must do: an allowed schema evolution, or a change it cannot take, flagged.</item>
+    </list>
+  </section>
+  <section title="Inconsistencies, shown first">
+    <p>Before anything is mapped, the source is checked. Every finding is marked on the tables and columns in every perspective, gathered in the <b>Consistency</b> perspective, and given to the agent with a suggested fix.</p>
+    <p><b>Inconsistencies in the source:</b></p>
+    <list>
+      <item>the same column, different types: <c>customer_id int</c> in one table, <c>bigint</c> in another</item>
+      <item>a relationship whose two ends differ: <c>int</c> referencing <c>bigint</c>, signed referencing unsigned</item>
+      <item>one kind of data in many types: money as <c>decimal(10,2)</c>, <c>decimal(12,2)</c> and <c>double</c></item>
+      <item>lengths that drift: <c>email varchar(100)</c> here, <c>varchar(255)</c> there</item>
+      <item>mixed character sets or collations across tables</item>
+      <item><c>DATETIME</c> and <c>TIMESTAMP</c> both used for points in time (Debezium treats them differently, below)</item>
+      <item><c>TINYINT(1)</c> used as a boolean in some tables and as a number in others</item>
+    </list>
+    <p><b>Hazards on the way to Iceberg through Debezium, from MySQL</b> (PostgreSQL's are in the <a href="rules.xml#debezium-a-rule-pack">Debezium rule pack</a>):</p>
+    <list>
+      <item><c>BIGINT UNSIGNED</c>: Debezium's default (<c>bigint.unsigned.handling.mode=long</c>) silently corrupts values above 2^63 − 1; the safe choice is <c>precise</c>, giving <c>decimal(20,0)</c></item>
+      <item>a table without a primary key: no identifier fields on the Iceberg side, so no upserts, only appends</item>
+      <item>zero dates (<c>0000-00-00</c>): become <c>null</c> for nullable columns and the epoch for <c>NOT NULL</c> ones</item>
+      <item><c>TIME</c> values outside a day (MySQL allows up to 838 hours): only 00:00 to 23:59:59.999999 is captured correctly</item>
+      <item><c>ENUM</c> and <c>SET</c> arrive as strings; their allowed values are lost unless kept (as a comment or a check)</item>
+      <item><c>FLOAT</c> or <c>DOUBLE</c> for money</item>
+      <item><c>DECIMAL</c> under <c>decimal.handling.mode=double</c> or <c>string</c>: precision lost or the type changed</item>
+    </list>
+  </section>
+  <section title="How each MySQL type lands">
+    <p>With the Debezium rule pack's shipped defaults (below):</p>
+    <table>
+      <head><cell>MySQL</cell><cell>Debezium event</cell><cell>Iceberg</cell></head>
+      <row><cell><c>TINYINT</c>, <c>SMALLINT</c>, <c>MEDIUMINT</c>, <c>INT</c></cell><cell>integer</cell><cell><c>int</c></cell></row>
+      <row><cell><c>INT UNSIGNED</c></cell><cell>integer</cell><cell><c>long</c></cell></row>
+      <row><cell><c>BIGINT</c></cell><cell><c>INT64</c></cell><cell><c>long</c></cell></row>
+      <row><cell><c>BIGINT UNSIGNED</c></cell><cell><c>Decimal</c> (<c>precise</c>)</cell><cell><c>decimal(20,0)</c></cell></row>
+      <row><cell><c>TINYINT(1)</c> used as a boolean</cell><cell><c>BOOLEAN</c> (with the TinyInt-to-boolean converter)</cell><cell><c>boolean</c></cell></row>
+      <row><cell><c>BIT(1)</c></cell><cell><c>BOOLEAN</c></cell><cell><c>boolean</c></cell></row>
+      <row><cell><c>DECIMAL(p,s)</c></cell><cell><c>Decimal</c> (<c>precise</c>)</cell><cell><c>decimal(p,s)</c></cell></row>
+      <row><cell><c>FLOAT</c>, <c>DOUBLE</c></cell><cell><c>FLOAT32</c>, <c>FLOAT64</c></cell><cell><c>float</c>, <c>double</c> (flagged when the kind is money)</cell></row>
+      <row><cell><c>CHAR</c>, <c>VARCHAR</c>, <c>TEXT</c></cell><cell><c>STRING</c></cell><cell><c>string</c></cell></row>
+      <row><cell><c>ENUM</c>, <c>SET</c></cell><cell><c>STRING</c> (<c>Enum</c>, <c>EnumSet</c>)</cell><cell><c>string</c>, allowed values kept in the comment</cell></row>
+      <row><cell><c>JSON</c></cell><cell><c>STRING</c> (<c>Json</c>)</cell><cell><c>string</c>, or <c>variant</c> on format version 3</cell></row>
+      <row><cell><c>DATE</c></cell><cell><c>Date</c> (days since epoch)</cell><cell><c>date</c></cell></row>
+      <row><cell><c>DATETIME(fsp)</c></cell><cell><c>Timestamp</c> / <c>MicroTimestamp</c>, no time zone</cell><cell><c>timestamp</c> (no zone)</cell></row>
+      <row><cell><c>TIMESTAMP(fsp)</c></cell><cell><c>ZonedTimestamp</c>, ISO 8601 in UTC</cell><cell><c>timestamptz</c></cell></row>
+      <row><cell><c>TIME</c></cell><cell><c>MicroTime</c></cell><cell><c>time</c></cell></row>
+      <row><cell><c>YEAR</c></cell><cell><c>INT32</c> (<c>Year</c>)</cell><cell><c>int</c></cell></row>
+      <row><cell><c>BINARY</c>, <c>VARBINARY</c>, <c>BLOB</c></cell><cell><c>BYTES</c> (<c>binary.handling.mode=bytes</c>)</cell><cell><c>binary</c></cell></row>
+      <row><cell><c>GEOMETRY</c> and subtypes</cell><cell><c>STRUCT</c> (<c>srid</c>, <c>wkb</c>)</cell><cell><c>geometry</c> on format version 3, else a struct</cell></row>
+    </table>
+    <p>Every row is a rule: you can change any of them in the pipeline's rules, and the change shows at once on every table it affects.</p>
+  </section>
+  <section title="How each PostgreSQL type lands">
+    <p>With the Debezium rule pack's shipped defaults:</p>
+    <table>
+      <head><cell>PostgreSQL</cell><cell>Debezium event</cell><cell>Iceberg</cell></head>
+      <row><cell><c>smallint</c>, <c>integer</c></cell><cell>integer</cell><cell><c>int</c></cell></row>
+      <row><cell><c>bigint</c></cell><cell><c>INT64</c></cell><cell><c>long</c></cell></row>
+      <row><cell><c>numeric(p,s)</c></cell><cell><c>Decimal</c> (<c>precise</c>)</cell><cell><c>decimal(p,s)</c></cell></row>
+      <row><cell><c>numeric</c> (no precision)</cell><cell><c>VariableScaleDecimal</c> (scale per value)</cell><cell>flagged: give it a precision and scale</cell></row>
+      <row><cell><c>money</c></cell><cell><c>Decimal</c>, scale from <c>money.fraction.digits</c></cell><cell><c>decimal(p,2)</c></cell></row>
+      <row><cell><c>real</c>, <c>double precision</c></cell><cell><c>FLOAT32</c>, <c>FLOAT64</c></cell><cell><c>float</c>, <c>double</c> (flagged when the kind is money)</cell></row>
+      <row><cell><c>boolean</c></cell><cell><c>BOOLEAN</c></cell><cell><c>boolean</c></cell></row>
+      <row><cell><c>text</c>, <c>varchar</c>, <c>char</c></cell><cell><c>STRING</c></cell><cell><c>string</c></cell></row>
+      <row><cell><c>uuid</c></cell><cell><c>STRING</c> (<c>Uuid</c>)</cell><cell><c>uuid</c></cell></row>
+      <row><cell><c>json</c>, <c>jsonb</c></cell><cell><c>STRING</c> (<c>Json</c>)</cell><cell><c>string</c>, or <c>variant</c> on format version 3</cell></row>
+      <row><cell>enum types</cell><cell><c>STRING</c> (<c>Enum</c>)</cell><cell><c>string</c>, allowed values kept in the comment</cell></row>
+      <row><cell><c>date</c></cell><cell><c>Date</c></cell><cell><c>date</c></cell></row>
+      <row><cell><c>timestamp</c></cell><cell><c>Timestamp</c> / <c>MicroTimestamp</c>, no zone</cell><cell><c>timestamp</c></cell></row>
+      <row><cell><c>timestamptz</c></cell><cell><c>ZonedTimestamp</c>, in UTC</cell><cell><c>timestamptz</c></cell></row>
+      <row><cell><c>time</c></cell><cell><c>Time</c> / <c>MicroTime</c></cell><cell><c>time</c></cell></row>
+      <row><cell><c>timetz</c></cell><cell><c>STRING</c> (<c>ZonedTime</c>)</cell><cell><c>string</c>, flagged</cell></row>
+      <row><cell><c>interval</c></cell><cell><c>STRING</c> (<c>interval.handling.mode=string</c>)</cell><cell><c>string</c></cell></row>
+      <row><cell><c>bytea</c></cell><cell><c>BYTES</c></cell><cell><c>binary</c></cell></row>
+      <row><cell><c>hstore</c></cell><cell>JSON <c>STRING</c> (<c>hstore.handling.mode=json</c>)</cell><cell><c>string</c>, or <c>map&lt;string,string&gt;</c> with <c>map</c></cell></row>
+      <row><cell>PostGIS <c>geometry</c>, <c>geography</c></cell><cell><c>STRUCT</c> (<c>srid</c>, <c>wkb</c>)</cell><cell><c>geometry</c> / <c>geography</c> on format version 3</cell></row>
+    </table>
+    <p>Arrays and partitioned tables (<c>publish_via_partition_root</c>) are still to be checked against Debezium's documentation before they are mapped.</p>
+  </section>
+  <section title="Debezium's settings are rules">
+    <p>How types travel (<c>decimal.handling.mode</c>, <c>bigint.unsigned.handling.mode</c>, <c>time.precision.mode</c>, <c>binary.handling.mode</c>, the TinyInt-to-boolean converter, the zero-date fallback) is set in the <b>Debezium rule pack</b> (<a href="rules.xml#debezium-a-rule-pack">rules.md</a>), in Standards, per template or per schema, like any other rule. The pipeline reads them, maps every column by them, and writes them out for the connector, so the two can never disagree. The type table above assumes the shipped defaults.</p>
+  </section>
+  <section title="The Iceberg tables">
+    <p>Generated by the pipeline's rules, then refined with the agent:</p>
+    <list>
+      <item><b>identifier fields</b> from the source's primary key, so changes are upserts; a table without one is flagged (append-only, or you choose a key)</item>
+      <item><b>merge-on-read</b> for deletes, updates and merges, and format version 3, from the Iceberg defaults</item>
+      <item><b>partition spec and sort order</b> from the rules (e.g. by <c>day</c> of a time column, sorted by the key)</item>
+      <item><b>CDC columns</b>, if the rules ask for them, named by the naming rules: the operation (<c>c</c>, <c>u</c>, <c>d</c>, <c>r</c>), the event time, and the source position (binlog file and position, or GTID)</item>
+      <item><b>deletes</b>: applied as deletes, or kept as rows marked deleted, as the rules say</item>
+      <item><b>relationships</b> carried over as logical ones, so the diagram stays the same shape</item>
+    </list>
+  </section>
+  <section title="What comes out">
+    <list>
+      <item>the Iceberg schema, a normal SchemaForge schema</item>
+      <item>the <b>mapping report</b>: every source column, its Iceberg column, the rule that decided it, and every inconsistency and hazard with what was done about it</item>
+      <item>the <b>Debezium settings</b> for the connector (from the rule pack, plus the converter's column list)</item>
+      <item>the Iceberg DDL (Spark SQL, Trino) or table metadata, as for any Iceberg schema</item>
+    </list>
+  </section>
+  <section title="When the source changes">
+    <p>A new locked version of the source schema is compared with what the pipeline last mapped:</p>
+    <list>
+      <item>additions (a new table, a new nullable column) map by the rules, as before</item>
+      <item>widenings Iceberg allows (<c>int</c> to <c>long</c>, <c>float</c> to <c>double</c>, a larger decimal precision) become schema evolution on the Iceberg table</item>
+      <item>anything else (a narrower type, a changed key, a dropped column the target still holds) is flagged with what it would break, for you to decide</item>
+    </list>
+  </section>
+</doc>

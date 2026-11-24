@@ -24,15 +24,16 @@ Start with the brief for coding agents: https://k8nstantin.github.io/schema-forg
 - [crates/model/](https://github.com/k8nstantin/schema-forge/tree/main/crates/model): the model: Schema, Namespace, Object, Column, Link, Area, Id
 - [crates/engine/](https://github.com/k8nstantin/schema-forge/tree/main/crates/engine): the engine interface (Engine and its parts), the section layout (crates/engine/src/sections.rs), the registry and the conformance kit
 - [engines/mysql/](https://github.com/k8nstantin/schema-forge/tree/main/engines/mysql): the MySQL engine: its versions, types, kinds, options, readers and writer
-- [docs/engines.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/engines.md): the plugin design: what is shared and what is each engine's, the crates and their roles
-- [docs/connections.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/connections.md): connections: what an engine declares, profiles without secrets, the five test steps
+- [docs/engines.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/engines.xml): the plugin design: what is shared and what is each engine's, the crates and their roles
+- [docs/connections.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/connections.xml): connections: what an engine declares, profiles without secrets, the five test steps
 
 ## Docs
 
-- [docs/cdc.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.md)
-- [docs/market.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/market.md)
-- [docs/perspectives.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/perspectives.md)
-- [docs/rules.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/rules.md)
-- [docs/store.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/store.md)
-- [docs/versions.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/versions.md)
-- [docs/writing-an-engine.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/writing-an-engine.md)
+- [docs/cdc.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.xml)
+- [docs/market.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/market.xml)
+- [docs/perspectives.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/perspectives.xml)
+- [docs/rules.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/rules.xml)
+- [docs/store.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/store.xml)
+- [docs/versions.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/versions.xml)
+- [docs/writing-an-engine.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/writing-an-engine.xml)
+- [engines/mysql/README.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/engines/mysql/README.xml)

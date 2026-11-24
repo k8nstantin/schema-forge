@@ -24,6 +24,22 @@ grep -c '^test result: ok' <<<"$out" | xargs printf '%s test binaries passed\n'
 step "The schema lock: every file of the database's design is as the last design session locked it"
 python3 tools/schema_lock.py
 
+step "XML for everything: Markdown only where a tool looks for it by name (specs/root.xml, decision xml-for-agents)"
+named='README.md CONTRIBUTING.md CODE_OF_CONDUCT.md AGENTS.md CLAUDE.md .github/copilot-instructions.md'
+stray=$(git ls-files --cached --others --exclude-standard -- '*.md' | grep -vxF -f <(tr ' ' '\n' <<<"$named") || true)
+mentions=$(git grep -nIoE '[A-Za-z0-9_./-]+\.md([^A-Za-z0-9_]|$)' -- . ':!site' ':!specs/reviews' |
+    grep -vE ':([A-Za-z0-9_./-]*/)?(README|CONTRIBUTING|CODE_OF_CONDUCT|AGENTS|CLAUDE|copilot-instructions)\.md([^A-Za-z0-9_]|$)' || true)
+if [ -n "$stray$mentions" ]; then
+    [ -n "$stray" ] && printf 'a Markdown file a tool does not look for: %s\n' $stray
+    [ -n "$mentions" ] && printf '%s\n' "$mentions" | sed 's/^/names a Markdown file: /'
+    echo "write it as XML (docs/*.xml, rendered for people by docs/pages/docs.py) and name that"
+    exit 1
+fi
+for f in $(git ls-files --cached --others --exclude-standard -- '*.xml'); do
+    python3 -c 'import sys, xml.etree.ElementTree as E; E.parse(sys.argv[1])' "$f" || { echo "$f: not XML"; exit 1; }
+done
+echo "no stray Markdown; every XML file parses"
+
 step "Generated files: the pages, the site and the agent files are what their sources render"
 generated=(site AGENTS.md CLAUDE.md .github/copilot-instructions.md)
 python3 docs/pages/build.py >/dev/null

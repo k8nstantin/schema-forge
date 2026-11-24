@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doc id="rules" title="Rules">
+  <p>Rules are standards: they keep a schema consistent and fit for what it has to do. The architect sets them up once, on the schema and the levels inside it; the agent reads them before it designs anything and builds inside them, so neither of you repeats them. The rules machinery is shared by every database; the rules about a database belong to its engine (<a href="engines.xml">engines.md</a>): a schema is offered exactly the rules its engine implements, at its version.</p>
+  <section title="Optional">
+    <p>Rules are optional. A schema with nothing linked has no rules; nothing links them for you. Where rules reach from above (global links), <b>no rules here</b> switches every rule off for a schema, a namespace, a family, a group or a table, with a reason. It holds even over locked rules, since it is the choice not to use rules there at all, and a rule linked further down still applies.</p>
+  </section>
+  <section title="Rules made of rules">
+    <list>
+      <item>A <b>check</b> looks at a table and says what breaks it: <c>pk.present</c> "Every table has a key".</item>
+      <item>A <b>pack</b> is a rule made of rules, to any depth; a rule may sit in several packs. <c>cdc</c> (CDC-ready) holds the whole <c>pk</c> pack, <c>types.time</c>, <c>mor.modes</c>, <c>cdc.position</c> and <c>cdc.source</c>. Linking a pack brings its tree.</item>
+      <item>Every rule holds <b>hard</b> (enforced: the agent's change is refused) or <b>soft</b> (highlighted only). Each check has a default (Must is hard, Should is soft); you set it per link, and the nearest link that says wins. Every finding says which it is.</item>
+    </list>
+  </section>
+  <section title="Sorted so the catalog stays clear">
+    <p>Every rule has two labels, and the catalog is browsed by them:</p>
+    <table>
+      <head><cell>Lane: where it applies</cell><cell>Examples</cell></head>
+      <row><cell><b>Every database</b></cell><cell>nothing without a key; one type per column name; money is decimal; snake_case; descriptions; normalization; SCD2</cell></row>
+      <row><cell><b>MySQL</b></cell><cell>tables use InnoDB; text is utf8mb4</cell></row>
+      <row><cell><b>PostgreSQL</b></cell><cell>times are <c>timestamptz</c>; keys are identity columns, not <c>serial</c></cell></row>
+      <row><cell><b>Iceberg</b></cell><cell>identifier fields declared; merge-on-read; a format version of 2 or 3</cell></row>
+      <row><cell><b>Between databases</b></cell><cell>compatibility (a pack per source and destination engine); CDC-ready</cell></row>
+    </table>
+    <p>Topics within a lane: keys, types, naming, documentation, normalization, history, storage, cdc, compatibility. A check keeps its own lane inside a pack of another: <c>pk.ident</c> is an Iceberg rule in the shared <c>pk</c> pack, and only checks Iceberg schemas.</p>
+  </section>
+  <section title="Linked on the hierarchy">
+    <p>A rule is <b>linked</b> at a level and applies to every table under it:</p>
+    <code><![CDATA[global (every schema of the workspace)
+  └ schema
+      └ namespace (and the namespaces inside it)
+          └ family (billing__, ungrouped, …)
+              └ table
+      └ group (tables picked by hand, across namespaces and families)]]></code>
+    <list>
+      <item><b>The nearest link wins.</b> A table's rules are found by walking from global down to the table: its namespaces from the outermost, its family, the groups it is in, itself.</item>
+      <item><b>An exception</b> switches a rule, or one rule inside a pack, off at a level and below, and always says why. The agent is told the reason. Normalization off on a reporting namespace; "no repeating groups" off on one table whose report fixes ten slots, while the rest of Normalization still applies. An exception switches off only the rules it is part of: switching CDC-ready off leaves a Primary keys pack linked on its own running.</item>
+      <item><b>A locked</b> link cannot be switched off below the level it is linked at: the architect's guardrail ("nothing without a key", locked globally). A lower link of the same rule does not unlock it.</item>
+      <item>A link is checked before it is kept: the rule and the level exist, an exception has a reason and switches off something that reaches every table under it, nothing locked is switched off, and nothing is locked above an exception that would then stop working. The check and the write are one transaction.</item>
+      <item>A new group never replaces one of the same name; changing a group's tables checks its exceptions again.</item>
+      <item>Every change (<c>link_rule</c>, <c>unlink_rule</c>, <c>set_group</c>, <c>remove_group</c>, a goal's <c>link_packs</c>) is an operation in the log, announced live; global links are logged under <c>*</c>. A goal links its packs in one change, all or none.</item>
+    </list>
+  </section>
+  <section title="Goals">
+    <p>A goal says what the schema has to do and links the packs that get it there, by the schema's type:</p>
+    <table>
+      <head><cell>Goal</cell><cell>Links</cell></head>
+      <row><cell>Feed it by CDC</cell><cell><c>cdc</c>; lists what must be set on MySQL (binlog ROW and FULL, GTID, grants) or PostgreSQL (logical WAL, a publication and a slot, replica identity)</cell></row>
+      <row><cell>Build in MySQL and PostgreSQL</cell><cell>the pair's compatibility pack, naming, keys</cell></row>
+      <row><cell>Move PostgreSQL to Iceberg, Move MySQL to Iceberg</cell><cell>the pair's compatibility pack, keys</cell></row>
+    </table>
+    <p>Before linking, the perspective shows the gap: what the schema still lacks, from a preview that stores nothing.</p>
+  </section>
+  <section title="Compatibility">
+    <p>Each engine maps its types to <b>portable types</b> and back, and every pair of engines is compared through them, never through a map written for the pair (<a href="engines.xml">engines.md</a>, "Moving between engines"). How each type lands is graded <b>exact</b>, <b>widened</b> (bigger, safe), <b>decide</b> (a choice to make: <c>VARCHAR(n)</c> or <c>TEXT</c>), <b>lossy</b>, or <b>no type</b>. Each pair's pack has two checks: nothing lost (Must, breaks on lossy and no type) and every choice made (Should). The same mappings drive conversion between engines, so a check and a conversion never disagree.</p>
+  </section>
+  <section title="Where you work with them">
+    <p>The <b>Rules perspective</b> (the UI is the tool; the command line keeps only <c>schema-forge check</c>, for CI):</p>
+    <list>
+      <item><b>Diagram, a level:</b> the rules that reach it on the left (quiet lines from wider levels, bright ones linked here or inside it, landing on the gold row they are linked at), the level and what is inside it in the middle, the exceptions on the right in dashed gold. Below: link a rule here (locked, or for every schema), switch one off with a reason, take a link away, and what breaks here as references (<c>@orders.total</c>) that open the table.</item>
+      <item><b>Diagram, a rule:</b> the packs it sits in, the rules it is made of, where it is linked and switched off, what breaks it, and for a compatibility rule its type map.</item>
+      <item><b>Catalog:</b> every rule by lane and topic, with what it breaks here, or would break if linked.</item>
+      <item><b>Goals</b> and <b>Groups.</b></item>
+      <item>The <b>Table</b> perspective lists the rules on the table, where each comes from, and its findings.</item>
+    </list>
+  </section>
+  <section title="Rules the agent designs">
+    <p>Nobody knows every rule ahead. So the agent proposes them, the system verifies them, you approve them, and the system enforces them.</p>
+    <steps>
+      <item><b>The agent proposes</b> through the MCP (<c>propose_rules</c>), best from what a schema already does: it reads it (<c>describe</c>) and turns its unwritten conventions into rules, with numbers as evidence ("41 of 42 tables have <c>loaded_at</c>"). A proposal is a new rule written as a sentence, a catalog rule to link, or an exception.</item>
+      <item><b>New rules are sentences, run as data, never code:</b></item>
+    </steps>
+    <p>| Sentence | Example | |---|---| | columns whose name matches must be of a type, required, described or snake_case | <c>{"columns": {"name": {"ends_with": "_at"}, "must": {"of_type": ["timestamptz"]}}}</c> | | every table has a column (required, of a type) | <c>{"has_column": {"column": "loaded_at", "required": true}}</c> | | every table is partitioned by a transform of a column (Iceberg) | <c>{"partitioned_by": {"transform": "identity", "column": "region"}}</c> |</p>
+    <p>The title you read is made from the sentence itself, so a rule is always exactly what it says.</p>
+    <steps>
+      <item><b>The system verifies</b> each: written right for the schema's type; not a repeat of a rule or of another proposal; not contradicting a linked rule (a rule that columns could keep only by breaking a linked type rule is a conflict); and what it would break if approved. Proposals for every schema are refused: global rules are yours.</item>
+      <item><b>You approve</b> in the Rules perspective's Review: hard or soft, approve or reject. Approving a conflict switches each contradicted rule off there in the same change: its link at that level is taken away, otherwise an exception records that the proposal replaced it (refused if it is locked). An approved new rule joins the workspace's catalog under the next free <c>custom.&lt;n&gt;</c>, linked where it was proposed, with who proposed and approved it; one that names types or transforms holds only on schemas of that engine. The check and the write are one transaction, and the log records the rule, the link and what was switched off.</item>
+      <item><b>The system enforces</b>: the agent reads the rules in force (<c>rules</c>, <c>check</c>) and designs within them. Its changes go through the MCP's <c>change</c>, one or more operations as one change, all or none: a change that breaks a hard rule attached to what it touches is refused, with the rule and the reason, and nothing lands; what breaks a soft rule lands and is reported. Hard means hard: a table the change touches must keep every hard rule on it, breaks it had before included, and nothing anywhere may newly break one; untouched tables do not block it. A new or imported schema has no rules; you link them as you choose, hard or soft (typically soft first, hard once the schema keeps them). The agent can never approve, link or switch off a rule itself: that comes back as a proposal.</item>
+    </steps>
+    <p><b>What breaks what</b> (in the Rules perspective) shows it at a glance: hover a rule and the tables that break it light up, red if it is hard and amber if soft; hover a table and the rules it breaks light up, with what is wrong. Each linked rule is set hard or soft right there.</p>
+  </section>
+  <section title="Next">
+    <list>
+      <item>Rules that shape, not only check, applied by the agent as a plan you approve: SCD2 columns, a surrogate key, audit columns, merge-on-read properties (see below).</item>
+      <item>Generating the schema, and a migration script that brings a schema to its rules.</item>
+    </list>
+    <p>The rest of this page is the wider catalog to come.</p>
+  </section>
+  <section title="What rules will cover">
+    <part title="Type standards">
+      <p>The heart of consistency: one type for each kind of data, used everywhere. The table below is what ships (agreed with the operator, 2026-11-20); every value can be changed in Standards.</p>
+      <table>
+        <head><cell>Kind of data</cell><cell>e.g. PostgreSQL</cell><cell>e.g. MySQL</cell><cell>e.g. Iceberg</cell></head>
+        <row><cell>integers</cell><cell><c>bigint</c></cell><cell><c>bigint</c></cell><cell><c>long</c></cell></row>
+        <row><cell>keys</cell><cell><c>bigint</c> identity</cell><cell><c>bigint unsigned</c> auto-increment</cell><cell><c>long</c></cell></row>
+        <row><cell>strings</cell><cell><c>text</c></cell><cell><c>varchar(255)</c></cell><cell><c>string</c></cell></row>
+        <row><cell>short codes</cell><cell><c>varchar(32)</c></cell><cell><c>varchar(32)</c></cell><cell><c>string</c></cell></row>
+        <row><cell>money</cell><cell><c>numeric(18,2)</c></cell><cell><c>decimal(18,2)</c></cell><cell><c>decimal(18,2)</c></cell></row>
+        <row><cell>other decimals</cell><cell><c>numeric(18,6)</c></cell><cell><c>decimal(18,6)</c></cell><cell><c>decimal(18,6)</c></cell></row>
+        <row><cell>booleans</cell><cell><c>boolean</c></cell><cell><c>tinyint(1)</c></cell><cell><c>boolean</c></cell></row>
+        <row><cell>points in time</cell><cell><c>timestamptz</c></cell><cell><c>datetime(6)</c></cell><cell><c>timestamptz</c></cell></row>
+        <row><cell>dates</cell><cell><c>date</c></cell><cell><c>date</c></cell><cell><c>date</c></cell></row>
+        <row><cell>identifiers from elsewhere</cell><cell><c>uuid</c></cell><cell><c>char(36)</c></cell><cell><c>uuid</c></cell></row>
+        <row><cell>documents</cell><cell><c>jsonb</c></cell><cell><c>json</c></cell><cell><c>variant</c></cell></row>
+      </table>
+      <list>
+        <item>The agent asks for a <b>kind</b> ("an integer", "money") and gets the standard type; a column of another type is refused or warned, with the standard named.</item>
+        <item>Each kind can say when it applies (columns ending <c>_amount</c> are money; <c>_at</c> are points in time), so existing schemas can be checked too.</item>
+      </list>
+    </part>
+    <part title="Naming">
+      <list>
+        <item>case for each kind: tables, columns, views, keys, indexes, <c>PascalCase</c> (<c>TableName</c>), <c>camelCase</c> (<c>tableName</c>), <c>snake_case</c> (<c>table_name</c>), <c>UPPER_SNAKE</c></item>
+        <item>singular or plural table names</item>
+        <item>prefixes and suffixes by kind or tag: <c>dim_</c>, <c>fact_</c>, <c>stg_</c>, <c>v_</c> for views, <c>_id</c> for keys</item>
+        <item>templates for constraint and index names: <c>pk_{table}</c>, <c>fk_{table}_{referenced_table}</c>, <c>ix_{table}_{columns}</c></item>
+        <item>boolean columns start with <c>is_</c> or <c>has_</c>; time columns end with <c>_at</c>, dates with <c>_on</c></item>
+        <item>the longest name the engine allows (PostgreSQL 63, MySQL 64), reserved words refused</item>
+        <item>a list of approved abbreviations (<c>qty</c>, <c>amt</c>), others spelled out</item>
+      </list>
+    </part>
+    <part title="Keys and identity">
+      <list>
+        <item>every table has a primary key</item>
+        <item>the surrogate key's name and type: <c>id bigint</c> identity, UUID, UUIDv7</item>
+        <item>business keys: required and unique where a table has one</item>
+        <item>composite primary keys allowed or not</item>
+        <item>every foreign key indexed</item>
+        <item>the default <c>on delete</c> / <c>on update</c> for foreign keys</item>
+        <item>Iceberg: identifier fields required, and what a logical relationship must point at</item>
+      </list>
+    </part>
+    <part title="Columns and types">
+      <list>
+        <item>types allowed and forbidden: no <c>float</c> or <c>double</c> for money (use <c>decimal</c>), no <c>varchar</c> without a length on MySQL, <c>timestamptz</c> over <c>timestamp</c> on PostgreSQL</item>
+        <item>defaults for new columns: <c>NOT NULL</c> unless said otherwise, string lengths, decimal precision</item>
+        <item>enums: inline (<c>ENUM</c>, PostgreSQL enum types) or lookup tables</item>
+        <item>character set and collation (MySQL <c>utf8mb4</c> / <c>utf8mb4_0900_ai_ci</c>)</item>
+      </list>
+    </part>
+    <part title="Standard columns">
+      <list>
+        <item>audit columns every table carries: <c>created_at</c>, <c>updated_at</c>, <c>created_by</c></item>
+        <item>soft delete: <c>deleted_at</c></item>
+        <item>multi-tenant: <c>tenant_id</c> on every table, first in every key</item>
+        <item>their names, types and position, added by the agent when it creates a table</item>
+      </list>
+    </part>
+    <part title="Patterns">
+      <p>What a table tagged with a pattern must have; the agent applies the pattern on request (<c>apply_pattern</c>), and <c>check</c> reports what is missing:</p>
+      <list>
+        <item><b>SCD Type 1:</b> overwrite in place, <c>updated_at</c></item>
+        <item><b>SCD Type 2:</b> surrogate key, business key, the validity columns and their names (<c>valid_from</c> / <c>valid_to</c>, or your own), unique (business key, start of validity)</item>
+        <item><b>SCD Types 3, 4, 6:</b> previous-value columns, a history table, the combination</item>
+        <item><b>Star schema:</b> <c>fact</c> tables reference only <c>dimension</c> tables, by surrogate key; dimensions never reference facts</item>
+        <item><b>Append-only / event tables:</b> no update columns, an event time, partitioned by it on Iceberg</item>
+        <item><b>Bridge tables:</b> exactly two relationships, their pair unique</item>
+      </list>
+    </part>
+    <part title="Debezium (a rule pack)">
+      <p>For a MySQL or PostgreSQL schema whose changes are captured by Debezium. Add the pack in Standards, to a template or one schema; a <a href="cdc.xml">CDC pipeline</a> adds it to its source for you.</p>
+      <list>
+        <item><b>Connector settings, as rules.</b> How types travel is set here, like any rule, and the pipeline writes them out for the connector, so the connector and the designed tables always agree:</item>
+      </list>
+      <p>| Rule | Shipped default | Other choices | |---|---|---| | <c>decimal.handling.mode</c> | <c>precise</c> (exact decimals) | <c>double</c>, <c>string</c> | | <c>bigint.unsigned.handling.mode</c> | <c>precise</c> (<c>decimal(20,0)</c> on Iceberg; Debezium's own default, <c>long</c>, corrupts values above 2^63 − 1) | <c>long</c> | | <c>time.precision.mode</c> | <c>adaptive_time_microseconds</c> | <c>adaptive</c>, <c>connect</c> | | <c>binary.handling.mode</c> | <c>bytes</c> | <c>base64</c>, <c>base64-url-safe</c>, <c>hex</c> | | TinyInt-to-boolean converter | on, for the columns marked as booleans | off | | zero-date fallback | <c>null</c> | a date you choose, per type or column |</p>
+      <p>Each choice changes the type mapping at once: set <c>bigint.unsigned.handling.mode</c> to <c>long</c>, and every <c>BIGINT UNSIGNED</c> column maps to <c>long</c> and is flagged.</p>
+      <list>
+        <item><b>Keys:</b> every captured table has a primary key, or a key Debezium is told to use (<c>message.key.columns</c>); without one there are no reliable updates or deletes downstream.</item>
+        <item><b>Types Debezium carries badly:</b> <c>BIGINT UNSIGNED</c> flagged unless <c>bigint.unsigned.handling.mode</c> is <c>precise</c>; no <c>FLOAT</c> or <c>DOUBLE</c> for money; <c>DECIMAL</c> flagged unless <c>decimal.handling.mode</c> is <c>precise</c>; <c>TIME</c> within one day; no zero dates in <c>NOT NULL</c> date and time columns.</item>
+        <item><b>Booleans:</b> <c>TINYINT(1)</c> used as a boolean is marked so the TinyInt-to-boolean converter covers it, and <c>TINYINT(1)</c> used as a number is not.</item>
+        <item><b>Time:</b> one type for points in time (<c>TIMESTAMP</c> arrives zoned in UTC, <c>DATETIME</c> without a zone); mixing them is flagged.</item>
+        <item><b>PostgreSQL sources:</b> - <b>Replica identity:</b> a captured table without a primary key needs <c>REPLICA IDENTITY FULL</c>, or its deletes arrive without their data; tables with large values (<c>text</c>, <c>jsonb</c>, <c>bytea</c>) need it too, or an update that leaves them unchanged sends a placeholder (<c>unavailable.value.placeholder</c>) instead. - <b><c>NUMERIC</c> without a precision</b> arrives with a different scale per value, which Iceberg's <c>decimal(p,s)</c> cannot hold: give it a precision and scale. - <b><c>INTERVAL</c></b> arrives as microseconds, with months approximated as average days, unless <c>interval.handling.mode</c> is <c>string</c>; flagged where exactness matters. - <b><c>TIMETZ</c></b> arrives as a string; <c>MONEY</c> takes its scale from <c>money.fraction.digits</c>; infinite dates become sentinel values. - More connector settings as rules: <c>interval.handling.mode</c> (shipped <c>string</c>), <c>hstore.handling.mode</c> (shipped <c>json</c>), <c>money.fraction.digits</c> (shipped <c>2</c>).</item>
+        <item><b>Names:</b> column names valid for Avro (<c>[A-Za-z_][A-Za-z0-9_]*</c>) when the pipeline uses Avro, or the name adjustment noted; no source column named like a CDC field (<c>__op</c>, <c>__deleted</c>, <c>__source_ts_ms</c>).</item>
+        <item><b>Enums:</b> a change to <c>ENUM</c> or <c>SET</c> values flagged, since it changes what consumers receive.</item>
+        <item><b>Schema changes:</b> renames and type changes on captured tables flagged as changes every downstream consumer must take; additions pass.</item>
+      </list>
+    </part>
+    <part title="Documentation">
+      <list>
+        <item>a comment on every table, view and column (or only on tables, or on keys)</item>
+        <item>tags and an area on every table</item>
+      </list>
+    </part>
+    <part title="Database views">
+      <list>
+        <item>no <c>SELECT *</c></item>
+        <item>name prefix, comment required</item>
+        <item>materialized views only where allowed; how they are refreshed is documented</item>
+      </list>
+    </part>
+    <part title="Change safety">
+      <list>
+        <item>destructive changes (drops, narrowed types, <c>NOT NULL</c> added) need an explicit flag</item>
+        <item>renames instead of drop-and-add</item>
+        <item>after a version is locked, only additive changes (new tables and nullable columns) without a new major version</item>
+      </list>
+    </part>
+    <part title="Size">
+      <list>
+        <item>the most columns a table may have, the most indexes, the most tables in an area</item>
+      </list>
+    </part>
+  </section>
+  <section title="Each type's default rules">
+    <p>What each type starts with, as shipped. Every value can be changed in Standards.</p>
+    <table>
+      <head><cell></cell><cell>MySQL</cell><cell>PostgreSQL</cell><cell>Iceberg</cell></head>
+      <row><cell><b>Names</b></cell><cell><c>snake_case</c>, plural tables</cell><cell><c>snake_case</c>, plural tables</cell><cell><c>snake_case</c>, plural tables</cell></row>
+      <row><cell><b>Keys</b></cell><cell><c>id bigint unsigned AUTO_INCREMENT</c>; foreign keys indexed, <c>on delete restrict</c></cell><cell><c>id bigint GENERATED ALWAYS AS IDENTITY</c>; foreign keys indexed, <c>on delete restrict</c></cell><cell>identifier fields required; relationships logical</cell></row>
+      <row><cell><b>Types</b></cell><cell><c>InnoDB</c>, <c>utf8mb4</c>, <c>utf8mb4_0900_ai_ci</c>; <c>decimal</c> for money; <c>datetime(6)</c></cell><cell><c>timestamptz</c>, <c>text</c> over <c>varchar(n)</c>, <c>numeric</c> for money</cell><cell><c>decimal</c> for money, <c>timestamptz</c>; <b>format version 3</b></cell></row>
+      <row><cell><b>Table defaults</b></cell><cell><c>ROW_FORMAT=DYNAMIC</c></cell><cell></cell><cell><b>merge-on-read</b> for deletes, updates and merges (<c>write.delete.mode</c>, <c>write.update.mode</c>, <c>write.merge.mode</c> = <c>merge-on-read</c>); Parquet, <c>zstd</c>; a partition spec on every table with a time column (by <c>day</c> unless set); a sort order on every table</cell></row>
+      <row><cell><b>Comments</b></cell><cell>on every table</cell><cell>on every table</cell><cell>on every table</cell></row>
+      <row><cell><b>Change safety</b></cell><cell>destructive changes flagged</cell><cell>destructive changes flagged</cell><cell>destructive changes flagged; no partition change without a flag</cell></row>
+    </table>
+  </section>
+  <section title="The Standards UI">
+    <p>Rules are a product of their own, with a rich UI:</p>
+    <list>
+      <item><b>Catalog:</b> every rule by category (types, naming, keys, standard columns, patterns, documentation, views, change safety, size), each with its setting and severity, switchable in place.</item>
+      <item><b>See before you set:</b> every rule shows what it accepts and what it refuses, with live examples that change as you edit it ("<c>orderTotal</c> is refused; expected <c>order_total</c>").</item>
+      <item><b>Try it on a schema:</b> run a template against an existing or imported schema and see every table and column it would pass or fail, before you adopt it.</item>
+      <item><b>Compare:</b> two templates, or a template against a schema's copy, side by side.</item>
+      <item><b>Type standards as a table:</b> each kind of data and its type, per engine, edited like a spreadsheet.</item>
+      <item><b>Patterns drawn:</b> an SCD Type 2 or star-schema pattern shown as a small diagram of what it adds.</item>
+      <item><b>History:</b> who changed a standard and when; templates are files, so git keeps them too.</item>
+      <item><b>With the agent:</b> "make money <c>decimal(19,4)</c> in our PostgreSQL standard" becomes a change shown for you to accept.</item>
+    </list>
+  </section>
+  <section title="How the agent uses them">
+    <list>
+      <item><c>guide</c> gives the agent the schema's type and rules in plain words before it designs anything: "this is an Iceberg schema; tables are <c>snake_case</c> and plural; tables tagged <c>scd2</c> follow SCD Type 2 with <c>valid_from</c>/<c>valid_to</c>; new tables are merge-on-read and partitioned by day".</item>
+      <item><c>rules</c> lists each rule, its severity and the tables it applies to; <c>check</c> says what passes and fails.</item>
+      <item>Operations are named and shaped by the rules (a new table gets its audit columns, a new foreign key its templated name and its index), and refused with the rule's name and the expected form when they break one.</item>
+    </list>
+  </section>
+</doc>

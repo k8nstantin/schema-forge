@@ -46,7 +46,7 @@ sequence = [t for t in root.find("sequence") if t.tag == "task"]
 open_decisions = [(d.get("id"), d.get("closes-before"), flat(d)) for d in root.find("decisions") if d.get("status") == "open"]
 rule_list = [(r.get("id"), flat(r.find("text"))) for r in rules.findall("rule")]
 authority_paths = {p for p, _ in authority}
-docs = sorted(p for p in (os.path.relpath(x, REPO) for x in glob.glob(f"{REPO}/docs/*.md")) if p not in authority_paths)
+docs = sorted(p for p in (os.path.relpath(x, REPO) for x in glob.glob(f"{REPO}/docs/*.xml") + glob.glob(f"{REPO}/engines/*/README.xml")) if p not in authority_paths)
 owners = ["schema/cortex/", "schema/workspace/"] + sorted(
     os.path.relpath(p, REPO) + "/" for p in glob.glob(f"{REPO}/engines/*/schema"))
 method = [(s.get("name"), s.get("short"), fill(flat(s))) for s in brief.find("method").findall("step")]

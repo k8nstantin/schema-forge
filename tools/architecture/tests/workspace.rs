@@ -19,7 +19,7 @@ fn the_workspace_keeps_the_design() {
     });
     assert!(
         breaches.is_empty(),
-        "the design in docs/engines.md is broken:\n{}",
+        "the design in docs/engines.xml is broken:\n{}",
         breaches.iter().map(|b| format!("  {b}")).collect::<Vec<_>>().join("\n")
     );
 }

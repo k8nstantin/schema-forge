@@ -25,6 +25,13 @@ for mode in ("artifact", "site"):
         else:
             os.makedirs(site, exist_ok=True)
             open(os.path.join(site, common.FILES[key]), "w", encoding="utf-8").write(mod.HTML)
+    if mode == "site":
+        docs = importlib.reload(sys.modules["docs"]) if "docs" in sys.modules else importlib.import_module("docs")
+        for old in os.listdir(site):
+            if old.startswith("doc-") and old.endswith(".html") and old not in docs.PAGES:
+                os.remove(os.path.join(site, old))
+        for file, html in docs.PAGES.items():
+            open(os.path.join(site, file), "w", encoding="utf-8").write(html)
 shutil.copy(os.path.join(here, "favicon.svg"), os.path.join(site, "favicon.svg"))
 os.makedirs(os.path.join(site, "screenshots"), exist_ok=True)
 shutil.copy(os.path.join(here, "..", "screenshots", "table-and-turn.jpg"), os.path.join(site, "screenshots", "table-and-turn.jpg"))

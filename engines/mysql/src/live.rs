@@ -1,4 +1,4 @@
-//! Reading a schema from a live MySQL (docs/connections.md): the connection's fields, a test in five steps, and a
+//! Reading a schema from a live MySQL (docs/connections.xml): the connection's fields, a test in five steps, and a
 //! read that sends only statements that read. The read asks the server for each object's definition as it writes it
 //! (`SHOW CREATE …`), in the order `mysqldump` writes them, and reads them through the same reader as a dump: a schema
 //! read live and one read from a dump of the same database are the same model.

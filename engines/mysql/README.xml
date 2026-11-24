@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doc id="mysql" title="The MySQL engine">
+  <p>Everything SchemaForge knows about MySQL, in one crate: its versions, its types, every kind of object it has and every clause of their definitions, reading a schema from a dump, from hand-written DDL or from the live database, writing its SQL, its checks, and its types as Apache Arrow's. Nothing outside this crate knows MySQL; nothing in it is shared with another engine. When something about MySQL is wrong, it is wrong here.</p>
+  <p>It is the first engine, and so the proof of the plugin design: it is built exactly as an engine written outside SchemaForge would be, on the model and the engine interface alone. The one thing it needed from the interface, reading a live database (<c>Live</c>), was added with it. It was planned whole before it was built; this page is that plan, as built.</p>
+  <table>
+    <head><cell>Part</cell><cell>Where</cell></head>
+    <row><cell>versions, and what each changed</cell><cell><c>src/versions.rs</c></cell></row>
+    <row><cell>types, one table</cell><cell><c>src/types.rs</c></cell></row>
+    <row><cell>kinds of object, options</cell><cell><c>src/kinds.rs</c>, <c>src/options.rs</c></cell></row>
+    <row><cell>a script cut into statements</cell><cell><c>src/dump.rs</c>, <c>src/lex.rs</c></cell></row>
+    <row><cell>reading</cell><cell><c>src/read/</c> (tables; views and stored programs; databases, tablespaces, spatial reference systems, accounts)</cell></row>
+    <row><cell>writing</cell><cell><c>src/write.rs</c></cell></row>
+    <row><cell>the live database</cell><cell><c>src/live.rs</c></cell></row>
+    <row><cell>checks, queries, Arrow</cell><cell><c>src/checks.rs</c>, <c>src/queries.rs</c>, <c>src/portable.rs</c></cell></row>
+    <row><cell>add-ons</cell><cell><c>src/addon.rs</c></cell></row>
+  </table>
+  <section title="Versions">
+    <p>Checked against MySQL's own release notes. What grows is the table in <c>versions.rs</c>; nothing tests a version number.</p>
+    <table>
+      <head><cell>Version</cell><cell>What it is</cell><cell>What changed that the model holds</cell></head>
+      <row><cell>8.0</cell><cell>end of life since 30 April 2026 (8.0.46 the last); still what many databases run</cell><cell>the base: enforced checks, functional and descending index parts, invisible columns and indexes, expression defaults, read-only databases</cell></row>
+      <row><cell>8.4</cell><cell>long-term support</cell><cell><c>AUTO_INCREMENT</c> on <c>FLOAT</c>/<c>DOUBLE</c> removed; a foreign key to columns that are not a primary key or a unique refused by default; a column prefix in a partitioning key removed</cell></row>
+      <row><cell>9.7</cell><cell>long-term support (April 2026)</cell><cell><c>VECTOR(N)</c> (from 9.0; never part of a key, an index or the partitioning); a foreign key written on its column (<c>REFERENCES</c>) enforced (from 9.0); JavaScript stored programs (9.0) and libraries (<c>CREATE LIBRARY</c>, 9.2)</cell></row>
+      <row><cell>26.7, 26.10</cell><cell>innovation releases, numbered by year and month after 9.7</cell><cell>read from real dumps of 26.10: nothing new that a schema holds</cell></row>
+    </table>
+    <p>A new schema starts at <b>8.4</b>. A server's version falls in the first of these not older than it (9.1 is read as 9.7, 27.1 as 26.10). Deprecated forms (an integer display width like <c>int(11)</c>, <c>ZEROFILL</c>, <c>FLOAT(M,D)</c>, <c>UNSIGNED</c> on <c>FLOAT</c>, <c>DOUBLE</c> and <c>DECIMAL</c>) are read, kept and written as they are; advice about them belongs to the rules.</p>
+  </section>
+  <section title="Every kind of object">
+    <table>
+      <head><cell>Kind</cell><cell>Slots</cell><cell>What it holds</cell></head>
+      <row><cell><c>table</c></cell><cell>keys, checks, indexes, partitioning</cell><cell>columns, keys, checks, indexes, foreign keys (as links), partitioning, table options</cell></row>
+      <row><cell><c>view</c></cell><cell>query</cell><cell>its query, algorithm, definer, SQL security, column list, check option</cell></row>
+      <row><cell><c>procedure</c></cell><cell>routine</cell><cell>parameters (in, out, inout), characteristics, body</cell></row>
+      <row><cell><c>function</c></cell><cell>routine</cell><cell>parameters, what it returns, characteristics, body</cell></row>
+      <row><cell><c>loadable_function</c></cell><cell></cell><cell>a function from a library file (<c>CREATE [AGGREGATE] FUNCTION … RETURNS … SONAME</c>): what it returns and its file, as options</cell></row>
+      <row><cell><c>library</c></cell><cell>routine</cell><cell>a JavaScript or WASM library a routine imports (from 9.2), its source as written</cell></row>
+      <row><cell><c>trigger</c></cell><cell>trigger</cell><cell>timing, the change, its table, its order, body</cell></row>
+      <row><cell><c>event</c></cell><cell>event</cell><cell>schedule, on completion, status, body</cell></row>
+      <row><cell><c>tablespace</c></cell><cell></cell><cell>a general tablespace: data file, block size, encryption, engine, autoextend size</cell></row>
+      <row><cell><c>spatial_reference_system</c></cell><cell></cell><cell>an SRS: id, name, definition, organization, description</cell></row>
+    </table>
+    <p>A namespace is a MySQL database, one level deep: its default charset, collation, encryption and read-only state are its options. A file that names no database puts its objects in one called <c>default</c>. Partitions are defined inside their table, so they live in its partitioning, never as objects. Tablespaces, spatial reference systems and loadable functions belong to the server; they are kept in the database they were read with.</p>
+    <table>
+      <head><cell>Kept as written, counted by kind</cell><cell>Why</cell></head>
+      <row><cell>accounts (<c>CREATE USER</c>, <c>ALTER USER</c>, roles)</cell><cell>the server's accounts, not a schema's design; <b>never with a credential</b>: every <c>IDENTIFIED …</c> clause is cut out and the account kept locked (<c>ACCOUNT LOCK</c>), so what is written back never makes an account that signs in without a password; <c>SET PASSWORD</c> is left out, counted with the data</cell></row>
+      <row><cell>grants (<c>GRANT</c>, <c>REVOKE</c>)</cell><cell>the server's rights; an old grant's <c>IDENTIFIED BY</c> cut out</cell></row>
+      <row><cell>resource groups</cell><cell>the server's thread scheduling</cell></row>
+      <row><cell>servers (for <c>FEDERATED</c> tables)</cell><cell>the server's connections to other servers; a server's <c>PASSWORD</c> cut out</cell></row>
+      <row><cell>what the reader does not know (an <c>ALTER TABLE</c>, a table made <c>LIKE</c> another)</cell><cell>kept whole as <c>other</c>, written back in its place, and listed in the report</cell></row>
+    </table>
+  </section>
+  <section title="Every clause, and where it goes">
+    <p>Nothing in a definition is dropped: each clause is modelled in a slot of the layout, declared as an option, or, for a whole statement the model cannot describe, kept exactly as written and counted.</p>
+    <p><b>A column:</b> type; <c>NULL</c>/<c>NOT NULL</c>; <c>DEFAULT</c> (a literal, a function or an expression, as written); <c>AUTO_INCREMENT</c> (an identity; the table's next number is its option); generated <c>VIRTUAL</c>/<c>STORED</c>; options: <c>INVISIBLE</c>, <c>CHARACTER SET</c>, <c>COLLATE</c>, <c>ON UPDATE</c>, <c>SRID</c>, <c>COLUMN_FORMAT</c>, <c>STORAGE</c>, <c>ENGINE_ATTRIBUTE</c>, <c>SECONDARY_ENGINE_ATTRIBUTE</c>; its <c>COMMENT</c> (the model's comment); a <c>PRIMARY KEY</c> or <c>UNIQUE</c> on it (the table's keys); a <c>REFERENCES</c> on it (a link, marked <c>inline</c>: enforced from 9.0, before it a link MySQL does not enforce); a <c>CHECK</c> on it (the table's checks).</p>
+    <p><b>A table:</b> <c>PRIMARY KEY</c> and <c>UNIQUE</c> (a key of whole columns; a column prefix or a descending part is in the key's <c>parts</c>; a unique with an expression is a unique index); <c>CHECK</c>, with <c>NOT ENFORCED</c> an option; indexes (<c>KEY</c>/<c>INDEX</c>, <c>FULLTEXT</c>, <c>SPATIAL</c>, <c>CREATE INDEX</c>) with their method (<c>btree</c>, <c>hash</c>, <c>fulltext</c>, <c>spatial</c>), parts (columns with a prefix length, or expressions), order, and options (<c>KEY_BLOCK_SIZE</c>, <c>WITH PARSER</c>, <c>COMMENT</c>, <c>INVISIBLE</c>, <c>ENGINE_ATTRIBUTE</c>), an index without a name named as MySQL names it; foreign keys as links (<c>MATCH</c>, <c>ON DELETE</c>, <c>ON UPDATE</c>, a parent in another database of the schema), and one to a table outside the schema kept as written on its table (<c>outside_references</c>); partitioning (<c>RANGE</c>/<c>LIST</c> with or without <c>COLUMNS</c>, <c>HASH</c>/<c>KEY</c>, <c>LINEAR</c>, <c>ALGORITHM</c>, <c>PARTITIONS n</c>, subpartitions, and each partition's bounds and options); table options: <c>ENGINE</c>, <c>AUTO_INCREMENT</c>, <c>AUTOEXTEND_SIZE</c>, <c>AVG_ROW_LENGTH</c>, <c>CHARSET</c>, <c>COLLATE</c>, <c>CHECKSUM</c>, <c>COMPRESSION</c>, <c>CONNECTION</c>, <c>DATA DIRECTORY</c>, <c>INDEX DIRECTORY</c>, <c>DELAY_KEY_WRITE</c>, <c>ENCRYPTION</c>, <c>ENGINE_ATTRIBUTE</c>, <c>SECONDARY_ENGINE</c>, <c>SECONDARY_ENGINE_ATTRIBUTE</c>, <c>INSERT_METHOD</c>, <c>KEY_BLOCK_SIZE</c>, <c>MAX_ROWS</c>, <c>MIN_ROWS</c>, <c>PACK_KEYS</c>, <c>ROW_FORMAT</c>, <c>STATS_AUTO_RECALC</c>, <c>STATS_PERSISTENT</c>, <c>STATS_SAMPLE_PAGES</c>, <c>TABLESPACE</c>, <c>UNION</c>; its <c>COMMENT</c>.</p>
+    <p><b>A view:</b> <c>ALGORITHM</c>, <c>DEFINER</c>, <c>SQL SECURITY</c>, its column list, its query, <c>WITH CASCADED|LOCAL CHECK OPTION</c>; what it reads, worked out from its query.</p>
+    <p><b>A procedure, function or library:</b> <c>DEFINER</c>; parameters and <c>RETURNS</c>, each type as written (with its charset); <c>LANGUAGE</c> (SQL, JavaScript); <c>[NOT] DETERMINISTIC</c>; <c>CONTAINS SQL</c>/<c>NO SQL</c>/<c>READS SQL DATA</c>/<c>MODIFIES SQL DATA</c>; <c>SQL SECURITY</c>; <c>COMMENT</c>; imported libraries (<c>USING</c>); the body exactly as written, dollar-quoted JavaScript included. And what MySQL stores with each stored program, which a dump sets before it: its <c>sql_mode</c>, <c>character_set_client</c> and <c>collation_connection</c>, so it is written back with the same meaning.</p>
+    <p><b>A trigger:</b> <c>DEFINER</c>, <c>BEFORE</c>/<c>AFTER</c>, <c>INSERT</c>/<c>UPDATE</c>/<c>DELETE</c>, its table, <c>FOLLOWS</c>/<c>PRECEDES</c>, the body, and its stored settings; triggers on one table keep their order.</p>
+    <p><b>An event:</b> <c>DEFINER</c>, <c>AT …</c> or <c>EVERY … STARTS … ENDS</c>, <c>ON COMPLETION [NOT] PRESERVE</c>, <c>ENABLE</c>/<c>DISABLE</c>/ <c>DISABLE ON REPLICA</c>, <c>COMMENT</c>, the body, and its stored settings and time zone.</p>
+    <p>Every option is declared, with its part, kinds, kind of value and meaning. Options are stored in the order of their keys, so a schema is the same file however its SQL ordered the clauses.</p>
+  </section>
+  <section title="Types">
+    <p>In palette groups, each with a plain meaning and a real example; a column holds its type as MySQL writes it in lowercase (<c>int unsigned</c>, <c>varchar(200)</c>, <c>decimal(18,2)</c>, <c>enum('new','paid')</c>), every spelling MySQL accepts read as that (<c>integer</c> is <c>int</c>, <c>numeric</c> is <c>decimal(10,0)</c>, <c>boolean</c> is <c>tinyint(1)</c>, <c>year(4)</c> is <c>year</c>, <c>serial</c> is <c>bigint unsigned NOT NULL AUTO_INCREMENT UNIQUE</c>). <c>text(N)</c> and <c>blob(N)</c> keep their size: MySQL makes each the smallest type that holds N characters of the column's character set, or N bytes, which only the server knows. The <c>BINARY</c> attribute of a text column is its option <c>binary</c>; <c>ASCII</c> and <c>UNICODE</c> are its character set. An <c>enum</c> or <c>set</c> value keeps every character, written as MySQL writes it (<c>'a\\b'</c>, <c>'c\nd'</c>, <c>'it''s'</c>).</p>
+    <table>
+      <head><cell>Group</cell><cell>Types</cell></head>
+      <row><cell>Whole numbers</cell><cell><c>tinyint</c>, <c>smallint</c>, <c>mediumint</c>, <c>int</c>, <c>bigint</c>, each <c>unsigned</c> or not</cell></row>
+      <row><cell>Exact decimals</cell><cell><c>decimal(P,S)</c> (up to 65 digits)</cell></row>
+      <row><cell>Approximate numbers</cell><cell><c>float</c>, <c>double</c></cell></row>
+      <row><cell>Text</cell><cell><c>char(N)</c>, <c>varchar(N)</c>, <c>tinytext</c>, <c>text</c>, <c>mediumtext</c>, <c>longtext</c></cell></row>
+      <row><cell>Bytes</cell><cell><c>binary(N)</c>, <c>varbinary(N)</c>, <c>tinyblob</c>, <c>blob</c>, <c>mediumblob</c>, <c>longblob</c></cell></row>
+      <row><cell>Yes or no</cell><cell><c>tinyint(1)</c>, MySQL's boolean</cell></row>
+      <row><cell>Dates and times</cell><cell><c>date</c>, <c>time(P)</c>, <c>datetime(P)</c>, <c>timestamp(P)</c>, <c>year</c></cell></row>
+      <row><cell>Lists of values</cell><cell><c>enum(…)</c>, <c>set(…)</c></cell></row>
+      <row><cell>JSON</cell><cell><c>json</c></cell></row>
+      <row><cell>Bit strings</cell><cell><c>bit(N)</c></cell></row>
+      <row><cell>Spatial</cell><cell><c>geometry</c>, <c>point</c>, <c>linestring</c>, <c>polygon</c>, <c>multipoint</c>, <c>multilinestring</c>, <c>multipolygon</c>, <c>geomcollection</c></cell></row>
+      <row><cell>Vectors</cell><cell><c>vector(N)</c>, from 9.7</cell></row>
+    </table>
+  </section>
+  <section title="Reading a dump or DDL">
+    <p><c>mysqldump</c> output (schema only or whole, with routines, triggers and events, from 8.0 on), what this engine writes, and hand-written DDL. The script is cut into statements as the <c>mysql</c> client cuts it (<c>src/dump.rs</c>), each statement tokenised with <c>sqlparser</c>'s MySQL dialect, and expressions and bodies taken from the text exactly as written:</p>
+    <list>
+      <item>versioned comments (<c>/*!50003 … */</c>) are read as the code they hold, every byte kept in its place;</item>
+      <item><c>DELIMITER</c> changes what ends a statement; quotes, comments and dollar-quoted bodies never end one;</item>
+      <item>the placeholder a dump writes for a view before the views themselves is dropped with the dump's own <c>DROP VIEW</c>, counted as the dump's machinery, and the view keeps one id; so does a view made again (<c>CREATE OR REPLACE</c>);</item>
+      <item>the <c>SET</c> lines before each stored program carry its settings into it; one restoring a saved value forgets them;</item>
+      <item><c>DROP … IF EXISTS</c>, <c>LOCK TABLES</c>, the header and the trailer are the dump's machinery; rows are data; both are counted and left out;</item>
+      <item>a foreign key may name a table the dump writes later: links are made once every table is read; a trigger is made on a table already read, as MySQL makes one, and a trigger whose table is not in the schema is kept in its place;</item>
+      <item>rows are counted by their first word and never tokenised, statements borrow the file, and lines are counted once, so a whole dump is read in one pass and held once.</item>
+    </list>
+    <p>What is not MySQL's is refused, not misread: a MariaDB dump (its header, its <c>/*M!…*/</c> comments, or its server version), and statements made under the SQL mode <c>NO_BACKSLASH_ESCAPES</c>, whose strings a reader that takes a backslash as an escape would misread.</p>
+    <p>The version a file is read at: the one this engine's header names (<c>-- MySQL 8.4 schema, written by SchemaForge</c>), the one a dump's <c>-- Server version</c> line falls in, or 8.4. A person names it in hand-written DDL with a line like <c>-- Server version 9.7</c>. A whole dump's rows need not be UTF-8: they are data, and every byte that ends a statement or a quote is ASCII.</p>
+    <p>Every statement is modelled, kept as written by kind, counted as data, or counted as the dump's machinery; the report adds up.</p>
+  </section>
+  <section title="Reading the live database">
+    <p>Over a connection (<a href="../../docs/connections.xml">docs/connections.md</a>), with the <c>mysql</c> crate (pure Rust, TLS through <c>rustls</c>), sending only statements that read:</p>
+    <list>
+      <item><b>connection fields</b>, declared as data: host, port (3306), user, the password (a secret, never in a profile), databases (all the account sees when empty), TLS (<c>verify</c>, the default: encrypted and the certificate checked; <c>required</c>; <c>preferred</c>; <c>off</c>), a CA certificate, a timeout;</item>
+      <item><b>test</b>, in five steps, stopping at the first that fails: <b>reach</b> the host; <b>secure</b>: TLS as asked, and what was negotiated; <b>sign in</b>; <b>version</b>: the server's, and the engine version a schema read from it is designed for (a MariaDB server fails here: it is not MySQL); <b>rights</b>: the account's grants read with where each applies (everywhere, a database or a pattern of databases, or only some tables) and with its active roles' grants, naming every right it lacks, and whether it can also change anything (an account that only reads is recommended);</item>
+      <item><b>read</b>: each database's definitions as the server writes them (<c>SHOW CREATE …</c>), in <c>mysqldump</c>'s order (tables with their triggers, events, libraries, functions, procedures, views), from inside the database as <c>mysqldump</c> is, read through the same reader as a dump: a schema read live and one read from a dump of the same database are the same model. The server's general tablespaces and the spatial reference systems people defined (MySQL's own come from the EPSG) are read too, which a dump leaves out.</item>
+    </list>
+    <p>The rights reading needs, and MySQL has no narrower ones: <c>SELECT, SHOW VIEW, TRIGGER, EVENT</c> on each database read, and <c>SHOW_ROUTINE</c> and <c>PROCESS</c> everywhere (<c>TRIGGER</c> and <c>EVENT</c> to see triggers and events, <c>SHOW_ROUTINE</c> a routine's body, <c>PROCESS</c> the general tablespaces). Without <c>TRIGGER</c> or <c>EVENT</c>, MySQL hides those objects rather than refusing, so a read by an account that lacks any of these is refused, never returned with something missing.</p>
+    <p>Not yet proven against a server: reading libraries (<c>SHOW CREATE LIBRARY</c>, <c>information_schema.LIBRARIES</c>), which need MySQL Enterprise; libraries are read and written from files, and tested that way.</p>
+  </section>
+  <section title="Writing">
+    <p>One object's definition, and the whole schema, in one canonical form: each object as <c>SHOW CREATE …</c> writes it, without the versioned comments, every name quoted; stored programs inside <c>DELIMITER</c> with the settings they were made under, saved before and restored after; foreign key checks off while the schema is made, so tables come in any order; a view after what it reads, in any database (with <c>USE</c> where it must switch); what the reader kept, written back after the part it followed. Every string is written as <c>SHOW CREATE …</c> writes one; every setting is a quoted string; every value written outside quotes (an engine, a character set, a collation, a size, a definer) must be one word or an account, so no value can change the statement around it. A link marked as written on its column is written there when that keeps its meaning in the schema's version, and as a constraint when MySQL would ignore it on the column. Writing returns an error rather than drop or change anything: a link MySQL does not enforce on several columns, or from 9.0 at all; an identity numbered other than by <c>AUTO_INCREMENT</c>; an index with a <c>WHERE</c>; a value that is not one word.</p>
+    <p>What this engine writes reads back as the same schema, and loads into MySQL: each canonical sample is loaded into a server of its version and dumped again by that server's own <c>mysqldump</c>, and that dump reads as the same schema as the dump of the original.</p>
+  </section>
+  <section title="Arrow">
+    <p>Whole numbers to Arrow's signed or unsigned integers exactly (<c>mediumint</c> to 32 bits, approximately; a display width or <c>ZEROFILL</c> is not kept); <c>tinyint(1)</c> to <c>Boolean</c>; <c>decimal(P,S)</c> to <c>Decimal128</c> (up to 38 digits) or <c>Decimal256</c>, exactly; <c>float</c>, <c>double</c> to <c>Float32</c>, <c>Float64</c>; text to <c>Utf8</c> (a length is not kept); <c>binary(N)</c> to <c>FixedSizeBinary(N)</c> exactly, other bytes to <c>Binary</c>; <c>date</c> to <c>Date32</c>; <c>datetime(P)</c> and <c>timestamp(P)</c> to timestamps (<c>timestamp</c> in UTC), exactly at 0, 3 and 6 digits; <c>time</c> to <c>Time64</c>, approximately (a MySQL time is a duration up to 838 hours); <c>year</c> to <c>Int16</c>; <c>json</c>, <c>enum</c> and <c>set</c> to <c>Utf8</c> (Arrow has no JSON type; the values are not kept); bit strings and spatial types to <c>Binary</c> (shapes as well-known binary); <c>vector(N)</c> to a fixed-size list of <c>N</c> 32-bit floats, exactly. And back: every Arrow type to the nearest MySQL type, saying what is lost.</p>
+  </section>
+  <section title="Queries">
+    <p>What a view reads, from its query, with <c>sqlparser</c>'s MySQL dialect: tables and views by name, as written; the names a query gives its own common table expressions are not tables.</p>
+  </section>
+  <section title="Checks">
+    <p>What MySQL refuses: a name longer than 64 characters; more than one <c>AUTO_INCREMENT</c> column, or one that is not the first column of a key; from 8.4, <c>AUTO_INCREMENT</c> on <c>FLOAT</c>/<c>DOUBLE</c>, a foreign key to columns that are not a primary key or a unique, whole, and a <c>KEY</c>-partitioned table by a column with a prefix in its key; a <c>VECTOR</c> in any key, index or partitioning; a <c>TEXT</c> or <c>BLOB</c> in a key or a non-full-text index without a prefix length; a trigger on a view; a link MySQL cannot hold. Names are always written quoted, so a reserved word is never a problem.</p>
+  </section>
+  <section title="Add-ons">
+    <p><c>AddOn</c> (<c>src/addon.rs</c>): a company's conventions or a MySQL-compatible system's types are added without forking the engine, with one line, <c>Mysql::new().with(MyAddOn)</c>. An add-on's types join the catalog after MySQL's own and read and write like them (<c>tests/addon.rs</c> is the worked example). Statement handlers and rules open to add-ons as the engine grows them.</p>
+  </section>
+  <section title="Samples and tests">
+    <p>In <c>tests/samples/</c>, made by this crate, never copied from a company's database:</p>
+    <list>
+      <item><c>shop/source.sql</c>: a made-up shop using every kind of object and clause the free server can make; <c>source97.sql</c> adds what came after 8.4; <c>make.sh</c> loads it into a throwaway MySQL in Docker for each version (8.0, 8.4, 9.7, 26.10) and dumps it with that server's own <c>mysqldump</c>, schema only (<c>schema&lt;v&gt;.sql</c>) and whole (<c>full&lt;v&gt;.sql</c>);</item>
+      <item><c>shop/shop&lt;v&gt;.sql</c>: the shop as this engine writes it for each version; <c>roundtrip.sh</c> loads each into a server of its version and dumps it again (<c>roundtrip&lt;v&gt;.sql</c>);</item>
+      <item><c>handwritten/handwritten8.4.sql</c>, <c>handwritten9.7.sql</c>: what a person writes and a dump never does (no database named, keys on columns, <c>CREATE INDEX</c>, views made again, an <c>ALTER TABLE</c>, accounts and grants, a resource group, a server, a foreign key outside the schema; a JavaScript library and function, a loadable function, <c>REFERENCES</c> on a column), and <c>written&lt;v&gt;.sql</c>, the same as this engine writes it;</item>
+      <item><c>lending/source.sql</c>: a lending library laced with stored programs and holding every type MySQL has: 16 tables (a table for each family of types, every spatial type, list and range-columns partitions, 5 foreign keys), 4 functions, 5 procedures (<c>IN</c>, <c>OUT</c>, <c>INOUT</c>, cursors, handlers, transactions), 10 triggers, 4 events, 5 views (a common table expression, a check option), and a table of what MySQL rewrites as it reads it (<c>serial</c>, <c>BINARY</c>, <c>ASCII</c>, <c>year(4)</c>, <c>text(N)</c>, <c>blob(N)</c>, escapes); its procedures and triggers run as it loads. <c>source97.sql</c> adds a vector table with a foreign key on its column.</item>
+    </list>
+    <p>The tests:</p>
+    <list>
+      <item><c>tests/conformance.rs</c>: the conformance kit on all 22 samples, the canonical ones written back exactly;</item>
+      <item><c>tests/dumps.rs</c>: every dump read whole and written back as itself; each re-dump the same schema as the original's dump; the hand-written DDL read as a person meant it, its password nowhere;</item>
+      <item><c>tests/addon.rs</c>: an add-on's types read, written and conforming;</item>
+      <item><c>tests/live.rs</c>: against MySQL 8.0, 8.4, 9.7 and 26.10 in Docker (<c>cargo test -p schema-forge-mysql --test live -- --ignored</c>): the five steps passed, a wrong password failing at sign in, an account without the rights failing at rights and naming them, root warned that it can change things, and the live read the same schema as the dump; and the lending library, on 8.4 and on 9.7, loaded, its quirks read and written by the engine and made by MySQL into the same table, a column of every type the version has, read live and from its dump as one schema, written, loaded into a fresh server, dumped again as the same schema, its procedures and triggers still lending and refusing as they should;</item>
+      <item>the unit tests of each part: the splitter, the tokens, every column and table clause, views and stored programs, accounts, versions, types, checks.</item>
+    </list>
+  </section>
+</doc>

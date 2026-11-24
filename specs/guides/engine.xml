@@ -23,7 +23,7 @@
     <do>Read the engine interface as merged: crates/engine (the Engine trait and its parts, the section layout in src/sections.rs, kinds, options, types, the conformance kit in src/kit.rs) and crates/model.</do>
     <do>Read the MySQL engine, engines/mysql, as the worked example of a whole engine: its versions, types, kinds, options, readers, writer, its tables (engines/mysql/schema) and its tests and samples.</do>
     <do>Read Quill (engines/quill, or crates/engine/tests/example before task t03 is built): the made-up engine, unlike MySQL on purpose, every shared test runs beside.</do>
-    <do>Read docs/engines.md (why every database is a plugin), docs/writing-an-engine.md (the how, section by section) and the owner template (docs/owner-template/README.md: the five shapes of an engine's tables).</do>
+    <do>Read docs/engines.xml (why every database is a plugin), docs/writing-an-engine.xml (the how, section by section) and the owner template (docs/owner-template/README.xml: the five shapes of an engine's tables).</do>
     <do>Read the new database's own documentation: its versions and what each brought; its types and every spelling a dump uses; its DDL grammar; its dump formats; its catalog (the views or tables that describe a live schema); its kinds of object.</do>
     <ends>Nothing changed. Tell your human what you learned and what surprised you.</ends>
   </phase>
@@ -79,5 +79,5 @@
 
   <stop>Stop and tell your human, instead of going on, when: the database needs something the interface or the layout has no place for; its documentation and a running server disagree; the profile cannot be finished without a guess; or anything here, the brief, the root or the rules disagree. Each is a question for the design session.</stop>
 
-  <reference path="docs/writing-an-engine.md">The how, for people and agents alike: the crate, versions, types, the layout and options, Arrow, reading files, reading the live database, writing, registering, the conformance kit, the engine's own tables, add-ons.</reference>
+  <reference path="docs/writing-an-engine.xml">The how, for people and agents alike: the crate, versions, types, the layout and options, Arrow, reading files, reading the live database, writing, registering, the conformance kit, the engine's own tables, add-ons.</reference>
 </guide>

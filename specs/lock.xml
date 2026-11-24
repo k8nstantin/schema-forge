@@ -4,7 +4,7 @@
   session, by tools/schema_lock.py with its write option; tools/check.sh refuses any locked file that differs.
 -->
 <lock product="SchemaForge" files="127">
-  <file path="docs/owner-template/README.md" sha256="bf67bc3717c41bf6b9aabcc98505d78e756bf7b7ed5c916c5c27a4b3baf36d0e"/>
+  <file path="docs/owner-template/README.xml" sha256="ff57e0c216a98fa4258d05fb11e53fbbaa80b858981b77db8d9974f202826330"/>
   <file path="docs/owner-template/owner.toml" sha256="031cf866bb50d34572fcdd16333b9db6318aab561fe519ad4da1f82dab73a734"/>
   <file path="docs/owner-template/schema/column_codecs.sql" sha256="e083ecbc6ea75577cd264b3185baac2f2b48ef418ef17a8c095736027a3cedbc"/>
   <file path="docs/owner-template/schema/migrations/1_tables.sql" sha256="b72b6999026c96ef7c8aeed38811bfecd8ab398904734fc8dd8313c62d14b4dc"/>
@@ -120,10 +120,10 @@
   <file path="schema/cortex/value_changes.sql" sha256="aff8ed50e13c0bbda5534219e6fc035e524452b06066cbe4d26f2f8ff9885921"/>
   <file path="schema/cortex/verbatim_statements.sql" sha256="af3e31fdf699d423abc17531989019ba6e4a31ef1e60e891b2222cf11097a100"/>
   <file path="schema/cortex/view_queries.sql" sha256="c7ebc16819ecb189d243da08d2ae6a15a1875bfbdd5384f50d467e3eb25dc6be"/>
-  <file path="schema/workspace/connection_test_steps.sql" sha256="d099b61fe0f21fcd290cdb76ffde3a0db4b132c29c90ff46847ea86ae4884692"/>
+  <file path="schema/workspace/connection_test_steps.sql" sha256="d1c0f0c843a152a3d43b21ecc31ae6c306c2d3e8bbe14dd01abc10b70a5748b2"/>
   <file path="schema/workspace/connection_tests.sql" sha256="a2c8c016f69bf432ae79c31913cbb7d027f411b400f47de1542fa451ff54f843"/>
   <file path="schema/workspace/connection_values.sql" sha256="600e3caf196edbf81a540af4a39e98f365c8fd447e81acec39f04edec821e115"/>
-  <file path="schema/workspace/connections.sql" sha256="2c4928e5347aa35017f403d3350ccdf800210a73a7f02c98c6d039f4e9721d77"/>
+  <file path="schema/workspace/connections.sql" sha256="f28faf6fabde7369e2c571c54580d9a7ce67dedd357c1a75e857a92f920c9e0d"/>
   <file path="schema/workspace/grants.sql" sha256="7a14690c3a86f2b79d42808fec9211ff11300a778b48bcff866873d460eada6f"/>
   <file path="schema/workspace/owner.toml" sha256="c5eaa5f600dee679a37cb0f09601b1e1f8811eb154a25b8364384c93b860fce0"/>
   <file path="schema/workspace/parameters.sql" sha256="d486cce9defdbce36c0905c54aa566fb337b49c711dc9cd3d001779d030b7b3f"/>

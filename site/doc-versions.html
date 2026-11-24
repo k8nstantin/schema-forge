@@ -1,0 +1,115 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="alternate" type="application/xml" title="For coding agents: the brief, agents.xml" href="https://k8nstantin.github.io/schema-forge/agents.xml">
+<title>Versions and the definitions folder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F8F4FB;--surface:#FFFFFF;--raised:#FBF8FD;--ink:#1F062A;--ink2:#3B2447;--muted:#6B5A74;--line:#E3D9EA;
+  --accent:#9500BF;--accent-soft:#F3E3FA;--engine:#0E7C86;--engine-soft:#DDF2F3;--log:#8A5A00;--log-soft:#FBF0DA;
+  --crit:#B42318;--crit-soft:#FDECEA;
+  --head:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;--sans:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"JetBrains Mono","Fira Code",ui-monospace,SFMono-Regular,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+  --bg:#1F062A;--surface:#2A0F38;--raised:#331545;--ink:#FFFFFF;--ink2:#E3D6EC;--muted:#ADACAC;--line:#45285A;
+  --accent:#CC66FF;--accent-soft:#3C1452;--engine:#4FD1C5;--engine-soft:#123B3B;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#1F062A;--surface:#2A0F38;--raised:#331545;--ink:#FFFFFF;--ink2:#E3D6EC;--muted:#ADACAC;--line:#45285A;
+  --accent:#CC66FF;--accent-soft:#3C1452;--engine:#4FD1C5;--engine-soft:#123B3B;--log:#E8B04A;--log-soft:#33270F;--crit:#F97066;--crit-soft:#3A1A18}
+*{box-sizing:border-box}
+.hero{background:linear-gradient(160deg,#1F062A 0%,#2A0838 55%,#3A0A4D 100%);color:#FFFFFF;border-radius:18px;padding:56px 28px 48px;margin:0 0 8px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(closest-side,rgba(204,102,255,.35),transparent);pointer-events:none}
+.hero .eyebrow{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#CC66FF;margin:0 0 14px}
+.hero h1{color:#FFFFFF;font-size:52px;margin:0 0 16px;max-width:22ch}
+.hero p{color:#E3D6EC;font-size:18px;max-width:62ch;margin:0 0 24px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;position:relative;z-index:1}
+.btn{display:inline-block;font:600 15px/1 var(--sans);padding:13px 20px;border-radius:10px;text-decoration:none;border:1.5px solid transparent}
+.btn-primary{background:#9500BF;color:#FFFFFF;border-color:#9500BF}.btn-primary:hover{background:#B500BA;border-color:#B500BA;color:#FFFFFF}
+.btn-secondary{background:transparent;color:#FFFFFF;border-color:rgba(255,255,255,.35)}.btn-secondary:hover{border-color:#CC66FF;color:#CC66FF}
+.note{display:inline-block;margin-top:22px;font:500 12.5px var(--mono);color:#ADACAC;position:relative;z-index:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;margin-top:18px}
+.cards.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;min-width:0}
+.card h3{margin:0 0 6px;font-size:18px}.card p{margin:0;color:var(--ink2);font-size:14.5px}
+a.card{display:block;text-decoration:none;color:var(--ink)}a.card:hover{border-color:var(--accent)}a.card .go{display:block;margin-top:10px;color:var(--accent);font:600 13px var(--mono)}
+.kicker{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+.cta{background:var(--accent-soft);border:1px solid var(--line);border-radius:18px;padding:28px 24px}
+.foot{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
+@media (max-width:640px){.nav{position:static}.nav .sub{display:none}.hero{padding:40px 18px 36px}.hero h1{font-size:36px}.hero p{font-size:16px}}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 120px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:70;background:var(--bg)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 80px}
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:60;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 14px;padding:8px 10px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.nav .brand{font:600 15px/1 var(--head);color:var(--ink);border:0;padding:5px 8px 5px 2px}.nav .brand::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);margin-right:8px;vertical-align:0}
+.nav .l{font:500 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 4px 0 2px}
+.nav a{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;white-space:nowrap}
+.nav a:hover{border-color:var(--accent);color:var(--accent)}
+.nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.nav .sub{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 10px;padding-top:6px;border-top:1px solid var(--line);font-size:13px}
+.nav .sub a{border:0;padding:0;color:var(--accent);border-radius:0}
+.agents{margin-top:56px;border:1px dashed var(--accent);border-radius:14px;padding:18px 20px;background:var(--surface)}.agents p{margin:0 0 12px;max-width:80ch;color:var(--ink2)}.agents .kicker{margin-bottom:6px}
+.btn-outline{background:transparent;color:var(--accent);border-color:var(--accent)}.btn-outline:hover{background:var(--accent);color:#FFFFFF}
+.tb{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1.5px solid var(--ink);background:var(--surface)}
+.tb div{padding:8px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.tb span{display:block;font:500 10.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tb b{font:500 14px/1.4 var(--mono);overflow-wrap:anywhere}.tb a{color:var(--accent)}
+h1{font:600 44px/1.08 var(--head);letter-spacing:-.01em;margin:22px 0 8px;text-wrap:balance}
+h2{font:600 28px/1.15 var(--head);letter-spacing:-.01em;margin:0 0 8px;text-wrap:balance;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+h3{font:600 21px/1.2 var(--head);margin:22px 0 6px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+h4{margin:0 0 6px;font-size:15px}
+.draft{font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--log);background:var(--log-soft);border:1px solid var(--log);border-radius:999px;padding:2px 10px;vertical-align:middle}
+.path{font:400 12.5px var(--mono);color:var(--muted)}
+.lede{color:var(--ink2);max-width:78ch;margin:0 0 14px}
+p{max-width:82ch}
+.small{font-size:13px;color:var(--muted)}
+code{font:13px var(--mono);background:var(--raised);border:1px solid var(--line);border-radius:4px;padding:0 4px;overflow-wrap:anywhere}
+a{color:var(--accent)}a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{margin:52px 0 0}
+figure{margin:14px 0 0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:680px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:10px;max-width:86ch}
+.d text{fill:var(--ink);font:12.5px var(--sans)}.d .m{font-family:var(--mono);font-size:12px}.d .b6{font-weight:600}
+.d .lb{font-size:11px;fill:var(--muted)}.d .cap{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;fill:var(--muted)}
+.d .halo{paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.d .box{fill:var(--surface);stroke:var(--ink2);stroke-width:1.2}
+.d .pri{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+.d .eng{fill:var(--engine-soft);stroke:var(--engine);stroke-width:1.4}
+.d .lg{fill:var(--log-soft);stroke:var(--log);stroke-width:1.4}
+.d .file{fill:var(--raised);stroke:var(--ink);stroke-width:1.5}
+.d .band{fill:none;stroke:var(--line);stroke-width:1.2;stroke-dasharray:5 4}
+.d .ea{stroke:var(--accent);stroke-width:1.4;fill:none}.d .es{stroke:var(--muted);stroke-width:1.1;fill:none;stroke-dasharray:4 3}
+.d .mkf{fill:var(--accent)}.d .mkm{fill:var(--muted)}
+.d a:hover rect{stroke-width:2.4}
+table.t{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);border:1px solid var(--line)}
+table.t th{text-align:left;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);background:var(--raised)}
+table.t td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+.scroll{overflow-x:auto}
+.pill{display:inline-block;font:500 11.5px var(--mono);border-radius:999px;padding:1px 9px;white-space:nowrap;border:1px solid var(--line);color:var(--ink2);background:var(--raised)}
+.pill.ok{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+.pill.open{color:var(--log);background:var(--log-soft);border-color:transparent}
+.pill.eng{color:var(--engine);background:var(--engine-soft);border-color:transparent}
+.lab{font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+details{border-top:1px solid var(--line);padding:8px 0}summary{cursor:pointer;font-weight:600}
+pre{margin:8px 0 0;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font:12.5px/1.55 var(--mono);color:var(--ink2);overflow:auto;white-space:pre}
+@media (max-width:640px){h1{font-size:34px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+.doc{max-width:860px}.doc h2{margin-top:36px}.doc h3{margin-top:24px}.doc ul,.doc ol{padding-left:22px}
+.doc li{margin:6px 0}.doc pre{overflow-x:auto}.doc .src{margin:4px 0 22px}</style>
+<div class="wrap"><span id="top"></span><nav class="nav" aria-label="SchemaForge"><a class="brand" href="index.html">SchemaForge</a><a href="start.html">Start here</a><a href="engines.html">Engines</a><a href="database.html">Database</a><a href="template.html">Owner Template</a><a href="build-spec.html">Build Spec</a><a href="contribute.html">Contribute</a><a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">GitHub</a></nav><header class="doc"><h1>Versions and the definitions folder</h1><p class="small src">The source, for people and agents alike: <a href="https://github.com/k8nstantin/schema-forge/blob/main/docs/versions.xml"><code>docs/versions.xml</code></a></p></header><article class="doc"><p>The draft lives in the schema&#x27;s own database in the bundled PostgreSQL (<a href="doc-store.html">store.md</a>) while you and the agent work. Locked versions are written as <strong>definitions</strong>: one SQL file per object, in a folder whose path says where the object lives. The folder is a plain directory; in a git repository, locking a version is also a commit.</p><h2 id="the-definitions-folder">The definitions folder</h2><pre>definitions/
+  &lt;node&gt;/                               the server or catalog: prod-mysql, analytics-pg, lakehouse
+    &lt;database&gt;/                         a MySQL or PostgreSQL database, an Iceberg catalog
+      &lt;schema&gt;/                         a PostgreSQL schema, an Iceberg namespace (MySQL has none: skipped)
+        tables/orders.sql               CREATE TABLE orders (…), with its keys, indexes and comments
+        tables/customers.sql
+        views/current_orders.sql        CREATE VIEW current_orders AS …
+        sequences/orders_seq.sql        PostgreSQL
+        types/order_status.sql          PostgreSQL enum and domain types
+        kept/0001_function_audit.sql    statements carried through verbatim, in their order
+      .schema-forge/
+        model.json                      what SQL cannot say: ids, tags, areas, patterns, logical relationships, layout
+        rules.toml                      the schema&#x27;s rules
+        perspectives/                   custom perspectives
+        versions/0003.json              each locked version: its number, hash, and every file&#x27;s hash
+        migrations/0002_to_0003.sql     what changed since the version before
+        CHANGELOG.md                    one entry per version, in words</pre><p>So an object&#x27;s path reads like its address: <code>prod-mysql / shop / tables / orders.sql</code>, or <code>lakehouse / glue / analytics.sales / tables / orders.sql</code>.</p><ul><li><strong>Each file is valid SQL for the schema&#x27;s engine</strong>, the way that engine writes it: MySQL and PostgreSQL DDL; for Iceberg, Spark SQL (<code>CREATE TABLE … USING iceberg PARTITIONED BY … TBLPROPERTIES …</code>), with the dialect chosen in the rules.</li><li><strong>The SQL plus <code>.schema-forge/model.json</code> is the whole model.</strong> <code>schema-forge</code> reads the folder back into exactly the same schema; the round-trip tests prove it.</li><li><strong>Order:</strong> foreign keys sit in their table&#x27;s file; <code>schema-forge export</code> and deploy put the files in dependency order (tables before the views that read them, referenced tables first).</li></ul><h2 id="git-or-not">Git, or not</h2><p>The folder works the same either way.</p><div class="scroll"><table class="t"><tr><th></th><th>A plain folder</th><th>A folder in a git repository</th></tr><tr><td>Locking a version</td><td>rewrites the definitions; adds the version, the migration, the changelog entry</td><td>the same, then <strong>a commit</strong> with the agent&#x27;s message and <strong>a tag</strong> <code>schema/&lt;name&gt;/v3</code></td></tr><tr><td>History</td><td>kept by <code>schema-forge</code> (the store holds every version)</td><td>git&#x27;s: who, when, which branch, the message</td></tr><tr><td>Sharing</td><td>copy the folder</td><td>push, pull requests, review: yours, as usual</td></tr></table></div><p><strong>A plain folder can become part of a repository later.</strong> Put it in a repo (<code>git init</code>, or move it into one), and <code>schema-forge git adopt</code> writes the history <code>schema-forge</code> kept as commits, one per locked version, oldest first, with their tags, so nothing is lost by starting without git.</p><p><code>schema-forge</code> never pushes; pushing, branches and pull requests stay with you.</p><h2 id="locking-a-version">Locking a version</h2><p>When you say &quot;lock it&quot; (the agent never locks on its own):</p><ol><li>The draft is checked: every rule, every inconsistency. Failing <code>error</code> rules refuse the lock.</li><li>The definitions are written: changed objects&#x27; files rewritten, new ones added, dropped ones removed.</li><li><code>.schema-forge/</code> gains the version (with every file&#x27;s hash), the migration, and a changelog entry.</li><li>In a git repository: a commit, written by the agent from the turn&#x27;s changes and the prompts behind them, and a tag.</li><li><code>@v3</code> resolves to the version, and to its commit when there is one.</li></ol><h2 id="reading-history-back">Reading history back</h2><ul><li>The History perspective shows every version: when, by whom (from git when there is one), what changed.</li><li><strong>Any two versions compare as schemas</strong>, not as text, drawn on the diagram; in git, any two commits too.</li><li>Because each object is its own file, a version&#x27;s change is also readable as a plain file diff: one table changed, one file changed.</li></ul><h2 id="branches-and-merging-in-git">Branches and merging (in git)</h2><ul><li>A branch carries its own versions; numbers are per branch until merged.</li><li><code>schema-forge merge</code> merges on the model against the common version, applies what does not conflict, and shows each conflict for you to decide or the agent to propose. A git merge driver lets <code>git merge</code> take the same path; with one file per object, most merges touch different files and never conflict.</li></ul><h2 id="ci">CI</h2><p><code>schema-forge check &lt;folder&gt;</code> reads the definitions and checks rules, inconsistencies, and that each migration takes version N−1 exactly to version N. A pull request that breaks a standard fails like any other check.</p><h2 id="built-on">Built on</h2><p><strong>gix</strong> (gitoxide), pure Rust: reading history, writing commits and tags. Pushing and fetching are left to the user&#x27;s git.</p></article><aside class="agents" aria-label="For coding agents"><p class="kicker">For coding agents</p><p>Everything a coding agent needs to work on SchemaForge is in one place: the brief, https://k8nstantin.github.io/schema-forge/agents.xml. It explains what SchemaForge is and how it is built, lists every contribution open now, and leads to the spec, the rules and the task files, in the order to read them. Read it before you act on this page, and let your human choose what to do.</p><a class="btn btn-outline" href="https://k8nstantin.github.io/schema-forge/agents.xml">The brief: agents.xml</a></aside><p class="foot"><span>SchemaForge · MIT or Apache-2.0</span><a href="https://github.com/k8nstantin/schema-forge">GitHub</a><a href="https://github.com/k8nstantin/schema-forge/discussions">Discussions</a><a href="https://k8nstantin.github.io/schema-forge/agents.xml">For coding agents: the brief, agents.xml</a><span>Generated by docs/pages/build.py from the repository: the files are the authority.</span></p></div>

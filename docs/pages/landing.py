@@ -2,6 +2,7 @@
 import base64
 import common
 from common import REPO, Svg, e, links, page
+from docs import doc_href
 
 L = links()
 
@@ -95,7 +96,7 @@ body = f"""
 <div class="cards">
 {card("Your data stays yours", "Meaning is found with embeddings from a model you choose: one that runs on your machine, so nothing leaves it, or an embedding API you pick, per workspace. Reading a live database sends only statements that read; no password is ever stored.")}
 {card("Why PostgreSQL, not SQLite", "The database itself enforces every rule, the search index sits beside the design, and the same code serves a team server. The cost: a larger download, a small private server per open workspace, and upgrades the app handles for you.")}
-{card("Next to the tools you know", "Atlas, Bytebase and Flyway plan and apply migrations; dbdiagram and drawDB draw diagrams; Prisma defines a schema in application code. %PRODUCT% is for designing and managing the schema itself, with your own agent, under rules the database enforces. <a href='%REPO%/blob/main/docs/market.md'>More</a>")}
+{card("Next to the tools you know", "Atlas, Bytebase and Flyway plan and apply migrations; dbdiagram and drawDB draw diagrams; Prisma defines a schema in application code. %PRODUCT% is for designing and managing the schema itself, with your own agent, under rules the database enforces. <a href='" + doc_href("market") + "'>More</a>")}
 </div></section>
 
 <section id="contribute"><div class="cta"><p class="kicker">A collaborative learning exercise</p><h2>Learn data products, agent coding and spec-driven development, by building one together.</h2>

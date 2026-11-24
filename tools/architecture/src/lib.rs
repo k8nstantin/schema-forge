@@ -1,4 +1,4 @@
-//! The design in docs/engines.md, checked on the code: what each crate is, what it may depend on, and where a database
+//! The design in docs/engines.xml, checked on the code: what each crate is, what it may depend on, and where a database
 //! may be named. `cargo test` runs it on the workspace (tests/workspace.rs), so a breach fails the build.
 
 use std::fmt;

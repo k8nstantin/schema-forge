@@ -1,6 +1,6 @@
 [package]
 name = "schema-forge-architecture"
-description = "Fails the build when a crate breaks the design in docs/engines.md"
+description = "Fails the build when a crate breaks the design in docs/engines.xml"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
