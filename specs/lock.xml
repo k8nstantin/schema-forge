@@ -81,7 +81,7 @@
   <file path="schema/cortex/partition_parents.sql" sha256="160c5282e023c5c70fbcfc00c1837c2eb4723f256bb2113bce8e4af893243d8b"/>
   <file path="schema/cortex/partitions.sql" sha256="e1d049b11c4d2c52ade4a42cd19c1391e498cb5aa375106dc52e5a28b19c7543"/>
   <file path="schema/cortex/perspective_members.sql" sha256="bcd4bc01428530b9c249d7cefae4bd53518efbeb9c7dd491b6213a21849643bb"/>
-  <file path="schema/cortex/pinned_notes.sql" sha256="a7238b691f83b5ab8b9ed2613e4d5a6f6f4193772cbc11991f3cb43a390941a0"/>
+  <file path="schema/cortex/pinned_notes.sql" sha256="76ea0b0234b350db737a494dd54927fd640af58d097d618aa0025f691cc35fb2"/>
   <file path="schema/cortex/relationship_columns.sql" sha256="445426dfafa6b60c644f993f716080d6b4fa999c9b52c6e091689155d19c2876"/>
   <file path="schema/cortex/relationships.sql" sha256="0d690be87ebdc77cdc50a6c70fd9f29849cac78814d5cb2ad83775a2d7ce974d"/>
   <file path="schema/cortex/required_extensions.sql" sha256="1310a5f7b58f79faa18f95d5d8be91aba0813d594995e955ddcc11a7be23a147"/>
