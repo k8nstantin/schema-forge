@@ -1,7 +1,8 @@
 # SchemaForge
 
-**Multi-engine schema design and management, with your coding agent, under standards that hold.** A schema converts
-from one engine to another, and its intelligence (what depends on what, what it means, what is wrong) is stored with it.
+**The intelligent, multi-engine schema design and management tool, with your coding agent, under standards that hold.**
+Design from scratch, reverse-engineer what exists, prompt your agent and work together, or let it design while you
+watch. A schema converts from one engine to another, and its intelligence (what depends on what, what it means, what is wrong) is stored with it.
 
 AI agents now change code faster than anyone can review it, and the database schema is where their mistakes stick: a
 wrong type, a missing key or a dropped column outlives every commit that caused it. Each prompt invents its own

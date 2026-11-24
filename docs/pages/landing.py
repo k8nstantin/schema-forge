@@ -58,7 +58,7 @@ LIMIT  10;"""
 body = f"""
 <header class="hero">
   <p class="eyebrow">Open source · multi-engine · MCP</p>
-  <h1>Multi-engine schema design and management, with your coding agent.</h1>
+  <h1>The intelligent, multi-engine schema design and management tool.</h1>
   <p>%PRODUCT% is where you and your coding agent design and manage database schemas together, for every database you run: the agent through MCP, you on the canvas, every change checked against your team's rules, nothing landing unchecked. Each database is an engine plugin, so a schema converts from one engine to another, and everything known about it is stored with it.</p>
   <div class="btns"><a class="btn btn-primary" href="#does">What it does</a>
   <a class="btn btn-secondary" href="%REPO%">GitHub</a>
@@ -70,6 +70,15 @@ body = f"""
 <div class="cards two">
 <div class="card big"><h3>Convert from one engine to another</h3><p>Every engine maps its database once into one shared model and Apache Arrow's types. So a schema moves from MySQL to PostgreSQL, from PostgreSQL to Iceberg, or back, as one step through the hub, never a converter per pair. Every move names each type kept, widened, approximated or lost, and a new engine converts to all the others the day it arrives.</p><a class="go" href="{e(L.get("engines", "#"))}#convert">How conversion works →</a></div>
 <div class="card big"><h3>The schema's intelligence, stored with it</h3><p>What depends on what, what each object means, what breaks your rules: worked out from the schema and kept beside it in the same PostgreSQL, with the embeddings to find it by meaning. You and your agent ask in plain words, and one SQL query searches by meaning, structure and lineage at once.</p><a class="go" href="#one-place">How it is stored →</a></div>
+</div></section>
+
+<section id="ways"><p class="kicker">Work any way you like</p><h2>Design from scratch, start from what exists, or let your agent lead.</h2>
+<div class="cards">
+<div class="card"><h3>From scratch</h3><p>Start a new schema for the engine you choose and design it on the canvas, every change checked against your rules as you make it.</p></div>
+<div class="card"><h3>Reverse-engineer what exists</h3><p>Read in a database (a dump, its DDL or the live server) and get its whole design back, with what depends on what and what is wrong with it.</p></div>
+<div class="card"><h3>Prompt your agent, together</h3><p>Ask your coding agent for a design and work on it side by side: it changes the schema through MCP while you edit, point at things and steer.</p></div>
+<div class="card"><h3>Let the agent design, you watch</h3><p>Hand the agent the job and watch every change land on the canvas, then accept or reject its turn whole.</p></div>
+<div class="card"><h3>All of the above</h3><p>On one schema, at any time: start from an existing database, convert it to another engine, redesign it with your agent, and keep everything it learned about the schema.</p></div>
 </div></section>
 
 <section id="does"><p class="kicker">What it does</p><h2>Design, check and manage the schema, with your agent.</h2>
@@ -98,5 +107,5 @@ CSS = """.card.big{padding:22px 22px 18px}.card.big h3{font-size:22px;margin-bot
 .shot{display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--line)}
 figure.screen svg{min-width:0}
 .sql{font:13px/1.6 var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--ink);overflow-x:auto;margin:14px 0 0}"""
-sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("why", "Why"), ("does", "What it does"), ("plugins", "Every database a plugin"), ("one-place", "How it works"), ("contribute", "Contribute")])
+sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("why", "Why"), ("ways", "Ways to work"), ("does", "What it does"), ("plugins", "Every database a plugin"), ("one-place", "How it works"), ("contribute", "Contribute")])
 HTML = page("site", "%PRODUCT%", CSS, body, sub)
