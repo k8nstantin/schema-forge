@@ -12,7 +12,6 @@ jobs:
       # The toolchain comes from rust-toolchain.toml, the same here as on every developer's machine.
       - run: rustup show
       - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      # Runs every crate's tests, and tools/architecture: the design in docs/engines.md, checked on the code.
-      - run: cargo test --workspace
+      # The one command (specs/rules.xml one-check): formatting, lint, every test, the architecture check and, once
+      # built, the spec check among them. The same command runs locally.
+      - run: tools/check.sh

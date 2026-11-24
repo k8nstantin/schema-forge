@@ -1,4 +1,4 @@
-# Schema Forge
+# SchemaForge
 
 **Design database schemas with your coding agent, under standards that hold.**
 
@@ -7,7 +7,7 @@ wrong type, a missing key or a dropped column outlives every commit that caused 
 conventions, and the same data flows from MySQL or PostgreSQL through Debezium into an Iceberg lakehouse, where one
 careless change breaks the rest.
 
-Schema Forge is an open-source schema designer where an AI coding agent and an architect work on the same live
+SchemaForge is an open-source schema designer where an AI coding agent and an architect work on the same live
 design, and nothing lands unchecked. The agent designs through **MCP** (the protocol agents like Claude Code use to
 work with tools); the architect watches every change land on a live canvas, steers it, or edits by hand. Every change,
 the agent's and the architect's, is checked against **rules**: the team's design standards, written down once.
@@ -15,6 +15,7 @@ the agent's and the architect's, is checked against **rules**: the team's design
 > **Status:** a working prototype proved the whole loop (see it below; tag
 > [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype)). The product is being rebuilt in the open
 > on a plugin architecture, with Apache DataFusion at its center: [where it stands](#where-it-stands).
+> The design, with its diagrams: [the database at the core](#the-database-at-the-core).
 
 ![Home: start a schema, open one, or manage your rules](docs/screenshots/home.jpg)
 
@@ -33,7 +34,7 @@ the agent's and the architect's, is checked against **rules**: the team's design
   it break); the architect approves it, hard or soft; from then on it is enforced.
 - **Compatible across databases.** PostgreSQL, MySQL and Apache Iceberg first: checks name every type that would be
   lost, widened or approximated in a move between them, with the reason.
-- **CDC as a goal.** Say what a schema has to do ("feed it by CDC", "land PostgreSQL in Iceberg") and Schema Forge
+- **CDC as a goal.** Say what a schema has to do ("feed it by CDC", "land PostgreSQL in Iceberg") and SchemaForge
   shows the gap: keys Debezium can follow, identifier fields, merge-on-read, source positions, types Debezium carries
   well.
 - **Starts from what exists.** It reads `mysqldump` files, hand-written DDL and the live MySQL database (the
@@ -90,7 +91,7 @@ soft.
 
 ## Every database is a plugin
 
-You choose a schema's database first, and everything follows it. Schema Forge is built in two layers that never mix:
+You choose a schema's database first, and everything follows it. SchemaForge is built in two layers that never mix:
 
 - **The process is shared.** The screens, turns, undo, history, references, the rules machinery and the MCP work the
   same for every database and know none of them.
@@ -126,6 +127,61 @@ The prototype's MCP tools, which the product keeps:
 | its rules | `rules` (what holds, in plain words), `check` (what breaks, hard or soft), `catalog` (every rule, and the grammar new ones are written in) |
 | new rules | `propose_rules` (a new rule as a sentence, a catalog rule to link, an exception with its reason), `proposals` |
 | a design | `new_schema`; `start_turn`; `change`: operations (`add_table`, `add_column`, `alter_column`, `relate`, `add_index`, `set_identifier_fields`, `set_partition_spec`, `set_property`, views, renames, drops) applied as one change, all or none; refused with the rule and the reason when it breaks a hard rule; destructive ones need a yes |
+
+## The database at the core
+
+**One PostgreSQL. Your design, its rules, its history and its vectors, in one place, for one person or a whole team.**
+
+> Designed and specified ([specs/](specs/)), and being built now, in the order the spec gives.
+
+**Visit the site:** [k8nstantin.github.io/schema-forge](https://k8nstantin.github.io/schema-forge/) (live once this design reaches `main`).
+
+**Read the design**, with its diagrams, every table and every decision:
+[Start here](https://claude.ai/artifact/BrFaiE6HBhVArfUGyiB3zp) ·
+[Engines](https://claude.ai/artifact/VMBFif9AQqowMA8ZZQUQWv) (every database a plugin; Iceberg; converting both ways) ·
+[The database](https://claude.ai/artifact/3XWs1sS1cCsu3ar9F6pRos) ·
+[The owner template](https://claude.ai/artifact/XUiMve4wFDNTFZqMZnjBaC) (how an engine or a feature adds its tables) ·
+[The build spec](https://claude.ai/artifact/2jnUargwgDpCVKgFYUbxAs) (how coding agents build it). The same pages are in
+[docs/pages/](docs/pages/), generated from the repository.
+
+- **Real PostgreSQL, bundled.** SchemaForge ships PostgreSQL 18 with **pgvector** inside the app: nothing to install,
+  nothing to configure. On a laptop, each workspace runs its own private cluster behind a Unix socket. For a team, point
+  it at a central PostgreSQL server: **the same code, the same schema, only the connection changes.**
+- **The metadata and the vectors in one database.** Every object, column, relationship and rule sits beside its
+  embedding. One SQL query can ask by meaning (*tables about billing*), by structure (*with a key to customers*) and by
+  lineage (*and everything that reads them*) together, with no second store to sync and no index left out of date.
+- **Fresh on every change.** The log knows exactly which objects a turn touched, so only those are embedded again. What
+  the agent finds is what is on the canvas, as you draw or as it designs.
+- **Guarded by the database itself.** Foreign keys, typed and checked columns, and rules PostgreSQL enforces at every
+  commit hold for one user and for a hundred: two people's changes can never together break what each one kept, because
+  every write runs `SERIALIZABLE`.
+- **Your choice of embeddings, like your choice of server.** A model bundled and run locally, so nothing leaves the
+  machine, or a remote one, an API or the team server's own, so everyone shares one model and one index.
+
+**Point it at the database you have, and get to know it.** Read in a live database, a dump or a folder of DDL, and
+SchemaForge works out what nobody wrote down: its architecture (every object, key, index and partition as one model),
+its relationships (what reads and writes what, what a change would reach), its meaning (what each object is for, found
+by meaning) and its problems (each a finding with its evidence). Ask in plain words, on the canvas or through your agent.
+
+The database is **designed first and locked**, so coding agents fall into it instead of drifting from it
+([the Database page](docs/pages/database.html), [docs/store.md](docs/store.md)):
+
+- **Every owner in its own namespace.** `cortex` is what every engine shares (objects, columns, relationships, keys,
+  indexes, the log); each engine brings `engine_<id>` (`engine_mysql.table_options`); each future feature brings its own
+  (`insight`, `semantic`, `rules`, `pipelines`). Nothing reaches into another owner's tables.
+- **The database enforces it.** Every reference is a foreign key, every value typed and checked, every column documented
+  in the database itself. A rule a foreign key cannot state is a view of the rows breaking it, which PostgreSQL turns into
+  a deferred trigger: a commit that breaks a rule is refused, whoever wrote it.
+- **Every change is logged.** An operation of a turn, with every row and value it changed, so undo and reject apply its
+  inverse and the log rebuilds the model.
+- **It grows by versions.** Each owner versions its own tables; every change adds, a rename takes two versions, and
+  every release upgrades a database of every earlier version. A new database or feature starts from
+  [the owner template](docs/owner-template/README.md): five table shapes, rules, migrations, proved on PostgreSQL.
+- **Ready to be talked to.** An `insight` layer (dependencies, annotations, embeddings) lets a person or an agent
+  search and question a design through the MCP, in plain words.
+
+The build itself is specified ahead: [specs/](specs/) holds the root, the rules and one XML task file per branch and
+pull request, which a coding agent builds from and nothing else.
 
 ## Where it stands
 
@@ -163,15 +219,20 @@ The design: [docs/engines.md](docs/engines.md) (engines), [docs/rules.md](docs/r
 
 ## Contributing
 
-Schema Forge is meant to grow by plugins. To add a database, write an **engine**: one crate, following
-[docs/writing-an-engine.md](docs/writing-an-engine.md), checked by the conformance kit. To add onto a database (an
-extension's types, a company's conventions), write an **add-on** for its engine. Every change is one issue, one
-branch and one pull request; `cargo fmt --check`, `cargo clippy -- -D warnings` and `cargo test` (which includes the
-architecture check) must pass. See [CONTRIBUTING.md](CONTRIBUTING.md).
+**Everyone is welcome, and it is a chance to learn databases from the inside.** Write an engine and you learn a
+database's grammar, types and catalogs; add a feature's tables and you learn relational design, rules enforced at commit
+and versioned migrations; bring a dump that breaks a reader and you find the corners of SQL nobody documents. The design
+is written down ([the pages](#the-database-at-the-core), [specs/](specs/)), so you never have to guess, and questions are
+contributions too.
+
+Every change is one issue, one branch and one pull request; `tools/check.sh` (format, clippy, every test, the
+architecture check) must pass, and the database schema changes only by a design session, as a new version that adds.
+Where to start and what each way teaches: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Built with
 
-Pure Rust, no C libraries. Today: **Apache Arrow**'s type system, which every engine maps its types to;
+The app is Rust; its store is a **PostgreSQL 18** it bundles, with **pgvector**, built by the project's CI from the
+official source and pinned by checksums. Today: **Apache Arrow**'s type system, which every engine maps its types to;
 **sqlparser** for each engine's SQL; **serde** for the model. Next: **Apache DataFusion** as the query layer. The
 prototype used **rmcp** for the MCP, **axum** and **tokio** for the server, **redb** for storage, and a React and
 TypeScript canvas.

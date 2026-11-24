@@ -1,6 +1,6 @@
 # Market scan (2026-11-20)
 
-What exists near Schema Forge, from a web scan on 2026-11-20. Feature claims come from each project's own
+What exists near SchemaForge, from a web scan on 2026-11-20. Feature claims come from each project's own
 pages and listings; nothing here was installed or tested.
 
 ## MCP plus ER diagrams: the direct neighbours
@@ -52,7 +52,7 @@ pipeline and creates or evolves tables automatically:
 for Firehose. None of them shows the source's inconsistencies first, or lets you decide the target design
 before data flows.
 
-## Where Schema Forge stands apart
+## Where SchemaForge stands apart
 
 1. **Your agent, any agent.** It works with any coding agent that speaks MCP; Claude Code first. The MCP
    is the enforcer, not a convenience: every change goes through it and is checked.
@@ -68,5 +68,5 @@ before data flows.
 ## What to watch
 
 drawDB + MCP and Sqemo show the idea of an agent editing an ER model through MCP is already out there.
-Schema Forge's difference has to stay where the list above puts it: enforced standards, CDC and Iceberg,
+SchemaForge's difference has to stay where the list above puts it: enforced standards, CDC and Iceberg,
 the many perspectives, and the agent as the only editor.

@@ -1,7 +1,7 @@
 # Writing an engine
 
-How to add a database to Schema Forge. An engine is a Rust crate that tells Schema Forge everything about one
-database; nothing else in Schema Forge changes when you add one. The design behind it is
+How to add a database to SchemaForge. An engine is a Rust crate that tells SchemaForge everything about one
+database; nothing else in SchemaForge changes when you add one. The design behind it is
 [engines.md](engines.md); this is the how.
 
 This guide grows with the interface: every change to the interface updates it in the same pull request. Today it
@@ -127,7 +127,7 @@ events (`Slot::Event`), sequences and types. Keep as written only what belongs t
 
 When your engine changes how it stores its options, raise `Engine::format()` and `SchemaSection.format`, and read what
 your earlier versions wrote. The layout itself has a version too (`sections::LAYOUT`): check a schema with
-`sections::layout_of` before reading it, so a schema written by a newer Schema Forge is refused whole, never read
+`sections::layout_of` before reading it, so a schema written by a newer SchemaForge is refused whole, never read
 with something dropped.
 
 ## 5. Your types as Arrow's
@@ -240,7 +240,16 @@ not conform. A part your engine does not have is not checked.
 The kit's own tests break the `example` engine on purpose, one way each, to prove it finds each mistake:
 [`crates/engine/tests/interface.rs`](../crates/engine/tests/interface.rs).
 
-## 11. Let people add onto your engine
+## 11. Your engine's own tables
+
+What your engine stores lives in its own tables, in its own namespace `engine_<id>` of every schema database whose engine
+it is, each referring to the cortex row it belongs to. Copy [the owner template](owner-template/README.md): its card
+(`owner.toml`), the five shapes a table can take, a rules folder and its versions. Pick the shape before you name a
+column, give every column its comment, and prove the round trip: every sample read, written into your tables and read
+back is the same schema. The tables are designed with the maintainer and then locked: once shipped, a change is a new
+version that adds.
+
+## 12. Let people add onto your engine
 
 Give your engine an add-on trait, so people extend it without forking it: a database extension's types, statements,
 kept statements and later rules, each from an add-on crate registered with one line (`YourDb::new().with(Extra)`).

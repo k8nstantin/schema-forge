@@ -1,63 +1,39 @@
 # The store
 
-Everything `schema-forge` keeps lives in one embedded **redb** database (pure Rust, one file, ACID
-transactions), inside the workspace: `~/.schema-forge/workspaces/<name>/store.redb`. Nothing runs beside
-`schema-forge`; the definitions folders (docs/versions.md) are the shareable file form of what is in here.
+Everything SchemaForge keeps lives in **PostgreSQL 18, bundled with the app**: each release carries its platform's
+PostgreSQL programs, and the app runs them itself. Nothing to install, nothing to configure.
 
-## Principles
+```
+sf_workspace            what the workspace shares: its schemas (by their stable ids) and the saved connections
+sf_<schema id, hex>     one database per schema: the cortex's tables and its engine's tables
+```
 
-1. **One writer.** `schema-forge serve` owns the store. Other commands (`schema-forge import`, `export`,
-   `check`) go through the running server when there is one, and open the store themselves only when there
-   is not (redb allows one writer; a second is refused, never corrupted).
-2. **The log is the truth; the current model is kept beside it.** Every change is an `operation`, appended
-   and never edited. The schema's objects are records kept up to date in the same transaction, so reading
-   the current model is a range read, and replaying the log rebuilds it exactly.
-3. **Records by readable id.** Keys are text, `<schema>/<id>` (`orders/t_orders`), so a schema's records sit
-   together and one range read loads them.
-4. **Values are JSON**, the same JSON as the model's file form, so nothing is translated twice and a record
-   can always be read by eye.
-5. **The graph is computed, not stored.** Relationships, what views read, partitions and pipeline mappings
-   are in the model already; "what depends on this" is a walk over the loaded model, done in Rust.
-6. **Live changes are announced in-process.** The one writer broadcasts each operation as it commits;
-   every open perspective subscribed to that schema applies it.
-7. **The store has its own format version,** upgraded in place when a newer `schema-forge` opens it.
+The database is designed first and locked: the tables are the files of the schema folders, one `CREATE TABLE` per file,
+every column documented on its line and in the database's own comments (`\d+ cortex.objects` shows them), and no
+build creates or changes a table any other way.
 
-## Tables
-
-Each is a redb table of text keys to JSON values.
-
-| Table | Key | Value |
+| Folder | Namespace | What it holds |
 |---|---|---|
-| `meta` | `format` | the store's format version |
-| `schemas` | `<schema>` | name, type, linked definitions folder, created, last opened |
-| `rules` | `<schema>`, and `*` for every schema | the rules linked on the schema's hierarchy, its exceptions and its groups of tables (docs/rules.md); `*` holds the global links |
-| `objects` | `<schema>/<id>` | one top-level object of the model: a namespace, area, table (with its columns, keys, checks, indexes, options), relationship, view, sequence, type or kept statement |
-| `layout` | `<schema>/<id>` | where a card sits; apart from the model, so moving a card never changes it |
-| `operations` | `<schema>/<sequence>` | one change, appended, never edited: turn, kind (`add_table`, …), the change, its inverse (for undo), who (`agent`, `import`, `file`), when, state (`applied`, `rejected`, `undone`) |
-| `turns` | `<schema>/<n>` | one agent turn: when it started and ended, the prompt's summary as the agent gives it, accepted, rejected or undone |
-| `versions` | `<schema>/<n>` | a locked version: number, hash, when, the full model, each definition file's hash, the git commit and tag when there is one |
-| `pipelines` | `<pipeline>` | source schema, target schema, kind (`debezium`), each column's mapping and the rule that decided it |
-| `packs`, `templates` | `<name>` | rule packs and saved collections (built in ones loaded at start; yours also files in `~/.schema-forge/standards/`) |
-| `findings` | `<schema>/<n>` | an inconsistency or failing rule: kind, rule, objects, message, suggested fix, open or resolved |
-| `notes` | `<schema>/<n>` | a pinned note: object, text, when, done in which turn |
-| `perspectives` | `<schema>/<name>` | a saved custom perspective |
+| [`schema/cortex/`](../schema/cortex) | `cortex` | what every engine shares: the schema's identity, its object kinds and the parts each may have, namespaces, objects, columns, relationships, subject areas; the shared section layout as tables (table keys, check constraints, indexes, partitionings, sort fields, view queries, sequences, composite types, routines, triggers, scheduled events, verbatim statements); the id counters; the log (turns, operations, row and value changes, locked versions); `rules/` and `enforce_rules.sql` |
+| [`schema/workspace/`](../schema/workspace) | `workspace` | the workspace, its schemas, the saved connections (never a secret), their tests |
+| `engines/<engine>/schema/` | `engine_<engine>` | the engine's own tables (`engine_mysql.table_options`), each referring to the cortex row it belongs to; its `rules/` |
 
-Sequence numbers are written zero-padded (`orders/000000000042`) so keys sort in order.
+- **The database enforces it.** Every reference is a foreign key and every value is typed and checked. A rule a
+  foreign key cannot state is a view of the rows breaking it (`cortex.broken_parts_only_in_their_kinds`);
+  `cortex.enforce_rules` reads which tables each view depends on and puts a deferred constraint trigger on each, so
+  PostgreSQL itself refuses a commit that breaks a rule, whoever wrote it. The view is read once per commit, and again
+  only after a later write, so a 3,000-row import commits in about 30 ms.
+- **The log is the truth.** Every change is an operation of a turn, appended and never edited, with every row and
+  value it changed; the current model is written in the same transaction; undo and reject apply the inverses as a new
+  turn.
+- **Ids.** A part's primary key is the model's own id (`o_orders`). A part the model gives no id is named from its
+  parent, a word and a number given once from `id_counters` and never reused (`o_orders.key1`). The schema, the
+  workspace and the log are keyed by UUIDv7, issued in increasing order.
+- **Order.** A place in a list is a `NUMERIC` order key: one put between two takes their midpoint, so nothing is
+  renumbered.
+- **Versions per owner.** The cortex, the workspace and each engine version their own tables; every database records
+  what it applied, with checksums.
 
-## How it is used
-
-- **An operation lands:** in one write transaction, the operation is appended and the object records it
-  touches are rewritten; on commit it is broadcast. Findings for the touched objects are re-checked.
-- **A perspective opens:** it reads the schema's objects (one range read), then subscribes to the
-  broadcast and applies each operation as it arrives.
-- **Undo a turn:** the turn's operations' inverses are applied, newest first, as new operations (nothing is
-  deleted from the log).
-- **Lock a version:** the current model is written into `versions` with its hash, then out to the
-  definitions folder (and git).
-- **Export and import:** the store's model and the definitions folder convert both ways without loss; the
-  round-trip tests prove it.
-
-## Size
-
-A large schema (thousands of tables) is thousands of records of a few kilobytes; a change rewrites only the
-records it touches. Loading a schema's model is one range read, and the graph walk runs in memory.
+Still to decide before the store is built (`specs/root.xml`, decisions): where the bundled cluster runs and how the app
+reaches it (`cluster-scope`), where the pinned programs come from at build and test time (`binaries-source`), and the
+Rust driver (`pg-driver`).

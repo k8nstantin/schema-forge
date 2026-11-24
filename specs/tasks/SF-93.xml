@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SchemaForge, build spec version 1: task t01, spec check. File version 1 (2026-11-24).
+  An agent reads this file in the order the root's method read gives. Its key is SF-93, GitHub issue #93.
+  The history of this file is its git log.
+-->
+<task id="t01" key="SF-93" name="spec check" version="1" date="2026-11-24"
+      builds="tools/specs/Cargo.toml tools/specs/src/lib.rs tools/specs/src/main.rs tools/specs/tests/repository.rs tools/specs/tests/mutations.rs">
+
+  <start>Pointed at this file, you are told nothing else. This line is the first message of a new session, on a checkout of the head of main updated from origin; if your session holds anything before it beyond its own text, CLAUDE.md and its settings, stop, say so and build nothing. Your label is &lt;model&gt;-&lt;effort&gt; as the root's method model says. Read whole, in this order (root method read): every .rs file and every Cargo.toml under crates/, engines/ and tools/ as merged on main; specs/root.xml; specs/rules.xml; this file; then the files it names. Cut the branch SF-93-spec-check-v1-&lt;model&gt;-&lt;effort&gt; from the head of main. Every commit message starts with SF-93 and carries no attribution of any kind. Build what this file says, run its gates, push the branch and open the PR into main titled "SF-93 spec check v1 · &lt;model&gt;-&lt;effort&gt;" with the body the root's method pr lists. Show on the screen, as it happens, each step by its number and name, each test run with its result, and each gate. What this file, the root, the rules and the merged code do not say is a stop, not a guess.</start>
+
+  <piece>The spec check: a Rust crate, tools/specs, that reads specs/ and every schema folder of the repository and prints every place they break the shape this file gives, one finding per line; it exits 1 when there is one, 0 when there is none. Its tests run it on the repository (so cargo test and tools/check.sh fail on a broken spec) and, for every class of defect below, plant one in a copy and prove the check names it. Nothing else: it changes no file, reads no network, checks no code.</piece>
+
+  <before>Merged on main: the model, the engine interface and the MySQL engine (crates/model, crates/engine, engines/mysql), tools/architecture and tools/check.sh as merged. specs/ and the schema folders (schema/cortex, schema/workspace, engines/mysql/schema, engines/quill/schema) are merged by the design session that wrote this file.</before>
+  <after>Every later task's file and every change to a schema folder is checked by this crate before it is committed; tools/check.sh runs it through cargo test.</after>
+
+  <reflects>
+    <file path="specs/root.xml">
+      <quote>An open decision is a question no agent answers: it closes, in a design session, before the task it names in closes-before, and the spec check refuses that task's file while it is open.</quote>
+      <quote>Every quote in a spec is its file's own sentence, verbatim; the spec check refuses a quote its file does not hold.</quote>
+    </file>
+    <file path="specs/rules.xml">
+      <quote>the spec check (an engine table outside its engine's folder, or named without its prefix)</quote>
+    </file>
+  </reflects>
+
+  <reads>
+    <file path="specs/root.xml" what="the sequence (each task's id, name, file, builds) and the decisions (id, status, closes-before)"/>
+    <file path="specs/rules.xml" what="every rule's id, from, text and breach"/>
+    <file path="specs/tasks/" what="every task file"/>
+    <file path="schema/cortex/" what="every .sql file: the tables and integrity.sql"/>
+    <file path="schema/workspace/" what="every .sql file"/>
+    <file path="engines/mysql/schema/" what="every .sql file; and so every engines/&lt;engine&gt;/schema folder there is"/>
+    <crates>roxmltree for XML; rusqlite with its bundled feature for loading the schema folders into an in-memory database; the standard library for the rest. No other dependency.</crates>
+  </reads>
+
+  <command>
+    <form>cargo run -q -p schema-forge-specs [repository root], the root by default the repository the crate is in; and the same check as the tests of the crate run it.</form>
+    <runs>Locally; it reads files and writes nothing.</runs>
+  </command>
+
+  <build>
+    <module path="tools/specs/Cargo.toml">The crate schema-forge-specs, its [package.metadata.schema-forge] role = "tool", version, edition, publish, license and repository from the workspace; dependencies roxmltree and rusqlite (features bundled), each at an exact version.</module>
+    <module path="tools/specs/src/lib.rs" public="pub fn check(root: &amp;Path) -&gt; Vec&lt;Finding&gt;; pub struct Finding { pub at: String, pub says: String } with Display as `&lt;at&gt;: &lt;says&gt;`; nothing else is public">
+      <step n="1" name="the files">The spec files are specs/root.xml, specs/rules.xml, specs/lessons.xml and every specs/tasks/*.xml, read in name order. Each must parse as XML; one that does not is the finding `&lt;path&gt;: not XML: &lt;the parser's message&gt;` and is checked no further. The root element of specs/lessons.xml is lessons with product, version and date, and each lesson has id and date and exactly one found, one seen and one does, each with text; one lacking is `specs/lessons.xml: lesson &lt;id&gt; has no &lt;element&gt;`.</step>
+      <step n="2" name="the root">The root element is root with the attributes product, version and date, and holds identity, authority, method, sequence and decisions, in that order; each one missing is `specs/root.xml: no &lt;element&gt;`. Every task of sequence has id (t followed by two digits) and name; ids are unique; a depends attribute names a task id earlier in the sequence, else `specs/root.xml: task &lt;id&gt; depends on &lt;value&gt;, which is no earlier task`. A task with a file attribute names a file that exists, else `specs/root.xml: task &lt;id&gt; names &lt;file&gt;, which does not exist`; a task without one has text that starts with `Not written yet`, else `specs/root.xml: task &lt;id&gt; has no file and does not say it is not written yet`. Every decision has id, status (confirmed or open) and where or closes-before; a confirmed one has date; an open one has closes-before naming a task id of the sequence, else `specs/root.xml: decision &lt;id&gt; closes before &lt;value&gt;, which is no task`.</step>
+      <step n="3" name="open decisions">For every open decision, the task its closes-before names, and every task after it in the sequence, has no file attribute and no file under specs/tasks whose task element has its id; one that has is `&lt;path&gt;: task &lt;id&gt; is written while decision &lt;decision&gt; is open`.</step>
+      <step n="4" name="the rules">The root element is rules with product, version and date; every rule has a unique id and exactly one from, one text and one breach, each with text; each lacking is `specs/rules.xml: rule &lt;id&gt; has no &lt;element&gt;`.</step>
+      <step n="5" name="a task file">The root element is task with id, name, version and date; its children are, in this order, start, piece, before, after, reflects, reads, command, build, agent-decides, gates, owns, forbid, done (build holding tests); an element missing or out of order is `&lt;path&gt;: &lt;element&gt; missing or out of order`. Its id and name are a task of the root's sequence, whose file attribute is this file's path, else `&lt;path&gt;: task &lt;id&gt; &lt;name&gt; is not the root's`. Its start holds `-v&lt;version&gt;-` and ` v&lt;version&gt; · ` of its version attribute, else `&lt;path&gt;: start does not carry version &lt;version&gt;`. Every step has n and name, the n numbering 1, 2, 3 within the file, else `&lt;path&gt;: steps not numbered in order`. Every prove of tests has a step attribute naming a step's n of the file, or prints, else `&lt;path&gt;: prove names step &lt;value&gt;, which is none`; the test names its items give by the root's method tests are distinct, else `&lt;path&gt;: two items give the test name &lt;name&gt;`. Every gate has id, kind (local or docker), proves, at least one cmd and one expect, else `&lt;path&gt;: gate &lt;id&gt; lacks &lt;what&gt;`.</step>
+      <step n="6" name="quotes">Every quote element whose nearest ancestor with a path attribute names a file holds text that is a substring of that file's text; when that ancestor names a folder, of the text of one .sql file in it. A quote that is not is `&lt;path&gt;: quote not in &lt;file or folder&gt;: &lt;the quote's first 60 characters&gt;`. An .xml file's text is its parsed text, every entity read (&amp;lt; as &lt;); any other file's is its bytes as UTF-8. Whitespace in a quote and in the file compares as single spaces.</step>
+      <step n="7" name="paths">Every path attribute, and every word of a builds attribute, names a file or folder that exists, or one a builds attribute of a task of the root's sequence names (or that lies under one); &lt;engine&gt; in a path stands for every folder under engines/. One that does not is `&lt;path&gt;: names &lt;value&gt;, which does not exist`.</step>
+      <step n="8" name="a schema folder">The schema folders are schema/cortex (owner cortex), schema/workspace (owner workspace) and every engines/&lt;engine&gt;/schema (owner the folder name). In each, every .sql file but integrity.sql, in name order: its first line is `-- &lt;file name without .sql&gt;: ` followed by a sentence; it holds `Owner: &lt;owner&gt;.` on a comment line before its CREATE TABLE; it holds exactly one CREATE TABLE statement, whose table's name is the file name without .sql, ending in `) STRICT;`; besides it, only CREATE INDEX or CREATE UNIQUE INDEX statements on that table; every line between the CREATE TABLE line and the closing line that starts a column definition (an identifier, quoted or not, then one of the types TEXT, INTEGER, REAL, BLOB and ANY) carries a `--` comment of at least one word; the table's primary key is one column, id, of type TEXT, else `&lt;path&gt;: the primary key is not the one column id TEXT`. An engine's table name starts with `&lt;owner&gt;__`; a cortex or workspace table name holds no `__`. Each breach is `&lt;path&gt;: &lt;what is wrong&gt;`, naming the line for a column without its comment: `&lt;path&gt;:&lt;line&gt;: column &lt;name&gt; has no comment`.</step>
+      <step n="9" name="the schema loads">The cortex's table files, then each engine's beside them in a database of their own, and the workspace's in another, are executed into in-memory SQLite databases with foreign keys on, in name order; a statement that fails is `&lt;path&gt;: does not load: &lt;SQLite's message&gt;`. A foreign key that names a table no file of its database creates is `&lt;path&gt;: refers to &lt;table&gt;, which no file creates`; one whose target columns are not that table's primary key is `&lt;path&gt;: refers to &lt;table&gt; by &lt;columns&gt;, which is not its primary key`. Every query of an integrity.sql (each block that starts with a line `-- name: &lt;name&gt;`) runs on the database of its folder; one that fails is `&lt;path&gt;: query &lt;name&gt; does not run: &lt;SQLite's message&gt;`, and one whose first column is not its own name is `&lt;path&gt;: query &lt;name&gt; does not name itself`.</step>
+    </module>
+    <module path="tools/specs/src/main.rs">Runs check on the root given or the repository's, prints every finding by its Display, one per line, in the order found, then `spec check: &lt;n&gt; findings`, and exits 1 when n is not 0, else 0.</module>
+    <tests path="tools/specs/tests/">
+      <how>The item of step 9 that names the repository runs check on the repository root itself, in tools/specs/tests/repository.rs, and on failure prints every finding. Every other test, in tools/specs/tests/mutations.rs, copies specs/ and every schema folder of the repository into a temporary folder of its own (the file tree the check reads, nothing else), makes the one change its item names in the copy, runs check on the copy and asserts that a finding holds the text its item gives; the copy of the repository unchanged gives no finding. No test changes a file of the repository.</how>
+      <prove step="1">a spec file that is not XML is the finding not XML</prove>
+      <prove step="1">a lesson without its does is the finding has no does</prove>
+      <prove step="2">a depends naming no earlier task is the finding which is no earlier task</prove>
+      <prove step="2">a root without its decisions is the finding no decisions</prove>
+      <prove step="2">a sequence task naming a file that does not exist is the finding which does not exist</prove>
+      <prove step="2">an open decision that closes before no task is the finding which is no task</prove>
+      <prove step="3">a task file written while a decision that closes before it is open is the finding written while decision</prove>
+      <prove step="4">a rule without its breach is the finding has no breach</prove>
+      <prove step="5">a task file whose gates come before its build is the finding missing or out of order</prove>
+      <prove step="5">a task file whose start carries another version is the finding does not carry version</prove>
+      <prove step="5">a prove naming a step the file does not have is the finding which is none</prove>
+      <prove step="5">a gate without an expect is the finding lacks</prove>
+      <prove step="6">a quote changed by one word is the finding quote not in</prove>
+      <prove step="7">a path attribute naming a missing file is the finding which does not exist</prove>
+      <prove step="8">a column line without its comment is the finding has no comment, naming the line</prove>
+      <prove step="8">a table file whose table is not named as its file, or not STRICT, is a finding naming the file</prove>
+      <prove step="8">an engine table without its engine prefix, and a cortex table with two underscores, are each a finding</prove>
+      <prove step="8">a table whose primary key is not the one column id of type text is the finding not the one column id text</prove>
+      <prove step="9">a foreign key to a table no file creates is the finding which no file creates</prove>
+      <prove step="9">a foreign key whose target columns are not the target's primary key is the finding which is not its primary key</prove>
+      <prove step="9">an integrity query that does not run, and one that does not name itself, are each a finding</prove>
+      <prove step="9">the repository as merged gives no finding</prove>
+    </tests>
+  </build>
+
+  <agent-decides>The names and the decomposition of the private functions and types inside tools/specs; how the files are walked and parsed within the steps; the exact versions of roxmltree and rusqlite (each the newest release at least two weeks old); the contents of the copies' changes within the items; the granularity of the commits. Nothing else: no finding text, no step, no public item, no change to any file outside owns.</agent-decides>
+
+  <gates>
+    <note>Every gate runs from the repository root. The spec check runs on the specs and schema folders as merged; a finding there is a stop, since this task may not change them.</note>
+    <gate id="Spec check" kind="local" proves="steps 1 to 9 on the repository">
+      <cmd>cargo run -q -p schema-forge-specs</cmd>
+      <expect>the last line is `spec check: 0 findings` and the exit is 0</expect>
+    </gate>
+    <gate id="Mutations" kind="local" proves="steps 1 to 9, each defect class named by the check">
+      <cmd>cargo test -p schema-forge-specs</cmd>
+      <expect>every test passes, one per item of the tests element, none ignored</expect>
+    </gate>
+    <gate id="Everything" kind="local" proves="the rest of the repository still passes, the architecture check among it">
+      <cmd>tools/check.sh</cmd>
+      <expect>the last line is `== All checks passed`</expect>
+    </gate>
+  </gates>
+
+  <owns>tools/specs/**; Cargo.lock.</owns>
+  <forbid>specs/**; schema/**; engines/**; crates/**; tools/architecture/**; tools/check.sh; docs/**.</forbid>
+
+  <done>tools/specs on the branch; every gate green and in the PR; nothing outside owns touched. After this task, cargo test and tools/check.sh refuse a spec file or a schema file that breaks the shape above.</done>
+</task>
