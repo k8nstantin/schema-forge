@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <doc id="writing-an-engine" title="Writing an engine">
   <note><b>Building with a coding agent?</b> Point it at the engine guide, <a href="../specs/guides/engine.xml">specs/guides/engine.xml</a>: it leads the agent and you through the method, from studying the database to the merged engine. This page is the how it refers to.</note>
-  <p>How to add a database to SchemaForge. An engine is a Rust crate that tells SchemaForge everything about one database; nothing else in SchemaForge changes when you add one. The design behind it is <a href="engines.xml">engines.md</a>; this is the how.</p>
+  <p>How to add a database to SchemaForge. An engine is a Rust crate that tells SchemaForge everything about one database; nothing else in SchemaForge changes when you add one. The design behind it is <a href="engines.xml">engines.xml</a>; this is the how.</p>
   <p>This guide grows with the interface: every change to the interface updates it in the same pull request. Today it covers what the interface has so far: identity, versions, types, reading, writing, queries, checks, the registry and the conformance kit. The worked example is <c>example</c>, a made-up engine small enough to read in one sitting: <a href="../crates/engine/tests/example/mod.rs"><c>crates/engine/tests/example/mod.rs</c></a>.</p>
   <section title="1. Make the crate">
     <p>An engine lives in <c>engines/&lt;database&gt;</c>, named <c>schema-forge-&lt;database&gt;</c>, and says what it is:</p>
@@ -86,7 +86,7 @@ schema-forge-engine = { path = "../../crates/engine" }]]></code>
     </list>
   </section>
   <section title="7. Reading the live database">
-    <p><c>Live</c> reads a schema from a running database (see <a href="connections.xml">connections.md</a>):</p>
+    <p><c>Live</c> reads a schema from a running database (see <a href="connections.xml">connections.xml</a>):</p>
     <list>
       <item><b><c>fields()</c></b>: what a connection needs, as data (<c>Field::new(key, label, kind, help)</c>, <c>.required()</c>, <c>.default(…)</c>), at most one of them the secret. The Connections page and the agent's tools are built from them.</item>
       <item><b><c>test(profile, secret)</c></b>: the five steps, in order, each passed, warned, failed or skipped with what happened: reach, secure, sign in, version, rights. Stop at the first that fails and skip the rest; a warning (TLS not checked, an account that can change things) lets the rest run.</item>

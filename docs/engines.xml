@@ -77,9 +77,9 @@
     </table>
   </section>
   <section title="The plan">
-    <p>The plan is the build spec: <a href="../specs/root.xml">specs/root.xml</a> holds the sequence of tasks, the decisions with their dates, and the method every build follows; each task is one XML file under <a href="../specs/tasks">specs/tasks/</a>, one branch and one pull request, keyed <c>SF-&lt;issue&gt;</c>. The database comes first: its schema folders (<a href="store.xml">docs/store.md</a>) are designed and locked before any of it is built, and every task falls into them.</p>
+    <p>The plan is the build spec: <a href="../specs/root.xml">specs/root.xml</a> holds the sequence of tasks, the decisions with their dates, and the method every build follows; each task is one XML file under <a href="../specs/tasks">specs/tasks/</a>, one branch and one pull request, keyed <c>SF-&lt;issue&gt;</c>. The database comes first: its schema folders (<a href="store.xml">docs/store.xml</a>) are designed and locked before any of it is built, and every task falls into them.</p>
     <p><b>Done:</b> the foundation, the model, the engine interface with its registry and conformance kit, the section layout, and <b>the MySQL engine</b>, whole (<a href="../engines/mysql/README.xml">engines/mysql</a>).</p>
     <p><b>Next, in the spec's order:</b> the spec check; the tables interface; Quill, the engine every test of shared code runs beside MySQL; MySQL's tables; PostgreSQL 18 built by the project's CI; the store on that bundled PostgreSQL; then, once their decisions are closed, the operations, the server and the canvas. After them: the Apache Iceberg engine, then the PostgreSQL engine, each with its own tables; schema management, CDC pipelines, consistency, deploy.</p>
-    <p>How to write an engine: <a href="writing-an-engine.xml">writing-an-engine.md</a>.</p>
+    <p>How to write an engine: <a href="writing-an-engine.xml">writing-an-engine.xml</a>.</p>
   </section>
 </doc>

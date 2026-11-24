@@ -117,7 +117,7 @@
     </list>
   </section>
   <section title="Standards, its own place">
-    <p>The rules have their own perspectives (docs/rules.md, "The Standards UI"):</p>
+    <p>The rules have their own perspectives (docs/rules.xml, "The Standards UI"):</p>
     <list>
       <item><b>Collections:</b> a schema's packs in order, with every overlap between packs shown.</item>
       <item><b>Catalog:</b> every rule by category, its setting and severity, switchable in place.</item>

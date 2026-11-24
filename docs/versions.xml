@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <doc id="versions" title="Versions and the definitions folder">
-  <p>The draft lives in the schema's own database in the bundled PostgreSQL (<a href="store.xml">store.md</a>) while you and the agent work. Locked versions are written as <b>definitions</b>: one SQL file per object, in a folder whose path says where the object lives. The folder is a plain directory; in a git repository, locking a version is also a commit.</p>
+  <p>The draft lives in the schema's own database in the bundled PostgreSQL (<a href="store.xml">store.xml</a>) while you and the agent work. Locked versions are written as <b>definitions</b>: one SQL file per object, in a folder whose path says where the object lives. The folder is a plain directory; in a git repository, locking a version is also a commit.</p>
   <section title="The definitions folder">
     <code><![CDATA[definitions/
   <node>/                               the server or catalog: prod-mysql, analytics-pg, lakehouse

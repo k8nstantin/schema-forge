@@ -93,7 +93,7 @@
     <p>Every statement is modelled, kept as written by kind, counted as data, or counted as the dump's machinery; the report adds up.</p>
   </section>
   <section title="Reading the live database">
-    <p>Over a connection (<a href="../../docs/connections.xml">docs/connections.md</a>), with the <c>mysql</c> crate (pure Rust, TLS through <c>rustls</c>), sending only statements that read:</p>
+    <p>Over a connection (<a href="../../docs/connections.xml">docs/connections.xml</a>), with the <c>mysql</c> crate (pure Rust, TLS through <c>rustls</c>), sending only statements that read:</p>
     <list>
       <item><b>connection fields</b>, declared as data: host, port (3306), user, the password (a secret, never in a profile), databases (all the account sees when empty), TLS (<c>verify</c>, the default: encrypted and the certificate checked; <c>required</c>; <c>preferred</c>; <c>off</c>), a CA certificate, a timeout;</item>
       <item><b>test</b>, in five steps, stopping at the first that fails: <b>reach</b> the host; <b>secure</b>: TLS as asked, and what was negotiated; <b>sign in</b>; <b>version</b>: the server's, and the engine version a schema read from it is designed for (a MariaDB server fails here: it is not MySQL); <b>rights</b>: the account's grants read with where each applies (everywhere, a database or a pattern of databases, or only some tables) and with its active roles' grants, naming every right it lacks, and whether it can also change anything (an account that only reads is recommended);</item>

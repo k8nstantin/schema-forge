@@ -28,7 +28,7 @@ step "XML for everything: Markdown only where a tool looks for it by name (specs
 named='README.md CONTRIBUTING.md CODE_OF_CONDUCT.md AGENTS.md CLAUDE.md .github/copilot-instructions.md'
 stray=$(git ls-files --cached --others --exclude-standard -- '*.md' | grep -vxF -f <(tr ' ' '\n' <<<"$named") || true)
 mentions=$(git grep -nIoE '[A-Za-z0-9_./-]+\.md([^A-Za-z0-9_]|$)' -- . ':!site' ':!specs/reviews' |
-    grep -vE ':([A-Za-z0-9_./-]*/)?(README|CONTRIBUTING|CODE_OF_CONDUCT|AGENTS|CLAUDE|copilot-instructions)\.md([^A-Za-z0-9_]|$)' || true)
+    grep -vE ':([A-Za-z0-9_./-]*/)?(README|CONTRIBUTING|CODE_OF_CONDUCT|CHANGELOG|AGENTS|CLAUDE|copilot-instructions)\.md([^A-Za-z0-9_]|$)' || true)
 if [ -n "$stray$mentions" ]; then
     [ -n "$stray" ] && printf 'a Markdown file a tool does not look for: %s\n' $stray
     [ -n "$mentions" ] && printf '%s\n' "$mentions" | sed 's/^/names a Markdown file: /'

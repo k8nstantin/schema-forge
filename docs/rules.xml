@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <doc id="rules" title="Rules">
-  <p>Rules are standards: they keep a schema consistent and fit for what it has to do. The architect sets them up once, on the schema and the levels inside it; the agent reads them before it designs anything and builds inside them, so neither of you repeats them. The rules machinery is shared by every database; the rules about a database belong to its engine (<a href="engines.xml">engines.md</a>): a schema is offered exactly the rules its engine implements, at its version.</p>
+  <p>Rules are standards: they keep a schema consistent and fit for what it has to do. The architect sets them up once, on the schema and the levels inside it; the agent reads them before it designs anything and builds inside them, so neither of you repeats them. The rules machinery is shared by every database; the rules about a database belong to its engine (<a href="engines.xml">engines.xml</a>): a schema is offered exactly the rules its engine implements, at its version.</p>
   <section title="Optional">
     <p>Rules are optional. A schema with nothing linked has no rules; nothing links them for you. Where rules reach from above (global links), <b>no rules here</b> switches every rule off for a schema, a namespace, a family, a group or a table, with a reason. It holds even over locked rules, since it is the choice not to use rules there at all, and a rule linked further down still applies.</p>
   </section>
@@ -51,7 +51,7 @@
     <p>Before linking, the perspective shows the gap: what the schema still lacks, from a preview that stores nothing.</p>
   </section>
   <section title="Compatibility">
-    <p>Each engine maps its types to <b>portable types</b> and back, and every pair of engines is compared through them, never through a map written for the pair (<a href="engines.xml">engines.md</a>, "Moving between engines"). How each type lands is graded <b>exact</b>, <b>widened</b> (bigger, safe), <b>decide</b> (a choice to make: <c>VARCHAR(n)</c> or <c>TEXT</c>), <b>lossy</b>, or <b>no type</b>. Each pair's pack has two checks: nothing lost (Must, breaks on lossy and no type) and every choice made (Should). The same mappings drive conversion between engines, so a check and a conversion never disagree.</p>
+    <p>Each engine maps its types to <b>portable types</b> and back, and every pair of engines is compared through them, never through a map written for the pair (<a href="engines.xml">engines.xml</a>, "Moving between engines"). How each type lands is graded <b>exact</b>, <b>widened</b> (bigger, safe), <b>decide</b> (a choice to make: <c>VARCHAR(n)</c> or <c>TEXT</c>), <b>lossy</b>, or <b>no type</b>. Each pair's pack has two checks: nothing lost (Must, breaks on lossy and no type) and every choice made (Should). The same mappings drive conversion between engines, so a check and a conversion never disagree.</p>
   </section>
   <section title="Where you work with them">
     <p>The <b>Rules perspective</b> (the UI is the tool; the command line keeps only <c>schema-forge check</c>, for CI):</p>
