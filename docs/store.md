@@ -31,6 +31,11 @@ build creates or changes a table any other way.
   workspace and the log are keyed by UUIDv7, issued in increasing order.
 - **Order.** A place in a list is a `NUMERIC` order key: one put between two takes their midpoint, so nothing is
   renumbered.
+- **Locked, in the files and in the database.** `specs/lock.xml` holds the checksum of every file of the design,
+  and the build refuses a file changed without a design session (a change made on purpose, its lock rewritten, is caught by the
+  maintainer's review: the design's folders have the maintainer as their code owner). In the database, the app runs as `sf_service`, which
+  reads and writes rows but cannot create, alter or drop anything; only `sf_owner`, which every migration runs as,
+  changes the schema; `sf_reader` only reads.
 - **Versions per owner.** The cortex, the workspace and each engine version their own tables; every database records
   what it applied, with checksums.
 
