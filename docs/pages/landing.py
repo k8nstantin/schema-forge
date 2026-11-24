@@ -78,7 +78,9 @@ body = f"""
 
 <section id="contribute"><div class="cta"><p class="kicker">Contribute</p><h2>Learn databases from the inside.</h2>
 <p class="lede">Write an engine and learn a database's grammar, types and catalogs; add a feature's tables and learn relational design and rules enforced at commit; bring a dump that breaks a reader and find the corners of SQL nobody documents. Everyone is welcome.</p>
-<div class="btns"><a class="btn btn-primary" href="%REPO%/blob/main/CONTRIBUTING.md">How to contribute</a>
+<p class="lede">Most people contribute through a coding agent: point yours at the brief and it reads the whole spec, in order, before anything changes.</p>
+<div class="btns"><a class="btn btn-primary" href="{e(L.get("contribute", "#"))}">Contribute with your agent</a>
+<a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="%REPO%/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>
 <a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="%REPO%/discussions">Ask a question</a></div></div></section>
 """
 sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("one-place", "One place"), ("intelligence", "Your database"), ("how", "Collaborative design"), ("plugins", "Plugins"), ("design", "The design"), ("contribute", "Contribute")])

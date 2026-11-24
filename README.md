@@ -229,6 +229,10 @@ Every change is one issue, one branch and one pull request; `tools/check.sh` (fo
 architecture check) must pass, and the database schema changes only by a design session, as a new version that adds.
 Where to start and what each way teaches: [CONTRIBUTING.md](CONTRIBUTING.md).
 
+**With a coding agent?** Point it at the brief: *"Read https://k8nstantin.github.io/schema-forge/agents.md and every
+file it lists, in its order, then tell me what SchemaForge is and which task or issue fits me."* It reads the whole
+spec, in order, and reports back before anything changes ([how it goes](https://k8nstantin.github.io/schema-forge/contribute.html)).
+
 ## Built with
 
 The app is Rust; its store is a **PostgreSQL 18** it bundles, with **pgvector**, built by the project's CI from the

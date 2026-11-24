@@ -1,0 +1,40 @@
+# SchemaForge
+
+> An open-source schema designer where a coding agent and an architect work on the same live design through MCP, and nothing lands unchecked. Every database is an engine plugin; at the centre stands the database SchemaForge keeps its work in: one PostgreSQL database per schema, in the PostgreSQL 18 bundled with the app, holding the cortex every engine shares and each engine's own tables, each owner in its own namespace, designed before any of it is built and locked so every build falls into it.
+
+Start with the brief for coding agents: https://k8nstantin.github.io/schema-forge/agents.md. The files below are the authority.
+
+## Spec
+
+- [root.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/root.xml): identity, authority, method, sequence, decisions
+- [rules.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/rules.xml): the rules and their guards
+- [t01 spec check](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-93.xml)
+- [t02 tables interface](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-94.xml)
+- [t03 quill](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-95.xml)
+- [t04 mysql tables](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-96.xml)
+- [t05 postgres](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/t05-postgres.xml)
+
+## Authority
+
+- [schema/cortex/](https://github.com/k8nstantin/schema-forge/tree/main/schema/cortex): every table of the namespace cortex, which every schema's database holds whatever its engine: the schema's identity, its object kinds and the parts each may have, namespaces, objects, columns, relationships, subject areas, the shared section layout as tables (table keys, check constraints, indexes, partitionings, sort fields, view queries, sequences, composite types, routines, triggers, scheduled events, verbatim statements, required extensions), the id counters and the log (turns, operations, row and value changes, locked versions); one CREATE TABLE statement per file, named after its table, every column commented on its line and the same words in its COMMENT ON statements; enforce_rules.sql, the functions that make a rule view a trigger; rules/, one view per rule, broken_<rule>, the rows breaking it
+- [schema/workspace/](https://github.com/k8nstantin/schema-forge/tree/main/schema/workspace): every table of the namespace workspace in the workspace's database (sf_workspace): the workspace, its schemas by their stable id, the saved connections, their values (never a secret), their tests and their steps; one CREATE TABLE statement per file
+- [engines/<engine>/schema/](https://github.com/k8nstantin/schema-forge/tree/main/engines): an engine's own tables, in the namespace engine_<engine> (engine_mysql.table_options), each referring to the cortex row it belongs to; its rules/; created in a schema's database whose engine it is, and in no other
+- [docs/owner-template/](https://github.com/k8nstantin/schema-forge/tree/main/docs/owner-template): the shape of every owner's folder (an engine's, a feature's, and the cortex's and the workspace's alike): its owner.toml card, the five shapes of a table, its rules/, seeds/ and migrations/, a rename in two versions
+- [postgres/manifest.toml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/postgres/manifest.toml): the PostgreSQL the store bundles: its sources, pinned, and the programs built from them, by checksum
+- [crates/model/](https://github.com/k8nstantin/schema-forge/tree/main/crates/model): the model: Schema, Namespace, Object, Column, Link, Area, Id
+- [crates/engine/](https://github.com/k8nstantin/schema-forge/tree/main/crates/engine): the engine interface (Engine and its parts), the section layout (crates/engine/src/sections.rs), the registry and the conformance kit
+- [engines/mysql/](https://github.com/k8nstantin/schema-forge/tree/main/engines/mysql): the MySQL engine: its versions, types, kinds, options, readers and writer
+- [docs/engines.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/engines.md): the plugin design: what is shared and what is each engine's, the crates and their roles
+- [docs/connections.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/connections.md): connections: what an engine declares, profiles without secrets, the five test steps
+
+## Docs
+
+- [docs/cdc.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.md)
+- [docs/connections.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/connections.md)
+- [docs/engines.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/engines.md)
+- [docs/market.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/market.md)
+- [docs/perspectives.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/perspectives.md)
+- [docs/rules.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/rules.md)
+- [docs/store.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/store.md)
+- [docs/versions.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/versions.md)
+- [docs/writing-an-engine.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/writing-an-engine.md)

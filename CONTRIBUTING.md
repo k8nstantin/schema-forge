@@ -8,6 +8,12 @@ of these, and the design is written down so you never have to guess.
 
 ## Where to start
 
+- **Using a coding agent?** Most people do. Point it at the brief written for agents,
+  [agents.md](https://k8nstantin.github.io/schema-forge/agents.md): it lists the whole spec in the order to read it,
+  the decisions still open, and the rules an agent works under here. Paste: *"Read
+  https://k8nstantin.github.io/schema-forge/agents.md and every file it lists, in its order, then tell me what
+  SchemaForge is and which task or issue fits me; don't change anything yet."*
+  ([the Contribute page](https://k8nstantin.github.io/schema-forge/contribute.html))
 - **Read the design**, with its diagrams: [Start here](https://claude.ai/artifact/BrFaiE6HBhVArfUGyiB3zp) ·
   [the database](https://claude.ai/artifact/3XWs1sS1cCsu3ar9F6pRos) ·
   [the owner template](https://claude.ai/artifact/XUiMve4wFDNTFZqMZnjBaC) ·

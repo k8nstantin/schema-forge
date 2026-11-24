@@ -12,8 +12,8 @@ def _track(self, *a, **k):
 common.Svg.__init__ = _track
 here = os.path.dirname(os.path.abspath(__file__))
 site = os.path.join(here, "..", "..", "site")
-NAMES = ("landing", "home", "engines", "database", "template", "buildspec")
-KEYS = {"landing": "site", "home": "home", "engines": "engines", "database": "database", "template": "template", "buildspec": "build-spec"}
+NAMES = ("landing", "home", "engines", "database", "template", "buildspec", "contribute")
+KEYS = {"landing": "site", "home": "home", "engines": "engines", "contribute": "contribute", "database": "database", "template": "template", "buildspec": "build-spec"}
 for mode in ("artifact", "site"):
     common.MODE = mode
     for name in NAMES:
@@ -25,6 +25,9 @@ for mode in ("artifact", "site"):
             os.makedirs(site, exist_ok=True)
             open(os.path.join(site, common.FILES[key]), "w", encoding="utf-8").write(mod.HTML)
 shutil.copy(os.path.join(here, "favicon.svg"), os.path.join(site, "favicon.svg"))
+brief = sys.modules["contribute"]
+open(os.path.join(site, "agents.md"), "w", encoding="utf-8").write(brief.AGENTS_MD)
+open(os.path.join(site, "llms.txt"), "w", encoding="utf-8").write(brief.LLMS_TXT)
 bad = [(s.label, s.check()) for s in made if s.check()]
 for label, problems in bad:
     print(f"layout: {label[:70]}", *problems, sep="\n  ")
