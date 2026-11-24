@@ -173,14 +173,14 @@ body = f"""
 <header class="hero">
   <p class="eyebrow">Contribute</p>
   <h1>Built with coding agents. Contributed the same way.</h1>
-  <p>A collaborative learning exercise, in the open: learn a data product from the inside, coding with agents, and spec-driven development, by building one together. No experience needed: your agent reads the project for you, and nothing you do can break it.</p>
+  <p>A collaborative learning exercise, in the open: learn a data product from the inside, coding with agents, and spec-driven development, by building one together. Start where you are: your agent reads the project with you, and the checks and a person's review catch mistakes before they land.</p>
   <div class="btns"><a class="btn btn-primary" href="#first">Start small</a>
   <a class="btn btn-secondary" href="#start">Start with your agent</a>
   <a class="btn btn-secondary" href="{e(SITE_URL)}agents.xml">The brief for agents</a>
   <a class="btn btn-secondary" href="%REPO%/discussions">Discussions</a></div>
 </header>
 
-<section id="first"><p class="kicker">Start small</p><h2>No experience needed, and you cannot break anything.</h2>
+<section id="first"><p class="kicker">Start small</p><h2>Start where you are. Mistakes are caught before they land.</h2>
 <p class="lede">{e(said('first-steps/note'))}</p>
 <div class="cards">{''.join(f'<div class="card"><h3>{e(n[:1].upper() + n[1:])}</h3><p>{e(s)}</p></div>' for n, s in first_steps)}</div>
 <p class="lede" style="margin-top:14px">Every merged contribution carries your name, and is thanked in the notes of its release. We keep a <a href="%REPO%/blob/{e(BRANCH)}/CODE_OF_CONDUCT.md">code of conduct</a>: be kind, be patient, assume good intent.</p></section>

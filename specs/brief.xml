@@ -65,7 +65,7 @@
   </wanted>
 
   <first-steps>
-    <note>You do not need to know Rust, databases or this project to start, and you cannot break anything: every change goes through checks that catch mistakes, and a person reviews it before it lands. Small first steps are real contributions.</note>
+    <note>You do not need to know all of it to make a useful first contribution: your agent reads the project with you, and mistakes are caught before they land, by the checks and a person's review. Start with a small step; building a task or an engine takes real skill, and that is what the small steps grow.</note>
     <step name="ask a question">In Discussions: what confused you shows where the docs are thin.</step>
     <step name="tell us what your agent understood">Point your agent at this brief and tell us what it got right and wrong: that improves the brief for the next person.</step>
     <step name="bring real DDL">A dump or hand-written schema of a database you know, schema only, no data and no secrets, as a sample the engines are tested on.</step>
@@ -76,7 +76,7 @@
   <start>
     <step>Read this brief whole, then the files of its reading list, in order.</step>
     <step>Brief your human, in your own words and in a few minutes of reading: what %PRODUCT% is and why (the mission), how it is put together (the architecture), and where it stands (what is built, what is next).</step>
-    <step>Tell them they need no experience to start and cannot break anything, and show them the roster: the small first steps, then every contribution open now, one line each, from this brief's wanted list: the tasks ready to build, the tasks queued, the guides (a new engine), the decisions waiting for a design session, and the good first issues. For each: what it is, what it would teach them, and what it takes.</step>
+    <step>Tell them they can start where they are, with you reading the project alongside them and the checks catching mistakes before they land, and show them the roster: the small first steps, then every contribution open now, one line each, from this brief's wanted list: the tasks ready to build, the tasks queued, the guides (a new engine), the decisions waiting for a design session, and the good first issues. For each: what it is, what it would teach them, and what it takes.</step>
     <step>Let them pick what interests them. Tell them that anyone may take up the same task, that every build is reviewed side by side, and that the best one is merged: a build that is not merged still teaches, and its lesson improves the method.</step>
     <step>To build a task: a new session on a fresh checkout of main, its first and only message the task file's path. For a new database: the engine guide, from its first phase. For an issue or anything new: open the conversation on GitHub first, with your human's word.</step>
   </start>

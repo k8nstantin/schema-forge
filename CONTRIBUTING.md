@@ -7,11 +7,12 @@ guesses. You contribute exactly the way the maintainer builds, with your own age
 too. And everyone is welcome, whatever you know about databases today: every part you touch teaches how databases
 really work, from the inside.
 
-## You are welcome here, and you cannot break anything
+## You are welcome here: start where you are
 
-You do not need to know Rust, or databases, or this project, to start: your coding agent reads the whole project for
-you and explains it, and everyone here was new to most of it once. And you cannot break anything: every change goes
-through checks that catch mistakes, and a person reviews it before it lands, so try things, ask, and learn.
+You do not need to know all of it to make a useful first contribution: your coding agent reads the project with you,
+and everyone here was new to most of it once. Mistakes are caught before they land: every change goes through the
+checks and a person's review. Start with a small step; building a task or an engine takes real skill, and that is
+what the small steps grow.
 
 **Small first steps** (each one is a real contribution):
 
