@@ -21,6 +21,9 @@ if ! out=$(cargo test --workspace --all-features 2>&1); then
 fi
 grep -c '^test result: ok' <<<"$out" | xargs printf '%s test binaries passed\n'
 
+step "The schema lock: every file of the database's design is as the last design session locked it"
+python3 tools/schema_lock.py
+
 step "Generated files: the pages, the site and the agent files are what their sources render"
 generated=(site AGENTS.md CLAUDE.md .github/copilot-instructions.md)
 python3 docs/pages/build.py >/dev/null
