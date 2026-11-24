@@ -65,18 +65,18 @@
   </wanted>
 
   <first-steps>
-    <note>You do not need to know Rust, databases or this project to start, and you cannot break anything: every change goes through checks that catch mistakes, and a person reviews it before it lands. Small first steps are real contributions.</note>
-    <step name="ask a question">In Discussions: what confused you shows where the docs are thin.</step>
-    <step name="tell us what your agent understood">Point your agent at this brief and tell us what it got right and wrong: that improves the brief for the next person.</step>
-    <step name="bring real DDL">A dump or hand-written schema of a database you know, schema only, no data and no secrets, as a sample the engines are tested on.</step>
-    <step name="fix a page or a doc">A sentence that was hard to read, a link that is wrong.</step>
-    <step name="build a task">When you are ready: anything listed as ready to build, and many may build the same one.</step>
+    <note>You do not need to know all of it to make a useful first contribution: your agent reads the project with you. Mistakes are caught before they land, in three ways: the checks every pull request runs (format, lint, every test, the architecture check and the spec check), the lock on the database's design, and a person's review. Each step below is small, real, and teaches something; building a task or an engine takes real skill, and these steps build it.</note>
+    <step name="ask a question">Ask in Discussions how something works or why it was decided. It is answered in the open, so the next person finds it, and what confused you shows us where the docs are thin.</step>
+    <step name="tell us what your agent understood">Point your agent at this brief, then post what it explained back to you and where it was wrong. The brief is how every agent learns the project; your report tests it, and the fix helps every agent after yours.</step>
+    <step name="bring real DDL">Engines are proved against real schemas, not toy ones. A dump or hand-written schema of a database you know (schema only: no data, no secrets) becomes a sample every build of that engine must read and write back exactly. You learn where SQL hides its corners.</step>
+    <step name="fix a page or a doc">If a sentence took you two reads, it will take the next person two reads. Rewrite it in a pull request: pages and docs change like code, through the checks and a review, so you learn the whole path a change takes.</step>
+    <step name="build a task">A task file is a complete instruction: what to build, its steps, its tests and the checks that decide. Give it to your agent in a fresh session, review what it builds, then submit. This is where you learn the method end to end; others may build the same task, and the best build is merged.</step>
   </first-steps>
 
   <start>
     <step>Read this brief whole, then the files of its reading list, in order.</step>
     <step>Brief your human, in your own words and in a few minutes of reading: what %PRODUCT% is and why (the mission), how it is put together (the architecture), and where it stands (what is built, what is next).</step>
-    <step>Tell them they need no experience to start and cannot break anything, and show them the roster: the small first steps, then every contribution open now, one line each, from this brief's wanted list: the tasks ready to build, the tasks queued, the guides (a new engine), the decisions waiting for a design session, and the good first issues. For each: what it is, what it would teach them, and what it takes.</step>
+    <step>Tell them they can start where they are, with you reading the project alongside them and the checks catching mistakes before they land, and show them the roster: the small first steps, then every contribution open now, one line each, from this brief's wanted list: the tasks ready to build, the tasks queued, the guides (a new engine), the decisions waiting for a design session, and the good first issues. For each: what it is, what it would teach them, and what it takes.</step>
     <step>Let them pick what interests them. Tell them that anyone may take up the same task, that every build is reviewed side by side, and that the best one is merged: a build that is not merged still teaches, and its lesson improves the method.</step>
     <step>To build a task: a new session on a fresh checkout of main, its first and only message the task file's path. For a new database: the engine guide, from its first phase. For an issue or anything new: open the conversation on GitHub first, with your human's word.</step>
   </start>

@@ -7,22 +7,29 @@ guesses. You contribute exactly the way the maintainer builds, with your own age
 too. And everyone is welcome, whatever you know about databases today: every part you touch teaches how databases
 really work, from the inside.
 
-## You are welcome here, and you cannot break anything
+## You are welcome here: start where you are
 
-You do not need to know Rust, or databases, or this project, to start: your coding agent reads the whole project for
-you and explains it, and everyone here was new to most of it once. And you cannot break anything: every change goes
-through checks that catch mistakes, and a person reviews it before it lands, so try things, ask, and learn.
+You do not need to know all of it to make a useful first contribution: your coding agent reads the project with you,
+and everyone here was new to most of it once. Mistakes are caught before they land, in three ways: the checks every
+pull request runs (format, lint, every test, the architecture check and the spec check), the lock on the database's
+design, and a person's review. Each step below is small, real, and teaches something; building a task or an engine
+takes real skill, and these steps build it.
 
-**Small first steps** (each one is a real contribution):
-
-- **Ask a question** in [Discussions](https://github.com/k8nstantin/schema-forge/discussions): what confused you
-  shows us where the docs are thin.
-- **Point your agent at the brief** and tell us what it understood and what it got wrong: that improves the brief for
-  the next person.
-- **Bring real DDL**: a dump or hand-written schema of a database you know (no data, no secrets), as a sample the
-  engines are tested on.
-- **Fix a page or a doc**: a sentence that was hard to read, a link that is wrong.
-- **Build a task**, when you are ready: the brief lists what is wanted now, and many may build the same one.
+- **Ask a question** in [Discussions](https://github.com/k8nstantin/schema-forge/discussions): how something works, or
+  why it was decided. It is answered in the open, so the next person finds it, and what confused you shows us where
+  the docs are thin.
+- **Tell us what your agent understood.** Point it at the brief, then post what it explained back to you and where it
+  was wrong. The brief is how every agent learns the project; your report tests it, and the fix helps every agent
+  after yours.
+- **Bring real DDL.** Engines are proved against real schemas, not toy ones. A dump or hand-written schema of a
+  database you know (schema only: no data, no secrets) becomes a sample every build of that engine must read and write
+  back exactly. You learn where SQL hides its corners.
+- **Fix a page or a doc.** If a sentence took you two reads, it will take the next person two reads. Rewrite it in a
+  pull request: pages and docs change like code, through the checks and a review, so you learn the whole path a change
+  takes.
+- **Build a task.** A task file is a complete instruction: what to build, its steps, its tests and the checks that
+  decide. Give it to your agent in a fresh session, review what it builds, then submit. This is where you learn the
+  method end to end; others may build the same task, and the best build is merged.
 
 Every merged contribution carries your name on GitHub, and you are thanked in the notes of the release it ships in.
 We follow a [code of conduct](CODE_OF_CONDUCT.md): be kind, be patient, assume good intent.
