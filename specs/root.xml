@@ -25,6 +25,8 @@
     </file>
     <file path="schema/workspace/" decides="every table of the namespace workspace in the workspace's database (sf_workspace): the workspace, its schemas by their stable id, the saved connections, their values (never a secret), their tests and their steps; one CREATE TABLE statement per file"/>
     <file path="engines/&lt;engine&gt;/schema/" decides="an engine's own tables, in the namespace engine_&lt;engine&gt; (engine_mysql.table_options), each referring to the cortex row it belongs to; its rules/; created in a schema's database whose engine it is, and in no other"/>
+    <file path="docs/owner-template/" decides="the shape of every owner's folder (an engine's, a feature's, and the cortex's and the workspace's alike): its owner.toml card, the five shapes of a table, its rules/, seeds/ and migrations/, a rename in two versions"/>
+    <file path="postgres/manifest.toml" decides="the PostgreSQL the store bundles: its sources, pinned, and the programs built from them, by checksum"/>
     <code path="crates/model/" decides="the model: Schema, Namespace, Object, Column, Link, Area, Id">Read first. What the code does is what is merged, never what a spec says about it.</code>
     <code path="crates/engine/" decides="the engine interface (Engine and its parts), the section layout (crates/engine/src/sections.rs), the registry and the conformance kit">Read first.</code>
     <code path="engines/mysql/" decides="the MySQL engine: its versions, types, kinds, options, readers and writer">Read first.</code>
