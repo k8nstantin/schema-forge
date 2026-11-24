@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The brief: what a coding agent, and the person who points it here, read first. The one source of every word the brief
+  and the Contribute page say; docs/pages/contribute.py only renders it, with specs/root.xml and specs/rules.xml, into
+  site/agents.md, site/agents.xml, site/llms.txt and the Contribute page. %PRODUCT%, %SITE%, %REPO% and %BRANCH% are the
+  parameters of schema/workspace/seeds/parameters.sql, filled in when it is rendered.
+  Parts: intro, prompt, if-task-file, method, ways, wanted, read, database, helping.
+-->
+<brief product="SchemaForge" version="1" date="2026-11-24">
+
+  <intro>You were pointed here to understand %PRODUCT% or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (%REPO%, branch %BRANCH%); the files are the authority, this brief only orders them.</intro>
+
+  <prompt>Read %SITE%agents.md and every file it lists, in its order. Then tell me, in your own words, what %PRODUCT% is, how it is built, and which open task or issue you think fits me; don't change anything yet.</prompt>
+
+  <if-task-file>Stop reading this brief. A task file (specs/tasks/*.xml) is a complete instruction: follow its start element exactly, from a new session, as the root's method says. Nothing here adds to or overrides it.</if-task-file>
+
+  <method>
+    <note>Every part of the product is built this way, by the maintainer and by every contributor, each with their own coding agent.</note>
+    <step name="design session" short="person + agent: database, task file">A person and an agent, with the maintainer, design or change the database in the owners' folders and write the work down as a task file under specs/tasks, every decision dated in specs/root.xml.</step>
+    <step name="build session" short="one agent, one task file">One agent, in a new session on a checkout of main, pointed at one task file and told nothing else. It reads in the order the root gives, builds only what the file says, decides only what it lists, and stops when anything is missing or two files disagree, rather than guess.</step>
+    <step name="gates" short="local · Docker · CI, in the PR">Every gate of the task file runs (local, Docker, CI), and their results go into the pull request.</step>
+    <step name="review" short="a person merges; never the agent">A person reviews and merges; the agent never merges.</step>
+    <step name="lesson" short="it changes the method">What a build taught is added to specs/lessons.xml, and a design session changes the method or the rules because of it. The method is open to improvement like the code.</step>
+  </method>
+
+  <ways>
+    <way name="build a wanted task" kicker="Build" title="A task that is wanted">
+      <for-agent>Any task listed as wanted is open to everyone at once: your human opens a new session on a fresh checkout of main whose first and only message is the task file's path (specs/tasks/&lt;file&gt;.xml), and submits the pull request it opens. Others may build the same task; the maintainer reviews the builds side by side and merges the best. That session is not this one.</for-agent>
+      <for-people>Pick a task from the wanted list; nobody needs to assign it. Open a new session on a fresh checkout of main and give your agent one line: the task file's path. It reads, builds, runs the gates and opens the pull request; you review it, then submit. Others may build the same task: the maintainer merges the best, and what the builds teach improves the method.</for-people>
+    </way>
+    <way name="bring something new" kicker="Design" title="Something new">
+      <for-agent>An engine, a feature, a fix: your human opens an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above.</for-agent>
+      <for-people>An engine for a database you know, a feature, a fix: open an issue or a discussion. You, your agent and the maintainer design it and write its task file; then it is built like any other.</for-people>
+    </way>
+    <way name="improve the method" kicker="Method" title="The way we work">
+      <for-agent>A lesson, a rule that would have caught a mistake, a clearer step: proposed in Discussions, decided in a design session.</for-agent>
+      <for-people>A lesson from your build, a rule that would have caught a mistake, a clearer step: propose it in Discussions. The method is built in the open, like the code.</for-people>
+    </way>
+  </ways>
+
+  <wanted>
+    <note>What is needed now, read from the root's sequence and decisions every time the brief is rendered.</note>
+    <ready>Written, and every task it depends on built. Anyone may build it; the best build is merged.</ready>
+    <queued>Written, and waiting for the tasks before it: read it, and build it once they are merged.</queued>
+    <design>Waiting for a design session with the maintainer: bring your view to Discussions.</design>
+  </wanted>
+
+  <read>
+    <note>Each group lists files; a group with a source takes its files from it: authority, the root's authority; sequence, the root's tasks in build order; docs, every file of docs/ but the authority's.</note>
+    <group name="the root" path="specs/root.xml">identity and purpose, authority (which files decide), method (how every task is built), the sequence of tasks and every decision with its date</group>
+    <group name="the rules" path="specs/rules.xml">every rule, where it comes from, and what catches a breach</group>
+    <group name="the files that decide" source="authority"/>
+    <group name="the task files, in the order they are built" source="sequence"/>
+    <group name="the lessons" path="specs/lessons.xml">what each build taught</group>
+    <group name="the design for people, read after the authority and never instead of it" source="docs"/>
+    <group name="the code as merged, when you need it" paths="crates/ engines/ tools/"/>
+  </read>
+
+  <database>Every table is a file of an owner's folder, one CREATE TABLE each, every column commented, its comments also in the database. Read a folder's files to know its tables; the owner template explains the shapes.</database>
+
+  <helping>
+    <do>Report what you understood first, in your own words, and ask your human what they want to do.</do>
+    <do>Start from an issue (%REPO%/issues, good first issue for a start) or a question in Discussions (%REPO%/discussions). Larger work is agreed with the maintainer before code, often as a task file.</do>
+    <do>Never change specs/, an owner's folder (schema/, engines/*/schema, features/), owner.toml or postgres/manifest.toml: they change only in a design session with the maintainer.</do>
+    <do>One issue, one branch, one pull request; tools/check.sh passes before you push (it needs Docker).</do>
+    <do>No attribution of any kind in commits or pull requests: your human is the author, and answers for every line.</do>
+    <do>Ask your human before you open an issue, push, comment or open a pull request: those speak for them.</do>
+  </helping>
+</brief>

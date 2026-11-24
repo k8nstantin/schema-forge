@@ -40,9 +40,11 @@ really work, from the inside.
 
 ## Three ways in
 
-- **Build a task already written.** Claim its issue; once the maintainer assigns it to you, open a new session on a
-  fresh checkout of `main` and give your agent one line: the task file's path (`specs/tasks/SF-94.xml`). It builds,
-  runs the gates and opens the pull request; you review it before the maintainer does.
+- **Build a wanted task.** The [Contribute page](https://k8nstantin.github.io/schema-forge/contribute.html) and the
+  brief list what is wanted now. Nobody assigns it: open a new session on a fresh checkout of `main` and give your
+  agent one line, the task file's path (`specs/tasks/SF-93.xml`). It builds, runs the gates and opens the pull
+  request; you review it, then submit. Others may build the same task: the maintainer reviews the builds side by
+  side, merges the best, and what their differences teach improves the method.
 - **Bring something new**: an engine for a database you know, a feature, a fix. Open an issue or a discussion; you,
   your agent and the maintainer design it and write its task file; then it is built like any other.
 - **Improve the method**: a lesson from your build, a rule that would have caught a mistake, a clearer step. Propose it

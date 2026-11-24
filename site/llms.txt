@@ -6,8 +6,8 @@ Start with the brief for coding agents: https://k8nstantin.github.io/schema-forg
 
 ## Spec
 
-- [root.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/root.xml): identity, authority, method, sequence, decisions
-- [rules.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/rules.xml): the rules and their guards
+- [specs/root.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/root.xml): identity and purpose, authority (which files decide), method (how every task is built), the sequence of tasks and every decision with its date
+- [specs/rules.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/rules.xml): every rule, where it comes from, and what catches a breach
 - [t01 spec check](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-93.xml)
 - [t02 tables interface](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-94.xml)
 - [t03 quill](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-95.xml)
@@ -30,8 +30,6 @@ Start with the brief for coding agents: https://k8nstantin.github.io/schema-forg
 ## Docs
 
 - [docs/cdc.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.md)
-- [docs/connections.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/connections.md)
-- [docs/engines.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/engines.md)
 - [docs/market.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/market.md)
 - [docs/perspectives.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/perspectives.md)
 - [docs/rules.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/rules.md)

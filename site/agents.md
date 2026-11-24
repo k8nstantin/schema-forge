@@ -14,21 +14,46 @@ An open-source schema designer where a coding agent and an architect work on the
 
 SchemaForge builds two things together: the product, and the method it is built by, in which people and coding agents develop together: a design session fixes the database and writes a task file; one agent builds it in one session; gates and a person's review decide; a build's lesson changes the method. Every contributor works the same way, with their own coding agent, and the method is theirs to improve too.
 
+## Wanted now
+
+What is needed now, read from the root's sequence and decisions every time the brief is rendered.
+
+**Ready to build**: Written, and every task it depends on built. Anyone may build it; the best build is merged.
+
+- t01 spec check (SF-93): [specs/tasks/SF-93.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-93.xml). The spec check, in Rust: every spec file has its shape, every quote is verbatim, every path exists; every owner's folder (the cortex, the workspace, every engine, every feature, the owner template) has its shape: table files in its namespace with their comments in the database, rules, seeds, migrations; and every folder loads on PostgreSQL 18, its versions giving exactly its files. Its mutation tests plant each defect and prove the check names it.
+
+**Queued**: Written, and waiting for the tasks before it: read it, and build it once they are merged.
+
+- t02 tables interface (SF-94): [specs/tasks/SF-94.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-94.xml)
+- t03 quill (SF-95): [specs/tasks/SF-95.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-95.xml)
+- t04 mysql tables (SF-96): [specs/tasks/SF-96.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-96.xml)
+- t05 postgres: [specs/tasks/t05-postgres.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/t05-postgres.xml)
+
+**Needs a design session**: Waiting for a design session with the maintainer: bring your view to Discussions.
+
+- **operation-kinds** (before t07)
+- **agent-turn-landing** (before t07)
+- **rules-tables** (before t07)
+- **pipelines-tables** (before t08)
+- **insight-layer** (before t08)
+- **steward** (before t10)
+- **api-contract** (before t08)
+
 ## The method you are joining
 
-Every part of the product is built this way, by the maintainer and by every contributor, each with their own coding agent:
+Every part of the product is built this way, by the maintainer and by every contributor, each with their own coding agent.
 
-1. **design session**: a person and an agent, with the maintainer, design or change the database in the owners' folders and write the work down as a task file under specs/tasks, every decision dated in specs/root.xml.
-2. **build session**: one agent, in a new session on a checkout of main, pointed at one task file and told nothing else; it reads in the order the root gives, builds only what the file says, decides only what it lists, and stops when anything is missing or two files disagree, rather than guess.
-3. **gates**: every gate of the task file runs (local, Docker, CI), and their results go into the pull request.
-4. **review**: a person reviews and merges; the agent never merges.
-5. **lesson**: what a build taught is added to specs/lessons.xml, and a design session changes the method or the rules because of it; the method is open to improvement like the code.
+1. **design session**: A person and an agent, with the maintainer, design or change the database in the owners' folders and write the work down as a task file under specs/tasks, every decision dated in specs/root.xml.
+2. **build session**: One agent, in a new session on a checkout of main, pointed at one task file and told nothing else. It reads in the order the root gives, builds only what the file says, decides only what it lists, and stops when anything is missing or two files disagree, rather than guess.
+3. **gates**: Every gate of the task file runs (local, Docker, CI), and their results go into the pull request.
+4. **review**: A person reviews and merges; the agent never merges.
+5. **lesson**: What a build taught is added to specs/lessons.xml, and a design session changes the method or the rules because of it. The method is open to improvement like the code.
 
 ## How your human contributes through you
 
-- **build a task already written**: they claim its issue and the maintainer assigns it; then they open a new session on a fresh checkout of main whose first and only message is the task file's path (specs/tasks/<file>.xml); that session is not this one.
-- **bring something new**: an engine, a feature, a fix: they open an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above.
-- **improve the method**: a lesson, a rule that would have caught a mistake, a clearer step: proposed in Discussions, decided in a design session.
+- **build a wanted task**: Any task listed as wanted is open to everyone at once: your human opens a new session on a fresh checkout of main whose first and only message is the task file's path (specs/tasks/<file>.xml), and submits the pull request it opens. Others may build the same task; the maintainer reviews the builds side by side and merges the best. That session is not this one.
+- **bring something new**: An engine, a feature, a fix: your human opens an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above.
+- **improve the method**: A lesson, a rule that would have caught a mistake, a clearer step: proposed in Discussions, decided in a design session.
 
 ## Read, in this order
 
@@ -59,8 +84,6 @@ Every part of the product is built this way, by the maintainer and by every cont
 5. [specs/lessons.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/lessons.xml): what each build taught.
 6. The design for people, read after the authority and never instead of it:
    - [docs/cdc.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.md)
-   - [docs/connections.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/connections.md)
-   - [docs/engines.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/engines.md)
    - [docs/market.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/market.md)
    - [docs/perspectives.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/perspectives.md)
    - [docs/rules.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/rules.md)
