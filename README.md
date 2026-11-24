@@ -219,15 +219,15 @@ The design: [docs/engines.md](docs/engines.md) (engines), [docs/rules.md](docs/r
 
 ## Contributing
 
-**Everyone is welcome, and it is a chance to learn databases from the inside.** Write an engine and you learn a
-database's grammar, types and catalogs; add a feature's tables and you learn relational design, rules enforced at commit
-and versioned migrations; bring a dump that breaks a reader and you find the corners of SQL nobody documents. The design
-is written down ([the pages](#the-database-at-the-core), [specs/](specs/)), so you never have to guess, and questions are
-contributions too.
+**Built with coding agents, and contributed the same way.** SchemaForge builds two things at once: the product, and
+the method it is built by, where people and coding agents develop together. A design session writes the work as a
+task file; one agent builds it in one session; gates and a person's review decide; a build's lesson improves the
+method. You contribute exactly the way the maintainer builds, with your own agent, and the method is yours to improve
+too. Everyone is welcome, and every part you touch teaches databases from the inside.
 
-Every change is one issue, one branch and one pull request; `tools/check.sh` (format, clippy, every test, the
-architecture check) must pass, and the database schema changes only by a design session, as a new version that adds.
-Where to start and what each way teaches: [CONTRIBUTING.md](CONTRIBUTING.md).
+**With a coding agent?** Point it at the brief: *"Read https://k8nstantin.github.io/schema-forge/agents.md and every
+file it lists, in its order, then tell me what SchemaForge is and which task or issue fits me."* It reads the whole
+spec, in order, and reports back before anything changes ([how it goes](https://k8nstantin.github.io/schema-forge/contribute.html)).
 
 ## Built with
 

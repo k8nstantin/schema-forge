@@ -188,7 +188,7 @@ class Svg:
 
 
 # --- the look and the shared head ---------------------------------------------------------------------------------
-PAGES = [("home", "Start here"), ("engines", "Engines"), ("database", "Database"), ("template", "Owner Template"), ("build-spec", "Build Spec")]
+PAGES = [("home", "Start here"), ("engines", "Engines"), ("database", "Database"), ("template", "Owner Template"), ("build-spec", "Build Spec"), ("contribute", "Contribute")]
 
 
 def _parameters():
@@ -200,11 +200,14 @@ def _parameters():
 PARAMS = _parameters()
 PRODUCT = PARAMS["product.name"]
 REPO_URL = PARAMS["product.repository"]
+SITE_URL = PARAMS["product.site"]
+BRANCH = PARAMS["product.branch"]
+RAW_URL = REPO_URL.replace("https://github.com/", "https://raw.githubusercontent.com/") + "/" + BRANCH
 
 
 MODE = "artifact"   # "artifact": links to the published pages; "site": relative links between the site's files
 FILES = {"site": "index.html", "home": "start.html", "database": "database.html", "template": "template.html",
-         "build-spec": "build-spec.html", "engines": "engines.html"}
+         "build-spec": "build-spec.html", "engines": "engines.html", "contribute": "contribute.html"}
 
 
 def links():

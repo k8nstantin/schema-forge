@@ -1,13 +1,33 @@
 # Contributing to SchemaForge
 
-**You are welcome here, whatever you know about databases today.** SchemaForge is a place to learn how databases
-really work, from the inside, by building something people use: how MySQL, PostgreSQL and Iceberg each say what a table
-is, how their types and keys and partitions differ, what their catalogs hold, how CDC carries a change from one to
-another, how PostgreSQL enforces a rule at commit and searches by meaning with vectors. Every part you touch teaches one
-of these, and the design is written down so you never have to guess.
+**SchemaForge is built with coding agents, and contributed the same way.** The project builds two things at once: the
+product, and the method it is built by, where people and coding agents develop together. People decide the design,
+the open questions and the review; an agent builds one task at a time, exactly as written, and stops rather than
+guesses. You contribute exactly the way the maintainer builds, with your own agent, and the method is yours to improve
+too. And everyone is welcome, whatever you know about databases today: every part you touch teaches how databases
+really work, from the inside.
+
+## The method
+
+1. **A design session**: a person and an agent, with the maintainer, design or change the database in the owners'
+   folders and write the work down as a task file under [specs/tasks](specs/tasks), every decision dated in
+   [specs/root.xml](specs/root.xml).
+2. **A build session**: one agent, in a new session on a checkout of `main`, whose first and only message is the task
+   file's path. It reads in the order the root gives, builds only what the file says, decides only what it lists, and
+   stops when anything is missing or two files disagree.
+3. **The gates**: every gate the task file names runs (local, Docker, CI); their results go into the pull request.
+4. **The review**: a person reviews and merges. The agent never merges.
+5. **The lesson**: what a build taught goes into [specs/lessons.xml](specs/lessons.xml), and a design session changes
+   the method or [the rules](specs/rules.xml) because of it.
 
 ## Where to start
 
+- **Using a coding agent?** Most people do. Point it at the brief written for agents,
+  [agents.md](https://k8nstantin.github.io/schema-forge/agents.md): it lists the whole spec in the order to read it,
+  the decisions still open, and the rules an agent works under here. Paste: *"Read
+  https://k8nstantin.github.io/schema-forge/agents.md and every file it lists, in its order, then tell me what
+  SchemaForge is and which task or issue fits me; don't change anything yet."*
+  ([the Contribute page](https://k8nstantin.github.io/schema-forge/contribute.html))
 - **Read the design**, with its diagrams: [Start here](https://claude.ai/artifact/BrFaiE6HBhVArfUGyiB3zp) ·
   [the database](https://claude.ai/artifact/3XWs1sS1cCsu3ar9F6pRos) ·
   [the owner template](https://claude.ai/artifact/XUiMve4wFDNTFZqMZnjBaC) ·
@@ -17,6 +37,16 @@ of these, and the design is written down so you never have to guess.
   [docs/store.md](docs/store.md) (the database at the core).
 - **Ask.** Start a [discussion](https://github.com/k8nstantin/schema-forge/discussions) with your question; there are no silly ones. Saying what confused you is a
   contribution too: it shows where the docs are thin.
+
+## Three ways in
+
+- **Build a task already written.** Claim its issue; once the maintainer assigns it to you, open a new session on a
+  fresh checkout of `main` and give your agent one line: the task file's path (`specs/tasks/SF-94.xml`). It builds,
+  runs the gates and opens the pull request; you review it before the maintainer does.
+- **Bring something new**: an engine for a database you know, a feature, a fix. Open an issue or a discussion; you,
+  your agent and the maintainer design it and write its task file; then it is built like any other.
+- **Improve the method**: a lesson from your build, a rule that would have caught a mistake, a clearer step. Propose it
+  in [Discussions](https://github.com/k8nstantin/schema-forge/discussions); it is decided in a design session.
 
 ## Ways to contribute, and what each teaches
 
@@ -45,8 +75,9 @@ of these, and the design is written down so you never have to guess.
 - **New code follows the code around it**: plain names, documentation in full sentences, no dead code, nothing
   hardcoded that should be data. Public data types are `#[non_exhaustive]` with constructors, so the interface grows
   without breaking anyone.
-- **Coding agents are welcome** as your tools. You are the author of what you submit: read it, test it, and be ready to
-  explain every line, as you would your own.
+- **Your coding agent is expected**, working by the method: one task file, one session, nothing decided that the file
+  does not list, and no attribution of any kind. You are the author of what you submit: review it, and answer for
+  every line.
 
 ## Licence
 
