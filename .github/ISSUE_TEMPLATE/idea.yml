@@ -1,0 +1,11 @@
+name: An idea
+description: A feature, an engine for a database you know, or a better way to work.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What you would like, and why it would help.
+    validations:
+      required: true

@@ -7,6 +7,26 @@ guesses. You contribute exactly the way the maintainer builds, with your own age
 too. And everyone is welcome, whatever you know about databases today: every part you touch teaches how databases
 really work, from the inside.
 
+## You are welcome here, and you cannot break anything
+
+You do not need to know Rust, or databases, or this project, to start: your coding agent reads the whole project for
+you and explains it, and everyone here was new to most of it once. And you cannot break anything: every change goes
+through checks that catch mistakes, and a person reviews it before it lands, so try things, ask, and learn.
+
+**Small first steps** (each one is a real contribution):
+
+- **Ask a question** in [Discussions](https://github.com/k8nstantin/schema-forge/discussions): what confused you
+  shows us where the docs are thin.
+- **Point your agent at the brief** and tell us what it understood and what it got wrong: that improves the brief for
+  the next person.
+- **Bring real DDL**: a dump or hand-written schema of a database you know (no data, no secrets), as a sample the
+  engines are tested on.
+- **Fix a page or a doc**: a sentence that was hard to read, a link that is wrong.
+- **Build a task**, when you are ready: the brief lists what is wanted now, and many may build the same one.
+
+Every merged contribution carries your name on GitHub, and you are thanked in the notes of the release it ships in.
+We follow a [code of conduct](CODE_OF_CONDUCT.md): be kind, be patient, assume good intent.
+
 ## The method
 
 1. **A design session**: a person and an agent, with the maintainer, design or change the database in the owners'
