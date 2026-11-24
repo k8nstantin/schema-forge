@@ -56,7 +56,7 @@
   </phase>
 
   <phase n="4" name="the builds">
-    <do>Each task is built as every task is: a new session on a fresh checkout of main, its first and only message the task file's path. That session follows the task file and nothing else; this guide does not travel with it.</do>
+    <do>Each task is built as every task is: an agent, in any session, pointed at the task file's path on a fresh checkout of main, building from the files alone. The build follows the task file and nothing else; this guide does not travel with it.</do>
     <do>Any number of contributors may build the same task; the maintainer merges the best build.</do>
     <ends>Every task of the engine merged; the engine registered and passing the conformance kit on every sample.</ends>
   </phase>

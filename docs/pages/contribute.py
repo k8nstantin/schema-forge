@@ -202,7 +202,7 @@ body = f"""
 <p class="lede">Your agent reads <a href="{e(SITE_URL)}agents.xml">agents.xml</a>, the brief in the method's own format, and follows its links, then explains the project back to you before anything changes. Everything an agent acts on here is XML: the spec, the brief, the guides, every task.</p></section>
 
 <section id="ways"><p class="kicker">Then</p><h2>Three ways in.</h2><div class="cards">{way_cards}</div>
-<p class="lede">To build a task, the first and only message of a new session is its path, for example:</p>
+<p class="lede">To build a task, point your agent at its path, in any session; it builds from the files alone, for example:</p>
 <pre class="prompt">{e(build_example)}</pre></section>
 
 <section id="reads"><p class="kicker">What your agent reads</p><h2>The whole spec, in the order that makes sense of it.</h2>
