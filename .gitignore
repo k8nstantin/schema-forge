@@ -3,3 +3,4 @@
 node_modules/
 /app/dist
 __pycache__/
+docs/pages/published/

@@ -134,15 +134,15 @@ The prototype's MCP tools, which the product keeps:
 
 > Designed and specified ([specs/](specs/)), and being built now, in the order the spec gives.
 
-**Visit the site:** [k8nstantin.github.io/schema-forge](https://k8nstantin.github.io/schema-forge/) (live once this design reaches `main`).
+**Visit the site:** [k8nstantin.github.io/schema-forge](https://k8nstantin.github.io/schema-forge/).
 
 **Read the design**, with its diagrams, every table and every decision:
-[Start here](https://claude.ai/artifact/BrFaiE6HBhVArfUGyiB3zp) ·
-[Engines](https://claude.ai/artifact/VMBFif9AQqowMA8ZZQUQWv) (every database a plugin; Iceberg; converting both ways) ·
-[The database](https://claude.ai/artifact/3XWs1sS1cCsu3ar9F6pRos) ·
-[The owner template](https://claude.ai/artifact/XUiMve4wFDNTFZqMZnjBaC) (how an engine or a feature adds its tables) ·
-[The build spec](https://claude.ai/artifact/2jnUargwgDpCVKgFYUbxAs) (how coding agents build it). The same pages are in
-[docs/pages/](docs/pages/), generated from the repository.
+[Start here](https://k8nstantin.github.io/schema-forge/start.html) ·
+[Engines](https://k8nstantin.github.io/schema-forge/engines.html) (every database a plugin; Iceberg; converting both ways) ·
+[The database](https://k8nstantin.github.io/schema-forge/database.html) ·
+[The owner template](https://k8nstantin.github.io/schema-forge/template.html) (how an engine or a feature adds its tables) ·
+[The build spec](https://k8nstantin.github.io/schema-forge/build-spec.html) (how coding agents build it). Every page is generated from the repository
+([docs/pages/](docs/pages/)).
 
 - **Real PostgreSQL, bundled.** SchemaForge ships PostgreSQL 18 with **pgvector** inside the app: nothing to install,
   nothing to configure. On a laptop, each workspace runs its own private cluster behind a Unix socket. For a team, point

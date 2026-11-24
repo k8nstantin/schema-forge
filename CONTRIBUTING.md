@@ -28,10 +28,10 @@ really work, from the inside.
   https://k8nstantin.github.io/schema-forge/agents.md and every file it lists, in its order, then tell me what
   SchemaForge is and which task or issue fits me; don't change anything yet."*
   ([the Contribute page](https://k8nstantin.github.io/schema-forge/contribute.html))
-- **Read the design**, with its diagrams: [Start here](https://claude.ai/artifact/BrFaiE6HBhVArfUGyiB3zp) ·
-  [the database](https://claude.ai/artifact/3XWs1sS1cCsu3ar9F6pRos) ·
-  [the owner template](https://claude.ai/artifact/XUiMve4wFDNTFZqMZnjBaC) ·
-  [the build spec](https://claude.ai/artifact/2jnUargwgDpCVKgFYUbxAs). The same pages are in
+- **Read the design**, with its diagrams: [Start here](https://k8nstantin.github.io/schema-forge/start.html) ·
+  [the database](https://k8nstantin.github.io/schema-forge/database.html) ·
+  [the owner template](https://k8nstantin.github.io/schema-forge/template.html) ·
+  [the build spec](https://k8nstantin.github.io/schema-forge/build-spec.html). The same pages are in
   [docs/pages/](docs/pages/).
 - **Read why it is built this way:** [docs/engines.md](docs/engines.md) (every database a plugin),
   [docs/store.md](docs/store.md) (the database at the core).
@@ -40,9 +40,11 @@ really work, from the inside.
 
 ## Three ways in
 
-- **Build a task already written.** Claim its issue; once the maintainer assigns it to you, open a new session on a
-  fresh checkout of `main` and give your agent one line: the task file's path (`specs/tasks/SF-94.xml`). It builds,
-  runs the gates and opens the pull request; you review it before the maintainer does.
+- **Build a wanted task.** The [Contribute page](https://k8nstantin.github.io/schema-forge/contribute.html) and the
+  brief list what is wanted now. Nobody assigns it: open a new session on a fresh checkout of `main` and give your
+  agent one line, the task file's path (`specs/tasks/SF-93.xml`). It builds, runs the gates and opens the pull
+  request; you review it, then submit. Others may build the same task: the maintainer reviews the builds side by
+  side, merges the best, and what their differences teach improves the method.
 - **Bring something new**: an engine for a database you know, a feature, a fix. Open an issue or a discussion; you,
   your agent and the maintainer design it and write its task file; then it is built like any other.
 - **Improve the method**: a lesson from your build, a rule that would have caught a mistake, a clearer step. Propose it

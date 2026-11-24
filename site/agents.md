@@ -1,34 +1,88 @@
 # SchemaForge: the brief for coding agents
 
-You were pointed here to understand SchemaForge or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (https://github.com/k8nstantin/schema-forge, branch main); the files are the authority, this brief only orders them.
-
 The same brief in the method's own format: https://k8nstantin.github.io/schema-forge/agents.xml.
+
+Welcome. You have joined SchemaForge, and the person who brought you here is about to work with you on it. This brief gives you, in order, the mission, the architecture, what is needed now and how to start; then the method, everything to read, and the rules. Take it in whole, tell your human what you understood, and the two of you can start.
+
+You were pointed here to understand SchemaForge or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (https://github.com/k8nstantin/schema-forge, branch main); the files are the authority, this brief only orders them.
 
 ## If you were pointed at a task file
 
 Stop reading this brief. A task file (specs/tasks/*.xml) is a complete instruction: follow its start element exactly, from a new session, as the root's method says. Nothing here adds to or overrides it.
 
-## What SchemaForge is
+## The mission
 
 An open-source schema designer where a coding agent and an architect work on the same live design through MCP, and nothing lands unchecked. Every database is an engine plugin; at the centre stands the database SchemaForge keeps its work in: one PostgreSQL database per schema, in the PostgreSQL 18 bundled with the app, holding the cortex every engine shares and each engine's own tables, each owner in its own namespace, designed before any of it is built and locked so every build falls into it.
 
 SchemaForge builds two things together: the product, and the method it is built by, in which people and coding agents develop together: a design session fixes the database and writes a task file; one agent builds it in one session; gates and a person's review decide; a build's lesson changes the method. Every contributor works the same way, with their own coding agent, and the method is theirs to improve too.
 
+## The architecture
+
+How SchemaForge is put together, each part with the file that decides it. Read those files before you rely on any of this.
+
+- **two layers** ([docs/engines.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/engines.md)): The process (the canvas, the MCP, turns and undo, the rules, the store) is shared by every database and names none of them. Everything about one database (its types, kinds, options, how it is read and written, its own tables) belongs to its engine: one crate, plugged in through one interface, checked by the conformance kit and the architecture check.
+- **the database at the core** ([docs/store.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/store.md)): SchemaForge keeps its work in a PostgreSQL 18 with pgvector it bundles: one cluster per workspace, one database per schema. Each owner's tables are in its own namespace (cortex, workspace, engine_<id>, and a feature's own); every reference is a foreign key, every column documented in the database, and every rule a foreign key cannot state is enforced by the database at commit. Every change is an operation of a turn, logged, so it can be undone.
+- **owners grow by versions** ([docs/owner-template/README.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/owner-template/README.md)): The cortex, the workspace, every engine and every feature is an owner: its own folder, card, namespace, rules, seeds and versions. A change adds; a rename takes two versions. A new engine or feature starts from the owner template.
+- **the repository**: crates/model, the schema skeleton every engine shares; crates/engine, the engine interface, the section layout, the registry and the conformance kit; crates/engines, the registry of the shipped engines (built by the sequence); crates/store, the store over the bundled PostgreSQL (built by the sequence); engines/<engine>, one crate per database, each with its schema folder engines/<engine>/schema; schema/cortex and schema/workspace, the cortex's and the workspace's tables; tools/architecture, the design checked on the code; tools/specs, the spec check (built by the sequence); tools/check.sh, the one command every change passes; specs/, this spec; docs/, the design for people.
+- **the spec** ([specs/root.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/root.xml)): specs/ holds the root (purpose, authority, method, sequence, decisions), the rules, this brief, the lessons and one task file per build. The spec is written before the code, and the code falls into it.
+
+## Wanted now
+
+What is needed now, read from the root's sequence and decisions every time the brief is rendered.
+
+**Ready to build**: Written, and every task it depends on built. Anyone may build it; the best build is merged.
+
+- t01 · spec check: every spec file and owner folder checked, and loaded on PostgreSQL 18 (SF-93): [specs/tasks/SF-93.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-93.xml), issue https://github.com/k8nstantin/schema-forge/issues/93. The spec check, in Rust: every spec file has its shape, every quote is verbatim, every path exists; every owner's folder (the cortex, the workspace, every engine, every feature, the owner template) has its shape: table files in its namespace with their comments in the database, rules, seeds, migrations; and every folder loads on PostgreSQL 18, its versions giving exactly its files. Its mutation tests plant each defect and prove the check names it.
+
+**Queued**: Written, and waiting for the tasks before it: read it, and build it once they are merged.
+
+- t02 · tables interface: a schema as typed rows of the cortex and back, with no database (SF-94): [specs/tasks/SF-94.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-94.xml), issue https://github.com/k8nstantin/schema-forge/issues/94
+- t03 · quill: the made-up engine every shared test runs beside MySQL (SF-95): [specs/tasks/SF-95.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-95.xml), issue https://github.com/k8nstantin/schema-forge/issues/95
+- t04 · mysql tables: every MySQL option kept in engine_mysql's tables, and read back (SF-96): [specs/tasks/SF-96.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-96.xml), issue https://github.com/k8nstantin/schema-forge/issues/96
+- t05 · postgres: PostgreSQL 18 with pgvector, built by our CI for five platforms: [specs/tasks/t05-postgres.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/t05-postgres.xml)
+
+**Ahead**: Not written yet: the work after the queued tasks, each written as a task file once its decisions close. A feature you want to build may be here.
+
+- t06 · store: the workspace kept in the bundled PostgreSQL, every import logged (SF-97): Not written yet: the store over the bundled PostgreSQL (the workspace's cluster, its database and one database per schema, versions and seeds, a schema read in as one import turn with its log and read back the same, the saved connections). Written once t05 is merged, on its programs, by the decisions postgresql-bundled to parameters-not-code.
+- t07 · operations: every change an operation of its turn, undone by its inverse: Not written yet: every change as an operation of its turn, undo and reject by the inverses the log records.
+- t08 · server: the server over the store: its API and the MCP's tools: Not written yet: the server over the store, its API written first, the MCP's tools among it.
+- t09 · canvas: the canvas over the server, every flow tested in a browser: Not written yet: the canvas over the server, every flow a browser test on every engine.
+- t10 · steward: the agent that reviews, merges the best build and starts the next: Not written yet: the XML instruction for an agent that runs on a schedule, reviews and QAs every open pull request against its task file, its gates and the rules, merges what passes, records each build's lesson, and starts the next build of the sequence.
+
+**Needs a design session**: Waiting for a design session with the maintainer: bring your view to Discussions.
+
+- **operation-kinds** (before t07)
+- **agent-turn-landing** (before t07)
+- **rules-tables** (before t07)
+- **pipelines-tables** (before t08)
+- **insight-layer** (before t08)
+- **steward** (before t10)
+- **api-contract** (before t08)
+
+**Issues**: Smaller work, fixes and questions are issues: https://github.com/k8nstantin/schema-forge/issues, and the ones labelled good first issue are the place to begin.
+
+## How to start
+
+1. Read this brief whole, then the files of its reading list, in order.
+2. Tell your human, in your own words: the mission, the architecture, what is wanted now, and what you think fits them.
+3. Choose together: a task ready to build, an issue, a feature ahead, or a view for a design session.
+4. To build a task: a new session on a fresh checkout of main, its first and only message the task file's path. For an issue or something new: open the conversation on GitHub first, with your human's word.
+
 ## The method you are joining
 
-Every part of the product is built this way, by the maintainer and by every contributor, each with their own coding agent:
+Every part of the product is built this way, by the maintainer and by every contributor, each with their own coding agent.
 
-1. **design session**: a person and an agent, with the maintainer, design or change the database in the owners' folders and write the work down as a task file under specs/tasks, every decision dated in specs/root.xml.
-2. **build session**: one agent, in a new session on a checkout of main, pointed at one task file and told nothing else; it reads in the order the root gives, builds only what the file says, decides only what it lists, and stops when anything is missing or two files disagree, rather than guess.
-3. **gates**: every gate of the task file runs (local, Docker, CI), and their results go into the pull request.
-4. **review**: a person reviews and merges; the agent never merges.
-5. **lesson**: what a build taught is added to specs/lessons.xml, and a design session changes the method or the rules because of it; the method is open to improvement like the code.
+1. **design session**: A person and an agent, with the maintainer, design or change the database in the owners' folders and write the work down as a task file under specs/tasks, every decision dated in specs/root.xml.
+2. **build session**: One agent, in a new session on a checkout of main, pointed at one task file and told nothing else. It reads in the order the root gives, builds only what the file says, decides only what it lists, and stops when anything is missing or two files disagree, rather than guess.
+3. **gates**: Every gate of the task file runs (local, Docker, CI), and their results go into the pull request.
+4. **review**: A person reviews and merges; the agent never merges.
+5. **lesson**: What a build taught is added to specs/lessons.xml, and a design session changes the method or the rules because of it. The method is open to improvement like the code.
 
 ## How your human contributes through you
 
-- **build a task already written**: they claim its issue and the maintainer assigns it; then they open a new session on a fresh checkout of main whose first and only message is the task file's path (specs/tasks/<file>.xml); that session is not this one.
-- **bring something new**: an engine, a feature, a fix: they open an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above.
-- **improve the method**: a lesson, a rule that would have caught a mistake, a clearer step: proposed in Discussions, decided in a design session.
+- **build a wanted task**: Any task listed as wanted is open to everyone at once: your human opens a new session on a fresh checkout of main whose first and only message is the task file's path (specs/tasks/<file>.xml), and submits the pull request it opens. Others may build the same task; the maintainer reviews the builds side by side and merges the best. That session is not this one.
+- **bring something new**: An engine, a feature, a fix: your human opens an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above.
+- **improve the method**: A lesson, a rule that would have caught a mistake, a clearer step: proposed in Discussions, decided in a design session.
 
 ## Read, in this order
 
@@ -46,21 +100,19 @@ Every part of the product is built this way, by the maintainer and by every cont
    - [docs/engines.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/engines.md): the plugin design: what is shared and what is each engine's, the crates and their roles
    - [docs/connections.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/connections.md): connections: what an engine declares, profiles without secrets, the five test steps
 4. The task files, in the order they are built:
-   - [specs/tasks/SF-93.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-93.xml): t01 spec check (SF-93): The spec check, in Rust: every spec file has its shape, every quote is verbatim, every path exists; every owner's folder (the cortex, the workspace, every engine, every feature, the owner template) has its shape: table files in its namespace with their comments in the database, rules, seeds, migrations; and every folder loads on PostgreSQL 18, its versions giving exactly its files. Its mutation tests plant each defect and prove the check names it.
-   - [specs/tasks/SF-94.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-94.xml): t02 tables interface (SF-94): The part of the engine interface the database needs, with no database in it: typed values and rows; a schema as the cortex's rows and back; the numbered ids and their counters; an engine's own tables, rules, seeds and migrations as data, its options as its rows and back; the kit's checks of an engine's tables.
-   - [specs/tasks/SF-95.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-95.xml): t03 quill (SF-95): Quill, the made-up engine built unlike MySQL, with its own namespace and tables; the registry of the shipped engines and, for tests, Quill beside them; the guard that shared code names no engine's words.
-   - [specs/tasks/SF-96.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-96.xml): t04 mysql tables (SF-96): MySQL's tables: every MySQL option in the rows of engine_mysql's tables, and back, for every sample; the kit requires tables of an engine that reads.
-   - [specs/tasks/t05-postgres.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/t05-postgres.xml): t05 postgres: PostgreSQL 18 with pgvector, built by the project's CI from the official source for every platform it ships on, published as release assets, pinned by a manifest of checksums; the fetch tool every release, developer and test uses, refusing anything whose checksum differs.
-   - t06 store (SF-97): Not written yet: the store over the bundled PostgreSQL (the workspace's cluster, its database and one database per schema, versions and seeds, a schema read in as one import turn with its log and read back the same, the saved connections). Written once t05 is merged, on its programs, by the decisions postgresql-bundled to parameters-not-code.
-   - t07 operations: Not written yet: every change as an operation of its turn, undo and reject by the inverses the log records.
-   - t08 server: Not written yet: the server over the store, its API written first, the MCP's tools among it.
-   - t09 canvas: Not written yet: the canvas over the server, every flow a browser test on every engine.
-   - t10 steward: Not written yet: the XML instruction for an agent that runs on a schedule, reviews and QAs every open pull request against its task file, its gates and the rules, merges what passes, records each build's lesson, and starts the next build of the sequence.
+   - [specs/tasks/SF-93.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-93.xml): t01 · spec check: every spec file and owner folder checked, and loaded on PostgreSQL 18 (SF-93). The spec check, in Rust: every spec file has its shape, every quote is verbatim, every path exists; every owner's folder (the cortex, the workspace, every engine, every feature, the owner template) has its shape: table files in its namespace with their comments in the database, rules, seeds, migrations; and every folder loads on PostgreSQL 18, its versions giving exactly its files. Its mutation tests plant each defect and prove the check names it.
+   - [specs/tasks/SF-94.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-94.xml): t02 · tables interface: a schema as typed rows of the cortex and back, with no database (SF-94). The part of the engine interface the database needs, with no database in it: typed values and rows; a schema as the cortex's rows and back; the numbered ids and their counters; an engine's own tables, rules, seeds and migrations as data, its options as its rows and back; the kit's checks of an engine's tables.
+   - [specs/tasks/SF-95.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-95.xml): t03 · quill: the made-up engine every shared test runs beside MySQL (SF-95). Quill, the made-up engine built unlike MySQL, with its own namespace and tables; the registry of the shipped engines and, for tests, Quill beside them; the guard that shared code names no engine's words.
+   - [specs/tasks/SF-96.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-96.xml): t04 · mysql tables: every MySQL option kept in engine_mysql's tables, and read back (SF-96). MySQL's tables: every MySQL option in the rows of engine_mysql's tables, and back, for every sample; the kit requires tables of an engine that reads.
+   - [specs/tasks/t05-postgres.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/t05-postgres.xml): t05 · postgres: PostgreSQL 18 with pgvector, built by our CI for five platforms. PostgreSQL 18 with pgvector, built by the project's CI from the official source for every platform it ships on, published as release assets, pinned by a manifest of checksums; the fetch tool every release, developer and test uses, refusing anything whose checksum differs.
+   - t06 · store: the workspace kept in the bundled PostgreSQL, every import logged (SF-97). Not written yet: the store over the bundled PostgreSQL (the workspace's cluster, its database and one database per schema, versions and seeds, a schema read in as one import turn with its log and read back the same, the saved connections). Written once t05 is merged, on its programs, by the decisions postgresql-bundled to parameters-not-code.
+   - t07 · operations: every change an operation of its turn, undone by its inverse. Not written yet: every change as an operation of its turn, undo and reject by the inverses the log records.
+   - t08 · server: the server over the store: its API and the MCP's tools. Not written yet: the server over the store, its API written first, the MCP's tools among it.
+   - t09 · canvas: the canvas over the server, every flow tested in a browser. Not written yet: the canvas over the server, every flow a browser test on every engine.
+   - t10 · steward: the agent that reviews, merges the best build and starts the next. Not written yet: the XML instruction for an agent that runs on a schedule, reviews and QAs every open pull request against its task file, its gates and the rules, merges what passes, records each build's lesson, and starts the next build of the sequence.
 5. [specs/lessons.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/lessons.xml): what each build taught.
 6. The design for people, read after the authority and never instead of it:
    - [docs/cdc.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.md)
-   - [docs/connections.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/connections.md)
-   - [docs/engines.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/engines.md)
    - [docs/market.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/market.md)
    - [docs/perspectives.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/perspectives.md)
    - [docs/rules.md](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/rules.md)
@@ -109,7 +161,7 @@ Every rule of specs/rules.xml binds you. In short:
 - **agent-decides-only-what-is-listed**: A task file lists under agent-decides the only things its agent decides: the names and the decomposition of private code inside the files it owns, the standard means of a step, the contents of its fixtures within the cases listed, its commit granularity. Everything else is written in the task file, the root, these rules, the schema folders or the merged code; a build that decides anything else is closed, and the step it departed from is named in the review.
 - **no-attribution**: No commit, branch, PR, file or comment carries an attribution to a coding agent or a model: no co-author line, no generated-by line, no trailer. The work is the operator's.
 - **one-check**: tools/check.sh is the one command every change passes, the same locally and in CI: formatting, lint, every test (the kit, the architecture check and the spec check among them). Nothing is done until it passes; its last line is in the PR.
-- **kickoff**: A build starts with a model pointed at one task file, specs/tasks/<file>.xml, as the first message of a new session on a checkout of the head of main updated from origin; nothing else is said. A session that holds anything before that line beyond what the harness gives every session (its own text, CLAUDE.md, its settings) stops, says so and builds nothing. The task file's start element names the branch, the PR title and the read order; the agent writes its own label.
+- **kickoff**: A build starts with a model pointed at one task file, specs/tasks/<file>.xml, as the first message of a new session on a checkout of the head of main updated from origin; nothing else is said. A session that holds anything before that line beyond what the harness gives every session (its own text, the repository's agent files (AGENTS.md, CLAUDE.md, .github/copilot-instructions.md, rendered from specs/brief.xml), its settings) stops, says so and builds nothing. The task file's start element names the branch, the PR title and the read order; the agent writes its own label.
 - **every-rule-binds**: Every rule here binds every task, whether or not a gate of the task names it.
 
 ## When you help someone contribute

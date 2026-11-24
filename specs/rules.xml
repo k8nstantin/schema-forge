@@ -84,7 +84,7 @@
 
   <rule id="kickoff">
     <from>the operator, 2026-11-24</from>
-    <text>A build starts with a model pointed at one task file, specs/tasks/&lt;file&gt;.xml, as the first message of a new session on a checkout of the head of main updated from origin; nothing else is said. A session that holds anything before that line beyond what the harness gives every session (its own text, CLAUDE.md, its settings) stops, says so and builds nothing. The task file's start element names the branch, the PR title and the read order; the agent writes its own label.</text>
+    <text>A build starts with a model pointed at one task file, specs/tasks/&lt;file&gt;.xml, as the first message of a new session on a checkout of the head of main updated from origin; nothing else is said. A session that holds anything before that line beyond what the harness gives every session (its own text, the repository's agent files (AGENTS.md, CLAUDE.md, .github/copilot-instructions.md, rendered from specs/brief.xml), its settings) stops, says so and builds nothing. The task file's start element names the branch, the PR title and the read order; the agent writes its own label.</text>
     <breach>review of the branch name, the PR title and the PR body's statement of the session</breach>
   </rule>
 

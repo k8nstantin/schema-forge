@@ -1,5 +1,5 @@
-"""Builds the product's pages from the repository: python3 docs/pages/build.py. Writes the published pages to
-docs/pages/<page>.html (linking each other by their published links) and the website to site/ (linking each other by
+"""Builds the product's pages from the repository: python3 docs/pages/build.py. Writes the private previews to
+docs/pages/published/<page>.html (linking each other by their published links, not committed) and the website to site/ (linking each other by
 relative paths, so any domain serves it), both from one stylesheet; fails when a diagram's layout breaks (an arrow
 through a box, two arrows crossing, labels overlapping)."""
 import importlib, os, shutil, sys
@@ -20,7 +20,8 @@ for mode in ("artifact", "site"):
         mod = importlib.reload(sys.modules[name]) if name in sys.modules else importlib.import_module(name)
         key = KEYS[name]
         if mode == "artifact":
-            open(os.path.join(here, f"{'site' if key == 'site' else key}.html"), "w", encoding="utf-8").write(mod.HTML)
+            os.makedirs(os.path.join(here, "published"), exist_ok=True)
+            open(os.path.join(here, "published", f"{key}.html"), "w", encoding="utf-8").write(mod.HTML)
         else:
             os.makedirs(site, exist_ok=True)
             open(os.path.join(site, common.FILES[key]), "w", encoding="utf-8").write(mod.HTML)
@@ -29,6 +30,10 @@ brief = sys.modules["contribute"]
 open(os.path.join(site, "agents.md"), "w", encoding="utf-8").write(brief.AGENTS_MD)
 open(os.path.join(site, "llms.txt"), "w", encoding="utf-8").write(brief.LLMS_TXT)
 open(os.path.join(site, "agents.xml"), "w", encoding="utf-8").write(brief.AGENTS_XML)
+top = os.path.join(here, "..", "..")
+open(os.path.join(top, "AGENTS.md"), "w", encoding="utf-8").write(brief.REPO_AGENTS_MD)
+open(os.path.join(top, "CLAUDE.md"), "w", encoding="utf-8").write(brief.CLAUDE_MD)
+open(os.path.join(top, ".github", "copilot-instructions.md"), "w", encoding="utf-8").write(brief.REPO_AGENTS_MD)
 bad = [(s.label, s.check()) for s in made if s.check()]
 for label, problems in bad:
     print(f"layout: {label[:70]}", *problems, sep="\n  ")
