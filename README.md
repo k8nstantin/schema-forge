@@ -1,23 +1,23 @@
 # SchemaForge
 
-**Design database schemas with your coding agent, under standards that hold.**
+**The intelligent, multi-engine schema design and management tool, with your coding agent, under standards that hold.**
+Design from scratch, reverse-engineer what exists, prompt your agent and work together, or let it design while you
+watch. A schema converts from one engine to another, and its intelligence (what depends on what, what it means, what is wrong) is stored with it.
 
 AI agents now change code faster than anyone can review it, and the database schema is where their mistakes stick: a
 wrong type, a missing key or a dropped column outlives every commit that caused it. Each prompt invents its own
 conventions, and the same data flows from MySQL or PostgreSQL through Debezium into an Iceberg lakehouse, where one
 careless change breaks the rest.
 
-SchemaForge is an open-source schema designer where an AI coding agent and an architect work on the same live
+SchemaForge is an open-source, multi-engine schema design and management tool where an AI coding agent and an architect work on the same live
 design, and nothing lands unchecked. The agent designs through **MCP** (the protocol agents like Claude Code use to
 work with tools); the architect watches every change land on a live canvas, steers it, or edits by hand. Every change,
 the agent's and the architect's, is checked against **rules**: the team's design standards, written down once.
 
-> **Status:** the MySQL engine works today: it reads dumps, DDL and live servers, and writes back SQL that loads
-> into MySQL 8.0 to 26.10. **The first release**, being built now: point it at your MySQL database and understand it
-> (how it is built, what depends on what, what it means, what is wrong with it), through your own coding agent. The
-> canvas, designing with your agent at the same time, conversion and more engines come after. A working prototype
-> proved the loop (tag [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype)); the design is on
-> [the site](https://k8nstantin.github.io/schema-forge/).
+> **Status:** being built in the open, every database a plugin. The MySQL engine works today: it reads dumps, DDL
+> and live servers, and writes back SQL that loads into MySQL 8.0 to 26.10. PostgreSQL and Apache Iceberg are next. A
+> working prototype proved the whole loop (tag [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype));
+> the design is on [the site](https://k8nstantin.github.io/schema-forge/).
 
 ![Home: start a schema, open one, or manage your rules](docs/screenshots/home.jpg)
 

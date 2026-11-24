@@ -1,6 +1,6 @@
 # SchemaForge
 
-> An open-source schema designer where a coding agent and an architect work on the same live design through MCP, and nothing lands unchecked. Every database is an engine plugin; at the centre stands the database SchemaForge keeps its work in: one PostgreSQL database per schema, in the PostgreSQL 18 bundled with the app, holding the cortex every engine shares and each engine's own tables, each owner in its own namespace, designed before any of it is built and locked so every build falls into it.
+> An open-source, intelligent, multi-engine schema design and management tool, where a coding agent and an architect work on the same live design through MCP, and nothing lands unchecked: a schema designed from scratch, reverse-engineered from a database, converted from one engine to another, its intelligence stored with it. Every database is an engine plugin; at the centre stands the database SchemaForge keeps its work in: one PostgreSQL database per schema, in the PostgreSQL 18 bundled with the app, holding the cortex every engine shares and each engine's own tables, each owner in its own namespace, designed before any of it is built and locked so every build falls into it.
 
 Start with the brief for coding agents: https://k8nstantin.github.io/schema-forge/agents.xml. The files below are the authority.
 

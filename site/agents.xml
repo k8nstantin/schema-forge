@@ -5,7 +5,7 @@
   <intro>You were pointed here to understand SchemaForge or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (https://github.com/k8nstantin/schema-forge, branch main); the files are the authority, this brief only orders them.</intro>
   <if-task-file>Stop reading this brief. A task file (specs/tasks/*.xml) is a complete instruction: follow its start element exactly, from a new session, as the root's method says. Nothing here adds to or overrides it.</if-task-file>
   <mission>
-    <product>An open-source schema designer where a coding agent and an architect work on the same live design through MCP, and nothing lands unchecked. Every database is an engine plugin; at the centre stands the database SchemaForge keeps its work in: one PostgreSQL database per schema, in the PostgreSQL 18 bundled with the app, holding the cortex every engine shares and each engine's own tables, each owner in its own namespace, designed before any of it is built and locked so every build falls into it.</product>
+    <product>An open-source, intelligent, multi-engine schema design and management tool, where a coding agent and an architect work on the same live design through MCP, and nothing lands unchecked: a schema designed from scratch, reverse-engineered from a database, converted from one engine to another, its intelligence stored with it. Every database is an engine plugin; at the centre stands the database SchemaForge keeps its work in: one PostgreSQL database per schema, in the PostgreSQL 18 bundled with the app, holding the cortex every engine shares and each engine's own tables, each owner in its own namespace, designed before any of it is built and locked so every build falls into it.</product>
     <purpose>SchemaForge builds two things together: the product, and the method it is built by, in which people and coding agents develop together: a design session fixes the database and writes a task file; one agent builds it in one session; gates and a person's review decide; a build's lesson changes the method. Every contributor works the same way, with their own coding agent, and the method is theirs to improve too.</purpose>
   </mission>
   <architecture>
@@ -34,7 +34,7 @@
       <decision id="pipelines-tables" closes-before="t08"/>
       <decision id="insight-layer" closes-before="t08"/>
       <decision id="steward" closes-before="t10"/>
-      <decision id="first-release-sequence" closes-before="t07"/>
+      <decision id="order-after-store" closes-before="t07"/>
       <decision id="api-contract" closes-before="t08"/>
     </design>
     <ahead about="Not written yet: the work after the queued tasks, each written as a task file once its decisions close. A feature you want to build may be here.">
@@ -131,7 +131,7 @@
     <decision id="pipelines-tables" closes-before="t08">The tables of a CDC pipeline between two schemas, by their stable ids.</decision>
     <decision id="insight-layer" closes-before="t08">What is worked out about the model, kept apart from it in a feature owner insight, so a person or an agent can search and question a design through the MCP: dependencies (calls, reads, writes, foreign keys, with evidence and unresolved names) for impact walks; cards composed mechanically from the model; annotations an agent writes, with the model and the input hash; embeddings (pgvector, HNSW) of cards and annotations, searched together with full-text and exact names and every hit confirmed against the model. Kept fresh from the log: an accepted turn's row_changes name the objects whose rows are redone. Rebuilt, never logged or migrated. The MCP's read tools: search (finds candidates), object (one object whole), impact (the walk), sql (every count and list, as a read-only role). The embedding model is the decision embedding-models. A semantic layer (business terms, measures) is authored, so it is its own owner, logged by turns; its embeddings are insight's.</decision>
     <decision id="steward" closes-before="t10">What the steward agent may do alone and what stays a person's: which pull requests it may merge (a task's build, a contributor's, a design session's never), what its review must prove beyond the gates, how often it runs and on what, how it records a lesson, how it starts the next build, and how a person stops or overrides it. Until it closes, a person reviews and merges, and no agent merges.</decision>
-    <decision id="first-release-sequence" closes-before="t07">The order of the work after the store toward the first release: which of the insight layer (dependencies and findings first), the rules, the MCP's read tools and the operations come before the canvas, and which tasks that makes.</decision>
+    <decision id="order-after-store" closes-before="t07">The order of the work after the store: which of the insight layer, the rules, the MCP's tools, the operations and the canvas come first, and which tasks that makes.</decision>
     <decision id="api-contract" closes-before="t08">The server's API over the store: every route and type, written before it is built.</decision>
   </open>
   <rules>
