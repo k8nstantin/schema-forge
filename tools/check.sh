@@ -27,6 +27,9 @@ python3 tools/schema_lock.py
 step "The schema's comments: every table's and column's database comment is its file's own"
 python3 tools/schema_comments.py
 
+step "The schema dump: the database the locked design gives is schema/dump, line for line (decision schema-dump; needs Docker)"
+python3 tools/schema_dump.py
+
 step "XML for everything: Markdown only where a tool looks for it by name (specs/root.xml, decision xml-for-agents)"
 named='README.md CONTRIBUTING.md CODE_OF_CONDUCT.md AGENTS.md CLAUDE.md .github/copilot-instructions.md'
 stray=$(git ls-files --cached --others --exclude-standard -- '*.md' | grep -vxF -f <(tr ' ' '\n' <<<"$named") || true)

@@ -17,7 +17,8 @@ COLUMN = re.compile(r'^(\s+)("?[a-z_]+"?)\s+([A-Z]+)\b(.*)$')
 def files():
     for pattern in ("schema/*/*.sql", "engines/*/schema/*.sql", "features/*/schema/*.sql", "docs/owner-template/schema/*.sql"):
         for f in sorted(ROOT.glob(pattern)):
-            yield f
+            if f.parent.name != "dump":   # schema/dump holds what pg_dump writes, not table files (decision schema-dump)
+                yield f
 
 
 def split_comment(line):
