@@ -15,7 +15,7 @@ work with tools); the architect watches every change land on a live canvas, stee
 the agent's and the architect's, is checked against **rules**: the team's design standards, written down once.
 
 > **Status:** being built in the open, every database a plugin. The MySQL engine works today: it reads dumps, DDL
-> and live servers, and writes back SQL that loads into MySQL 8.0 to 26.10. PostgreSQL and Apache Iceberg are next. A
+> and live servers, and writes back SQL that loads into MySQL 8.0 to 26.10. Apache Iceberg is next, then PostgreSQL. A
 > working prototype proved the whole loop (tag [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype));
 > the design is on [the site](https://k8nstantin.github.io/schema-forge/).
 
@@ -34,7 +34,7 @@ the agent's and the architect's, is checked against **rules**: the team's design
 - **The agent designs rules too.** It reads a schema and proposes rules with its evidence ("2 of 2 `_at` columns are
   already zoned"); the system verifies each one (is it written right, does it repeat or contradict a rule, what would
   it break); the architect approves it, hard or soft; from then on it is enforced.
-- **Compatible across databases.** PostgreSQL, MySQL and Apache Iceberg first: checks name every type that would be
+- **Compatible across databases.** MySQL, Apache Iceberg and PostgreSQL first: checks name every type that would be
   lost, widened or approximated in a move between them, with the reason.
 - **CDC as a goal.** Say what a schema has to do ("feed it by CDC", "land PostgreSQL in Iceberg") and SchemaForge
   shows the gap: keys Debezium can follow, identifier fields, merge-on-read, source positions, types Debezium carries
@@ -195,9 +195,11 @@ verification, reading pg_dumps and Iceberg Spark SQL, and writing PostgreSQL and
 database a plugin, Apache DataFusion at the center, the architecture checked by CI. Built so far: the model, the
 engine interface with its registry and conformance kit, the layout every engine fills, the architecture check, and
 the first engine, [MySQL](engines/mysql/README.md): dumps, DDL and the live database read, every kind of object and
-clause, written back in a form that loads into MySQL 8.0 to 26.10. Next, in order: the PostgreSQL and Iceberg engines;
-the DataFusion layer; the store, the operations and the rules; the server and the MCP; connections; the canvas. Then schema management: drift against live databases, and migrations
-checked before they run. Follow it in the [Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7)
+clause, written back in a form that loads into MySQL 8.0 to 26.10. Next, in the order of
+[the build spec](specs/root.xml): the spec check, the tables interface, Quill (the engine every shared test runs
+beside), MySQL's tables, PostgreSQL built for the store, the store, the operations, the server and the MCP, the
+canvas; and the engines: Apache Iceberg next, then PostgreSQL. Then schema management: drift against live databases,
+and migrations checked before they run. Follow it in the [Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7)
 milestone.
 
 To try the prototype:

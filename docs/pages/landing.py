@@ -42,7 +42,7 @@ does = "".join(card(a, b) for a, b in [
 ])
 plugins = "".join(card(a, b) for a, b in [
     ("MySQL: works today", "Dumps, hand-written DDL and the live server read; every kind of object and clause written back, loading into MySQL 8.0 to 26.10."),
-    ("PostgreSQL and Apache Iceberg: next", "Each an engine of its own, with its own tables, checked by the same conformance kit; then converting a schema between them."),
+    ("Apache Iceberg next, then PostgreSQL", "Each an engine of its own, with its own tables, checked by the same conformance kit; and converting a schema between them."),
     ("Your database", "An engine is one crate: its grammar, types and catalogs, and its own tables. Adding one needs no change to the core."),
 ])
 SQL = """-- a sketch of the planned insight layer: tables about billing that refer to customers
