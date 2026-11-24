@@ -19,6 +19,9 @@ SELECT 'ids-within-their-counters' AS rule, (p.id)::text AS id FROM (
   UNION ALL SELECT id FROM cortex.index_includes
   UNION ALL SELECT id FROM cortex.trigger_events
   UNION ALL SELECT id FROM cortex.verbatim_statements
+  UNION ALL SELECT id FROM cortex.pinned_notes
+  UNION ALL SELECT id FROM cortex.perspective_members
+  UNION ALL SELECT id FROM cortex.layout_pins
 ) p LEFT JOIN cortex.id_counters c ON c.id = rtrim(p.id, '0123456789')
   WHERE c.id IS NULL OR c.last < CAST(substr(p.id, length(rtrim(p.id, '0123456789')) + 1) AS INTEGER);
 

@@ -174,6 +174,7 @@ GROUPS = [("cortex", "The model", ["schema_identity", "object_kinds", "object_ki
                                               "view_queries", "sequences", "enum_values", "domains", "composite_type_fields", "routines",
                                               "routine_parameters", "triggers", "trigger_events", "scheduled_events"]),
           ("cortex", "The log", ["turns", "operations", "row_changes", "value_changes", "locked_versions"]),
+          ("cortex", "The canvas", ["pinned_notes", "custom_perspectives", "perspective_members", "layout_pins", "family_assignments"]),
           ("cortex", "The database", ["schema_migrations"])]
 GROUPS = [(o, title, [f"{o}.{nm}" for nm in names]) for o, title, names in GROUPS]
 grouped = {nm for _, _, l in GROUPS for nm in l}

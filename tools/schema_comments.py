@@ -58,12 +58,12 @@ def expected(path):
             if comment is None:
                 raise SystemExit(f"{path.relative_to(ROOT)}: column {m.group(2)} has no comment")
             notes.append((m.group(2).strip('"'), comment))
-        code = re.sub(r"(\w)\s+,", r"\1,", code)
+        code = re.sub(r"\s+,$", ",", code)
         body.append((code, comment, m.groups() if m and m.group(3) in TYPES else None))
     names = max((len(g[1]) for _, _, g in body if g), default=0)
     types = max((len(g[2]) for _, _, g in body if g), default=0)
     body = [
-        ((f"  {g[1].ljust(names)}  {(g[2] + g[3]).strip() if not g[3].strip() or g[3].strip()[0] == ',' else g[2].ljust(types) + ' ' + g[3].strip()}") if g else c, n)
+        ((f"  {g[1].ljust(names)}  {re.sub(r'\s+,$', ',', (g[2] + g[3]).strip()) if not re.sub(r'\s+,$', ',', g[3].strip()) or re.sub(r'\s+,$', ',', g[3].strip())[0] == ',' else g[2].ljust(types) + ' ' + re.sub(r'\s+,$', ',', g[3].strip())}") if g else c, n)
         for c, n, g in body
     ]
     short = [len(c) for c, n in body if n is not None and len(c) <= 100]

@@ -5,7 +5,7 @@ CREATE TABLE engine_mysql.table_key_options (
   method            TEXT    CHECK (method IN ('BTREE', 'HASH')),                -- how it is built (USING); NULL when not written
   comment           TEXT,                                                       -- what it is for; NULL when not written
   key_block_size    INTEGER CHECK (key_block_size >= 0),                        -- its block size, in KB; NULL when not written
-  invisible         BOOLEAN  ,                                                  -- true when the optimizer ignores it; NULL when not written
+  invisible         BOOLEAN,                                                    -- true when the optimizer ignores it; NULL when not written
   engine_attribute  TEXT                                                        -- what its storage engine is told about it; NULL when not written
 );
 
