@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SchemaForge, build spec version 1: task t05, postgres. File version 1 (2026-11-24).
+  An agent reads this file in the order the root's method read gives. It has no GitHub issue yet: the operator opens
+  one, and the file is renamed by its key, before it is built.
+  The history of this file is its git log.
+-->
+<task id="t05" name="postgres" version="1" date="2026-11-24" depends="t04"
+      builds="tools/postgres .github/workflows/postgres.yml">
+
+  <start>Pointed at this file, you are told nothing else. This line is the first message of a new session, on a checkout of the head of main updated from origin; if your session holds anything before it beyond its own text, CLAUDE.md and its settings, stop, say so and build nothing. Your label is &lt;model&gt;-&lt;effort&gt; as the root's method model says. Read whole, in this order (root method read): every .rs file and every Cargo.toml under crates/, engines/ and tools/ as merged on main; specs/root.xml; specs/rules.xml; this file; then the files it names. Cut the branch t05-postgres-v1-&lt;model&gt;-&lt;effort&gt; from the head of main. Every commit message starts with t05 and carries no attribution of any kind. Build what this file says, run its gates, push the branch and open the PR into main titled "t05 postgres v1 · &lt;model&gt;-&lt;effort&gt;" with the body the root's method pr lists. Show on the screen, as it happens, each step by its number and name, each test run with its result, and each gate. What this file, the root, the rules and the merged code do not say is a stop, not a guess.</start>
+
+  <piece>The PostgreSQL SchemaForge bundles: a workflow that builds PostgreSQL and pgvector from the sources postgres/manifest.toml pins, for every platform SchemaForge ships on, as one relocatable archive each, and publishes them with their checksums as a release of the repository; and the fetch tool, tools/postgres, that every release, developer and test uses to get the programs for its platform, refusing an archive whose checksum is not the manifest's. Nothing else: no store (t06), no change to the manifest's sources, and no release published by this task (the operator dispatches the first, after the merge).</piece>
+
+  <before>Merged on main: MySQL's tables (t04) and everything before them; postgres/manifest.toml with its sources pinned and its assets empty, as the design session wrote it.</before>
+  <after>The operator dispatches the workflow on main; it publishes the release the manifest names; a design session writes each archive's url and sha256 into the manifest's assets from the release's SHA256SUMS. The store (t06) starts every cluster from the programs the fetch tool gives, and the spec check's Docker image is replaced by them in that task.</after>
+
+  <reflects>
+    <file path="specs/root.xml">
+      <quote>one fetch tool, used by the release, by developers and by tests, refuses anything whose hash differs</quote>
+      <quote>pgvector is compiled into the project's PostgreSQL 18 build from the first release</quote>
+    </file>
+    <file path="postgres/manifest.toml">
+      <quote>a build refuses a checkout of any other</quote>
+    </file>
+  </reflects>
+
+  <reads>
+    <file path="postgres/manifest.toml" what="the sources (PostgreSQL's tarball and its sha256, pgvector's tag and commit), the release tag, and the assets once written"/>
+    <file path=".github/workflows/ci.yml" what="how the project's workflows are written: the runners and the checkout"/>
+    <crates>For tools/postgres: toml for the manifest, sha2 for SHA-256, ureq (rustls, no native TLS) for HTTPS, flate2 and tar for the archive, and the standard library for the rest. No other dependency.</crates>
+  </reads>
+
+  <command>
+    <form>cargo run -q -p schema-forge-postgres -- fetch [--target &lt;target&gt;] prints the folder holding the programs for the target (the running platform's by default), fetching and checking them first when the cache lacks them; cargo run -q -p schema-forge-postgres -- targets prints the targets, one per line. The workflow runs on GitHub.</form>
+    <runs>The tool locally, writing only under its cache folder; the workflow on GitHub's runners.</runs>
+  </command>
+
+  <build>
+    <module path=".github/workflows/postgres.yml">
+      <step n="1" name="the targets">The targets SchemaForge ships on, each built on a GitHub-hosted runner of its own: aarch64-apple-darwin (macos-15), x86_64-apple-darwin (macos-15-intel), x86_64-unknown-linux-gnu (ubuntu-24.04), aarch64-unknown-linux-gnu (ubuntu-24.04-arm) and x86_64-pc-windows-msvc (windows-2025). The workflow runs on a pull request that changes postgres/** or the workflow, building every target and keeping each archive as an artifact of the run, and on workflow_dispatch on main, which also publishes (step 4).</step>
+      <step n="2" name="the build">For each target: download the PostgreSQL tarball the manifest names and refuse it unless its SHA-256 is the manifest's; clone pgvector at the manifest's tag and refuse it unless HEAD is the manifest's commit. Build PostgreSQL with meson, the same options on every target: prefix a relocatable folder, -Dicu=disabled -Dssl=none -Dreadline=disabled -Dnls=disabled -Dzlib=enabled, buildtype release; install. Build and install pgvector against that installation (make with PG_CONFIG on macOS and Linux, nmake /F Makefile.win on Windows). Each failing command fails the job.</step>
+      <step n="3" name="the archive">Each target's archive is postgresql-&lt;version&gt;-pgvector-&lt;version&gt;-&lt;target&gt;.tar.gz, holding one folder of that name with bin/ (initdb, postgres, pg_ctl, pg_dump, pg_restore, pg_isready and psql, with .exe on Windows), lib/ and share/ as installed, pgvector among them, and nothing else; before it is packed, the job proves the folder relocatable and whole: copied to a new path, initdb makes a cluster there, postgres starts it listening only on a Unix socket in a temporary folder (TCP on 127.0.0.1 on Windows), `CREATE EXTENSION vector` and `SELECT uuidv7()` succeed through psql, and pg_ctl stops it.</step>
+      <step n="4" name="the release">On workflow_dispatch on main, a last job, after every target's, publishes the release the manifest's [release] tag names (gh release create), its notes the manifest's sources, its assets every target's archive and SHA256SUMS, one line `&lt;sha256&gt;  &lt;archive name&gt;` per archive; a release of that tag that exists already fails the job, so a published archive is never replaced.</step>
+    </module>
+    <module path="tools/postgres/Cargo.toml">The crate schema-forge-postgres, its [package.metadata.schema-forge] role = "tool", version, edition, publish, license and repository from the workspace; its dependencies the reads' crates, each at an exact version; a library and the binary of the command.</module>
+    <module path="tools/postgres/src/lib.rs" public="pub struct Manifest (read from postgres/manifest.toml); pub fn targets() -&gt; &amp;'static [&amp;'static str]; pub fn this_target() -&gt; Option&lt;&amp;'static str&gt;; pub fn fetch(manifest: &amp;Manifest, target: &amp;str, cache: &amp;Path) -&gt; Result&lt;PathBuf, String&gt;; pub fn cache_folder() -&gt; PathBuf; nothing else">
+      <step n="5" name="the manifest">Manifest reads postgres/manifest.toml: the two sources, the release tag and every asset (a table of [assets.&lt;target&gt;] with url and sha256). A target not among targets() is `postgres/manifest.toml: &lt;target&gt; is not a target SchemaForge ships on`; a sha256 that is not 64 lowercase hex digits is `postgres/manifest.toml: &lt;target&gt;: sha256 is not one`.</step>
+      <step n="6" name="the fetch">fetch gives &lt;cache&gt;/&lt;version folder&gt;/&lt;target&gt;, the folder holding bin/, lib/ and share/: when it is there with a file .verified holding the asset's sha256, at once; else it downloads the asset's url (https only, or file: for the tests), refuses it unless its SHA-256 is the manifest's (`&lt;target&gt;: the archive's checksum is &lt;sha256&gt;, not the manifest's`), unpacks it into a temporary folder beside the cache's, refuses an entry outside the archive's one folder (`&lt;target&gt;: the archive holds &lt;path&gt;, outside its folder`), renames the folder into place and writes .verified. A target with no asset in the manifest is `&lt;target&gt;: the manifest has no programs for it yet`. cache_folder() is $SCHEMA_FORGE_CACHE when set, else the platform's cache folder (~/Library/Caches on macOS, $XDG_CACHE_HOME or ~/.cache on Linux, %LOCALAPPDATA% on Windows) followed by schema-forge/postgres.</step>
+    </module>
+    <module path="tools/postgres/src/main.rs">The command: fetch prints the folder fetch gives, or the error and exit 1; targets prints targets().</module>
+    <tests path="tools/postgres/tests/fetch.rs">
+      <how>Rust tests on archives and manifests each test makes in a temporary folder of its own, reached by file: urls; no test reaches the network. The workflow's items are proved by its run on the PR (the gate Workflow), not by Rust tests: their test is the job of the run that carries the step.</how>
+      <prove step="5">a manifest's target not shipped, and a checksum that is not one, are each the error naming the target</prove>
+      <prove step="6">an archive whose checksum is the manifest's is unpacked into the cache and marked verified, and a second fetch reads nothing</prove>
+      <prove step="6">an archive whose checksum differs is refused and leaves nothing in the cache</prove>
+      <prove step="6">an archive with an entry outside its folder is refused naming the entry</prove>
+      <prove step="6">a target the manifest has no programs for is the error saying so</prove>
+    </tests>
+  </build>
+
+  <agent-decides>The jobs' and steps' names and their order within the steps above, the caching of the build between runs, how each runner gets meson, ninja and its compiler; the names and the decomposition of private code in tools/postgres; the exact versions of its crates (each the newest release at least two weeks old); the granularity of the commits. Nothing else: no target, runner, source, build option, program, archive name, error text or public item other than these; no release published.</agent-decides>
+
+  <gates>
+    <note>Every gate runs from the repository root. The workflow's run is the one on the PR's head commit.</note>
+    <gate id="Fetch" kind="local" proves="steps 5 and 6">
+      <cmd>cargo test -p schema-forge-postgres</cmd>
+      <expect>every test passes, one per item, none ignored</expect>
+    </gate>
+    <gate id="Workflow" kind="ci" proves="steps 1 to 3 on every target">
+      <cmd>gh run list --workflow postgres.yml --commit &lt;the PR's head&gt; --json conclusion,databaseId</cmd>
+      <cmd>gh run view &lt;its databaseId&gt; --json jobs</cmd>
+      <expect>the run's conclusion is success, with one job per target of step 1, each a success, and an artifact per target named as step 3 names its archive</expect>
+    </gate>
+    <gate id="Everything" kind="docker" proves="the repository passes, the new tool among it">
+      <cmd>tools/check.sh</cmd>
+      <expect>the last line is `== All checks passed`</expect>
+    </gate>
+  </gates>
+
+  <owns>.github/workflows/postgres.yml; tools/postgres/**; Cargo.lock.</owns>
+  <forbid>postgres/manifest.toml; .github/workflows/ci.yml; .github/workflows/pages.yml; schema/**; engines/**; features/**; crates/**; specs/**; tools/specs/**; tools/architecture/**; tools/check.sh; docs/**; site/**.</forbid>
+
+  <done>The workflow and the fetch tool on the branch; every gate green and in the PR; nothing outside owns touched. After this task, every platform SchemaForge ships on has PostgreSQL 18 with pgvector built from pinned sources by the project's own CI, proved relocatable and working, and one tool gets it, checked, for a release, a developer or a test.</done>
+</task>

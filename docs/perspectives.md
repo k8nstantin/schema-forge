@@ -77,7 +77,7 @@ screen, and rebuilt as separate perspectives, each a plain page that does one jo
 What the perspectives group and draw is computed by the engine (`schema_forge_core::shape`, served at
 `/api/schemas/<name>/shape`), so the agent and the browser see the same thing:
 
-- **Families** come from names: a `prefix__` (`node__accounts`), else the first word after a prefix most of
+- **Families** come from names: a `prefix__` (`billing__invoices`), else the first word after a prefix most of
   the namespace shares (`tbl_ShopLogins` → `Shop`), when at least four tables share it; the rest are
   `ungrouped`. A namespace of twelve tables or fewer is one family.
 - **Copies** stack under one table: a series of dated tables (`tbl_ShipLog202203`…), or temporary names

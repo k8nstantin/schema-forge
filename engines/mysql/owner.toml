@@ -1,0 +1,6 @@
+# The owner's card: who it is, what it is, and its newest version.
+id = "mysql"
+kind = "engine"
+namespace = "engine_mysql"
+version = 1
+requires_cortex = 1           # the lowest cortex version its tables are written against

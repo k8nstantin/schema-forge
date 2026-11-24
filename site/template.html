@@ -106,7 +106,7 @@ Everything below is read from its files.</p>
 
 <section id="card"><h2>The owner's card</h2><p class="lede"><code>owner.toml</code>: who it is, where its tables live, its newest version and the cortex it is written against.</p><pre># The owner&#x27;s card: who it is, what it is, and which cortex it is written against.
 id = &quot;example&quot;                 # lowercase, a to z, 0 to 9, _: the engine&#x27;s or the feature&#x27;s id
-kind = &quot;engine&quot;                # engine (engines/&lt;id&gt;/schema) or feature (features/&lt;id&gt;/schema)
+kind = &quot;engine&quot;                # core (schema/cortex, schema/workspace), engine (engines/&lt;id&gt;/schema) or feature (features/&lt;id&gt;/schema)
 namespace = &quot;engine_example&quot;   # engine_&lt;id&gt; for an engine; the id itself for a feature (insight)
 version = 3                    # the owner&#x27;s newest version: 1 is the table files, each later one a file of migrations/
 requires_cortex = 1            # the lowest cortex version its tables are written against</pre></section>
