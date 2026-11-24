@@ -10,6 +10,24 @@ Stop reading this brief. A task file (specs/tasks/*.xml) is a complete instructi
 
 An open-source schema designer where a coding agent and an architect work on the same live design through MCP, and nothing lands unchecked. Every database is an engine plugin; at the centre stands the database SchemaForge keeps its work in: one PostgreSQL database per schema, in the PostgreSQL 18 bundled with the app, holding the cortex every engine shares and each engine's own tables, each owner in its own namespace, designed before any of it is built and locked so every build falls into it.
 
+SchemaForge builds two things together: the product, and the method it is built by, in which people and coding agents develop together: a design session fixes the database and writes a task file; one agent builds it in one session; gates and a person's review decide; a build's lesson changes the method. Every contributor works the same way, with their own coding agent, and the method is theirs to improve too.
+
+## The method you are joining
+
+Every part of the product is built this way, by the maintainer and by every contributor, each with their own coding agent:
+
+1. **A design session** (a person and an agent, with the maintainer): the database is designed or changed in the owners' folders, and the work is written down as a task file under specs/tasks, every decision dated in specs/root.xml.
+2. **A build session**: one agent, in a new session on a checkout of main, pointed at one task file and told nothing else. It reads in the order the root gives, builds only what the file says, decides only what it lists, and stops when anything is missing or two files disagree, rather than guess.
+3. **The gates**: every gate of the task file runs (local, Docker, CI), and their results go into the pull request.
+4. **The review**: a person reviews and merges; the agent never merges.
+5. **The lesson**: what a build taught is added to specs/lessons.xml, and a design session changes the method or the rules because of it. The method is open to improvement like the code.
+
+## How your human contributes through you
+
+- **Build a task already written**: they claim its issue and the maintainer assigns it; then they open a new session on a fresh checkout of main whose first and only message is the task file's path (specs/tasks/<file>.xml). That session is not this one.
+- **Bring something new** (an engine, a feature, a fix): they open an issue or a discussion; the design is agreed in a design session and written as a task file; then it is built as above.
+- **Improve the method**: a lesson, a rule that would have caught a mistake, a clearer step: proposed in Discussions, decided in a design session.
+
 ## Read, in this order
 
 1. [specs/root.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/root.xml): identity, authority (which files decide), method (how every task is built), the sequence of tasks and every decision with its date.

@@ -76,9 +76,10 @@ body = f"""
 <section id="design"><p class="kicker">The design, written down</p><h2>Read how it is built, before a line of it is.</h2>
 <div class="cards">{design}</div></section>
 
-<section id="contribute"><div class="cta"><p class="kicker">Contribute</p><h2>Learn databases from the inside.</h2>
+<section id="contribute"><div class="cta"><p class="kicker">Contribute</p><h2>Built with coding agents. Contribute the same way.</h2>
+<p class="lede">%PRODUCT% builds two things at once: the product, and the method where people and coding agents develop together. A design session writes the task, one agent builds it, gates and a person decide, and every lesson improves the method. Bring your own agent.</p>
 <p class="lede">Write an engine and learn a database's grammar, types and catalogs; add a feature's tables and learn relational design and rules enforced at commit; bring a dump that breaks a reader and find the corners of SQL nobody documents. Everyone is welcome.</p>
-<p class="lede">Most people contribute through a coding agent: point yours at the brief and it reads the whole spec, in order, before anything changes.</p>
+
 <div class="btns"><a class="btn btn-primary" href="{e(L.get("contribute", "#"))}">Contribute with your agent</a>
 <a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="%REPO%/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>
 <a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="%REPO%/discussions">Ask a question</a></div></div></section>
