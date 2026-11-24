@@ -28,6 +28,12 @@
     <breach>the architecture check (a database named outside its engine, an engine's table among them since each is named by its engine; and, from t03, every engine's field keys, kind ids, option keys, table and column names in shared code); the spec check (an engine table outside its engine's folder, or outside its engine's namespace); the kit</breach>
   </rule>
 
+  <rule id="the-schema-grows-by-versions">
+    <from>the operator, 2026-11-24: "whatever schema we design it has to be versioned and extendable to accommodate new features"</from>
+    <text>The schema grows by versions, never by rewrites. A new feature is a new owner with its own namespace, folder, versions and rules, and never changes the cortex's tables; a change to a table adds, and a rename or removal takes two versions, the data moved in the first. No version is ever edited once shipped: its checksum refuses it.</text>
+    <breach>the store, which refuses a shipped version whose checksum changed and a database newer than its build; the upgrade test of every release from every earlier version; the spec check (a migration that drops or renames in the version that adds); review</breach>
+  </rule>
+
   <rule id="nothing-lost">
     <from>docs/engines.md; the MySQL engine as merged</from>
     <text>A schema written into the store and read back is the same schema: every part, every value, every order. What the model does not describe is kept exactly as written and written back in its place. Nothing is dropped, truncated, defaulted or summarised on the way in or out.</text>
