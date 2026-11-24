@@ -844,7 +844,7 @@ CREATE TABLE cortex.pinned_notes (
   written_by   TEXT    NOT NULL CHECK (length(written_by) &gt;= 1)                 -- who wrote it: a person&#x27;s name or the agent&#x27;s label
 );
 
-COMMENT ON TABLE cortex.pinned_notes IS &#x27;a note pinned to anything of the design, for people and the agent (@notes). Part of the design (decision canvas-state): shared by everyone on the schema and the agent, every change an operation of a turn.&#x27;;
+COMMENT ON TABLE cortex.pinned_notes IS &#x27;a note pinned to anything of the design, for people and the agent (@notes). Part of the design (decision canvas-state): shared by everyone on the schema and the agent, every change an operation of a turn. A note is not removed with what it is pinned to: the operation that removes a part removes or moves its notes in the same turn, and the rule notes-on-what-exists refuses a commit that leaves one pinned to nothing.&#x27;;
 COMMENT ON COLUMN cortex.pinned_notes.id IS &#x27;note&lt;n&gt;, n given once from id_counters and never reused: note1&#x27;;
 COMMENT ON COLUMN cortex.pinned_notes.target_kind IS &#x27;what it is pinned to: a part is any numbered part (a key, an index, a check…)&#x27;;
 COMMENT ON COLUMN cortex.pinned_notes.target_id IS &#x27;the id of what it is pinned to (o_orders, c_orders_total, o_orders.key1, a turn&#x27;&#x27;s id); for the schema, schema&#x27;;
