@@ -15,7 +15,7 @@ of these, and the design is written down so you never have to guess.
   [docs/pages/](docs/pages/).
 - **Read why it is built this way:** [docs/engines.md](docs/engines.md) (every database a plugin),
   [docs/store.md](docs/store.md) (the database at the core).
-- **Ask.** Open an issue with your question; there are no silly ones. Saying what confused you is a
+- **Ask.** Start a [discussion](https://github.com/k8nstantin/schema-forge/discussions) with your question; there are no silly ones. Saying what confused you is a
   contribution too: it shows where the docs are thin.
 
 ## Ways to contribute, and what each teaches
