@@ -1,4 +1,4 @@
-"""Builds Schema Forge's pages from the repository: python3 docs/pages/build.py. Writes the published pages to
+"""Builds the product's pages from the repository: python3 docs/pages/build.py. Writes the published pages to
 docs/pages/<page>.html (linking each other by their published links) and the website to site/ (linking each other by
 relative paths, so any domain serves it), both from one stylesheet; fails when a diagram's layout breaks (an arrow
 through a box, two arrows crossing, labels overlapping)."""

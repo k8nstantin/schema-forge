@@ -1,4 +1,4 @@
-"""Start here: what Schema Forge is, how the pack and a build fit together, the crates as cargo knows them, and where
+"""Start here: what the product is, how the pack and a build fit together, the crates as cargo knows them, and where
 each task of the sequence stands."""
 import json, os, subprocess, xml.etree.ElementTree as ET
 from common import REPO, Svg, database, e, links, page
@@ -67,20 +67,20 @@ pack_svg = g.render()
 ntab = sum(len(d["tables"]) for d in db.values())
 rows = "".join(
     f'<tr><td><code>{e(t.get("id"))}</code></td><td>{e(t.get("name"))}</td>'
-    f'<td>{f"<a href=\"https://github.com/k8nstantin/schema-forge/issues/{t.get(chr(107)+chr(101)+chr(121))[3:]}\" target=\"_blank\" rel=\"noopener\">{e(t.get(chr(107)+chr(101)+chr(121)))}</a>" if t.get("key") else "<span class=small>no issue yet</span>"}</td>'
+    f'<td>{f"<a href=\"%REPO%/issues/{t.get(chr(107)+chr(101)+chr(121))[3:]}\" target=\"_blank\" rel=\"noopener\">{e(t.get(chr(107)+chr(101)+chr(121)))}</a>" if t.get("key") else "<span class=small>no issue yet</span>"}</td>'
     f'<td>{"<span class=\"pill ok\">spec written · not built</span>" if t.get("file") else "<span class=\"pill open\">spec not written</span>"}</td>'
     f'<td class="small">{e(t.get("builds"))}</td></tr>' for t in seq)
 body = f"""
 <div class="tb" role="group" aria-label="Title block">
-  <div><span>Product</span><b>Schema Forge</b></div><div><span>Repository</span><b><a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">k8nstantin/schema-forge</a></b></div>
+  <div><span>Product</span><b>%PRODUCT%</b></div><div><span>Repository</span><b><a href="%REPO%" target="_blank" rel="noopener">GitHub</a></b></div>
   <div><span>Spec</span><b>Draft 1 · PR #92</b></div><div><span>Database</span><b>{ntab} tables</b></div><div><span>Date</span><b>{e(root.get("date"))}</b></div>
 </div>
-<h1>Schema Forge <span class="draft">Draft 1</span></h1>
+<h1>%PRODUCT% <span class="draft">Draft 1</span></h1>
 <p class="lede">{e(" ".join("".join(root.find("identity").find("product").itertext()).split()))}</p>
 <div class="go">
   <a class="tile" href="{L.get('database', '#')}" target="_blank" rel="noopener"><b>Database</b><span>Every table of the cortex, the workspace and each engine: diagrams of every foreign key, then each table with its columns, keys and file.</span></a>
   <a class="tile" href="{L.get('build-spec', '#')}" target="_blank" rel="noopener"><b>Build Spec</b><span>The root, the rules, every task file a coding agent builds from, the decisions, and the review with every defect found.</span></a>
-  <a class="tile" href="https://github.com/k8nstantin/schema-forge/pull/92" target="_blank" rel="noopener"><b>Pull request #92</b><span>The one branch the spec lives on while it is a draft: review it there.</span></a>
+  <a class="tile" href="%REPO%/pull/92" target="_blank" rel="noopener"><b>Pull request #92</b><span>The one branch the spec lives on while it is a draft: review it there.</span></a>
 </div>
 <section id="stands"><h2>Where it stands</h2><p class="lede">The foundation is on main: the model, the engine interface with its kit, and the MySQL engine (pull request #89). Next is the sequence below, built one task at a time once the spec is merged.</p>
 <div class="scroll"><table class="t"><thead><tr><th>Task</th><th>What</th><th>Issue</th><th>State</th><th>Builds</th></tr></thead><tbody>{rows}</tbody></table></div></section>
@@ -94,4 +94,4 @@ CSS = """
 .tile:hover{border-color:var(--accent)}.tile b{font:700 21px var(--head)}.tile span{font-size:14px;color:var(--ink2)}
 """
 sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("stands", "Where it stands"), ("flow", "How a build happens"), ("crates", "The crates"), ("pack", "This pack")])
-HTML = page("home", "Schema Forge", CSS, body, sub)
+HTML = page("home", "%PRODUCT%", CSS, body, sub)

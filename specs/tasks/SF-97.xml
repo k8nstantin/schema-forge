@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Schema Forge, build spec version 1: task t05, store. File version 1 (2026-11-24).
+  SchemaForge, build spec version 1: task t05, store. File version 1 (2026-11-24).
   An agent reads this file in the order the root's method read gives. Its key is SF-97, GitHub issue #97.
   The history of this file is its git log.
 -->

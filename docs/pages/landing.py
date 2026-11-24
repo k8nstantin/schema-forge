@@ -1,4 +1,4 @@
-"""The site's front page: what Schema Forge is, why its database is its strength, and the way into the design."""
+"""The site's front page: what the product is, why its database is its strength, and the way into the design."""
 from common import Svg, database, e, links, page
 
 db, _ = database()
@@ -38,7 +38,7 @@ plugins = "".join(card(a, b) for a, b in [
     ("Convert both ways", "Every engine maps into one shared model, so MySQL converts to Iceberg and Iceberg back to MySQL or PostgreSQL, with every type kept, widened or lost named."),
 ])
 design = "".join([
-    link("home", "Start here", "What Schema Forge is, how it is built, and where it stands."),
+    link("home", "Start here", "What %PRODUCT% is, how it is built, and where it stands."),
     link("database", "The database", f"Every one of its {ntab} tables and {nrules} rules, drawn and listed from the schema folders."),
     link("template", "The owner template", "How an engine or a feature adds its tables: five shapes, rules and versions."),
     link("build-spec", "The build spec", "How coding agents build it: one XML task per branch and pull request, every decision dated."),
@@ -47,11 +47,11 @@ body = f"""
 <header class="hero">
   <p class="eyebrow">Open source · Rust · PostgreSQL 18 + pgvector · MCP</p>
   <h1>Design database schemas with your coding agent, under standards that hold.</h1>
-  <p>Schema Forge is collaborative schema design: your agent designs through MCP while you view and edit the same schema on the
+  <p>%PRODUCT% is collaborative schema design: your agent designs through MCP while you view and edit the same schema on the
   canvas, at the same time. Every change, yours and the agent's, is checked against your team's rules, and nothing lands unchecked.</p>
   <div class="btns"><a class="btn btn-primary" href="{e(L.get("home", "#"))}">Read the design</a>
-  <a class="btn btn-secondary" href="https://github.com/k8nstantin/schema-forge">GitHub</a>
-  <a class="btn btn-secondary" href="https://github.com/k8nstantin/schema-forge/discussions">Discussions</a></div>
+  <a class="btn btn-secondary" href="%REPO%">GitHub</a>
+  <a class="btn btn-secondary" href="%REPO%/discussions">Discussions</a></div>
   <span class="note">Designed and specified, and being built now, in the open.</span>
 </header>
 
@@ -62,7 +62,7 @@ body = f"""
 
 <section id="intelligence"><p class="kicker">Bring the database you have</p>
 <h2>Point it at your database. Get to know it.</h2>
-<p class="lede">Read in a live database, a dump or a folder of DDL, and Schema Forge works out what you never wrote down: how it is put together, what depends on what, and what it means. Ask it in plain words, through the canvas or your agent.</p>
+<p class="lede">Read in a live database, a dump or a folder of DDL, and %PRODUCT% works out what you never wrote down: how it is put together, what depends on what, and what it means. Ask it in plain words, through the canvas or your agent.</p>
 <div class="cards two"><div class="card"><h3>Its architecture</h3><p>Every namespace, table, view, routine, trigger and event, with their keys, indexes and partitions, laid out as one model you can see and walk.</p></div><div class="card"><h3>Its relationships</h3><p>Foreign keys, and what no key declares: which routine reads or writes which table, which view stands on which, what a change would reach.</p></div><div class="card"><h3>Its meaning</h3><p>What each object is for, in sentences kept up to date, and found by meaning: ask for the tables about billing and get them, with the evidence.</p></div><div class="card"><h3>Its problems</h3><p>Tables without keys, money in floats, rules your team wrote that the database breaks today: each a finding with its evidence and its fix.</p></div></div></section>
 
 <section id="how"><p class="kicker">Collaborative design</p><h2>Your agent designs through MCP. You see it, and edit it, at the same time.</h2>
@@ -78,8 +78,8 @@ body = f"""
 
 <section id="contribute"><div class="cta"><p class="kicker">Contribute</p><h2>Learn databases from the inside.</h2>
 <p class="lede">Write an engine and learn a database's grammar, types and catalogs; add a feature's tables and learn relational design and rules enforced at commit; bring a dump that breaks a reader and find the corners of SQL nobody documents. Everyone is welcome.</p>
-<div class="btns"><a class="btn btn-primary" href="https://github.com/k8nstantin/schema-forge/blob/main/CONTRIBUTING.md">How to contribute</a>
-<a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="https://github.com/k8nstantin/schema-forge/discussions">Ask a question</a></div></div></section>
+<div class="btns"><a class="btn btn-primary" href="%REPO%/blob/main/CONTRIBUTING.md">How to contribute</a>
+<a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="%REPO%/discussions">Ask a question</a></div></div></section>
 """
 sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("one-place", "One place"), ("intelligence", "Your database"), ("how", "Collaborative design"), ("plugins", "Plugins"), ("design", "The design"), ("contribute", "Contribute")])
-HTML = page("site", "Schema Forge", "", body, sub)
+HTML = page("site", "%PRODUCT%", "", body, sub)

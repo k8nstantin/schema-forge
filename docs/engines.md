@@ -1,13 +1,13 @@
 # Engines: every database is a plugin
 
-The design of Schema Forge as a product, and every decision behind it. It decides whether Schema Forge can grow:
+The design of SchemaForge as a product, and every decision behind it. It decides whether SchemaForge can grow:
 MySQL, PostgreSQL and Apache Iceberg first; BigQuery, Snowflake, ClickHouse, Iceberg format 4 and whatever comes next
 after. A new database is one new plugin; a new version of a database touches only its plugin; and people add onto a
 plugin without forking it.
 
 ## Where we are
 
-The prototype proved Schema Forge can be built: the canvas from the designs, the rules engine, the agent's MCP,
+The prototype proved SchemaForge can be built: the canvas from the designs, the rules engine, the agent's MCP,
 reading PostgreSQL dumps and Iceberg's Spark SQL. It is kept as the tag
 [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype). The product is built new, to this design,
 from an empty tree; the prototype is reference and test material, never code to wrap or move.
@@ -105,7 +105,7 @@ The engine interface (`schema-forge-engine`) is one trait with a required core (
 optional parts with defaults. A part joins the interface when something first uses it, shaped by that use. Every data
 type an engine makes, in the interface and the model, is made with constructors and may gain fields
 (`#[non_exhaustive]`); errors may gain variants. So a part, a field or a variant added later breaks no engine and no
-add-on. Engine ids are strings; the engines Schema Forge ships with are registered in one place.
+add-on. Engine ids are strings; the engines SchemaForge ships with are registered in one place.
 
 ### 9. Checked, not trusted
 
@@ -161,7 +161,7 @@ through its Arrow mapping.
 | `schema-forge-model` | `crates/model` | model | the skeleton |
 | `schema-forge-engine` | `crates/engine` | interface | the trait, the section layout, the option schema, the Arrow mapping, the registry, the conformance kit |
 | `schema-forge-postgres`, `-mysql`, `-iceberg` | `engines/<database>` | engine | the engines, each with its add-on trait and bundled add-ons |
-| `schema-forge-engines` | `crates/engines` | registry | the engines Schema Forge ships with, registered |
+| `schema-forge-engines` | `crates/engines` | registry | the engines SchemaForge ships with, registered |
 | `schema-forge-query` | `crates/query` | app | the DataFusion layer: a schema as a DataFusion catalog, planned views, lineage, Arrow-type compatibility, live sources |
 | `schema-forge-store`, `-ops`, `-rules`, `-serve`, `-mcp`, `-cli` | `crates/…` | app | they ask the registry, never one engine |
 | `schema-forge-architecture` | `tools/architecture` | tool | the design, checked on the code |

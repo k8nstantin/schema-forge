@@ -1,6 +1,6 @@
-# Contributing to Schema Forge
+# Contributing to SchemaForge
 
-**You are welcome here, whatever you know about databases today.** Schema Forge is a place to learn how databases
+**You are welcome here, whatever you know about databases today.** SchemaForge is a place to learn how databases
 really work, from the inside, by building something people use: how MySQL, PostgreSQL and Iceberg each say what a table
 is, how their types and keys and partitions differ, what their catalogs hold, how CDC carries a change from one to
 another, how PostgreSQL enforces a rule at commit and searches by meaning with vectors. Every part you touch teaches one
@@ -50,4 +50,4 @@ of these, and the design is written down so you never have to guess.
 
 ## Licence
 
-By contributing you agree that your work is licensed as Schema Forge is: MIT or Apache-2.0, at the user's choice.
+By contributing you agree that your work is licensed as SchemaForge is: MIT or Apache-2.0, at the user's choice.

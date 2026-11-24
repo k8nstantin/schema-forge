@@ -1,4 +1,4 @@
-# Schema Forge
+# SchemaForge
 
 **Design database schemas with your coding agent, under standards that hold.**
 
@@ -7,7 +7,7 @@ wrong type, a missing key or a dropped column outlives every commit that caused 
 conventions, and the same data flows from MySQL or PostgreSQL through Debezium into an Iceberg lakehouse, where one
 careless change breaks the rest.
 
-Schema Forge is an open-source schema designer where an AI coding agent and an architect work on the same live
+SchemaForge is an open-source schema designer where an AI coding agent and an architect work on the same live
 design, and nothing lands unchecked. The agent designs through **MCP** (the protocol agents like Claude Code use to
 work with tools); the architect watches every change land on a live canvas, steers it, or edits by hand. Every change,
 the agent's and the architect's, is checked against **rules**: the team's design standards, written down once.
@@ -34,7 +34,7 @@ the agent's and the architect's, is checked against **rules**: the team's design
   it break); the architect approves it, hard or soft; from then on it is enforced.
 - **Compatible across databases.** PostgreSQL, MySQL and Apache Iceberg first: checks name every type that would be
   lost, widened or approximated in a move between them, with the reason.
-- **CDC as a goal.** Say what a schema has to do ("feed it by CDC", "land PostgreSQL in Iceberg") and Schema Forge
+- **CDC as a goal.** Say what a schema has to do ("feed it by CDC", "land PostgreSQL in Iceberg") and SchemaForge
   shows the gap: keys Debezium can follow, identifier fields, merge-on-read, source positions, types Debezium carries
   well.
 - **Starts from what exists.** It reads `mysqldump` files, hand-written DDL and the live MySQL database (the
@@ -91,7 +91,7 @@ soft.
 
 ## Every database is a plugin
 
-You choose a schema's database first, and everything follows it. Schema Forge is built in two layers that never mix:
+You choose a schema's database first, and everything follows it. SchemaForge is built in two layers that never mix:
 
 - **The process is shared.** The screens, turns, undo, history, references, the rules machinery and the MCP work the
   same for every database and know none of them.
@@ -144,7 +144,7 @@ The prototype's MCP tools, which the product keeps:
 [The build spec](https://claude.ai/artifact/2jnUargwgDpCVKgFYUbxAs) (how coding agents build it). The same pages are in
 [docs/pages/](docs/pages/), generated from the repository.
 
-- **Real PostgreSQL, bundled.** Schema Forge ships PostgreSQL 18 with **pgvector** inside the app: nothing to install,
+- **Real PostgreSQL, bundled.** SchemaForge ships PostgreSQL 18 with **pgvector** inside the app: nothing to install,
   nothing to configure. On a laptop, each workspace runs its own private cluster behind a Unix socket. For a team, point
   it at a central PostgreSQL server: **the same code, the same schema, only the connection changes.**
 - **The metadata and the vectors in one database.** Every object, column, relationship and rule sits beside its
@@ -159,7 +159,7 @@ The prototype's MCP tools, which the product keeps:
   machine, or a remote one, an API or the team server's own, so everyone shares one model and one index.
 
 **Point it at the database you have, and get to know it.** Read in a live database, a dump or a folder of DDL, and
-Schema Forge works out what nobody wrote down: its architecture (every object, key, index and partition as one model),
+SchemaForge works out what nobody wrote down: its architecture (every object, key, index and partition as one model),
 its relationships (what reads and writes what, what a change would reach), its meaning (what each object is for, found
 by meaning) and its problems (each a finding with its evidence). Ask in plain words, on the canvas or through your agent.
 

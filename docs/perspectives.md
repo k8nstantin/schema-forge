@@ -7,7 +7,7 @@ while the agent builds, and where you edit a table or a view with the same opera
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ Schema Forge                                                       [ + New schema ]      │
+│ SchemaForge                                                       [ + New schema ]      │
 ├──────────────────────────────────────────────┬───────────────────────────────────────────┤
 │ Working on                                   │ Standards                                 │
 │  orders     MySQL · mysql, debezium, scd2    │  Type defaults: MySQL · PostgreSQL ·      │
@@ -53,7 +53,7 @@ screen, and rebuilt as separate perspectives, each a plain page that does one jo
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ Schema Forge  SCHEMA orders  Iceberg  [Tables│Categories│Table│Map]  pointing at @orders.total  Copy │
+│ SchemaForge  SCHEMA orders  Iceberg  [Tables│Categories│Table│Map]  pointing at @orders.total  Copy │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                          │
 │                              the perspective                                             │

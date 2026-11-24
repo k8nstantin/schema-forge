@@ -1,6 +1,6 @@
 # The store
 
-Everything Schema Forge keeps lives in **PostgreSQL 18, bundled with the app**: each release carries its platform's
+Everything SchemaForge keeps lives in **PostgreSQL 18, bundled with the app**: each release carries its platform's
 PostgreSQL programs, and the app runs them itself. Nothing to install, nothing to configure.
 
 ```

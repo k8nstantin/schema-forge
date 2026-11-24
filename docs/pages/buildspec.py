@@ -39,9 +39,9 @@ seq_svg = g.render()
 
 P = []; a = P.append
 a(f'''<div class="tb" role="group" aria-label="Title block">
-<div><span>Spec</span><b>root v{root.get("version")} · rules v{rules.get("version")}</b></div><div><span>Pull request</span><b><a href="https://github.com/k8nstantin/schema-forge/pull/92" target="_blank" rel="noopener">#92 (draft)</a></b></div>
+<div><span>Spec</span><b>root v{root.get("version")} · rules v{rules.get("version")}</b></div><div><span>Pull request</span><b><a href="%REPO%/pull/92" target="_blank" rel="noopener">#92 (draft)</a></b></div>
 <div><span>Tasks written</span><b>{len(tasks)} of {len(seq)}</b></div><div><span>Review</span><b>{len(ledger)} defects found and fixed</b></div><div><span>Date</span><b>{root.get("date")}</b></div></div>
-<h1>Schema Forge Build Spec <span class="draft">Draft 1</span></h1>
+<h1>%PRODUCT% Build Spec <span class="draft">Draft 1</span></h1>
 <p class="lede">What a coding agent builds each branch and pull request from: the root says where the truth is and how the work is done,
 the rules bind every task, and each task file says exactly what one build makes, how it is tested and what it may touch. Everything
 below is read from <code>specs/</code>.</p>''')
@@ -75,7 +75,7 @@ for t in seq:
     if not t.get("file"): continue
     x = tasks[t.get("id")]; key = x.get("key")
     a(f'<article class="task" id="{t.get("id")}"><header><span class="tid">{t.get("id")}</span><h3>{e(x.get("name"))}</h3><span class="tkey">{e(key)} · v{x.get("version")}</span>'
-      f'<a class="issue" href="https://github.com/k8nstantin/schema-forge/issues/{key[3:]}" target="_blank" rel="noopener">issue #{key[3:]}</a><span class="path">{e(t.get("file"))}</span></header>'
+      f'<a class="issue" href="%REPO%/issues/{key[3:]}" target="_blank" rel="noopener">issue #{key[3:]}</a><span class="path">{e(t.get("file"))}</span></header>'
       f'<p class="lede">{ticks(txt(x.find("piece")))}</p><div class="ba"><div><span class="lab">Before</span><p>{ticks(txt(x.find("before")))}</p></div><div><span class="lab">After</span><p>{ticks(txt(x.find("after")))}</p></div></div>'
       '<details open><summary>Steps</summary><ol class="steps">')
     for s in x.iter("step"):
@@ -127,4 +127,4 @@ ul.proves{margin:8px 0 0;padding-left:18px;color:var(--ink2);font-size:14px}ul.p
 table.ledger td{font-size:13px}
 """
 sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("read", "How a build reads"), ("sequence", "Sequence"), ("root", "Root"), ("decisions", "Decisions"), ("rules", "Rules"), ("tasks", "Tasks"), ("review", "Review"), ("lessons", "Lessons")])
-HTML = page("build-spec", "Schema Forge Build Spec", CSS, "\n".join(P), sub)
+HTML = page("build-spec", "%PRODUCT% Build Spec", CSS, "\n".join(P), sub)

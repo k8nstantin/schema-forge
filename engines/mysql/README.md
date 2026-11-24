@@ -1,12 +1,12 @@
 # The MySQL engine
 
-Everything Schema Forge knows about MySQL, in one crate: its versions, its types, every kind of object it has and
+Everything SchemaForge knows about MySQL, in one crate: its versions, its types, every kind of object it has and
 every clause of their definitions, reading a schema from a dump, from hand-written DDL or from the live database,
 writing its SQL, its checks, and its types as Apache Arrow's. Nothing outside this crate knows MySQL; nothing in it is
 shared with another engine. When something about MySQL is wrong, it is wrong here.
 
 It is the first engine, and so the proof of the plugin design: it is built exactly as an engine written outside
-Schema Forge would be, on the model and the engine interface alone. The one thing it needed from the interface,
+SchemaForge would be, on the model and the engine interface alone. The one thing it needed from the interface,
 reading a live database (`Live`), was added with it. It was planned whole before it was built; this page is that plan,
 as built.
 
@@ -155,7 +155,7 @@ What is not MySQL's is refused, not misread: a MariaDB dump (its header, its `/*
 version), and statements made under the SQL mode `NO_BACKSLASH_ESCAPES`, whose strings a reader that takes a
 backslash as an escape would misread.
 
-The version a file is read at: the one this engine's header names (`-- MySQL 8.4 schema, written by Schema Forge`),
+The version a file is read at: the one this engine's header names (`-- MySQL 8.4 schema, written by SchemaForge`),
 the one a dump's `-- Server version` line falls in, or 8.4. A person names it in hand-written DDL with a line like
 `-- Server version 9.7`. A whole dump's rows need not be UTF-8: they are data, and every byte that ends a statement or
 a quote is ASCII.

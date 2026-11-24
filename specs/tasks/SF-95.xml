@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Schema Forge, build spec version 1: task t03, quill. File version 1 (2026-11-24).
+  SchemaForge, build spec version 1: task t03, quill. File version 1 (2026-11-24).
   An agent reads this file in the order the root's method read gives. Its key is SF-95, GitHub issue #95.
   The history of this file is its git log.
 -->
@@ -9,7 +9,7 @@
 
   <start>Pointed at this file, you are told nothing else. This line is the first message of a new session, on a checkout of the head of main updated from origin; if your session holds anything before it beyond its own text, CLAUDE.md and its settings, stop, say so and build nothing. Your label is &lt;model&gt;-&lt;effort&gt; as the root's method model says. Read whole, in this order (root method read): every .rs file and every Cargo.toml under crates/, engines/ and tools/ as merged on main; specs/root.xml; specs/rules.xml; this file; then the files it names. Cut the branch SF-95-quill-v1-&lt;model&gt;-&lt;effort&gt; from the head of main. Every commit message starts with SF-95 and carries no attribution of any kind. Build what this file says, run its gates, push the branch and open the PR into main titled "SF-95 quill v1 · &lt;model&gt;-&lt;effort&gt;" with the body the root's method pr lists. Show on the screen, as it happens, each step by its number and name, each test run with its result, and each gate. What this file, the root, the rules and the merged code do not say is a stop, not a guess.</start>
 
-  <piece>Quill, a made-up database, and its engine: the conformance kit's example engine (crates/engine/tests/example, as merged) moved into its own engine crate, engines/quill, renamed, made unlike MySQL wherever shared code could wrongly assume, given a live part that reads a local file, and given its tables (engines/quill/schema) through the Tables part of t02. Its kit tests (crates/engine/tests/interface.rs and its samples, as merged) move with it. And the registry crate, crates/engines: the engines Schema Forge ships (MySQL), and, under its feature test-engines, Quill beside them for every test of shared code. Nothing else: MySQL gains no tables (t04), no store (t05).</piece>
+  <piece>Quill, a made-up database, and its engine: the conformance kit's example engine (crates/engine/tests/example, as merged) moved into its own engine crate, engines/quill, renamed, made unlike MySQL wherever shared code could wrongly assume, given a live part that reads a local file, and given its tables (engines/quill/schema) through the Tables part of t02. Its kit tests (crates/engine/tests/interface.rs and its samples, as merged) move with it. And the registry crate, crates/engines: the engines SchemaForge ships (MySQL), and, under its feature test-engines, Quill beside them for every test of shared code. Nothing else: MySQL gains no tables (t04), no store (t05).</piece>
 
   <before>Merged on main: the tables interface (t02) and everything before it; engines/quill/schema with quill__record_options.sql and integrity.sql, written by the design session.</before>
   <after>MySQL's tables (t04) are checked by the same kit Quill passes; the store (t05) and every later test of shared code run on schema_forge_engines::for_tests(), MySQL and Quill.</after>

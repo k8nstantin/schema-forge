@@ -1,7 +1,7 @@
 # Writing an engine
 
-How to add a database to Schema Forge. An engine is a Rust crate that tells Schema Forge everything about one
-database; nothing else in Schema Forge changes when you add one. The design behind it is
+How to add a database to SchemaForge. An engine is a Rust crate that tells SchemaForge everything about one
+database; nothing else in SchemaForge changes when you add one. The design behind it is
 [engines.md](engines.md); this is the how.
 
 This guide grows with the interface: every change to the interface updates it in the same pull request. Today it
@@ -127,7 +127,7 @@ events (`Slot::Event`), sequences and types. Keep as written only what belongs t
 
 When your engine changes how it stores its options, raise `Engine::format()` and `SchemaSection.format`, and read what
 your earlier versions wrote. The layout itself has a version too (`sections::LAYOUT`): check a schema with
-`sections::layout_of` before reading it, so a schema written by a newer Schema Forge is refused whole, never read
+`sections::layout_of` before reading it, so a schema written by a newer SchemaForge is refused whole, never read
 with something dropped.
 
 ## 5. Your types as Arrow's

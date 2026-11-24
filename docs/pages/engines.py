@@ -1,4 +1,4 @@
-"""The Engines page: how a database plugs into Schema Forge, with Apache Iceberg worked through as the example."""
+"""The Engines page: how a database plugs into the product, with Apache Iceberg worked through as the example."""
 from common import Svg, database, e, links, page
 
 db, _ = database()
@@ -78,7 +78,7 @@ guards = "".join(card(a, b) for a, b in [
 ])
 iceberg_cards = "".join(card(a, b) for a, b in [
     ("Format versions 1, 2 and 3", "Version 3 brings default values (initial and write), nanosecond timestamps, variant, geometry and geography, row lineage and deletion vectors; each feature marked with its version. Format 4 will be new rows in the same crate."),
-    ("Field ids, not names", "Iceberg tracks every column, and every field nested in it, by an id that never changes: that is how it renames safely. Schema Forge keeps the ids, so a design evolves the way Iceberg evolves."),
+    ("Field ids, not names", "Iceberg tracks every column, and every field nested in it, by an id that never changes: that is how it renames safely. %PRODUCT% keeps the ids, so a design evolves the way Iceberg evolves."),
     ("Hidden partitioning", "Partitions are transforms of columns (<code>day(ts)</code>, <code>bucket[16](id)</code>, <code>truncate[4](code)</code>), kept in the cortex's partition fields, so the canvas and the rules read them like any engine's."),
     ("Identifier fields and the sort order", "The upsert key CDC needs, and the order files are written in: both in the cortex, as the shared layout has a place for each."),
     ("Read from where Iceberg lives", "Spark SQL and Trino DDL, a table's <code>metadata.json</code>, and a live catalog (REST, Glue, Hive) through a connection; written back as DDL or table metadata."),
@@ -88,10 +88,10 @@ body = f"""
 <header class="hero">
   <p class="eyebrow">Every database a plugin</p>
   <h1>Choose a database first. Everything follows it.</h1>
-  <p>Schema Forge is built in two layers that never mix. The process (the canvas, the MCP, turns, the rules, the store) is the same for every
+  <p>%PRODUCT% is built in two layers that never mix. The process (the canvas, the MCP, turns, the rules, the store) is the same for every
   database and knows none of them. Everything about a database belongs to its engine: one crate that plugs in through one interface.</p>
   <div class="btns"><a class="btn btn-primary" href="#iceberg">See Iceberg plug in</a>
-  <a class="btn btn-secondary" href="https://github.com/k8nstantin/schema-forge/blob/main/docs/writing-an-engine.md">Write an engine</a></div>
+  <a class="btn btn-secondary" href="%REPO%/blob/main/docs/writing-an-engine.md">Write an engine</a></div>
 </header>
 
 <section id="layers"><p class="kicker">Two layers</p><h2>The process is shared. The database is its engine's.</h2>
@@ -116,8 +116,8 @@ body = f"""
 
 <section id="yours"><div class="cta"><p class="kicker">Your database next</p><h2>Write an engine, learn a database.</h2>
 <p class="lede">An engine teaches its database from the inside: its grammar, its types, its catalog, its corners. Start from the guide and the owner template; the conformance kit tells you when it is whole.</p>
-<div class="btns"><a class="btn btn-primary" href="https://github.com/k8nstantin/schema-forge/blob/main/docs/writing-an-engine.md">Writing an engine</a>
+<div class="btns"><a class="btn btn-primary" href="%REPO%/blob/main/docs/writing-an-engine.md">Writing an engine</a>
 <a class="btn btn-secondary" style="color:var(--accent);border-color:var(--accent)" href="{e(L.get('template', '#'))}">The owner template</a></div></div></section>
 """
 sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("layers", "Two layers"), ("engine", "What an engine brings"), ("guards", "Checks"), ("iceberg", "Iceberg"), ("convert", "Convert"), ("yours", "Your database")])
-HTML = page("engines", "Schema Forge Engines", "", body, sub)
+HTML = page("engines", "%PRODUCT% Engines", "", body, sub)

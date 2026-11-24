@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Schema Forge: what the builds taught. Each lesson: what was found, where it was seen, and what the spec does about it.
+<!-- SchemaForge: what the builds taught. Each lesson: what was found, where it was seen, and what the spec does about it.
      Added to as the builds go on; never edited after the fact. -->
-<lessons product="Schema Forge" version="1" date="2026-11-24">
+<lessons product="SchemaForge" version="1" date="2026-11-24">
 
   <lesson id="build-without-a-plan" date="2026-11-23">
     <found>A first canvas and server were built straight from a one-line request, with no written design: the canvas read MySQL's connection fields by name (host, port, user, databases), so it worked for one engine and would have broken on every other.</found>
