@@ -69,7 +69,7 @@ We follow a [code of conduct](CODE_OF_CONDUCT.md): be kind, be patient, assume g
 
 - **Build a wanted task.** The [Contribute page](https://k8nstantin.github.io/schema-forge/contribute.html) and the
   brief list what is wanted now. Nobody assigns it: on a fresh checkout of `main`, point your agent at the task file's
-  path (`specs/tasks/SF-93.xml`), in any session; it builds from the files alone. It builds, runs the gates and opens the pull
+  path (`specs/tasks/SF-93-spec-check.xml`), in any session; it builds from the files alone. It builds, runs the gates and opens the pull
   request; you review it, then submit. Others may build the same task: the maintainer reviews the builds side by
   side, merges the best, and what their differences teach improves the method.
 - **Bring something new**: an engine for a database you know, a feature, a fix. Open an issue or a discussion; you,
