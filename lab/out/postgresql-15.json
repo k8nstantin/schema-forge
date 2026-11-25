@@ -38,6 +38,208 @@
    }
   },
   {
+   "key": "shop.customers_id_seq",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "S",
+    "relname": "customers_id_seq",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.products_id_seq",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "S",
+    "relname": "products_id_seq",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.orders_id_seq",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "S",
+    "relname": "orders_id_seq",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.customers",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "customers",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.orders",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "orders",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.order_items",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "order_items",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.products",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "products",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.big_orders",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "v",
+    "relname": "big_orders",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false,
+    "view_definition": " SELECT o.id,\n    c.email\n   FROM (shop.orders o\n     JOIN shop.customers c ON ((c.id = o.customer_id)));"
+   }
+  },
+  {
+   "key": "torture.ticket_seq",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "S",
+    "relname": "ticket_seq",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.kinds_id_seq",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "S",
+    "relname": "kinds_id_seq",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.kinds",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "acl": [
+     "postgres=arwdDxt/postgres",
+     "torture_reader=r/postgres"
+    ],
+    "am": "heap",
+    "comment": "every column type",
+    "owner": "postgres",
+    "relacl": [
+     "postgres=arwdDxt/postgres",
+     "torture_reader=r/postgres"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "kinds",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": true
+   }
+  },
+  {
    "key": "torture.parent",
    "kind": "relation",
    "parent": "torture",
@@ -133,29 +335,6 @@
    }
   },
   {
-   "key": "torture.measurements_2025",
-   "kind": "relation",
-   "parent": "torture",
-   "props": {
-    "inherits": [
-     "torture.measurements"
-    ],
-    "owner": "postgres",
-    "partition_bound": "FOR VALUES FROM ('2025-01-01') TO ('2026-01-01')",
-    "partition_key": "LIST (region)",
-    "relforcerowsecurity": false,
-    "relispartition": true,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "p",
-    "relname": "measurements_2025",
-    "relpartbound": "{PARTITIONBOUNDSPEC :strategy r :is_default false :modulus 0 :remainder 0 :listdatums <> :lowerdatums ({PARTITIONRANGEDATUM :kind 0 :value {CONST :consttype 1082 :consttypmod -1 :constcollid 0 :constlen 4 :constbyval true :constisnull false :location 90 :constvalue 4 [ 172 35 0 0 0 0 0 0 ]} :location 90}) :upperdatums ({PARTITIONRANGEDATUM :kind 0 :value {CONST :consttype 1082 :consttypmod -1 :constcollid 0 :constlen 4 :constbyval true :constisnull false :location 108 :constvalue 4 [ 25 37 0 0 0 0 0 0 ]} :location 108}) :location 84}",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
    "key": "torture.measurements_2025_east",
    "kind": "relation",
    "parent": "torture",
@@ -173,6 +352,29 @@
     "relkind": "r",
     "relname": "measurements_2025_east",
     "relpartbound": "{PARTITIONBOUNDSPEC :strategy l :is_default false :modulus 0 :remainder 0 :listdatums ({CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 98 :constvalue 8 [ 32 0 0 0 101 97 115 116 ]}) :lowerdatums <> :upperdatums <> :location 94}",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.measurements_2025",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "inherits": [
+     "torture.measurements"
+    ],
+    "owner": "postgres",
+    "partition_bound": "FOR VALUES FROM ('2025-01-01') TO ('2026-01-01')",
+    "partition_key": "LIST (region)",
+    "relforcerowsecurity": false,
+    "relispartition": true,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "p",
+    "relname": "measurements_2025",
+    "relpartbound": "{PARTITIONBOUNDSPEC :strategy r :is_default false :modulus 0 :remainder 0 :listdatums <> :lowerdatums ({PARTITIONRANGEDATUM :kind 0 :value {CONST :consttype 1082 :consttypmod -1 :constcollid 0 :constlen 4 :constbyval true :constisnull false :location 90 :constvalue 4 [ 172 35 0 0 0 0 0 0 ]} :location 90}) :upperdatums ({PARTITIONRANGEDATUM :kind 0 :value {CONST :consttype 1082 :consttypmod -1 :constcollid 0 :constlen 4 :constbyval true :constisnull false :location 108 :constvalue 4 [ 25 37 0 0 0 0 0 0 ]} :location 108}) :location 84}",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -368,208 +570,6 @@
    }
   },
   {
-   "key": "torture.kinds",
-   "kind": "relation",
-   "parent": "torture",
-   "props": {
-    "acl": [
-     "postgres=arwdDxt/postgres",
-     "torture_reader=r/postgres"
-    ],
-    "am": "heap",
-    "comment": "every column type",
-    "owner": "postgres",
-    "relacl": [
-     "postgres=arwdDxt/postgres",
-     "torture_reader=r/postgres"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "kinds",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": true
-   }
-  },
-  {
-   "key": "shop.customers_id_seq",
-   "kind": "relation",
-   "parent": "shop",
-   "props": {
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "S",
-    "relname": "customers_id_seq",
-    "relpersistence": "p",
-    "relreplident": "n",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "shop.products_id_seq",
-   "kind": "relation",
-   "parent": "shop",
-   "props": {
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "S",
-    "relname": "products_id_seq",
-    "relpersistence": "p",
-    "relreplident": "n",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "shop.orders_id_seq",
-   "kind": "relation",
-   "parent": "shop",
-   "props": {
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "S",
-    "relname": "orders_id_seq",
-    "relpersistence": "p",
-    "relreplident": "n",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "shop.customers",
-   "kind": "relation",
-   "parent": "shop",
-   "props": {
-    "am": "heap",
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "customers",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "shop.orders",
-   "kind": "relation",
-   "parent": "shop",
-   "props": {
-    "am": "heap",
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "orders",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "shop.order_items",
-   "kind": "relation",
-   "parent": "shop",
-   "props": {
-    "am": "heap",
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "order_items",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "shop.products",
-   "kind": "relation",
-   "parent": "shop",
-   "props": {
-    "am": "heap",
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "products",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "shop.big_orders",
-   "kind": "relation",
-   "parent": "shop",
-   "props": {
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "v",
-    "relname": "big_orders",
-    "relpersistence": "p",
-    "relreplident": "n",
-    "relrowsecurity": false,
-    "view_definition": " SELECT o.id,\n    c.email\n   FROM (shop.orders o\n     JOIN shop.customers c ON ((c.id = o.customer_id)));"
-   }
-  },
-  {
-   "key": "torture.ticket_seq",
-   "kind": "relation",
-   "parent": "torture",
-   "props": {
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "S",
-    "relname": "ticket_seq",
-    "relpersistence": "p",
-    "relreplident": "n",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "torture.kinds_id_seq",
-   "kind": "relation",
-   "parent": "torture",
-   "props": {
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "S",
-    "relname": "kinds_id_seq",
-    "relpersistence": "p",
-    "relreplident": "n",
-    "relrowsecurity": false
-   }
-  },
-  {
    "key": "shop.customers.id",
    "kind": "column",
    "parent": "shop.customers",
@@ -584,7 +584,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25169576"
+     "pg_attver=22245512"
     ],
     "type": "integer"
    }
@@ -604,7 +604,7 @@
     "attnum": 2,
     "attstorage": "x",
     "options": [
-     "pg_attver=25169576"
+     "pg_attver=22245512"
     ],
     "type": "character varying(100)"
    }
@@ -624,7 +624,7 @@
     "attnum": 3,
     "attstorage": "x",
     "options": [
-     "pg_attver=25169576"
+     "pg_attver=22245512"
     ],
     "type": "character(2)"
    }
@@ -644,7 +644,7 @@
     "attnum": 4,
     "attstorage": "p",
     "options": [
-     "pg_attver=25169576"
+     "pg_attver=22245512"
     ],
     "type": "timestamp without time zone"
    }
@@ -664,7 +664,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25191968"
+     "pg_attver=22324552"
     ],
     "type": "integer"
    }
@@ -684,7 +684,7 @@
     "attnum": 2,
     "attstorage": "x",
     "options": [
-     "pg_attver=25191968"
+     "pg_attver=22324552"
     ],
     "type": "character varying(20)"
    }
@@ -704,7 +704,7 @@
     "attnum": 3,
     "attstorage": "m",
     "options": [
-     "pg_attver=25191968"
+     "pg_attver=22324552"
     ],
     "type": "numeric(10,2)"
    }
@@ -724,7 +724,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25207032"
+     "pg_attver=22347248"
     ],
     "type": "integer"
    }
@@ -744,7 +744,7 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25207032"
+     "pg_attver=22347248"
     ],
     "type": "integer"
    }
@@ -764,7 +764,7 @@
     "attnum": 3,
     "attstorage": "p",
     "options": [
-     "pg_attver=25207032"
+     "pg_attver=22347248"
     ],
     "type": "timestamp without time zone"
    }
@@ -784,7 +784,7 @@
     "attnum": 4,
     "attstorage": "x",
     "options": [
-     "pg_attver=25207032"
+     "pg_attver=22347248"
     ],
     "type": "character varying(10)"
    }
@@ -804,7 +804,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25222912"
+     "pg_attver=22376088"
     ],
     "type": "integer"
    }
@@ -824,7 +824,7 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25222912"
+     "pg_attver=22376088"
     ],
     "type": "integer"
    }
@@ -844,7 +844,7 @@
     "attnum": 3,
     "attstorage": "p",
     "options": [
-     "pg_attver=25222912"
+     "pg_attver=22376088"
     ],
     "type": "integer"
    }
@@ -864,7 +864,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25239824"
+     "pg_attver=22396896"
     ],
     "type": "integer"
    }
@@ -884,7 +884,7 @@
     "attnum": 2,
     "attstorage": "x",
     "options": [
-     "pg_attver=25239824"
+     "pg_attver=22396896"
     ],
     "type": "character varying(100)"
    }
@@ -904,7 +904,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "bigint"
    }
@@ -925,7 +925,7 @@
     "attstorage": "m",
     "comment": "never negative",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "torture.money_amount"
    }
@@ -945,7 +945,7 @@
     "attnum": 4,
     "attstorage": "x",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "torture.email"
    }
@@ -965,7 +965,7 @@
     "attnum": 6,
     "attstorage": "x",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "torture.address"
    }
@@ -985,7 +985,7 @@
     "attnum": 8,
     "attstorage": "x",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "jsonb"
    }
@@ -1005,7 +1005,7 @@
     "attnum": 10,
     "attstorage": "x",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "tstzrange"
    }
@@ -1025,7 +1025,7 @@
     "attnum": 11,
     "attstorage": "p",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "double precision"
    }
@@ -1046,7 +1046,7 @@
     "attstorage": "x",
     "collation": "ci",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "text"
    }
@@ -1067,7 +1067,7 @@
     "attstorage": "p",
     "default": "nextval('torture.ticket_seq'::regclass)",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "bigint"
    }
@@ -1088,7 +1088,7 @@
     "attstorage": "p",
     "default": "'new'::torture.status",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "torture.status"
    }
@@ -1109,7 +1109,7 @@
     "attstorage": "x",
     "default": "'{}'::text[]",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "text[]"
    }
@@ -1130,7 +1130,7 @@
     "attstorage": "p",
     "default": "gen_random_uuid()",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "uuid"
    }
@@ -1151,7 +1151,7 @@
     "attstorage": "x",
     "default": "upper(name)",
     "options": [
-     "pg_attver=25285000"
+     "pg_attver=23998880"
     ],
     "type": "text"
    }
@@ -1171,7 +1171,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25330968"
+     "pg_attver=24049720"
     ],
     "type": "integer"
    }
@@ -1191,7 +1191,7 @@
     "attnum": 2,
     "attstorage": "x",
     "options": [
-     "pg_attver=25330968"
+     "pg_attver=24049720"
     ],
     "type": "character(3)"
    }
@@ -1211,7 +1211,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25341632"
+     "pg_attver=24060056"
     ],
     "type": "integer"
    }
@@ -1231,7 +1231,7 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25341632"
+     "pg_attver=24060056"
     ],
     "type": "integer"
    }
@@ -1251,7 +1251,7 @@
     "attnum": 3,
     "attstorage": "x",
     "options": [
-     "pg_attver=25341632"
+     "pg_attver=24060056"
     ],
     "type": "character(3)"
    }
@@ -1271,7 +1271,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25362040"
+     "pg_attver=24080208"
     ],
     "type": "integer"
    }
@@ -1291,7 +1291,7 @@
     "attnum": 2,
     "attstorage": "x",
     "options": [
-     "pg_attver=25362040"
+     "pg_attver=24080208"
     ],
     "type": "tstzrange"
    }
@@ -1311,7 +1311,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25377656"
+     "pg_attver=24095240"
     ],
     "type": "bigint"
    }
@@ -1331,7 +1331,7 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25377656"
+     "pg_attver=24095240"
     ],
     "type": "date"
    }
@@ -1351,7 +1351,7 @@
     "attnum": 3,
     "attstorage": "x",
     "options": [
-     "pg_attver=25377656"
+     "pg_attver=24095240"
     ],
     "type": "text"
    }
@@ -1371,7 +1371,7 @@
     "attnum": 4,
     "attstorage": "m",
     "options": [
-     "pg_attver=25377656"
+     "pg_attver=24095240"
     ],
     "type": "numeric"
    }
@@ -1391,7 +1391,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25384536"
+     "pg_attver=24101336"
     ],
     "type": "bigint"
    }
@@ -1411,7 +1411,7 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25384536"
+     "pg_attver=24101336"
     ],
     "type": "date"
    }
@@ -1431,7 +1431,7 @@
     "attnum": 3,
     "attstorage": "x",
     "options": [
-     "pg_attver=25384536"
+     "pg_attver=24101336"
     ],
     "type": "text"
    }
@@ -1451,7 +1451,7 @@
     "attnum": 4,
     "attstorage": "m",
     "options": [
-     "pg_attver=25384536"
+     "pg_attver=24101336"
     ],
     "type": "numeric"
    }
@@ -1471,7 +1471,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25397632"
+     "pg_attver=24120496"
     ],
     "type": "bigint"
    }
@@ -1491,7 +1491,7 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25397632"
+     "pg_attver=24120496"
     ],
     "type": "date"
    }
@@ -1511,7 +1511,7 @@
     "attnum": 3,
     "attstorage": "x",
     "options": [
-     "pg_attver=25397632"
+     "pg_attver=24120496"
     ],
     "type": "text"
    }
@@ -1531,7 +1531,7 @@
     "attnum": 4,
     "attstorage": "m",
     "options": [
-     "pg_attver=25397632"
+     "pg_attver=24120496"
     ],
     "type": "numeric"
    }
@@ -1551,7 +1551,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25404728"
+     "pg_attver=24127656"
     ],
     "type": "bigint"
    }
@@ -1571,7 +1571,7 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25404728"
+     "pg_attver=24127656"
     ],
     "type": "date"
    }
@@ -1591,7 +1591,7 @@
     "attnum": 3,
     "attstorage": "x",
     "options": [
-     "pg_attver=25404728"
+     "pg_attver=24127656"
     ],
     "type": "text"
    }
@@ -1611,7 +1611,7 @@
     "attnum": 4,
     "attstorage": "m",
     "options": [
-     "pg_attver=25404728"
+     "pg_attver=24127656"
     ],
     "type": "numeric"
    }
@@ -1631,7 +1631,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25417656"
+     "pg_attver=24148384"
     ],
     "type": "bigint"
    }
@@ -1651,7 +1651,7 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25417656"
+     "pg_attver=24148384"
     ],
     "type": "date"
    }
@@ -1671,7 +1671,7 @@
     "attnum": 3,
     "attstorage": "x",
     "options": [
-     "pg_attver=25417656"
+     "pg_attver=24148384"
     ],
     "type": "text"
    }
@@ -1691,7 +1691,7 @@
     "attnum": 4,
     "attstorage": "m",
     "options": [
-     "pg_attver=25417656"
+     "pg_attver=24148384"
     ],
     "type": "numeric"
    }
@@ -1711,7 +1711,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25430328"
+     "pg_attver=24163376"
     ],
     "type": "integer"
    }
@@ -1731,7 +1731,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25435192"
+     "pg_attver=24168328"
     ],
     "type": "integer"
    }
@@ -1751,7 +1751,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25440440"
+     "pg_attver=24173552"
     ],
     "type": "integer"
    }
@@ -1771,7 +1771,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25445600"
+     "pg_attver=24178864"
     ],
     "type": "integer"
    }
@@ -1791,7 +1791,7 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25445600"
+     "pg_attver=24178864"
     ],
     "type": "timestamp with time zone"
    }
@@ -1811,7 +1811,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25450264"
+     "pg_attver=24188792"
     ],
     "type": "integer"
    }
@@ -1831,7 +1831,7 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25450264"
+     "pg_attver=24188792"
     ],
     "type": "timestamp with time zone"
    }
@@ -1851,7 +1851,7 @@
     "attnum": 3,
     "attstorage": "x",
     "options": [
-     "pg_attver=25450264"
+     "pg_attver=24188792"
     ],
     "type": "text"
    }
@@ -1871,7 +1871,7 @@
     "attnum": 1,
     "attstorage": "x",
     "options": [
-     "pg_attver=25462424"
+     "pg_attver=24201864"
     ],
     "type": "text"
    }
@@ -1891,7 +1891,7 @@
     "attnum": 2,
     "attstorage": "x",
     "options": [
-     "pg_attver=25462424"
+     "pg_attver=24201864"
     ],
     "type": "text"
    }
@@ -1911,7 +1911,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25477032"
+     "pg_attver=24215960"
     ],
     "type": "bigint"
    }
@@ -1932,7 +1932,7 @@
     "attstorage": "x",
     "collation": "ci",
     "options": [
-     "pg_attver=25477032"
+     "pg_attver=24215960"
     ],
     "type": "text"
    }
@@ -1952,7 +1952,7 @@
     "attnum": 1,
     "attstorage": "p",
     "options": [
-     "pg_attver=25483104"
+     "pg_attver=24221896"
     ],
     "type": "torture.status"
    }
@@ -1972,141 +1972,9 @@
     "attnum": 2,
     "attstorage": "p",
     "options": [
-     "pg_attver=25483104"
+     "pg_attver=24221896"
     ],
     "type": "bigint"
-   }
-  },
-  {
-   "key": "torture.parent_pkey",
-   "kind": "index",
-   "parent": "torture.parent",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE UNIQUE INDEX parent_pkey ON torture.parent USING btree (id)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": true,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 1,
-    "indnkeyatts": 1,
-    "indnullsnotdistinct": false
-   }
-  },
-  {
-   "key": "torture.parent_code_key",
-   "kind": "index",
-   "parent": "torture.parent",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE UNIQUE INDEX parent_code_key ON torture.parent USING btree (code)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 1,
-    "indnkeyatts": 1,
-    "indnullsnotdistinct": false
-   }
-  },
-  {
-   "key": "torture.child_pkey",
-   "kind": "index",
-   "parent": "torture.child",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE UNIQUE INDEX child_pkey ON torture.child USING btree (id)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": true,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 1,
-    "indnkeyatts": 1,
-    "indnullsnotdistinct": false
-   }
-  },
-  {
-   "key": "torture.booking_room_during_excl",
-   "kind": "index",
-   "parent": "torture.booking",
-   "props": {
-    "am": "gist",
-    "definition": "CREATE INDEX booking_room_during_excl ON torture.booking USING gist (room, during)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": true,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false
-   }
-  },
-  {
-   "key": "torture.mv_counts_status",
-   "kind": "index",
-   "parent": "torture.mv_counts",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE UNIQUE INDEX mv_counts_status ON torture.mv_counts USING btree (status)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 1,
-    "indnkeyatts": 1,
-    "indnullsnotdistinct": false
-   }
-  },
-  {
-   "key": "torture.scratch_pkey",
-   "kind": "index",
-   "parent": "torture.scratch",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE UNIQUE INDEX scratch_pkey ON torture.scratch USING btree (k)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": true,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 1,
-    "indnkeyatts": 1,
-    "indnullsnotdistinct": false
    }
   },
   {
@@ -2308,28 +2176,6 @@
    }
   },
   {
-   "key": "torture.k_doc",
-   "kind": "index",
-   "parent": "torture.kinds",
-   "props": {
-    "am": "gin",
-    "definition": "CREATE INDEX k_doc ON torture.kinds USING gin (doc jsonb_path_ops)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 1,
-    "indnkeyatts": 1,
-    "indnullsnotdistinct": false
-   }
-  },
-  {
    "key": "torture.kinds_pkey",
    "kind": "index",
    "parent": "torture.kinds",
@@ -2381,6 +2227,28 @@
    "props": {
     "am": "gin",
     "definition": "CREATE INDEX k_tags ON torture.kinds USING gin (tags)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.k_doc",
+   "kind": "index",
+   "parent": "torture.kinds",
+   "props": {
+    "am": "gin",
+    "definition": "CREATE INDEX k_doc ON torture.kinds USING gin (doc jsonb_path_ops)",
     "indcheckxmin": false,
     "indimmediate": true,
     "indisclustered": false,
@@ -2488,174 +2356,135 @@
    }
   },
   {
-   "key": "torture.parent.parent_code_key",
-   "kind": "constraint",
+   "key": "torture.parent_pkey",
+   "kind": "index",
    "parent": "torture.parent",
    "props": {
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "parent_code_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (code)"
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX parent_pkey ON torture.parent USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
    }
   },
   {
-   "key": "torture.parent.parent_pkey",
-   "kind": "constraint",
+   "key": "torture.parent_code_key",
+   "kind": "index",
    "parent": "torture.parent",
    "props": {
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "parent_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)"
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX parent_code_key ON torture.parent USING btree (code)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
    }
   },
   {
-   "key": "torture.child.fk_code",
-   "kind": "constraint",
+   "key": "torture.child_pkey",
+   "kind": "index",
    "parent": "torture.child",
    "props": {
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": "r",
-    "confmatchtype": "f",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "fk_code",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (parent_code) REFERENCES torture.parent(code) MATCH FULL ON DELETE RESTRICT"
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX child_pkey ON torture.child USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
    }
   },
   {
-   "key": "torture.child.fk_parent",
-   "kind": "constraint",
-   "parent": "torture.child",
-   "props": {
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "n",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "fk_parent",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (parent_id) REFERENCES torture.parent(id) ON UPDATE SET NULL ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED"
-   }
-  },
-  {
-   "key": "torture.child.child_pkey",
-   "kind": "constraint",
-   "parent": "torture.child",
-   "props": {
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "child_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)"
-   }
-  },
-  {
-   "key": "torture.booking.booking_room_during_excl",
-   "kind": "constraint",
+   "key": "torture.booking_room_during_excl",
+   "kind": "index",
    "parent": "torture.booking",
    "props": {
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "booking_room_during_excl",
-    "connoinherit": true,
-    "contype": "x",
-    "convalidated": true,
-    "definition": "EXCLUDE USING gist (room WITH =, during WITH &&)"
+    "am": "gist",
+    "definition": "CREATE INDEX booking_room_during_excl ON torture.booking USING gist (room, during)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": true,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false
    }
   },
   {
-   "key": "torture.scratch.scratch_pkey",
-   "kind": "constraint",
+   "key": "torture.scratch_pkey",
+   "kind": "index",
    "parent": "torture.scratch",
    "props": {
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "scratch_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (k)"
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX scratch_pkey ON torture.scratch USING btree (k)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
    }
   },
   {
-   "key": "torture.kinds.kinds_pkey",
-   "kind": "constraint",
-   "parent": "torture.kinds",
+   "key": "torture.mv_counts_status",
+   "kind": "index",
+   "parent": "torture.mv_counts",
    "props": {
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "kinds_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)"
-   }
-  },
-  {
-   "key": "torture.kinds.ck_ratio",
-   "kind": "constraint",
-   "parent": "torture.kinds",
-   "props": {
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "ck_ratio",
-    "connoinherit": false,
-    "contype": "c",
-    "convalidated": true,
-    "definition": "CHECK (((ratio >= (0)::double precision) AND (ratio <= (1)::double precision)))"
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX mv_counts_status ON torture.mv_counts USING btree (status)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
    }
   },
   {
@@ -2830,6 +2659,177 @@
    }
   },
   {
+   "key": "torture.kinds.kinds_pkey",
+   "kind": "constraint",
+   "parent": "torture.kinds",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "kinds_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)"
+   }
+  },
+  {
+   "key": "torture.kinds.ck_ratio",
+   "kind": "constraint",
+   "parent": "torture.kinds",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "ck_ratio",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK (((ratio >= (0)::double precision) AND (ratio <= (1)::double precision)))"
+   }
+  },
+  {
+   "key": "torture.parent.parent_code_key",
+   "kind": "constraint",
+   "parent": "torture.parent",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "parent_code_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (code)"
+   }
+  },
+  {
+   "key": "torture.parent.parent_pkey",
+   "kind": "constraint",
+   "parent": "torture.parent",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "parent_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)"
+   }
+  },
+  {
+   "key": "torture.child.fk_code",
+   "kind": "constraint",
+   "parent": "torture.child",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": "r",
+    "confmatchtype": "f",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "fk_code",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (parent_code) REFERENCES torture.parent(code) MATCH FULL ON DELETE RESTRICT"
+   }
+  },
+  {
+   "key": "torture.child.fk_parent",
+   "kind": "constraint",
+   "parent": "torture.child",
+   "props": {
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "n",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "fk_parent",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (parent_id) REFERENCES torture.parent(id) ON UPDATE SET NULL ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED"
+   }
+  },
+  {
+   "key": "torture.child.child_pkey",
+   "kind": "constraint",
+   "parent": "torture.child",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "child_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)"
+   }
+  },
+  {
+   "key": "torture.booking.booking_room_during_excl",
+   "kind": "constraint",
+   "parent": "torture.booking",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "booking_room_during_excl",
+    "connoinherit": true,
+    "contype": "x",
+    "convalidated": true,
+    "definition": "EXCLUDE USING gist (room WITH =, during WITH &&)"
+   }
+  },
+  {
+   "key": "torture.scratch.scratch_pkey",
+   "kind": "constraint",
+   "parent": "torture.scratch",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "scratch_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (k)"
+   }
+  },
+  {
    "key": "torture.email.email_check",
    "kind": "constraint",
    "parent": "torture.email",
@@ -2943,6 +2943,20 @@
    }
   },
   {
+   "key": "torture.status",
+   "kind": "type",
+   "parent": "torture",
+   "props": {
+    "labels": [
+     "new",
+     "paid",
+     "shipped"
+    ],
+    "notnull": false,
+    "typtype": "e"
+   }
+  },
+  {
    "key": "torture.address",
    "kind": "type",
    "parent": "torture",
@@ -2963,16 +2977,6 @@
     ],
     "notnull": false,
     "typtype": "c"
-   }
-  },
-  {
-   "key": "torture.email",
-   "kind": "type",
-   "parent": "torture",
-   "props": {
-    "base": "citext",
-    "notnull": false,
-    "typtype": "d"
    }
   },
   {
@@ -2997,17 +3001,13 @@
    }
   },
   {
-   "key": "torture.status",
+   "key": "torture.email",
    "kind": "type",
    "parent": "torture",
    "props": {
-    "labels": [
-     "new",
-     "paid",
-     "shipped"
-    ],
+    "base": "citext",
     "notnull": false,
-    "typtype": "e"
+    "typtype": "d"
    }
   },
   {
@@ -3292,6 +3292,21 @@
    }
   },
   {
+   "key": "torture.child.t_child_when",
+   "kind": "trigger",
+   "parent": "torture.child",
+   "props": {
+    "definition": "CREATE TRIGGER t_child_when BEFORE UPDATE ON torture.child FOR EACH ROW WHEN ((old.parent_id IS DISTINCT FROM new.parent_id)) EXECUTE FUNCTION audit.log_change()",
+    "tgdeferrable": false,
+    "tgenabled": "O",
+    "tginitdeferred": false,
+    "tgisinternal": false,
+    "tgname": "t_child_when",
+    "tgnargs": 0,
+    "tgtype": 19
+   }
+  },
+  {
    "key": "torture.child.t_child_audit",
    "kind": "trigger",
    "parent": "torture.child",
@@ -3305,21 +3320,6 @@
     "tgnargs": 0,
     "tgnewtable": "new_rows",
     "tgtype": 4
-   }
-  },
-  {
-   "key": "torture.child.t_child_when",
-   "kind": "trigger",
-   "parent": "torture.child",
-   "props": {
-    "definition": "CREATE TRIGGER t_child_when BEFORE UPDATE ON torture.child FOR EACH ROW WHEN ((old.parent_id IS DISTINCT FROM new.parent_id)) EXECUTE FUNCTION audit.log_change()",
-    "tgdeferrable": false,
-    "tgenabled": "O",
-    "tginitdeferred": false,
-    "tgisinternal": false,
-    "tgname": "t_child_when",
-    "tgnargs": 0,
-    "tgtype": 19
    }
   },
   {

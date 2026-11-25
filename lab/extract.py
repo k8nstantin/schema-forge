@@ -4,6 +4,7 @@ props}]}. Volatile properties (row counts, sizes, times, oids) are left out: the
 
   python3 lab/extract.py            every server of SERVERS
 """
+import base64
 import json
 import os
 import subprocess
@@ -14,7 +15,8 @@ ROOT = os.path.dirname(HERE)
 PW = next(l.split('"')[1] for l in open(os.path.join(ROOT, "engines/mysql/tests/live.rs")) if l.startswith("const ROOT"))
 MYSQL = [("5.7", "sf-mysql-5.7"), ("8.0", "sf-mysql-8.0"), ("8.4", "sf-mysql-8.4"), ("9.7", "sf-mysql-9.7")]
 POSTGRES = [(v, f"sf-pg-{v}") for v in ("15", "16", "17", "18")]
-SCHEMAS = ("shop", "torture", "audit")
+SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,torture,audit").split(","))  # the schemas a run reads
+OUT = os.path.expanduser(os.environ.get("LAB_OUT", os.path.join(HERE, "out")))  # private schemas go outside the repository
 
 # MySQL: information_schema tables by the part they describe, the columns that name the part, and the volatile ones.
 MY_TABLES = [
@@ -40,7 +42,7 @@ MY_TABLES = [
     ("trigger", "TRIGGERS", "TRIGGER_SCHEMA IN ({s})", ["TRIGGER_SCHEMA", "TRIGGER_NAME"], ["EVENT_OBJECT_SCHEMA", "EVENT_OBJECT_TABLE"],
      ["CREATED"]),
     ("event", "EVENTS", "EVENT_SCHEMA IN ({s})", ["EVENT_SCHEMA", "EVENT_NAME"], ["EVENT_SCHEMA"],
-     ["CREATED", "LAST_ALTERED", "LAST_EXECUTED"]),
+     ["CREATED", "LAST_ALTERED", "LAST_EXECUTED", "ORIGINATOR"]),  # ORIGINATOR: the server id it was made on
     ("partition", "PARTITIONS", "TABLE_SCHEMA IN ({s}) AND PARTITION_NAME IS NOT NULL",
      ["TABLE_SCHEMA", "TABLE_NAME", "PARTITION_NAME", "SUBPARTITION_NAME"], ["TABLE_SCHEMA", "TABLE_NAME"],
      ["TABLE_ROWS", "AVG_ROW_LENGTH", "DATA_LENGTH", "MAX_DATA_LENGTH", "INDEX_LENGTH", "DATA_FREE", "CREATE_TIME",
@@ -48,17 +50,43 @@ MY_TABLES = [
 ]
 
 
-def mysql(container, sql):
-    r = subprocess.run(["docker", "exec", "-i", container, "mysql", "-uroot", f"-p{PW}", "-B", "-N", "--raw"], input=sql,
-                       capture_output=True, text=True)
-    if r.returncode:
-        raise SystemExit(f"{container}: {r.stderr.strip()[-300:]}")
-    return [l.split("\t") for l in r.stdout.splitlines()]
+def unescape(field):
+    """A field as mysql -B writes it without --raw: newline, tab, backslash and NUL escaped, so one row is one line."""
+    out, i = [], 0
+    while i < len(field):
+        c = field[i]
+        if c == "\\" and i + 1 < len(field):
+            out.append({"n": "\n", "t": "\t", "0": "\0", "\\": "\\"}.get(field[i + 1], field[i + 1]))
+            i += 2
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+
+def unbinary(v):
+    """8.0 and later: JSON_OBJECT writes a value it holds as binary as base64:type<n>:<base64> (an event's interval
+    of '5' came out as base64:type15:NQ==); the text is what the server holds."""
+    if isinstance(v, str) and v.startswith("base64:type"):
+        try:
+            return base64.b64decode(v.split(":", 2)[2]).decode()
+        except (ValueError, UnicodeDecodeError):
+            return v
+    return v
+
+
+def mysql(container, sql, force=False):
+    # every version sends its results in utf8mb4, so text from 5.7 and 9.7 compares; bytes it cannot decode are kept
+    args = ["docker", "exec", "-i", container, "mysql", "-uroot", f"-p{PW}", "-B", "-N", "--default-character-set=utf8mb4"]
+    r = subprocess.run(args + (["--force"] if force else []), input=sql.encode(), capture_output=True)
+    if r.returncode and not force:
+        raise SystemExit(f"{container}: {r.stderr.decode(errors='replace').strip()[-300:]}")
+    return [[unescape(f) for f in l.split("\t")] for l in r.stdout.decode(errors="surrogateescape").split("\n") if l]
 
 
 def extract_mysql(version, container):
     parts = []
-    s = ",".join(f"'{x}'" for x in SCHEMAS)
+    s = ",".join("'" + x.replace("'", "''") + "'" for x in SCHEMAS)
     have = {r[0] for r in mysql(container, "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='information_schema'")}
     for kind, table, where, key, parent, volatile in MY_TABLES:
         if table not in have:
@@ -67,29 +95,42 @@ def extract_mysql(version, container):
                                                 f"'information_schema' AND TABLE_NAME='{table}' ORDER BY ORDINAL_POSITION")]
         obj = "JSON_OBJECT(" + ",".join(f"'{c}',`{c}`" for c in cols) + ")"
         for (row,) in mysql(container, f"SELECT {obj} FROM information_schema.{table} WHERE {where.format(s=s)}"):
-            p = json.loads(row)
+            p = {k: unbinary(v) for k, v in json.loads(row).items()}
             for v in volatile:
                 p.pop(v, None)
             parts.append({"kind": kind, "key": ".".join(str(p.get(k)) for k in key),
                           "parent": ".".join(str(p.get(k)) for k in parent) if parent else None, "props": p})
-    # the definition as the server writes it, beside the catalog
-    for p in [x for x in parts if x["kind"] in ("table", "view", "routine", "trigger", "event")]:
+    # the definition as the server writes it, beside the catalog: every SHOW CREATE in one session, each after a
+    # marker, so a statement the server refuses leaves its part without one and moves nothing else
+    wants = []
+    for p in parts:
         pr = p["props"]
-        if p["kind"] in ("table", "view"):
-            what = "VIEW" if pr.get("TABLE_TYPE") == "VIEW" or p["kind"] == "view" else "TABLE"
-            stmt = f"SHOW CREATE {what} `{pr['TABLE_SCHEMA']}`.`{pr['TABLE_NAME']}`"
+        if p["kind"] == "view" or (p["kind"] == "table" and pr.get("TABLE_TYPE") != "VIEW"):
+            what, sch, name = ("VIEW" if p["kind"] == "view" else "TABLE"), pr["TABLE_SCHEMA"], pr["TABLE_NAME"]
         elif p["kind"] == "routine":
-            stmt = f"SHOW CREATE {pr['ROUTINE_TYPE']} `{pr['ROUTINE_SCHEMA']}`.`{pr['ROUTINE_NAME']}`"
+            what, sch, name = pr["ROUTINE_TYPE"], pr["ROUTINE_SCHEMA"], pr["ROUTINE_NAME"]
         elif p["kind"] == "trigger":
-            stmt = f"SHOW CREATE TRIGGER `{pr['TRIGGER_SCHEMA']}`.`{pr['TRIGGER_NAME']}`"
+            what, sch, name = "TRIGGER", pr["TRIGGER_SCHEMA"], pr["TRIGGER_NAME"]
+        elif p["kind"] == "event":
+            what, sch, name = "EVENT", pr["EVENT_SCHEMA"], pr["EVENT_NAME"]
         else:
-            stmt = f"SHOW CREATE EVENT `{pr['EVENT_SCHEMA']}`.`{pr['EVENT_NAME']}`"
-        out = mysql(container, stmt)
-        if out and p["kind"] == "table" and pr.get("TABLE_TYPE") == "VIEW":
             continue
+        q = lambda n: "`" + n.replace("`", "``") + "`"
+        wants.append((p, f"SHOW CREATE {what} {q(sch)}.{q(name)}"))
+    rows = mysql(container, "".join(f"SELECT '#{i}';\n{stmt};\n" for i, (_, stmt) in enumerate(wants)), force=True)
+    at = None
+    for r in rows:
+        if len(r) == 1 and r[0].startswith("#") and r[0][1:].isdigit():
+            at = int(r[0][1:])
+            continue
+        p = wants[at][0]
         cell = {"table": 1, "view": 1, "routine": 2, "trigger": 2, "event": 3}[p["kind"]]
-        if out and len(out[0]) > cell:
-            pr["__show_create"] = out[0][cell].replace("\\n", "\n")
+        if len(r) > cell:
+            p["props"]["__show_create"] = r[cell]
+        if p["kind"] in ("routine", "trigger", "event") and len(r) > 1:
+            # the sql_mode the program runs under, as SHOW CREATE gives it: 5.7's ROUTINES.SQL_MODE writes
+            # ALLOW_INVALID_DATES as INVALID_DATES, which no server accepts back
+            p["props"]["__sql_mode"] = r[1]
     return parts
 
 
@@ -194,12 +235,12 @@ def extract_pg(version, container):
 
 
 def main():
-    os.makedirs(os.path.join(HERE, "out"), exist_ok=True)
+    os.makedirs(OUT, exist_ok=True)
     for engine, servers, fn in (("mysql", MYSQL, extract_mysql), ("postgresql", POSTGRES, extract_pg)):
         for version, container in servers:
             parts = fn(version, container)
             out = {"engine": engine, "version": version, "parts": parts}
-            path = os.path.join(HERE, "out", f"{engine}-{version}.json")
+            path = os.path.join(OUT, f"{engine}-{version}.json")
             json.dump(out, open(path, "w"), indent=1, sort_keys=True, default=str)
             kinds = {}
             for p in parts:

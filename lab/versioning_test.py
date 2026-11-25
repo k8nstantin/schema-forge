@@ -35,23 +35,36 @@ def text(v):
     return v if isinstance(v, str) else json.dumps(v, sort_keys=True)
 
 
-def build(engine):
-    """The engine's schema database: the global schema (core), its plugin's (engine_<engine>), the log, and the
-    snapshot imported as the first turn."""
-    db = f"lab_{engine}"
-    psql(f"DROP DATABASE IF EXISTS {db} WITH (FORCE); CREATE DATABASE {db};", "postgres")
-    snap = json.load(open(os.path.join(HERE, "out", f"{SNAPSHOTS[engine]}.json")))
+def parts_of(engine, snap):
+    """A snapshot's parts as (concept, part, shared, own), one per part: a part the catalog lists twice (a MySQL view
+    is in TABLES and in VIEWS) is one, its properties merged; two parts of one concept under one key (a trigger and a
+    table of the same name) each keep theirs, the second's id taking its kind."""
     merged = {}
     for p in snap["parts"]:
         concept = CONCEPT_OF[engine][p["kind"]]
-        # one part the catalog lists twice (a MySQL view is in TABLES and in VIEWS) is one row, its properties merged
-        m = merged.setdefault((concept, p["key"]), {"kind": p["kind"], "key": p["key"], "parent": p["parent"], "props": {}})
+        cls = "table" if p["kind"] == "view" else p["kind"]
+        m = merged.setdefault((concept, cls, p["key"]), {"kind": p["kind"], "key": p["key"], "parent": p["parent"], "props": {}})
         m["props"].update(p["props"])
-    parts = []
-    for (concept, _), p in merged.items():
+        if p["kind"] == "view":
+            m["kind"] = "view"
+    ids, parts = set(), []
+    for (concept, _, _), p in merged.items():
+        if (concept, p["key"]) in ids:
+            p["key"] = f"{p['kind']}:{p['key']}"
+        ids.add((concept, p["key"]))
         shared, own = split(engine, concept, p["props"])
         parts.append((concept, p, {k: text(v) for k, v in shared.items() if v is not None},
                       {k: v for k, v in own.items() if v is not None}))
+    return parts
+
+
+def build(engine, snap=None, db=None):
+    """The engine's schema database: the global schema (core), its plugin's (engine_<engine>), the log, and the
+    snapshot imported as the first turn."""
+    db = db or f"lab_{engine}"
+    psql(f"DROP DATABASE IF EXISTS {db} WITH (FORCE); CREATE DATABASE {db};", "postgres")
+    snap = snap or json.load(open(os.path.join(HERE, "out", f"{SNAPSHOTS[engine]}.json")))
+    parts = parts_of(engine, snap)
     concepts = sorted({c for c, *_ in parts})
     ddl = ["CREATE SCHEMA core;", f"CREATE SCHEMA engine_{engine};"]
     for c in concepts:
@@ -86,7 +99,7 @@ def build(engine):
             ovals = [lit(json.dumps(o[k]) if isinstance(o[k], (list, dict)) else o[k]) for k in ocols]
             rows.append(f"INSERT INTO engine_{engine}.{c}_options (id, {', '.join(chr(34) + k + chr(34) for k in ocols)}) VALUES ({lit(p['key'])}, {', '.join(ovals)});")
     psql("BEGIN; SELECT log.begin_turn('import'); " + "\n".join(rows) + " SELECT log.end_turn(); COMMIT;", db)
-    return db
+    return db, parts
 
 
 def edit_turn(db, engine, rnd, n):
@@ -120,16 +133,16 @@ def edit_turn(db, engine, rnd, n):
     psql("\n".join(sql), db)
 
 
-def run(engine, turns):
+def run(engine, turns, snap=None, db=None):
     rnd = random.Random(42)
     t0 = time.time()
-    db = build(engine)
+    db, _ = build(engine, snap, db)
     hashes = {}
     def save(name):
         psql(f"SELECT log.savepoint('{name}');", db)
         hashes[name] = psql("SELECT log.state_hash();", db)
     save("imported")
-    print(f"== {engine}: imported {SNAPSHOTS[engine]} ({time.time() - t0:.1f}s)")
+    print(f"== {engine}: imported {snap['version'] if snap else SNAPSHOTS[engine]} ({time.time() - t0:.1f}s)")
     t = time.time()
     for n in range(1, turns + 1):
         edit_turn(db, engine, rnd, n)
