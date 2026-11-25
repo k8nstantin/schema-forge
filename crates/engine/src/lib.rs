@@ -18,6 +18,7 @@ pub mod portable;
 mod read;
 mod registry;
 pub mod sections;
+pub mod tables;
 mod types;
 mod version;
 
@@ -93,6 +94,11 @@ pub trait Engine: Send + Sync {
 
     /// Its types as Apache Arrow's, and back: how it meets every other engine and the DataFusion layer.
     fn portable(&self) -> Option<&dyn portable::Portable> {
+        None
+    }
+
+    /// Its own tables, declared as data, and its options as their rows.
+    fn tables(&self) -> Option<&dyn tables::Tables> {
         None
     }
 }
