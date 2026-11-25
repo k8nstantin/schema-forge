@@ -6,7 +6,7 @@ CREATE TABLE engine_mysql.column_options (
   "collation"  TEXT,                                                                           -- its collation; NULL when not written
   "binary"     BOOLEAN,                                                                        -- true when it uses its character set's binary collation (BINARY, deprecated); NULL when not written
   on_update    TEXT,                                                                           -- what it becomes whenever its row changes (ON UPDATE CURRENT_TIMESTAMP); NULL for none
-  srid         INTEGER CHECK (srid >= 0),                                                      -- the spatial reference system of its shapes; NULL for none
+  srid         BIGINT  CHECK (srid >= 0),                                                      -- the spatial reference system of its shapes; NULL for none
   invisible    BOOLEAN                                                                         -- true when SELECT * leaves it out; NULL when not written
 );
 

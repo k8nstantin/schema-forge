@@ -207,8 +207,8 @@ fn a_task_file_whose_gates_come_before_its_build_is_the_finding_missing_or_out_o
 #[test]
 fn a_task_file_whose_start_carries_another_version_is_the_finding_does_not_carry_version() {
     let c = copy("version");
-    c.edit(SF94, r#"name="tables interface" version="2""#, r#"name="tables interface" version="3""#);
-    named(&check(c.root()), &[SF94, "start does not carry version 3"]);
+    c.edit(SF94, r#"name="tables interface" version="3""#, r#"name="tables interface" version="4""#);
+    named(&check(c.root()), &[SF94, "start does not carry version 4"]);
 }
 
 #[test]

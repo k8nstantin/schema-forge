@@ -2718,11 +2718,11 @@ COMMENT ON COLUMN cortex.scheduled_events.body IS 'the statements it runs, exact
 CREATE TABLE cortex.sequences (
     id text NOT NULL,
     type text,
-    start integer,
-    increment integer,
-    min_value integer,
-    max_value integer,
-    cache integer,
+    start bigint,
+    increment bigint,
+    min_value bigint,
+    max_value bigint,
+    cache bigint,
     cycle boolean DEFAULT false NOT NULL,
     owned_by text,
     CONSTRAINT sequences_cache_check CHECK ((cache >= 1)),
@@ -3618,11 +3618,11 @@ COMMENT ON COLUMN cortex.catalog_sources."position" IS 'its place in the read of
 CREATE TABLE cortex.column_identities (
     id text NOT NULL,
     always boolean NOT NULL,
-    start integer,
-    increment integer,
-    min_value integer,
-    max_value integer,
-    cache integer,
+    start bigint,
+    increment bigint,
+    min_value bigint,
+    max_value bigint,
+    cache bigint,
     cycle boolean DEFAULT false NOT NULL,
     CONSTRAINT column_identities_cache_check CHECK ((cache >= 1)),
     CONSTRAINT column_identities_increment_check CHECK ((increment <> 0))
@@ -4603,10 +4603,10 @@ COMMENT ON COLUMN engine_mysql.loadable_functions.returns IS 'what it returns';
 
 CREATE TABLE engine_mysql.spatial_reference_systems (
     id text NOT NULL,
-    srid integer NOT NULL,
+    srid bigint NOT NULL,
     definition text NOT NULL,
     organization text,
-    organization_srid integer,
+    organization_srid bigint,
     CONSTRAINT spatial_reference_systems_check CHECK (((organization IS NULL) = (organization_srid IS NULL))),
     CONSTRAINT spatial_reference_systems_definition_check CHECK ((length(definition) >= 1)),
     CONSTRAINT spatial_reference_systems_srid_check CHECK ((srid >= 0))
@@ -4857,7 +4857,7 @@ COMMENT ON VIEW engine_mysql.broken_subpartitions_of_subpartitioned_tables IS 'A
 CREATE TABLE engine_mysql.table_options (
     id text NOT NULL,
     engine text,
-    auto_increment integer,
+    auto_increment bigint,
     charset text,
     "collation" text,
     compression text,
@@ -5005,7 +5005,7 @@ CREATE TABLE engine_mysql.column_options (
     "collation" text,
     "binary" boolean,
     on_update text,
-    srid integer,
+    srid bigint,
     invisible boolean,
     CONSTRAINT column_options_srid_check CHECK ((srid >= 0))
 );
