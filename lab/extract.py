@@ -7,6 +7,7 @@ props}]}. Volatile properties (row counts, sizes, times, oids) are left out: the
 import base64
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -84,6 +85,28 @@ def mysql(container, sql, force=False):
     return [[unescape(f) for f in l.split("\t")] for l in r.stdout.decode(errors="surrogateescape").split("\n") if l]
 
 
+KEY_LINE = re.compile(r"^  (PRIMARY KEY|(?:UNIQUE |FULLTEXT |SPATIAL )?KEY `((?:[^`]|``)*)`)")
+
+
+def table_facts(props):
+    """What a table's SHOW CREATE alone holds: the order of its indexes (information_schema sorts them by name), and a
+    MERGE table's UNION and INSERT_METHOD."""
+    text = props["__show_create"]
+    order = []
+    for line in text.split("\n"):
+        m = KEY_LINE.match(line)
+        if m:
+            order.append("PRIMARY" if m.group(1) == "PRIMARY KEY" else m.group(2).replace("``", "`"))
+    props["__index_order"] = order
+    last = text[text.rfind("\n)"):]
+    m = re.search(r" UNION=\((.*?)\)", last)
+    if m:
+        props["__merge_union"] = [n.strip().strip("`").replace("``", "`") for n in m.group(1).split(",")]
+    m = re.search(r" INSERT_METHOD=(\w+)", last)
+    if m:
+        props["__insert_method"] = m.group(1)
+
+
 def extract_mysql(version, container):
     parts = []
     s = ",".join("'" + x.replace("'", "''") + "'" for x in SCHEMAS)
@@ -96,6 +119,8 @@ def extract_mysql(version, container):
         obj = "JSON_OBJECT(" + ",".join(f"'{c}',`{c}`" for c in cols) + ")"
         for (row,) in mysql(container, f"SELECT {obj} FROM information_schema.{table} WHERE {where.format(s=s)}"):
             p = {k: unbinary(v) for k, v in json.loads(row).items()}
+            if kind == "index_part" and p.get("EXPRESSION"):
+                p["EXPRESSION"] = p["EXPRESSION"].replace("\\'", "'")  # STATISTICS escapes the quotes in an expression
             for v in volatile:
                 p.pop(v, None)
             parts.append({"kind": kind, "key": ".".join(str(p.get(k)) for k in key),
@@ -127,6 +152,8 @@ def extract_mysql(version, container):
         cell = {"table": 1, "view": 1, "routine": 2, "trigger": 2, "event": 3}[p["kind"]]
         if len(r) > cell:
             p["props"]["__show_create"] = r[cell]
+            if p["kind"] == "table":
+                table_facts(p["props"])
         if p["kind"] in ("routine", "trigger", "event") and len(r) > 1:
             # the sql_mode the program runs under, as SHOW CREATE gives it: 5.7's ROUTINES.SQL_MODE writes
             # ALLOW_INVALID_DATES as INVALID_DATES, which no server accepts back
