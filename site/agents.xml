@@ -41,7 +41,7 @@
       <task id="t06" name="store">Not written yet: the store over the bundled PostgreSQL (the workspace's cluster, its database and one database per schema, versions and seeds, a schema read in as one import turn with its log and read back the same, the saved connections). Written once t05 is merged, on its programs, by the decisions postgresql-bundled to parameters-not-code, and schema-dump (each live database compared with schema/dump when opened and every day).</task>
       <task id="t07" name="operations">Not written yet: every change as an operation of its turn, undo and reject by the inverses the log records.</task>
       <task id="t08" name="server">Not written yet: the server over the store, its API written first, the MCP's tools among it.</task>
-      <task id="t09" name="canvas">Not written yet: the canvas over the server, every flow a browser test on every engine.</task>
+      <task id="t09" name="canvas">Not written yet: the canvas over the server, every flow a browser test on every engine; among them the read screen (decision read-screen).</task>
       <task id="t10" name="steward">Not written yet: the XML instruction for an agent that runs on a schedule, reviews and QAs every open pull request against its task file, its gates and the rules, merges what passes, records each build's lesson, and starts the next build of the sequence.</task>
     </ahead>
     <issues href="https://github.com/k8nstantin/schema-forge/issues">Smaller work, fixes and questions are issues: https://github.com/k8nstantin/schema-forge/issues, and the ones labelled good first issue are the place to begin.</issues>
@@ -102,7 +102,7 @@
       <file>t06 · store: the workspace kept in the bundled PostgreSQL, every import logged (SF-97). Not written yet: the store over the bundled PostgreSQL (the workspace's cluster, its database and one database per schema, versions and seeds, a schema read in as one import turn with its log and read back the same, the saved connections). Written once t05 is merged, on its programs, by the decisions postgresql-bundled to parameters-not-code, and schema-dump (each live database compared with schema/dump when opened and every day).</file>
       <file>t07 · operations: every change an operation of its turn, undone by its inverse. Not written yet: every change as an operation of its turn, undo and reject by the inverses the log records.</file>
       <file>t08 · server: the server over the store: its API and the MCP's tools. Not written yet: the server over the store, its API written first, the MCP's tools among it.</file>
-      <file>t09 · canvas: the canvas over the server, every flow tested in a browser. Not written yet: the canvas over the server, every flow a browser test on every engine.</file>
+      <file>t09 · canvas: the canvas over the server, every flow tested in a browser. Not written yet: the canvas over the server, every flow a browser test on every engine; among them the read screen (decision read-screen).</file>
       <file>t10 · steward: the agent that reviews, merges the best build and starts the next. Not written yet: the XML instruction for an agent that runs on a schedule, reviews and QAs every open pull request against its task file, its gates and the rules, merges what passes, records each build's lesson, and starts the next build of the sequence.</file>
     </group>
     <group n="5" name="the guides, one for each kind of contribution, read when you take one up">

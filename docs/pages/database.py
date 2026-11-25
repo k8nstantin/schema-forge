@@ -175,6 +175,8 @@ GROUPS = [("cortex", "The model", ["schema_identity", "object_kinds", "object_ki
                                               "routine_parameters", "triggers", "trigger_events", "scheduled_events"]),
           ("cortex", "The log", ["turns", "operations", "row_changes", "value_changes", "locked_versions"]),
           ("cortex", "The canvas", ["pinned_notes", "custom_perspectives", "perspective_members", "layout_pins", "family_assignments"]),
+          ("cortex", "The engine's versions", ["engine_versions", "engine_features", "catalog_sources"]),
+          ("cortex", "The live source", ["source_reads"]),
           ("cortex", "The database", ["schema_migrations"])]
 GROUPS = [(o, title, [f"{o}.{nm}" for nm in names]) for o, title, names in GROUPS]
 grouped = {nm for _, _, l in GROUPS for nm in l}
@@ -182,7 +184,7 @@ missing = [t["name"] for t in db["cortex"]["tables"] if t["name"] not in grouped
 assert not missing, f"cortex tables in no group: {missing}"
 for o in db:
     if o != "cortex":
-        GROUPS.append((o, {"workspace": "sf_workspace"}.get(o, f"{o}: the engine's own tables"), [t["name"] for t in db[o]["tables"]]))
+        GROUPS.append((o, {"workspace": "sf_workspace", "usage": "usage: what the live server measured, apart from the design"}.get(o, f"{o}: the engine's own tables"), [t["name"] for t in db[o]["tables"]]))
 
 def id_pattern(t):
     idc = next((c for c in t["columns"] if c["name"] == "id"), None)

@@ -6,7 +6,8 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 e = html.escape
 OWNERS = [("cortex", "schema/cortex"), ("workspace", "schema/workspace")] + [
     ("engine_" + os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO))
-    for d in sorted(glob.glob(f"{REPO}/engines/*/schema"))]
+    for d in sorted(glob.glob(f"{REPO}/engines/*/schema"))] + [
+    (os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO)) for d in sorted(glob.glob(f"{REPO}/features/*/schema"))]
 TYPES = "TEXT|INTEGER|BIGINT|NUMERIC|BOOLEAN|UUID|TIMESTAMPTZ|JSONB"
 COLDEF = re.compile(r'^\s+("?[a-z_]+"?)\s+(' + TYPES + r')\b(.*?)(?:--\s*(.*))?$')
 

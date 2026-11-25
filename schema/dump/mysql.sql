@@ -206,6 +206,139 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: engine_features; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.engine_features (
+    id text NOT NULL,
+    what text NOT NULL,
+    since text,
+    until text,
+    detail text,
+    CONSTRAINT engine_features_id_check CHECK ((id ~ '^[a-z0-9_]+$'::text)),
+    CONSTRAINT engine_features_what_check CHECK ((length(what) >= 1))
+);
+
+
+ALTER TABLE cortex.engine_features OWNER TO sf_owner;
+
+--
+-- Name: TABLE engine_features; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.engine_features IS 'what a version of the database has or lacks (a type, a kind of object, an option, a clause), with the first and last version that has it. Written when the database is made, from the engine''s declaration (decision version-facts), so a person or the agent can ask what a schema may use at its version and what changes when it moves to another.';
+
+
+--
+-- Name: COLUMN engine_features.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_features.id IS 'as the engine names it (vector, check_constraints)';
+
+
+--
+-- Name: COLUMN engine_features.what; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_features.what IS 'what it is, in a few words (the VECTOR type)';
+
+
+--
+-- Name: COLUMN engine_features.since; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_features.since IS 'the first version that has it; NULL for every version from the oldest';
+
+
+--
+-- Name: COLUMN engine_features.until; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_features.until IS 'the last version that has it; NULL for every version to the newest';
+
+
+--
+-- Name: COLUMN engine_features.detail; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_features.detail IS 'what a version alone does not say (enforced from 8.0.16; parsed and ignored before); NULL for nothing';
+
+
+--
+-- Name: engine_versions; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.engine_versions (
+    id text NOT NULL,
+    name text NOT NULL,
+    "position" numeric NOT NULL,
+    support_ends timestamp with time zone,
+    CONSTRAINT engine_versions_id_check CHECK (((length(id) >= 1) AND (length(id) <= 40))),
+    CONSTRAINT engine_versions_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT engine_versions_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE cortex.engine_versions OWNER TO sf_owner;
+
+--
+-- Name: TABLE engine_versions; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.engine_versions IS 'the versions of the database the schema''s engine supports, in order, as the engine declares them. Written when the database is made, from the engine''s declaration (decision version-facts); the engine''s code is the one source.';
+
+
+--
+-- Name: COLUMN engine_versions.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_versions.id IS 'as the engine names the version (5.7, 8.4)';
+
+
+--
+-- Name: COLUMN engine_versions.name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_versions.name IS 'as people say it (MySQL 8.4)';
+
+
+--
+-- Name: COLUMN engine_versions."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_versions."position" IS 'its place, oldest first: a version''s features compare by it';
+
+
+--
+-- Name: COLUMN engine_versions.support_ends; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_versions.support_ends IS 'when its maker stops supporting it; NULL when not announced';
+
+
+--
+-- Name: broken_features_since_before_until; Type: VIEW; Schema: cortex; Owner: sf_owner
+--
+
+CREATE VIEW cortex.broken_features_since_before_until AS
+ SELECT 'features-since-before-until'::text AS rule,
+    f.id
+   FROM ((cortex.engine_features f
+     JOIN cortex.engine_versions s ON ((s.id = f.since)))
+     JOIN cortex.engine_versions u ON ((u.id = f.until)))
+  WHERE (s."position" > u."position");
+
+
+ALTER VIEW cortex.broken_features_since_before_until OWNER TO sf_owner;
+
+--
+-- Name: VIEW broken_features_since_before_until; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON VIEW cortex.broken_features_since_before_until IS 'A feature''s first version is not after its last.';
+
+
+--
 -- Name: check_constraints; Type: TABLE; Schema: cortex; Owner: sf_owner
 --
 
@@ -3402,6 +3535,83 @@ COMMENT ON VIEW cortex.broken_versions_follow_the_log IS 'A higher version holds
 
 
 --
+-- Name: catalog_sources; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.catalog_sources (
+    id text NOT NULL,
+    version text NOT NULL,
+    source text NOT NULL,
+    gives text NOT NULL,
+    needs text,
+    usage boolean DEFAULT false NOT NULL,
+    "position" numeric NOT NULL,
+    CONSTRAINT catalog_sources_check CHECK ((id = ((version || '/'::text) || source))),
+    CONSTRAINT catalog_sources_gives_check CHECK ((length(gives) >= 1)),
+    CONSTRAINT catalog_sources_position_check CHECK (("position" > (0)::numeric)),
+    CONSTRAINT catalog_sources_source_check CHECK ((length(source) >= 1))
+);
+
+
+ALTER TABLE cortex.catalog_sources OWNER TO sf_owner;
+
+--
+-- Name: TABLE catalog_sources; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.catalog_sources IS 'what the engine''s live read asks a server of each version, what it gives, and the grant it needs. Written when the database is made, from the engine''s declaration (decision version-facts): what the Connections page shows and the connection test checks, so a missing grant says what will not be read.';
+
+
+--
+-- Name: COLUMN catalog_sources.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.catalog_sources.id IS '<version>/<source>: 5.7/information_schema.ROUTINES';
+
+
+--
+-- Name: COLUMN catalog_sources.version; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.catalog_sources.version IS 'the version it is asked of';
+
+
+--
+-- Name: COLUMN catalog_sources.source; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.catalog_sources.source IS 'the catalog table or statement, as the server names it (performance_schema.table_io_waits_summary_by_table, SHOW CREATE TABLE)';
+
+
+--
+-- Name: COLUMN catalog_sources.gives; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.catalog_sources.gives IS 'what the read takes from it (routines and their bodies)';
+
+
+--
+-- Name: COLUMN catalog_sources.needs; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.catalog_sources.needs IS 'the grant it needs, as the server writes it (SELECT ON mysql.proc); NULL for none beyond the database''s';
+
+
+--
+-- Name: COLUMN catalog_sources.usage; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.catalog_sources.usage IS 'true for a source of usage (performance_schema), false for one of structure';
+
+
+--
+-- Name: COLUMN catalog_sources."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.catalog_sources."position" IS 'its place in the read of its version, in the order asked';
+
+
+--
 -- Name: column_identities; Type: TABLE; Schema: cortex; Owner: sf_owner
 --
 
@@ -3734,6 +3944,134 @@ COMMENT ON COLUMN cortex.schema_migrations.checksum IS 'SHA-256 of what was appl
 --
 
 COMMENT ON COLUMN cortex.schema_migrations.applied_at IS 'when it was applied';
+
+
+--
+-- Name: source_reads; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.source_reads (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    turn uuid,
+    connection_id uuid NOT NULL,
+    connection_name text NOT NULL,
+    database_name text NOT NULL,
+    server_version text NOT NULL,
+    server_edition text,
+    read_as text NOT NULL,
+    server_uptime bigint,
+    usage_available boolean NOT NULL,
+    missing_grants text,
+    started_at timestamp with time zone NOT NULL,
+    ended_at timestamp with time zone,
+    CONSTRAINT source_reads_check CHECK (((ended_at IS NULL) OR (ended_at >= started_at))),
+    CONSTRAINT source_reads_connection_name_check CHECK ((length(connection_name) >= 1)),
+    CONSTRAINT source_reads_database_name_check CHECK ((length(database_name) >= 1)),
+    CONSTRAINT source_reads_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT source_reads_read_as_check CHECK ((length(read_as) >= 1)),
+    CONSTRAINT source_reads_server_uptime_check CHECK ((server_uptime >= 0)),
+    CONSTRAINT source_reads_server_version_check CHECK ((length(server_version) >= 1))
+);
+
+
+ALTER TABLE cortex.source_reads OWNER TO sf_owner;
+
+--
+-- Name: TABLE source_reads; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.source_reads IS 'each read of a live database for this schema: from which saved connection, which server, as whom, and when. An import lands in its turn; a read of usage alone has none (decision usage-apart). The connection is the workspace''s, in another database, so it is kept by its id and name, not a foreign key.';
+
+
+--
+-- Name: COLUMN source_reads.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.id IS 'UUIDv7, issued by the database';
+
+
+--
+-- Name: COLUMN source_reads.turn; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.turn IS 'the import turn the structure read landed in; NULL for a read of usage alone';
+
+
+--
+-- Name: COLUMN source_reads.connection_id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.connection_id IS 'the saved connection read through, as the workspace''s connections row holds it';
+
+
+--
+-- Name: COLUMN source_reads.connection_name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.connection_name IS 'its name when it was read (prod-replica)';
+
+
+--
+-- Name: COLUMN source_reads.database_name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.database_name IS 'the database read, as the server names it (shop)';
+
+
+--
+-- Name: COLUMN source_reads.server_version; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.server_version IS 'the version the server gave (8.4.13)';
+
+
+--
+-- Name: COLUMN source_reads.server_edition; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.server_edition IS 'what the server says it is beyond its version (MySQL Community Server - GPL); NULL when it says nothing';
+
+
+--
+-- Name: COLUMN source_reads.read_as; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.read_as IS 'the account the server says the read ran as (sf_reader@%)';
+
+
+--
+-- Name: COLUMN source_reads.server_uptime; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.server_uptime IS 'the server''s uptime in seconds when read: usage counts from its start; NULL when it would not say';
+
+
+--
+-- Name: COLUMN source_reads.usage_available; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.usage_available IS 'whether the server keeps usage (MySQL: performance_schema on) and the account could read it';
+
+
+--
+-- Name: COLUMN source_reads.missing_grants; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.missing_grants IS 'the grants the account lacked, as the test named them, and so what was not read; NULL for none';
+
+
+--
+-- Name: COLUMN source_reads.started_at; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.started_at IS 'when the read began';
+
+
+--
+-- Name: COLUMN source_reads.ended_at; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.ended_at IS 'when it ended; NULL while it runs';
 
 
 --
@@ -5534,6 +5872,30 @@ COMMENT ON COLUMN engine_mysql.view_options.security IS 'whose rights it runs wi
 
 
 --
+-- Name: catalog_sources catalog_sources_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.catalog_sources
+    ADD CONSTRAINT catalog_sources_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: catalog_sources catalog_sources_version_position_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.catalog_sources
+    ADD CONSTRAINT catalog_sources_version_position_key UNIQUE (version, "position");
+
+
+--
+-- Name: catalog_sources catalog_sources_version_source_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.catalog_sources
+    ADD CONSTRAINT catalog_sources_version_source_key UNIQUE (version, source);
+
+
+--
 -- Name: check_constraints check_constraints_object_position_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
@@ -5635,6 +5997,30 @@ ALTER TABLE ONLY cortex.custom_perspectives
 
 ALTER TABLE ONLY cortex.domains
     ADD CONSTRAINT domains_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: engine_features engine_features_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.engine_features
+    ADD CONSTRAINT engine_features_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: engine_versions engine_versions_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.engine_versions
+    ADD CONSTRAINT engine_versions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: engine_versions engine_versions_position_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.engine_versions
+    ADD CONSTRAINT engine_versions_position_key UNIQUE ("position");
 
 
 --
@@ -6142,6 +6528,14 @@ ALTER TABLE ONLY cortex.sort_fields
 
 
 --
+-- Name: source_reads source_reads_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.source_reads
+    ADD CONSTRAINT source_reads_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: subject_areas subject_areas_name_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
@@ -6560,6 +6954,34 @@ CREATE UNIQUE INDEX perspective_members_once ON cortex.perspective_members USING
 --
 
 CREATE UNIQUE INDEX table_keys_one_primary ON cortex.table_keys USING btree (object) WHERE (what = 'primary'::text);
+
+
+--
+-- Name: engine_features rule:cortex.features_since_before_until; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.features_since_before_until" AFTER INSERT OR DELETE OR UPDATE ON cortex.engine_features DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_features_since_before_until');
+
+
+--
+-- Name: engine_versions rule:cortex.features_since_before_until; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.features_since_before_until" AFTER INSERT OR DELETE OR UPDATE ON cortex.engine_versions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_features_since_before_until');
+
+
+--
+-- Name: engine_features rule:cortex.features_since_before_until:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.features_since_before_until:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.engine_features FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_features_since_before_until');
+
+
+--
+-- Name: engine_versions rule:cortex.features_since_before_until:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.features_since_before_until:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.engine_versions FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_features_since_before_until');
 
 
 --
@@ -8117,6 +8539,14 @@ CREATE TRIGGER "rule:engine_mysql.table_options_on_tables:again" AFTER INSERT OR
 
 
 --
+-- Name: catalog_sources catalog_sources_version_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.catalog_sources
+    ADD CONSTRAINT catalog_sources_version_fkey FOREIGN KEY (version) REFERENCES cortex.engine_versions(id);
+
+
+--
 -- Name: check_constraints check_constraints_object_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
@@ -8154,6 +8584,22 @@ ALTER TABLE ONLY cortex.composite_type_fields
 
 ALTER TABLE ONLY cortex.domains
     ADD CONSTRAINT domains_id_fkey FOREIGN KEY (id) REFERENCES cortex.objects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: engine_features engine_features_since_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.engine_features
+    ADD CONSTRAINT engine_features_since_fkey FOREIGN KEY (since) REFERENCES cortex.engine_versions(id);
+
+
+--
+-- Name: engine_features engine_features_until_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.engine_features
+    ADD CONSTRAINT engine_features_until_fkey FOREIGN KEY (until) REFERENCES cortex.engine_versions(id);
 
 
 --
@@ -8466,6 +8912,14 @@ ALTER TABLE ONLY cortex.sort_fields
 
 ALTER TABLE ONLY cortex.sort_fields
     ADD CONSTRAINT sort_fields_object_fkey FOREIGN KEY (object) REFERENCES cortex.objects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: source_reads source_reads_turn_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.source_reads
+    ADD CONSTRAINT source_reads_turn_fkey FOREIGN KEY (turn) REFERENCES cortex.turns(id);
 
 
 --
@@ -8805,6 +9259,30 @@ GRANT ALL ON FUNCTION cortex.rule_check() TO sf_service;
 --
 
 GRANT ALL ON FUNCTION cortex.rule_marks() TO sf_service;
+
+
+--
+-- Name: TABLE engine_features; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.engine_features TO sf_service;
+GRANT SELECT ON TABLE cortex.engine_features TO sf_reader;
+
+
+--
+-- Name: TABLE engine_versions; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.engine_versions TO sf_service;
+GRANT SELECT ON TABLE cortex.engine_versions TO sf_reader;
+
+
+--
+-- Name: TABLE broken_features_since_before_until; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.broken_features_since_before_until TO sf_service;
+GRANT SELECT ON TABLE cortex.broken_features_since_before_until TO sf_reader;
 
 
 --
@@ -9264,6 +9742,14 @@ GRANT SELECT ON TABLE cortex.broken_versions_follow_the_log TO sf_reader;
 
 
 --
+-- Name: TABLE catalog_sources; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.catalog_sources TO sf_service;
+GRANT SELECT ON TABLE cortex.catalog_sources TO sf_reader;
+
+
+--
 -- Name: TABLE column_identities; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
@@ -9309,6 +9795,14 @@ GRANT SELECT ON TABLE cortex.required_extensions TO sf_reader;
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.schema_migrations TO sf_service;
 GRANT SELECT ON TABLE cortex.schema_migrations TO sf_reader;
+
+
+--
+-- Name: TABLE source_reads; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.source_reads TO sf_service;
+GRANT SELECT ON TABLE cortex.source_reads TO sf_reader;
 
 
 --
