@@ -304,3 +304,55 @@ if __name__ == "__main__":
     versioning(json.load(open(sys.argv[1])))
     dependents(json.load(open(sys.argv[1])))
     survive(json.load(open(sys.argv[1])))
+
+
+def scope(st, engine):
+    """The store's rows that belong to one engine's servers: a writer sees only its own."""
+    servers = {s["id"] for s in st["core.server"].values() if s["engine"] == engine}
+    ns = {k: n for k, n in st["core.namespace"].items() if n["server_id"] in servers}
+    objs = {k: o for k, o in st["core.object"].items() if o["namespace_id"] in ns}
+    keep = {"core.namespace": ns, "core.object": objs}
+    out = {}
+    for t, rows in st.items():
+        if t in keep:
+            out[t] = keep[t]
+        elif t.startswith("engine_") and not t.startswith(f"engine_{engine}."):
+            out[t] = {}
+        elif "object_id" in next(iter(rows.values()), {}):
+            out[t] = {k: r for k, r in rows.items() if r["object_id"] in objs}
+        else:
+            out[t] = rows
+    return out
+
+
+def both(mysql_snap, pg_snap):
+    """One store holding a MySQL server and a PostgreSQL server: each plugin writes exactly what it writes alone."""
+    import pg_store as PG
+    off = 10_000_000
+
+    def shift(rows):
+        for t, rs in rows.items():
+            for r in rs:
+                for k in list(r):
+                    if r[k] is not None and (k == "id" or k.endswith("_id") or k == "owned_by"):
+                        r[k] += off
+                    elif k == "update_columns" and r[k]:
+                        r[k] = [x + off for x in r[k]]
+        return rows
+    my, pg = S2.rows_of(mysql_snap)[0], shift(PG.rows_of(pg_snap))
+    db = "lab_store_both"
+    C.psql(f"DROP DATABASE IF EXISTS {db} WITH (FORCE); CREATE DATABASE {db};", "postgres")
+    here = os.path.dirname(os.path.abspath(__file__))
+    C.psql(open(os.path.join(here, "design", "store.sql")).read() + open(os.path.join(here, "design", "versioning.sql")).read()
+           + "\nSELECT log.attach(); SELECT log.init('main');", db)
+    order = S2.ORDER + [t for t in PG.ORDER if t not in S2.ORDER]
+    merged = {t: my.get(t, []) + pg.get(t, []) for t in order}
+    C.psql("BEGIN; SELECT log.begin_turn('import both');\n" + "".join(S2.copy_sql(t, merged[t]) for t in order if merged[t])
+           + "SELECT log.end_turn(); COMMIT;", db)
+    st = {t: {r["id"]: r for r in json.loads(C.psql(f"SELECT coalesce(json_agg(to_jsonb(x)), '[]') FROM {t} x;", db))} for t in order}
+    alone_my = S2.write(S2.load_back(f"lab_store_mysql_{mysql_snap['version'].replace('.', '_')}"), mysql_snap["version"])
+    together_my = S2.write(scope(st, "mysql"), mysql_snap["version"])
+    alone_pg = PG.script(PG.load_back(f"lab_store_postgresql_{pg_snap['version']}"))
+    together_pg = PG.script(scope(st, "postgresql"))
+    print(f"== one store, two engines: {sum(len(v) for v in merged.values())} rows; MySQL writes the same as alone: "
+          f"{'pass' if together_my == alone_my else 'FAIL'}; PostgreSQL writes the same as alone: {'pass' if together_pg == alone_pg else 'FAIL'}")

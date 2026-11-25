@@ -186,7 +186,11 @@ PG_PARTS = {
         'comment', obj_description(c.oid, 'pg_class'), 'partition_key', pg_get_partkeydef(c.oid),
         'partition_bound', pg_get_expr(c.relpartbound, c.oid),
         'inherits', (SELECT array_agg(pn.nspname || '.' || p.relname ORDER BY i.inhseqno) FROM pg_inherits i JOIN pg_class p ON p.oid = i.inhparent JOIN pg_namespace pn ON pn.oid = p.relnamespace WHERE i.inhrelid = c.oid),
-        'view_definition', CASE WHEN c.relkind IN ('v','m') THEN pg_get_viewdef(c.oid) END) AS props
+        'view_definition', CASE WHEN c.relkind IN ('v','m') THEN pg_get_viewdef(c.oid) END,
+        'uses', CASE WHEN c.relkind IN ('v','m') THEN (SELECT jsonb_agg(DISTINCT un.nspname || '.' || u.relname) FROM pg_rewrite rw
+          JOIN pg_depend d ON d.classid = 'pg_rewrite'::regclass AND d.objid = rw.oid AND d.refclassid = 'pg_class'::regclass
+          JOIN pg_class u ON u.oid = d.refobjid JOIN pg_namespace un ON un.oid = u.relnamespace
+          WHERE rw.ev_class = c.oid AND u.oid <> c.oid) END) AS props
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace LEFT JOIN pg_am am ON am.oid = c.relam
       WHERE n.nspname = ANY(%(s)s) AND c.relkind IN ('r','p','v','m','f','S')""",
     "column": """SELECT n.nspname || '.' || c.relname || '.' || a.attname AS key, n.nspname || '.' || c.relname AS parent,
@@ -206,14 +210,50 @@ PG_PARTS = {
         'predicate', pg_get_expr(i.indpred, i.indrelid), 'comment', obj_description(i.indexrelid, 'pg_class'),
         'constraint', (SELECT co.conname FROM pg_constraint co WHERE co.conindid = i.indexrelid AND co.conrelid = i.indrelid AND co.contype IN ('p','u','x')),
         'parent_index', (SELECT pn.nspname || '.' || pc.relname FROM pg_inherits h JOIN pg_class pc ON pc.oid = h.inhparent
-          JOIN pg_namespace pn ON pn.oid = pc.relnamespace WHERE h.inhrelid = i.indexrelid)) AS props
+          JOIN pg_namespace pn ON pn.oid = pc.relnamespace WHERE h.inhrelid = i.indexrelid),
+        'parts', (SELECT jsonb_agg(jsonb_build_object('position', k, 'column', a.attname,
+            'expression', CASE WHEN i.indkey[k - 1] = 0 THEN pg_get_indexdef(i.indexrelid, k, true) END,
+            'key', k <= i.indnkeyatts, 'descending', (i.indoption[k - 1] & 1) = 1, 'nulls_first', (i.indoption[k - 1] & 2) = 2,
+            'opclass', CASE WHEN k <= i.indnkeyatts AND oc.oid IS DISTINCT FROM (
+                         -- the default the server would choose for the column's type: exact, binary-compatible, or polymorphic
+                         SELECT d.oid FROM pg_opclass d, pg_type ct
+                         WHERE ct.oid = coalesce(nullif(bt.typbasetype, 0), a.atttypid, (SELECT ex.prorettype FROM pg_proc ex WHERE false))
+                           AND d.opcmethod = oc.opcmethod AND d.opcdefault
+                           AND (d.opcintype = ct.oid
+                                OR EXISTS (SELECT 1 FROM pg_cast cs WHERE cs.castsource = ct.oid AND cs.casttarget = d.opcintype AND cs.castmethod = 'b')
+                                OR (d.opcintype = 'anyarray'::regtype AND ct.typcategory = 'A')
+                                OR (d.opcintype = 'anyrange'::regtype AND ct.typtype = 'r')
+                                OR (d.opcintype = 'anymultirange'::regtype AND ct.typtype = 'm')
+                                OR (d.opcintype = 'anyenum'::regtype AND ct.typtype = 'e'))
+                         ORDER BY d.opcintype = ct.oid DESC, (SELECT pt.typispreferred FROM pg_type pt WHERE pt.oid = d.opcintype) DESC LIMIT 1)
+                       THEN CASE WHEN ocn.nspname IN ('pg_catalog', 'public') THEN quote_ident(oc.opcname) ELSE quote_ident(ocn.nspname) || '.' || quote_ident(oc.opcname) END END,
+            'opclass_name', CASE WHEN k <= i.indnkeyatts THEN CASE WHEN ocn.nspname IN ('pg_catalog', 'public') THEN quote_ident(oc.opcname) ELSE quote_ident(ocn.nspname) || '.' || quote_ident(oc.opcname) END END,
+            'opclass_oid', CASE WHEN k <= i.indnkeyatts THEN oc.oid END,
+            'index_collation', (SELECT CASE WHEN cn.nspname IN ('pg_catalog', 'public') THEN quote_ident(co.collname) ELSE quote_ident(cn.nspname) || '.' || quote_ident(co.collname) END
+                                FROM pg_collation co JOIN pg_namespace cn ON cn.oid = co.collnamespace WHERE co.oid = i.indcollation[k - 1]),
+            'collation', CASE WHEN i.indcollation[k - 1] <> 0 AND i.indcollation[k - 1] <> coalesce(a.attcollation, 0)
+                         THEN (SELECT CASE WHEN cn.nspname IN ('pg_catalog', 'public') THEN quote_ident(co.collname) ELSE quote_ident(cn.nspname) || '.' || quote_ident(co.collname) END
+                               FROM pg_collation co JOIN pg_namespace cn ON cn.oid = co.collnamespace WHERE co.oid = i.indcollation[k - 1]) END)
+          ORDER BY k)
+          FROM generate_series(1, i.indnatts) k
+          LEFT JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[k - 1] AND i.indkey[k - 1] <> 0
+          LEFT JOIN pg_type bt ON bt.oid = a.atttypid
+          LEFT JOIN pg_opclass oc ON oc.oid = i.indclass[k - 1] LEFT JOIN pg_namespace ocn ON ocn.oid = oc.opcnamespace)) AS props
       FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_class tc ON tc.oid = i.indrelid
       JOIN pg_namespace n ON n.oid = tc.relnamespace JOIN pg_am am ON am.oid = ic.relam WHERE n.nspname = ANY(%(s)s)""",
     "constraint": """SELECT n.nspname || '.' || coalesce(rc.relname, ty.typname) || '.' || co.conname AS key,
         n.nspname || '.' || coalesce(rc.relname, ty.typname) AS parent,
         to_jsonb(co) - 'oid' - 'connamespace' - 'conrelid' - 'contypid' - 'conindid' - 'conparentid' - 'confrelid'
         - 'conkey' - 'confkey' - 'conpfeqop' - 'conppeqop' - 'conffeqop' - 'conexclop' - 'conbin' - 'confdelsetcols'
-        || jsonb_build_object('definition', pg_get_constraintdef(co.oid), 'comment', obj_description(co.oid, 'pg_constraint')) AS props
+        || jsonb_build_object('definition', pg_get_constraintdef(co.oid), 'comment', obj_description(co.oid, 'pg_constraint'),
+        'columns', (SELECT jsonb_agg(a.attname ORDER BY k.n) FROM unnest(co.conkey) WITH ORDINALITY k(attnum, n)
+                    JOIN pg_attribute a ON a.attrelid = co.conrelid AND a.attnum = k.attnum),
+        'ref_table', (SELECT quote_ident(fn.nspname) || '.' || quote_ident(fc.relname) FROM pg_class fc JOIN pg_namespace fn ON fn.oid = fc.relnamespace WHERE fc.oid = co.confrelid),
+        'ref_columns', (SELECT jsonb_agg(a.attname ORDER BY k.n) FROM unnest(co.confkey) WITH ORDINALITY k(attnum, n)
+                        JOIN pg_attribute a ON a.attrelid = co.confrelid AND a.attnum = k.attnum),
+        'expression', CASE WHEN co.contype = 'c' THEN pg_get_expr(co.conbin, coalesce(nullif(co.conrelid, 0), 0)) END,
+        'operators', (SELECT jsonb_agg(o.oprname ORDER BY k.n) FROM unnest(co.conexclop) WITH ORDINALITY k(op, n) JOIN pg_operator o ON o.oid = k.op),
+        'index', (SELECT ic.relname FROM pg_class ic WHERE ic.oid = co.conindid)) AS props
       FROM pg_constraint co JOIN pg_namespace n ON n.oid = co.connamespace LEFT JOIN pg_class rc ON rc.oid = co.conrelid
       LEFT JOIN pg_type ty ON ty.oid = co.contypid WHERE n.nspname = ANY(%(s)s)""",
     "sequence": """SELECT n.nspname || '.' || c.relname AS key, n.nspname AS parent,
@@ -237,17 +277,24 @@ PG_PARTS = {
         AND (t.typtype <> 'c' OR (SELECT relkind FROM pg_class WHERE oid = t.typrelid) = 'c')""",
     "routine": """SELECT n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' AS key, n.nspname AS parent,
         to_jsonb(p) - 'oid' - 'pronamespace' - 'proowner' - 'prolang' - 'prorettype' - 'proargtypes' - 'proallargtypes'
-        - 'proargdefaults' - 'protrftypes' - 'prosupport' - 'prosqlbody' - 'provariadic' - 'procost' - 'prorows'
+        - 'proargdefaults' - 'protrftypes' - 'prosupport' - 'prosqlbody' - 'provariadic'
         || jsonb_build_object('language', l.lanname, 'returns', pg_get_function_result(p.oid),
         'arguments', pg_get_function_arguments(p.oid), 'owner', pg_get_userbyid(p.proowner),
         'comment', obj_description(p.oid, 'pg_proc'), 'acl', p.proacl::text[],
         'create', CASE WHEN p.prokind <> 'a' THEN pg_get_functiondef(p.oid) END,
+        'argument_types', (SELECT jsonb_agg(format_type(t, NULL) ORDER BY n) FROM unnest(coalesce(p.proallargtypes, p.proargtypes::oid[])) WITH ORDINALITY x(t, n)),
+        'argument_defaults', pg_get_expr(p.proargdefaults, 0),
         'made_by', (SELECT CASE d.deptype WHEN 'e' THEN 'extension' ELSE 'type' END FROM pg_depend d
           WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype IN ('i','e') LIMIT 1)) AS props
       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_language l ON l.oid = p.prolang WHERE n.nspname = ANY(%(s)s)""",
     "trigger": """SELECT n.nspname || '.' || c.relname || '.' || tg.tgname AS key, n.nspname || '.' || c.relname AS parent,
         to_jsonb(tg) - 'oid' - 'tgrelid' - 'tgparentid' - 'tgfoid' - 'tgconstrrelid' - 'tgconstrindid' - 'tgconstraint'
-        - 'tgattr' - 'tgargs' - 'tgqual' || jsonb_build_object('definition', pg_get_triggerdef(tg.oid)) AS props
+        - 'tgattr' - 'tgargs' - 'tgqual' || jsonb_build_object('definition', pg_get_triggerdef(tg.oid),
+        'function', (SELECT quote_ident(fn.nspname) || '.' || quote_ident(f.proname) FROM pg_proc f JOIN pg_namespace fn ON fn.oid = f.pronamespace WHERE f.oid = tg.tgfoid),
+        'arguments', CASE WHEN tg.tgnargs > 0 THEN (SELECT jsonb_agg(x) FROM unnest(string_to_array(rtrim(encode(tg.tgargs, 'escape'), '\\000'), '\\000')) x) END,
+        'update_columns', (SELECT jsonb_agg(a.attname ORDER BY k.n) FROM unnest(tg.tgattr) WITH ORDINALITY k(attnum, n)
+                           JOIN pg_attribute a ON a.attrelid = tg.tgrelid AND a.attnum = k.attnum),
+        'condition', substring(pg_get_triggerdef(tg.oid) FROM ' WHEN \\((.*)\\) EXECUTE ')) AS props
       FROM pg_trigger tg JOIN pg_class c ON c.oid = tg.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = ANY(%(s)s) AND NOT tg.tgisinternal""",
     "policy": """SELECT schemaname || '.' || tablename || '.' || policyname AS key, schemaname || '.' || tablename AS parent,
@@ -263,6 +310,37 @@ PG_PARTS = {
 }
 
 
+DEFAULT_OPCLASS = """SELECT d.oid FROM pg_opclass d, pg_opclass oc, pg_type ct WHERE oc.oid = {opc} AND ct.oid = {typ}
+  AND d.opcmethod = oc.opcmethod AND d.opcdefault
+  AND (d.opcintype = ct.oid OR EXISTS (SELECT 1 FROM pg_cast cs WHERE cs.castsource = ct.oid AND cs.casttarget = d.opcintype AND cs.castmethod = 'b')
+       OR (d.opcintype = 'anyarray'::regtype AND ct.typcategory = 'A') OR (d.opcintype = 'anyrange'::regtype AND ct.typtype = 'r')
+       OR (d.opcintype = 'anymultirange'::regtype AND ct.typtype = 'm') OR (d.opcintype = 'anyenum'::regtype AND ct.typtype = 'e'))
+  ORDER BY d.opcintype = ct.oid DESC, (SELECT pt.typispreferred FROM pg_type pt WHERE pt.oid = d.opcintype) DESC LIMIT 1"""
+
+
+def expression_parts(container, parts):
+    """An index expression's operator class and collation are written only when they are not what the expression
+    itself gives: its type's default class and its own collation. The server says both, over a row of nulls."""
+    for p in parts:
+        if p["kind"] != "index":
+            continue
+        table = p["parent"]
+        for part in p["props"].get("parts") or []:
+            if not part.get("expression") or part.get("opclass_oid") is None:
+                continue
+            rel = next(x for x in parts if x["kind"] == "relation" and x["key"] == table)
+            qrel = '"' + rel["parent"].replace('"', '""') + '"."' + rel["props"]["relname"].replace('"', '""') + '"'
+            e = part["expression"]
+            row = pg(container, f"SELECT json_build_object('type', pg_typeof({e})::oid, 'collation', pg_collation_for({e})) "
+                                f"FROM (SELECT (NULL::{qrel}).*) t;").strip()
+            got = json.loads(row)
+            default = pg(container, DEFAULT_OPCLASS.format(opc=part["opclass_oid"], typ=got["type"]) + ";").strip()
+            part["opclass"] = None if default == str(part["opclass_oid"]) else part["opclass_name"]
+            own = (got["collation"] or "").replace('"pg_catalog".', "").replace('"public".', "")
+            part["collation"] = None if not part.get("index_collation") or part["index_collation"] == own or \
+                (own and own.replace('"', '') == part["index_collation"].replace('"', '')) else part["index_collation"]
+
+
 def extract_pg(version, container):
     parts = []
     s = "ARRAY[" + ",".join(f"'{x}'" for x in SCHEMAS) + "]"
@@ -271,6 +349,11 @@ def extract_pg(version, container):
         for r in json.loads(pg(container, sql)):
             props = {k: v for k, v in r["props"].items() if v is not None}
             parts.append({"kind": kind, "key": r["key"], "parent": r["parent"], "props": props})
+    expression_parts(container, parts)
+    for p in parts:
+        for part in p["props"].get("parts") or [] if p["kind"] == "index" else []:
+            for k in ("opclass_name", "opclass_oid", "index_collation"):
+                part.pop(k, None)  # what the decision above needed; the server's oids differ between servers
     return parts
 
 

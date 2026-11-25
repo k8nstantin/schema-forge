@@ -301,3 +301,163 @@ CREATE TABLE engine_mysql.event (
   on_completion  text    NOT NULL,           -- PRESERVE, NOT PRESERVE
   FOREIGN KEY (id, kind) REFERENCES core.object (id, kind) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
 );
+
+-- ---------------------------------------------------------------- PostgreSQL
+
+CREATE SCHEMA engine_postgresql;
+
+CREATE TABLE engine_postgresql.namespace (
+  id    bigint PRIMARY KEY REFERENCES core.namespace (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  owner text,
+  acl   text[]
+);
+
+CREATE TABLE engine_postgresql.extension (
+  id          bigint PRIMARY KEY,
+  database_id bigint NOT NULL REFERENCES core.namespace (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  name        text   NOT NULL,
+  schema_name text   NOT NULL,                -- where it puts its objects; often a schema the store does not hold
+  version     text   NOT NULL,
+  UNIQUE (database_id, name) DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE TABLE engine_postgresql.collation (
+  id            bigint  PRIMARY KEY,
+  namespace_id  bigint  NOT NULL REFERENCES core.namespace (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  name          text    NOT NULL,
+  provider      text    NOT NULL,           -- icu, libc, builtin
+  locale        text,
+  lc_collate    text,
+  lc_ctype      text,
+  deterministic boolean NOT NULL DEFAULT true,
+  comment       text,
+  UNIQUE (namespace_id, name) DEFERRABLE INITIALLY DEFERRED
+);
+
+-- tables, views, materialized views and sequences
+CREATE TABLE engine_postgresql.relation (
+  id                 bigint  PRIMARY KEY REFERENCES core.object (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  persistence        text    NOT NULL DEFAULT 'p' CHECK (persistence IN ('p', 'u', 't')),
+  options            text[],
+  access_method      text,
+  owner              text,
+  acl                text[],
+  row_security       boolean NOT NULL DEFAULT false,
+  force_row_security boolean NOT NULL DEFAULT false,
+  replica_identity   text    NOT NULL DEFAULT 'd',
+  populated          boolean NOT NULL DEFAULT true
+);
+
+CREATE TABLE engine_postgresql.inheritance (
+  id        bigint  PRIMARY KEY,
+  object_id bigint  NOT NULL REFERENCES core.object (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  parent_id bigint  NOT NULL REFERENCES core.object (id) DEFERRABLE INITIALLY DEFERRED,  -- a parent cannot go first
+  position  integer NOT NULL,
+  UNIQUE (object_id, position) DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE TABLE engine_postgresql.column (
+  id            bigint  PRIMARY KEY REFERENCES core.column (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  is_local      boolean NOT NULL DEFAULT true,   -- false: it comes from a parent table only
+  inherit_count integer NOT NULL DEFAULT 0,
+  options       text[],
+  acl           text[]
+);
+
+CREATE TABLE engine_postgresql.index (
+  id                 bigint  PRIMARY KEY REFERENCES core.index (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  nulls_not_distinct boolean NOT NULL DEFAULT false,
+  options            text[],
+  parent_index_id    bigint  REFERENCES core.index (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE TABLE engine_postgresql.index_part (
+  id             bigint  PRIMARY KEY REFERENCES core.index_part (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  is_key         boolean NOT NULL DEFAULT true,  -- false: an INCLUDE column
+  nulls_first    boolean NOT NULL DEFAULT false,
+  operator_class text,
+  collation_name text
+);
+
+CREATE TABLE engine_postgresql.constraint (
+  id            bigint  PRIMARY KEY REFERENCES core.constraint (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  validated     boolean NOT NULL DEFAULT true,
+  no_inherit    boolean NOT NULL DEFAULT false,
+  is_local      boolean NOT NULL DEFAULT true,
+  inherit_count integer NOT NULL DEFAULT 0,
+  operators     text[]                          -- an exclusion's, one per part
+);
+
+CREATE TABLE engine_postgresql.routine (
+  id           bigint  PRIMARY KEY REFERENCES core.routine (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  volatility   text    NOT NULL DEFAULT 'v' CHECK (volatility IN ('i', 's', 'v')),
+  parallel     text    NOT NULL DEFAULT 'u' CHECK (parallel IN ('s', 'r', 'u')),
+  strict       boolean NOT NULL DEFAULT false,
+  leakproof    boolean NOT NULL DEFAULT false,
+  returns_set  boolean NOT NULL DEFAULT false,
+  cost         real,
+  result_rows  real,
+  config       text[],
+  owner        text,
+  acl          text[]
+);
+
+CREATE TABLE engine_postgresql.parameter (
+  id            bigint PRIMARY KEY REFERENCES core.parameter (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  default_value text NOT NULL
+);
+
+CREATE TABLE engine_postgresql.trigger (
+  id                 bigint  PRIMARY KEY REFERENCES core.trigger (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  function_name      text    NOT NULL,          -- the trigger function, as the server names it
+  arguments          text[],
+  update_columns     bigint[],                  -- UPDATE OF: core.column ids
+  condition          text,
+  old_table          text,
+  new_table          text,
+  enabled            text    NOT NULL DEFAULT 'O',
+  is_deferrable      boolean NOT NULL DEFAULT false,
+  initially_deferred boolean NOT NULL DEFAULT false
+);
+
+CREATE TABLE engine_postgresql.type (
+  id                 bigint  PRIMARY KEY,
+  kind               text    NOT NULL DEFAULT 'type' CHECK (kind = 'type'),
+  type_kind          text    NOT NULL CHECK (type_kind IN ('e', 'c', 'd', 'r')),  -- enum, composite, domain, range
+  labels             text[],
+  attributes         jsonb,                     -- a composite's: [{name, type}]
+  base               text,
+  not_null           boolean NOT NULL DEFAULT false,
+  default_value      text,
+  collation_name     text,
+  range_subtype      text,
+  multirange         text,
+  owner              text,
+  acl                text[],
+  FOREIGN KEY (id, kind) REFERENCES core.object (id, kind) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE TABLE engine_postgresql.sequence (
+  id       bigint  PRIMARY KEY REFERENCES core.sequence (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  identity boolean NOT NULL DEFAULT false       -- made by an identity column, not by CREATE SEQUENCE
+);
+
+CREATE TABLE engine_postgresql.policy (
+  id         bigint  PRIMARY KEY,
+  object_id  bigint  NOT NULL REFERENCES core.object (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  name       text    NOT NULL,
+  permissive boolean NOT NULL DEFAULT true,
+  command    text    NOT NULL,
+  roles      text[]  NOT NULL,
+  using_expr text,
+  check_expr text,
+  UNIQUE (object_id, name) DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE TABLE engine_postgresql.rule (
+  id         bigint PRIMARY KEY,
+  object_id  bigint NOT NULL REFERENCES core.object (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  name       text   NOT NULL,
+  definition text   NOT NULL,                  -- as the server writes it
+  UNIQUE (object_id, name) DEFERRABLE INITIALLY DEFERRED
+);

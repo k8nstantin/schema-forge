@@ -458,6 +458,10 @@
     "relpersistence": "p",
     "relreplident": "n",
     "relrowsecurity": false,
+    "uses": [
+     "shop.customers",
+     "shop.orders"
+    ],
     "view_definition": " SELECT o.id,\n    c.email\n   FROM (shop.orders o\n     JOIN shop.customers c ON ((c.id = o.customer_id)));"
    }
   },
@@ -541,6 +545,9 @@
     "relpersistence": "p",
     "relreplident": "n",
     "relrowsecurity": false,
+    "uses": [
+     "features.kinds"
+    ],
     "view_definition": " SELECT kinds.id,\n    kinds.name\n   FROM features.kinds\n  WHERE (kinds.status = 'paid'::features.status);"
    }
   },
@@ -560,6 +567,9 @@
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false,
+    "uses": [
+     "features.kinds"
+    ],
     "view_definition": " SELECT kinds.status,\n    count(*) AS n\n   FROM features.kinds\n  GROUP BY kinds.status;"
    }
   },
@@ -1781,7 +1791,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "code",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -1804,7 +1826,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -1827,7 +1861,29 @@
     "indisvalid": true,
     "indnatts": 2,
     "indnkeyatts": 2,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "room",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "during",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": "range_ops",
+      "position": 2
+     }
+    ]
    }
   },
   {
@@ -1850,7 +1906,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "k",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -1873,7 +1941,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -1896,7 +1976,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "email",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": "text_ops",
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -1918,7 +2010,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "country",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -1940,7 +2044,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "created",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -1963,7 +2079,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -1986,7 +2114,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "sku",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": "text_ops",
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -2009,7 +2149,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -2031,7 +2183,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "status",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": "text_ops",
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -2054,7 +2218,29 @@
     "indisvalid": true,
     "indnatts": 2,
     "indnkeyatts": 2,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "order_id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "product_id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
    }
   },
   {
@@ -2076,7 +2262,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "window_",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": "range_ops",
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -2099,7 +2297,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -2122,6 +2332,28 @@
     "indnatts": 2,
     "indnkeyatts": 1,
     "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": "features.ci",
+      "column": null,
+      "descending": false,
+      "expression": "lower(name)",
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "status",
+      "descending": null,
+      "expression": null,
+      "key": false,
+      "nulls_first": null,
+      "opclass": null,
+      "position": 2
+     }
+    ],
     "predicate": "(status <> 'shipped'::features.status)"
    }
   },
@@ -2144,7 +2376,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "tags",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": "array_ops",
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -2166,7 +2410,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "doc",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": "jsonb_path_ops",
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -2188,7 +2444,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "name",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": "public.gist_trgm_ops",
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -2213,6 +2481,18 @@
     "indnullsnotdistinct": false,
     "options": [
      "pages_per_range=32"
+    ],
+    "parts": [
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
     ]
    }
   },
@@ -2235,7 +2515,29 @@
     "indisvalid": true,
     "indnatts": 2,
     "indnkeyatts": 2,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "status",
+      "descending": true,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": "enum_ops",
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
    }
   },
   {
@@ -2258,7 +2560,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -2280,7 +2594,19 @@
     "indisvalid": true,
     "indnatts": 1,
     "indnkeyatts": 1,
-    "indnullsnotdistinct": false
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "status",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": "enum_ops",
+      "position": 1
+     }
+    ]
    }
   },
   {
@@ -2288,6 +2614,9 @@
    "kind": "constraint",
    "parent": "features.child",
    "props": {
+    "columns": [
+     "parent_code"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": "r",
@@ -2299,7 +2628,12 @@
     "connoinherit": true,
     "contype": "f",
     "convalidated": true,
-    "definition": "FOREIGN KEY (parent_code) REFERENCES features.parent(code) MATCH FULL ON DELETE RESTRICT"
+    "definition": "FOREIGN KEY (parent_code) REFERENCES features.parent(code) MATCH FULL ON DELETE RESTRICT",
+    "index": "parent_code_key",
+    "ref_columns": [
+     "code"
+    ],
+    "ref_table": "features.parent"
    }
   },
   {
@@ -2307,6 +2641,9 @@
    "kind": "constraint",
    "parent": "features.child",
    "props": {
+    "columns": [
+     "parent_id"
+    ],
     "condeferrable": true,
     "condeferred": true,
     "confdeltype": "c",
@@ -2318,7 +2655,12 @@
     "connoinherit": true,
     "contype": "f",
     "convalidated": true,
-    "definition": "FOREIGN KEY (parent_id) REFERENCES features.parent(id) ON UPDATE SET NULL ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED"
+    "definition": "FOREIGN KEY (parent_id) REFERENCES features.parent(id) ON UPDATE SET NULL ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "parent_pkey",
+    "ref_columns": [
+     "id"
+    ],
+    "ref_table": "features.parent"
    }
   },
   {
@@ -2326,6 +2668,9 @@
    "kind": "constraint",
    "parent": "features.child",
    "props": {
+    "columns": [
+     "id"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2337,7 +2682,8 @@
     "connoinherit": true,
     "contype": "p",
     "convalidated": true,
-    "definition": "PRIMARY KEY (id)"
+    "definition": "PRIMARY KEY (id)",
+    "index": "child_pkey"
    }
   },
   {
@@ -2345,6 +2691,9 @@
    "kind": "constraint",
    "parent": "features.parent",
    "props": {
+    "columns": [
+     "code"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2356,7 +2705,8 @@
     "connoinherit": true,
     "contype": "u",
     "convalidated": true,
-    "definition": "UNIQUE (code)"
+    "definition": "UNIQUE (code)",
+    "index": "parent_code_key"
    }
   },
   {
@@ -2364,6 +2714,9 @@
    "kind": "constraint",
    "parent": "features.parent",
    "props": {
+    "columns": [
+     "id"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2375,7 +2728,8 @@
     "connoinherit": true,
     "contype": "p",
     "convalidated": true,
-    "definition": "PRIMARY KEY (id)"
+    "definition": "PRIMARY KEY (id)",
+    "index": "parent_pkey"
    }
   },
   {
@@ -2383,6 +2737,10 @@
    "kind": "constraint",
    "parent": "features.booking",
    "props": {
+    "columns": [
+     "room",
+     "during"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2394,7 +2752,12 @@
     "connoinherit": true,
     "contype": "x",
     "convalidated": true,
-    "definition": "EXCLUDE USING gist (room WITH =, during WITH &&)"
+    "definition": "EXCLUDE USING gist (room WITH =, during WITH &&)",
+    "index": "booking_room_during_excl",
+    "operators": [
+     "=",
+     "&&"
+    ]
    }
   },
   {
@@ -2402,6 +2765,9 @@
    "kind": "constraint",
    "parent": "features.scratch",
    "props": {
+    "columns": [
+     "k"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2413,7 +2779,8 @@
     "connoinherit": true,
     "contype": "p",
     "convalidated": true,
-    "definition": "PRIMARY KEY (k)"
+    "definition": "PRIMARY KEY (k)",
+    "index": "scratch_pkey"
    }
   },
   {
@@ -2421,6 +2788,9 @@
    "kind": "constraint",
    "parent": "shop.customers",
    "props": {
+    "columns": [
+     "email"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2432,7 +2802,8 @@
     "connoinherit": true,
     "contype": "u",
     "convalidated": true,
-    "definition": "UNIQUE (email)"
+    "definition": "UNIQUE (email)",
+    "index": "customers_email_key"
    }
   },
   {
@@ -2440,6 +2811,9 @@
    "kind": "constraint",
    "parent": "shop.customers",
    "props": {
+    "columns": [
+     "id"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2451,7 +2825,8 @@
     "connoinherit": true,
     "contype": "p",
     "convalidated": true,
-    "definition": "PRIMARY KEY (id)"
+    "definition": "PRIMARY KEY (id)",
+    "index": "customers_pkey"
    }
   },
   {
@@ -2459,6 +2834,9 @@
    "kind": "constraint",
    "parent": "shop.orders",
    "props": {
+    "columns": [
+     "customer_id"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": "a",
@@ -2470,7 +2848,12 @@
     "connoinherit": true,
     "contype": "f",
     "convalidated": true,
-    "definition": "FOREIGN KEY (customer_id) REFERENCES shop.customers(id)"
+    "definition": "FOREIGN KEY (customer_id) REFERENCES shop.customers(id)",
+    "index": "customers_pkey",
+    "ref_columns": [
+     "id"
+    ],
+    "ref_table": "shop.customers"
    }
   },
   {
@@ -2478,6 +2861,9 @@
    "kind": "constraint",
    "parent": "shop.orders",
    "props": {
+    "columns": [
+     "id"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2489,7 +2875,8 @@
     "connoinherit": true,
     "contype": "p",
     "convalidated": true,
-    "definition": "PRIMARY KEY (id)"
+    "definition": "PRIMARY KEY (id)",
+    "index": "orders_pkey"
    }
   },
   {
@@ -2497,6 +2884,9 @@
    "kind": "constraint",
    "parent": "shop.order_items",
    "props": {
+    "columns": [
+     "product_id"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": "a",
@@ -2508,7 +2898,12 @@
     "connoinherit": true,
     "contype": "f",
     "convalidated": true,
-    "definition": "FOREIGN KEY (product_id) REFERENCES shop.products(id)"
+    "definition": "FOREIGN KEY (product_id) REFERENCES shop.products(id)",
+    "index": "products_pkey",
+    "ref_columns": [
+     "id"
+    ],
+    "ref_table": "shop.products"
    }
   },
   {
@@ -2516,6 +2911,9 @@
    "kind": "constraint",
    "parent": "shop.order_items",
    "props": {
+    "columns": [
+     "order_id"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": "a",
@@ -2527,7 +2925,12 @@
     "connoinherit": true,
     "contype": "f",
     "convalidated": true,
-    "definition": "FOREIGN KEY (order_id) REFERENCES shop.orders(id)"
+    "definition": "FOREIGN KEY (order_id) REFERENCES shop.orders(id)",
+    "index": "orders_pkey",
+    "ref_columns": [
+     "id"
+    ],
+    "ref_table": "shop.orders"
    }
   },
   {
@@ -2535,6 +2938,10 @@
    "kind": "constraint",
    "parent": "shop.order_items",
    "props": {
+    "columns": [
+     "order_id",
+     "product_id"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2546,7 +2953,8 @@
     "connoinherit": true,
     "contype": "p",
     "convalidated": true,
-    "definition": "PRIMARY KEY (order_id, product_id)"
+    "definition": "PRIMARY KEY (order_id, product_id)",
+    "index": "order_items_pkey"
    }
   },
   {
@@ -2554,6 +2962,9 @@
    "kind": "constraint",
    "parent": "shop.products",
    "props": {
+    "columns": [
+     "sku"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2565,7 +2976,8 @@
     "connoinherit": true,
     "contype": "u",
     "convalidated": true,
-    "definition": "UNIQUE (sku)"
+    "definition": "UNIQUE (sku)",
+    "index": "products_sku_key"
    }
   },
   {
@@ -2573,6 +2985,9 @@
    "kind": "constraint",
    "parent": "shop.products",
    "props": {
+    "columns": [
+     "id"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2584,7 +2999,8 @@
     "connoinherit": true,
     "contype": "p",
     "convalidated": true,
-    "definition": "PRIMARY KEY (id)"
+    "definition": "PRIMARY KEY (id)",
+    "index": "products_pkey"
    }
   },
   {
@@ -2592,6 +3008,9 @@
    "kind": "constraint",
    "parent": "features.kinds",
    "props": {
+    "columns": [
+     "id"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2603,7 +3022,8 @@
     "connoinherit": true,
     "contype": "p",
     "convalidated": true,
-    "definition": "PRIMARY KEY (id)"
+    "definition": "PRIMARY KEY (id)",
+    "index": "kinds_pkey"
    }
   },
   {
@@ -2611,6 +3031,9 @@
    "kind": "constraint",
    "parent": "features.kinds",
    "props": {
+    "columns": [
+     "ratio"
+    ],
     "condeferrable": false,
     "condeferred": false,
     "confdeltype": " ",
@@ -2622,7 +3045,8 @@
     "connoinherit": false,
     "contype": "c",
     "convalidated": true,
-    "definition": "CHECK (((ratio >= (0)::double precision) AND (ratio <= (1)::double precision)))"
+    "definition": "CHECK (((ratio >= (0)::double precision) AND (ratio <= (1)::double precision)))",
+    "expression": "((ratio >= (0)::double precision) AND (ratio <= (1)::double precision))"
    }
   },
   {
@@ -2641,7 +3065,8 @@
     "connoinherit": false,
     "contype": "c",
     "convalidated": true,
-    "definition": "CHECK ((VALUE ~ '@'::citext))"
+    "definition": "CHECK ((VALUE ~ '@'::citext))",
+    "expression": "(VALUE ~ '@'::citext)"
    }
   },
   {
@@ -2660,7 +3085,8 @@
     "connoinherit": false,
     "contype": "c",
     "convalidated": true,
-    "definition": "CHECK ((VALUE >= (0)::numeric))"
+    "definition": "CHECK ((VALUE >= (0)::numeric))",
+    "expression": "(VALUE >= (0)::numeric)"
    }
   },
   {
@@ -2826,6 +3252,7 @@
     "create": "CREATE OR REPLACE FUNCTION shop.paid_orders()\n RETURNS SETOF integer\n LANGUAGE sql\n STABLE\nAS $function$ SELECT id FROM shop.orders WHERE status = 'paid' $function$\n",
     "language": "sql",
     "owner": "postgres",
+    "procost": 100,
     "proisstrict": false,
     "prokind": "f",
     "proleakproof": false,
@@ -2834,6 +3261,7 @@
     "pronargs": 0,
     "proparallel": "u",
     "proretset": true,
+    "prorows": 1000,
     "prosecdef": false,
     "prosrc": " SELECT id FROM shop.orders WHERE status = 'paid' ",
     "provolatile": "s",
@@ -2849,6 +3277,7 @@
     "create": "CREATE OR REPLACE FUNCTION shop.default_status()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN NEW.status := COALESCE(NEW.status, 'new'); RETURN NEW; END $function$\n",
     "language": "plpgsql",
     "owner": "postgres",
+    "procost": 100,
     "proisstrict": false,
     "prokind": "f",
     "proleakproof": false,
@@ -2857,6 +3286,7 @@
     "pronargs": 0,
     "proparallel": "u",
     "proretset": false,
+    "prorows": 0,
     "prosecdef": false,
     "prosrc": " BEGIN NEW.status := COALESCE(NEW.status, 'new'); RETURN NEW; END ",
     "provolatile": "v",
@@ -2868,11 +3298,16 @@
    "kind": "routine",
    "parent": "features",
    "props": {
+    "argument_types": [
+     "double precision",
+     "double precision"
+    ],
     "arguments": "double precision, double precision",
     "create": "CREATE OR REPLACE FUNCTION features.floatrange(double precision, double precision)\n RETURNS features.floatrange\n LANGUAGE internal\n IMMUTABLE PARALLEL SAFE\nAS $function$range_constructor2$function$\n",
     "language": "internal",
     "made_by": "type",
     "owner": "postgres",
+    "procost": 1,
     "proisstrict": false,
     "prokind": "f",
     "proleakproof": false,
@@ -2881,6 +3316,7 @@
     "pronargs": 2,
     "proparallel": "s",
     "proretset": false,
+    "prorows": 0,
     "prosecdef": false,
     "prosrc": "range_constructor2",
     "provolatile": "i",
@@ -2892,11 +3328,17 @@
    "kind": "routine",
    "parent": "features",
    "props": {
+    "argument_types": [
+     "double precision",
+     "double precision",
+     "text"
+    ],
     "arguments": "double precision, double precision, text",
     "create": "CREATE OR REPLACE FUNCTION features.floatrange(double precision, double precision, text)\n RETURNS features.floatrange\n LANGUAGE internal\n IMMUTABLE PARALLEL SAFE\nAS $function$range_constructor3$function$\n",
     "language": "internal",
     "made_by": "type",
     "owner": "postgres",
+    "procost": 1,
     "proisstrict": false,
     "prokind": "f",
     "proleakproof": false,
@@ -2905,6 +3347,7 @@
     "pronargs": 3,
     "proparallel": "s",
     "proretset": false,
+    "prorows": 0,
     "prosecdef": false,
     "prosrc": "range_constructor3",
     "provolatile": "i",
@@ -2921,6 +3364,7 @@
     "language": "internal",
     "made_by": "type",
     "owner": "postgres",
+    "procost": 1,
     "proisstrict": true,
     "prokind": "f",
     "proleakproof": false,
@@ -2929,6 +3373,7 @@
     "pronargs": 0,
     "proparallel": "s",
     "proretset": false,
+    "prorows": 0,
     "prosecdef": false,
     "prosrc": "multirange_constructor0",
     "provolatile": "i",
@@ -2940,11 +3385,15 @@
    "kind": "routine",
    "parent": "features",
    "props": {
+    "argument_types": [
+     "features.floatrange"
+    ],
     "arguments": "features.floatrange",
     "create": "CREATE OR REPLACE FUNCTION features.floatmultirange(features.floatrange)\n RETURNS features.floatmultirange\n LANGUAGE internal\n IMMUTABLE PARALLEL SAFE STRICT\nAS $function$multirange_constructor1$function$\n",
     "language": "internal",
     "made_by": "type",
     "owner": "postgres",
+    "procost": 1,
     "proisstrict": true,
     "prokind": "f",
     "proleakproof": false,
@@ -2953,6 +3402,7 @@
     "pronargs": 1,
     "proparallel": "s",
     "proretset": false,
+    "prorows": 0,
     "prosecdef": false,
     "prosrc": "multirange_constructor1",
     "provolatile": "i",
@@ -2964,6 +3414,9 @@
    "kind": "routine",
    "parent": "features",
    "props": {
+    "argument_types": [
+     "features.floatrange[]"
+    ],
     "arguments": "VARIADIC features.floatrange[]",
     "create": "CREATE OR REPLACE FUNCTION features.floatmultirange(VARIADIC features.floatrange[])\n RETURNS features.floatmultirange\n LANGUAGE internal\n IMMUTABLE PARALLEL SAFE STRICT\nAS $function$multirange_constructor2$function$\n",
     "language": "internal",
@@ -2972,6 +3425,7 @@
     "proargmodes": [
      "v"
     ],
+    "procost": 1,
     "proisstrict": true,
     "prokind": "f",
     "proleakproof": false,
@@ -2980,6 +3434,7 @@
     "pronargs": 1,
     "proparallel": "s",
     "proretset": false,
+    "prorows": 0,
     "prosecdef": false,
     "prosrc": "multirange_constructor2",
     "provolatile": "i",
@@ -2991,6 +3446,9 @@
    "kind": "routine",
    "parent": "features",
    "props": {
+    "argument_types": [
+     "numeric"
+    ],
     "arguments": "m numeric",
     "create": "CREATE OR REPLACE FUNCTION features.f_cents(m numeric)\n RETURNS bigint\n LANGUAGE sql\n IMMUTABLE PARALLEL SAFE STRICT\nAS $function$ SELECT (m * 100)::bigint $function$\n",
     "language": "sql",
@@ -2998,6 +3456,7 @@
     "proargnames": [
      "m"
     ],
+    "procost": 100,
     "proisstrict": true,
     "prokind": "f",
     "proleakproof": false,
@@ -3006,6 +3465,7 @@
     "pronargs": 1,
     "proparallel": "s",
     "proretset": false,
+    "prorows": 0,
     "prosecdef": false,
     "prosrc": " SELECT (m * 100)::bigint ",
     "provolatile": "i",
@@ -3017,6 +3477,12 @@
    "kind": "routine",
    "parent": "features",
    "props": {
+    "argument_defaults": "'paid'::features.status",
+    "argument_types": [
+     "features.status",
+     "bigint",
+     "text"
+    ],
     "arguments": "p_status features.status DEFAULT 'paid'::features.status",
     "create": "CREATE OR REPLACE FUNCTION features.f_paid(p_status features.status DEFAULT 'paid'::features.status)\n RETURNS TABLE(id bigint, name text)\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'features'\nAS $function$ BEGIN RETURN QUERY SELECT k.id, k.name FROM features.kinds k WHERE k.status = p_status; END $function$\n",
     "language": "plpgsql",
@@ -3034,6 +3500,7 @@
     "proconfig": [
      "search_path=features"
     ],
+    "procost": 100,
     "proisstrict": false,
     "prokind": "f",
     "proleakproof": false,
@@ -3042,6 +3509,7 @@
     "pronargs": 1,
     "proparallel": "u",
     "proretset": true,
+    "prorows": 1000,
     "prosecdef": true,
     "prosrc": " BEGIN RETURN QUERY SELECT k.id, k.name FROM features.kinds k WHERE k.status = p_status; END ",
     "provolatile": "s",
@@ -3053,6 +3521,9 @@
    "kind": "routine",
    "parent": "features",
    "props": {
+    "argument_types": [
+     "integer"
+    ],
     "arguments": "INOUT n integer",
     "create": "CREATE OR REPLACE PROCEDURE features.p_purge(INOUT n integer)\n LANGUAGE plpgsql\nAS $procedure$ BEGIN DELETE FROM features.scratch; n := 0; END $procedure$\n",
     "language": "plpgsql",
@@ -3063,6 +3534,7 @@
     "proargnames": [
      "n"
     ],
+    "procost": 100,
     "proisstrict": false,
     "prokind": "p",
     "proleakproof": false,
@@ -3071,6 +3543,7 @@
     "pronargs": 1,
     "proparallel": "u",
     "proretset": false,
+    "prorows": 0,
     "prosecdef": false,
     "prosrc": " BEGIN DELETE FROM features.scratch; n := 0; END ",
     "provolatile": "v"
@@ -3085,6 +3558,7 @@
     "create": "CREATE OR REPLACE FUNCTION audit.log_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN RETURN NULL; END $function$\n",
     "language": "plpgsql",
     "owner": "postgres",
+    "procost": 100,
     "proisstrict": false,
     "prokind": "f",
     "proleakproof": false,
@@ -3093,6 +3567,7 @@
     "pronargs": 0,
     "proparallel": "u",
     "proretset": false,
+    "prorows": 0,
     "prosecdef": false,
     "prosrc": " BEGIN RETURN NULL; END ",
     "provolatile": "v",
@@ -3105,6 +3580,7 @@
    "parent": "shop.orders",
    "props": {
     "definition": "CREATE TRIGGER orders_status BEFORE INSERT ON shop.orders FOR EACH ROW EXECUTE FUNCTION shop.default_status()",
+    "function": "shop.default_status",
     "tgdeferrable": false,
     "tgenabled": "O",
     "tginitdeferred": false,
@@ -3120,6 +3596,7 @@
    "parent": "features.child",
    "props": {
     "definition": "CREATE TRIGGER t_child_audit AFTER INSERT ON features.child REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION audit.log_change()",
+    "function": "audit.log_change",
     "tgdeferrable": false,
     "tgenabled": "O",
     "tginitdeferred": false,
@@ -3135,7 +3612,9 @@
    "kind": "trigger",
    "parent": "features.child",
    "props": {
+    "condition": "(old.parent_id IS DISTINCT FROM new.parent_id)",
     "definition": "CREATE TRIGGER t_child_when BEFORE UPDATE ON features.child FOR EACH ROW WHEN ((old.parent_id IS DISTINCT FROM new.parent_id)) EXECUTE FUNCTION audit.log_change()",
+    "function": "audit.log_change",
     "tgdeferrable": false,
     "tgenabled": "O",
     "tginitdeferred": false,
