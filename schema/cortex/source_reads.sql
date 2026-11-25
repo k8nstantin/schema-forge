@@ -10,7 +10,7 @@ CREATE TABLE cortex.source_reads (
   server_edition   TEXT,                                                                             -- what the server says it is beyond its version; NULL when it says nothing
   read_as          TEXT NOT NULL CHECK (length(read_as) >= 1),                                       -- the account the server says the read ran as (sf_reader@%)
   server_uptime    BIGINT CHECK (server_uptime >= 0),                                                -- the server's uptime in seconds when read: usage counts from its start; NULL when it would not say
-  usage_available  BOOLEAN NOT NULL,                                                                 -- whether the server keeps usage and the account could read it
+  usage_available  BOOLEAN NOT NULL,                                                                 -- whether the server keeps usage (MySQL: performance_schema on) and the account could read it
   missing_grants   TEXT,                                                                             -- the grants the account lacked, and so what was not read; NULL for none
   started_at       TIMESTAMPTZ NOT NULL,                                                             -- when the read began
   ended_at         TIMESTAMPTZ,                                                                      -- when it ended; NULL while it runs
@@ -28,7 +28,7 @@ COMMENT ON COLUMN cortex.source_reads.server_version IS 'the version the server 
 COMMENT ON COLUMN cortex.source_reads.server_edition IS 'what the server says it is beyond its version; NULL when it says nothing';
 COMMENT ON COLUMN cortex.source_reads.read_as IS 'the account the server says the read ran as (sf_reader@%)';
 COMMENT ON COLUMN cortex.source_reads.server_uptime IS 'the server''s uptime in seconds when read: usage counts from its start; NULL when it would not say';
-COMMENT ON COLUMN cortex.source_reads.usage_available IS 'whether the server keeps usage and the account could read it';
+COMMENT ON COLUMN cortex.source_reads.usage_available IS 'whether the server keeps usage (MySQL: performance_schema on) and the account could read it';
 COMMENT ON COLUMN cortex.source_reads.missing_grants IS 'the grants the account lacked, and so what was not read; NULL for none';
 COMMENT ON COLUMN cortex.source_reads.started_at IS 'when the read began';
 COMMENT ON COLUMN cortex.source_reads.ended_at IS 'when it ended; NULL while it runs';

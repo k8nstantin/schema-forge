@@ -17,6 +17,7 @@ from collections import Counter, defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.dont_write_bytecode = True  # tools/ holds crates: a __pycache__ there would be taken for one
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "tools"))
 import common as C  # noqa: E402
 import extract as X  # noqa: E402

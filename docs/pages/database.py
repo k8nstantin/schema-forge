@@ -52,54 +52,50 @@ files_svg = g.render()
 
 # --- 2. the model ----------------------------------------------------------------------------------------------
 g = Svg(1060, 540, "The model's tables and every foreign key between them.")
-for name, x, y, w in [("object_kinds", 20, 40, 150), ("object_kind_parts", 20, 150, 160), ("namespaces", 300, 40, 150),
-                      ("verbatim_statements", 560, 40, 170), ("subject_areas", 840, 40, 150),
-                      ("objects", 300, 190, 150), ("schema_identity", 860, 180, 160), ("required_extensions", 860, 250, 160),
-                      ("id_counters", 860, 320, 160),
-                      ("object_tags", 20, 340, 150), ("object_reads", 190, 340, 150), ("columns", 380, 340, 150), ("relationships", 640, 340, 150),
-                      ("column_identities", 380, 460, 160), ("relationship_columns", 640, 460, 180)]:
+for name, x, y, w in [("object_kinds", 20, 40, 150), ("namespaces", 300, 40, 150), ("verbatim_statements", 560, 40, 170),
+                      ("schema_identity", 860, 40, 160), ("required_extensions", 860, 110, 160),
+                      ("objects", 300, 190, 150), ("object_tags", 20, 340, 150), ("dependencies", 190, 340, 150),
+                      ("columns", 380, 340, 150), ("constraints", 640, 340, 150),
+                      ("column_identities", 380, 460, 160), ("constraint_columns", 640, 460, 180)]:
     tbox(g, C(name), x, y, w, cls="pri" if name == "objects" else "box")
-arrows(g, {(C("objects"), C("object_kinds")): (0, 0), (C("object_kind_parts"), C("object_kinds")): (0, 0), (C("objects"), C("namespaces")): (8, 0),
-           (C("objects"), C("subject_areas")): (0, 0), (C("verbatim_statements"), C("namespaces")): (0, 0), (C("verbatim_statements"), C("objects")): (0, 0),
-           (C("object_tags"), C("objects")): (0, 0), (C("object_reads"), C("objects")): (0, 0), (C("columns"), C("objects")): (0, 0),
-           (C("relationships"), C("objects")): (16, 0), (C("column_identities"), C("columns")): (0, 0),
-           (C("relationship_columns"), C("relationships")): (0, 0), (C("relationship_columns"), C("columns")): (0, 10)})
+arrows(g, {(C("objects"), C("object_kinds")): (0, 0), (C("objects"), C("namespaces")): (8, 0),
+           (C("verbatim_statements"), C("namespaces")): (0, 0), (C("verbatim_statements"), C("objects")): (0, 0),
+           (C("object_tags"), C("objects")): (0, 0), (C("dependencies"), C("objects")): (0, 0), (C("columns"), C("objects")): (0, 0),
+           (C("constraints"), C("objects")): (16, 0), (C("column_identities"), C("columns")): (0, 0),
+           (C("constraint_columns"), C("constraints")): (0, 0), (C("constraint_columns"), C("columns")): (0, 10)})
 g.loop(C("namespaces"), "parent", "left"); drawn.add((C("namespaces"), "parent"))
+g.loop(C("objects"), "parent", "left"); drawn.add((C("objects"), "parent"))
 model_svg = g.render()
 
 # --- 3. what an object holds -------------------------------------------------------------------------------------
-g = Svg(1280, 620, "What an object holds: the shared section layout as tables, each referring to its object, and the tables of their parts.")
-one = ["view_queries", "sequences", "domains", "routines", "triggers", "scheduled_events", "table_partitionings", "partition_parents"]
-many = ["table_keys", "check_constraints", "indexes", "sort_fields", "enum_values", "composite_type_fields"]
-xs1 = {nm: 14 + i * 157 for i, nm in enumerate(one)}
-for nm in one: tbox(g, C(nm), xs1[nm], 150, 151)
+g = Svg(1280, 620, "What an object holds: one row at most per object for what it is, and the lists of its parts.")
+one = ["views", "routines", "triggers", "sequences", "domains", "partitionings"]
+many = ["indexes", "sort_fields", "enum_values"]
+xs1 = {nm: 40 + i * 205 for i, nm in enumerate(one)}
+for nm in one: tbox(g, C(nm), xs1[nm], 150, 160)
 tbox(g, C("objects"), 565, 300, 150, 40, "pri")
-xs2 = {nm: 46 + i * 202 for i, nm in enumerate(many)}
+xs2 = {nm: 200 + i * 330 for i, nm in enumerate(many)}
 for nm in many: tbox(g, C(nm), xs2[nm], 440, 172)
-tbox(g, C("routine_parameters"), xs1["routines"] - 4, 40, 146)
-tbox(g, C("trigger_events"), xs1["triggers"], 40, 138)
-tbox(g, C("partition_fields"), xs1["table_partitionings"], 40, 138)
-tbox(g, C("partitions"), xs1["partition_parents"] + 6, 40, 126)
-tbox(g, C("table_key_columns"), xs2["table_keys"], 560, 172)
-tbox(g, C("index_parts"), xs2["indexes"] - 90, 560, 150)
-tbox(g, C("index_includes"), xs2["indexes"] + 90, 560, 150)
+tbox(g, C("routine_parameters"), xs1["routines"], 40, 160)
+tbox(g, C("partitions"), xs1["partitionings"], 40, 160)
+tbox(g, C("index_parts"), xs2["indexes"], 560, 172)
 pairs = {(C(nm), C("objects")): (0, 0) for nm in one + many}
-pairs.update({(C("routine_parameters"), C("routines")): (0, 0), (C("trigger_events"), C("triggers")): (0, 0),
-              (C("partition_fields"), C("table_partitionings")): (-34, 0), (C("partitions"), C("table_partitionings")): (34, 14),
-              (C("table_key_columns"), C("table_keys")): (0, 0), (C("index_parts"), C("indexes")): (0, 0),
-              (C("index_includes"), C("indexes")): (0, 0)})
+pairs.update({(C("routine_parameters"), C("routines")): (0, 0), (C("partitions"), C("partitionings")): (0, 0),
+              (C("index_parts"), C("indexes")): (0, 0)})
 arrows(g, pairs)
 parts_svg = g.render()
 
 # --- 4. the log ------------------------------------------------------------------------------------------------
-g = Svg(1040, 250, "The log: turns, their operations, every row and value each operation changed, and the versions locked on it.")
-for name, x, y in [("turns", 40, 70), ("operations", 300, 70), ("row_changes", 560, 70), ("value_changes", 820, 70), ("locked_versions", 300, 180)]:
+g = Svg(1040, 250, "The log: branches of turns, their operations, every row each operation changed, savepoints and the versions locked on it.")
+for name, x, y in [("branches", 40, 180), ("turns", 40, 70), ("operations", 300, 70), ("row_changes", 560, 70), ("savepoints", 300, 180),
+                   ("locked_versions", 560, 180)]:
     g.box(C(name), x, y, 180, 40, name, cls="lg")
-arrows(g, {(C("operations"), C("turns")): (0, 0), (C("row_changes"), C("operations")): (0, 0), (C("value_changes"), C("row_changes")): (0, 0),
-           (C("locked_versions"), C("operations")): (40, 0)})
-g.loop(C("turns"), "undoes"); drawn.add((C("turns"), "undoes"))
-g.text(760, 150, "row_changes.table_name and row_id name the row changed, in any table of the database", "lb", "middle")
-g.text(40, 30, "every id here is a UUIDv7 the database issues (uuidv7()); value_changes keep before and after as JSONB", "lb")
+arrows(g, {(C("turns"), C("branches")): (0, 0), (C("operations"), C("turns")): (0, 0), (C("row_changes"), C("operations")): (0, 0),
+           (C("savepoints"), C("turns")): (0, 0), (C("locked_versions"), C("turns")): (40, 0)})
+g.loop(C("turns"), "parent"); drawn.add((C("turns"), "parent"))
+g.loop(C("turns"), "undoes", "left"); drawn.add((C("turns"), "undoes"))
+g.text(820, 150, "row_changes.table_name and row_id name the row changed, in any table of the design", "lb", "middle")
+g.text(40, 30, "turns, operations and versions are UUIDv7s the database issues; row_changes keep a row's values before and after as JSONB", "lb")
 log_svg = g.render()
 
 # --- 5. the workspace ------------------------------------------------------------------------------------------
@@ -166,15 +162,12 @@ engine_svgs = {o: engine_svg(o) for o in db if o.startswith("engine_")}
 undrawn = [(a, c, b) for a, c, b in edges if (a, c) not in drawn]
 
 # --- the tables ------------------------------------------------------------------------------------------------
-GROUPS = [("cortex", "The model", ["schema_identity", "object_kinds", "object_kind_parts", "namespaces", "subject_areas", "objects", "columns",
-                                    "column_identities", "relationships", "relationship_columns", "object_tags", "object_reads",
-                                    "verbatim_statements", "required_extensions", "id_counters"]),
-          ("cortex", "What an object holds", ["table_keys", "table_key_columns", "check_constraints", "indexes", "index_parts", "index_includes",
-                                              "table_partitionings", "partition_fields", "partitions", "partition_parents", "sort_fields",
-                                              "view_queries", "sequences", "enum_values", "domains", "composite_type_fields", "routines",
-                                              "routine_parameters", "triggers", "trigger_events", "scheduled_events"]),
-          ("cortex", "The log", ["turns", "operations", "row_changes", "value_changes", "locked_versions"]),
-          ("cortex", "The canvas", ["pinned_notes", "custom_perspectives", "perspective_members", "layout_pins", "family_assignments"]),
+GROUPS = [("cortex", "The model", ["schema_identity", "object_kinds", "namespaces", "objects", "columns", "column_identities",
+                                    "constraints", "constraint_columns", "object_tags", "dependencies", "verbatim_statements",
+                                    "required_extensions"]),
+          ("cortex", "What an object holds", ["indexes", "index_parts", "partitionings", "partitions", "sort_fields", "views", "sequences",
+                                              "enum_values", "domains", "routines", "routine_parameters", "triggers"]),
+          ("cortex", "The log", ["branches", "turns", "operations", "row_changes", "savepoints", "locked_versions"]),
           ("cortex", "The engine's versions", ["engine_versions", "engine_features", "catalog_sources"]),
           ("cortex", "The live source", ["source_reads"]),
           ("cortex", "The database", ["schema_migrations"])]
@@ -195,17 +188,18 @@ def id_pattern(t):
             return "".join(f"<{p}>" if not p.startswith("'") else p.strip("'") for p in parts)
         m = re.match(r"CHECK \(substr\(id, 1, length\((\"?\w+\"?)\) \+ \d+\) = \S+ \|\| '([^']*)'", c)
         if m:
-            return f"<{m.group(1).strip(chr(34))}>{m.group(2)}<n>, n from id_counters, never reused"
+            return f"<{m.group(1).strip(chr(34))}>{m.group(2)}<n>"
         m = re.match(r"CHECK \(left\(id, 37\) = (\w+)::text \|\| '\.'", c)
         if m:
             return f"<{m.group(1)}>.<n>"
     if idc and idc["type"] == "UUID" and not idc["ref"]: return "UUIDv7" + (", issued by the database" if idc["default"] else "")
+    if idc and idc["type"] == "BIGINT" and not idc["ref"] and "IDENTITY" in (idc.get("check") or "") + str(idc): return "a BIGINT the database issues, kept when the name changes"
     if idc and idc["ref"]: return f"the id of its {short(idc['ref'])} row ({short(idc['ref'])}.id)"
     if idc and idc["check"]:
         m = re.search(r"id ~ '\^(\w)_", idc["check"])
         if m: return f"the model's id ({m.group(1)}_…)"
         m = re.search(r"id ~ '\^(\w+?)\[1-9\]", idc["check"])
-        if m: return f"{m.group(1)}<n>, n from id_counters, never reused"
+        if m: return f"{m.group(1)}<n>"
     return "its name"
 
 def rules_for(name):
@@ -329,19 +323,19 @@ foreign key cannot state is a view the database enforces at every commit. Everyt
 <p class="lede">A workspace is a folder with its own PostgreSQL cluster, started when the workspace opens and reached only through a Unix socket in that folder. <code>sf_workspace</code> holds what the workspace shares; each schema is its own database, named from its stable id so a rename never moves it, holding the <code>cortex</code> namespace and its own engine's, and no other engine's.</p>
 <figure>{files_svg}<figcaption>A schema's database names itself by its own stable id; <code>sf_workspace</code> lists each by that id, a reference between databases that the store checks. The same layout runs on a central team server later: only the connection changes.</figcaption></figure></section>
 
-<section id="model"><h2>The model</h2><p class="lede">Namespaces hold objects (tables, views, routines, whatever kinds the engine declares); objects have columns; relationships join columns of one object to another's. An object's kind must be one its engine declared, and it may have only the parts <code>object_kind_parts</code> gives its kind.</p>
-<figure>{model_svg}<figcaption>Every foreign key between these tables. A part's primary key is the model's own id (<code>o_orders</code>, <code>c_orders_total</code>), kept when it is renamed; a part the model gives none is numbered from <code>id_counters</code>, and a number is never given twice.</figcaption>{legend}</figure></section>
+<section id="model"><h2>The model</h2><p class="lede">Namespaces hold objects (tables, views, routines, whatever kinds the engine declares); objects have columns; constraints are a table's keys and checks and the links from its columns to another's, enforced by the database or only drawn by the design. An object's kind must be one its engine declared, and what it holds must suit its kind (the rule <code>parts-of-their-kind</code>).</p>
+<figure>{model_svg}<figcaption>Every foreign key between these tables. A part's primary key is a <code>BIGINT</code> the database issues, kept when it is renamed: a rename is one row, and every reference follows it by id.</figcaption>{legend}</figure></section>
 
-<section id="parts"><h2>What an object holds</h2><p class="lede">The shared section layout, as tables: what every engine can say of an object. A kind fills only the parts it uses: a rule refuses a part its kind lacks, and more than one of a query, routine, trigger, event, sequence or domain on one object.</p>
-<figure>{parts_svg}<figcaption>Middle row: one row per object at most, its id the object's. Bottom row: any number per object, in order (a NUMERIC order key: one put between two takes their midpoint). The outer rows are their parts. Not drawn, listed with each table: {undrawn_note}.</figcaption></figure></section>
+<section id="parts"><h2>What an object holds</h2><p class="lede">What every engine can say of an object, as tables: a table is held as facts only, and its statement is written from them byte for byte as the server writes it; a view, routine or trigger keeps its body as the server holds it. A kind fills only the parts it uses: a rule refuses a part its kind lacks.</p>
+<figure>{parts_svg}<figcaption>Middle row: one row per object at most, its id the object's. Bottom row: any number per object, in the server's order (an INTEGER position from 1). The outer rows are their parts. Not drawn, listed with each table: {undrawn_note}.</figcaption></figure></section>
 
-<section id="log"><h2>The log</h2><p class="lede">Every change is an operation of a turn, appended and never edited; the current model is written in the same transaction. Each operation records every row it inserted, updated or deleted and every value it set, so its inverse is worked out from the record: undo and reject apply it as a new turn, and replaying the log rebuilds the model.</p>
-<figure>{log_svg}<figcaption>A turn is the agent's answer to one prompt, a person's edit, or an import; it is accepted or rejected whole. A rejected turn stays, marked, and the turn that takes it back names it in <code>undoes</code>.</figcaption></figure></section>
+<section id="log"><h2>The log</h2><p class="lede">Every change is an operation of a turn, appended and never edited; the design is written in the same transaction. Each operation records every row it inserted, updated or deleted, with its values before and after, so its inverse is worked out from the record. Turns form a tree: a branch is a line of turns, switching branch moves the design through their common turn, opening a savepoint or a version is that move rolled back, and a restore is a new turn of inverses.</p>
+<figure>{log_svg}<figcaption>A turn is the agent's answer to one prompt, a person's edit, an import or a restore; it follows its parent and is accepted or rejected whole. A rejected turn stays, marked, and the turn that takes it back names it in <code>undoes</code>.</figcaption></figure></section>
 
 <section id="workspace"><h2>The workspace</h2><p class="lede"><code>sf_workspace</code>: the schemas by their stable ids, and the saved connections. A connection keeps the value of each field its engine declares, never a secret.</p>
 <figure>{ws_svg}</figure></section>
 
-<section id="engines"><h2>Each engine's tables</h2><p class="lede">What one engine alone says (MySQL's charset and row format) lives in that engine's namespace, <code>engine_&lt;engine&gt;</code>: a table named for the cortex table it extends (<code>engine_mysql.table_key_options</code>) or for what only it has (<code>engine_mysql.tablespaces</code>).</p>{eng_figs}</section>
+<section id="engines"><h2>Each engine's tables</h2><p class="lede">What one engine alone says (MySQL's charset and row format) lives in that engine's namespace, <code>engine_&lt;engine&gt;</code>: a table named for the cortex table it extends (<code>engine_mysql.tables</code>, <code>engine_mysql.columns</code>) or for what only it has (<code>engine_postgresql.policies</code>). Every option is a typed column; there is no table of keys and values.</p>{eng_figs}</section>
 
 <section id="tables"><h2>Every table</h2><p class="lede">Grouped as above. Each with what it holds, how its row is named, its columns, what refers to it, its constraints, the rules that read it, and its file whole.</p>{toc}</section>
 {body_tables}

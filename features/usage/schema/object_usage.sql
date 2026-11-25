@@ -3,7 +3,7 @@
 CREATE TABLE usage.object_usage (
   id               UUID        NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),  -- UUIDv7, issued by the database
   snapshot         UUID        NOT NULL REFERENCES usage.snapshots (id) ON DELETE CASCADE,  -- the snapshot it is part of
-  object           TEXT        REFERENCES cortex.objects (id) ON DELETE SET NULL,           -- the design's object of that name when the snapshot was taken; NULL when the design has none
+  object           BIGINT      REFERENCES cortex.objects (id) ON DELETE SET NULL,           -- the design's object of that name when the snapshot was taken; NULL when the design has none
   object_schema    TEXT        NOT NULL CHECK (length(object_schema) >= 1),                 -- the database it is in, as the server names it (shop)
   object_name      TEXT        NOT NULL CHECK (length(object_name) >= 1),                   -- the table, as the server names it (orders)
   rows_read        NUMERIC     CHECK (rows_read >= 0),                                      -- rows read since the server started; NULL when the server does not count them

@@ -168,8 +168,8 @@ by meaning) and its problems (each a finding with its evidence). Ask in plain wo
 The database is **designed first and locked**, so coding agents fall into it instead of drifting from it
 ([the Database page](docs/pages/database.html), [docs/store.xml](https://k8nstantin.github.io/schema-forge/doc-store.html)):
 
-- **Every owner in its own namespace.** `cortex` is what every engine shares (objects, columns, relationships, keys,
-  indexes, the log); each engine brings `engine_<id>` (`engine_mysql.table_options`); each future feature brings its own
+- **Every owner in its own namespace.** `cortex` is what every engine shares (objects, columns, constraints, indexes,
+  dependencies, the log); each engine brings `engine_<id>` (`engine_mysql.tables`); each future feature brings its own
   (`insight`, `semantic`, `rules`, `pipelines`). Nothing reaches into another owner's tables.
 - **The database enforces it.** Every reference is a foreign key, every value typed and checked, every column documented
   in the database itself. A rule a foreign key cannot state is a view of the rows breaking it, which PostgreSQL turns into

@@ -95,7 +95,7 @@ fn list(found: &[Finding]) -> String {
 }
 
 const SF93: &str = "specs/tasks/SF-93-spec-check.xml";
-const SF94: &str = "specs/tasks/SF-94-tables-interface.xml";
+const SF121: &str = "specs/tasks/SF-121-mysql-live.xml";
 
 // --- step 1: the files ---------------------------------------------------------------------------------------------
 
@@ -134,8 +134,8 @@ fn a_depends_naming_no_earlier_task_is_the_finding_which_is_no_earlier_task() {
     let c = copy("depends");
     c.edit(
         "specs/root.xml",
-        r#"key="SF-94" name="tables interface" file="specs/tasks/SF-94-tables-interface.xml" depends="t01""#,
-        r#"key="SF-94" name="tables interface" file="specs/tasks/SF-94-tables-interface.xml" depends="t10""#,
+        r#"key="SF-94" name="tables interface" depends="t01""#,
+        r#"key="SF-94" name="tables interface" depends="t10""#,
     );
     named(&check(c.root()), &["task t02 depends on t10, which is no earlier task"]);
 }
@@ -193,7 +193,7 @@ fn a_rule_without_its_breach_is_the_finding_has_no_breach() {
 #[test]
 fn a_task_file_whose_gates_come_before_its_build_is_the_finding_missing_or_out_of_order() {
     let c = copy("order");
-    let file = c.root().join(SF94);
+    let file = c.root().join(SF121);
     let text = fs::read_to_string(&file).expect("read");
     let (a, b) =
         (text.find("  <gates>").expect("gates"), text.find("</gates>").expect("gates end") + "</gates>\n".len());
@@ -201,28 +201,28 @@ fn a_task_file_whose_gates_come_before_its_build_is_the_finding_missing_or_out_o
     let without = format!("{}{}", &text[..a], &text[b..]);
     let at = without.find("  <build>").expect("build");
     fs::write(&file, format!("{}{}{}", &without[..at], gates, &without[at..])).expect("written");
-    named(&check(c.root()), &[SF94, "missing or out of order"]);
+    named(&check(c.root()), &[SF121, "missing or out of order"]);
 }
 
 #[test]
 fn a_task_file_whose_start_carries_another_version_is_the_finding_does_not_carry_version() {
     let c = copy("version");
-    c.edit(SF94, r#"name="tables interface" version="3""#, r#"name="tables interface" version="4""#);
-    named(&check(c.root()), &[SF94, "start does not carry version 4"]);
+    c.edit(SF121, r#"name="mysql live" version="1""#, r#"name="mysql live" version="2""#);
+    named(&check(c.root()), &[SF121, "start does not carry version 2"]);
 }
 
 #[test]
 fn a_prove_naming_a_step_the_file_does_not_have_is_the_finding_which_is_none() {
     let c = copy("prove");
-    c.edit(SF94, r#"<prove step="1">"#, r#"<prove step="99">"#);
-    named(&check(c.root()), &[SF94, "prove names step 99, which is none"]);
+    c.edit(SF121, r#"<prove step="1">"#, r#"<prove step="99">"#);
+    named(&check(c.root()), &[SF121, "prove names step 99, which is none"]);
 }
 
 #[test]
 fn a_gate_without_an_expect_is_the_finding_lacks() {
     let c = copy("expect");
-    c.cut(SF94, "<expect>", "</expect>");
-    named(&check(c.root()), &[SF94, "lacks"]);
+    c.cut(SF121, "<expect>", "</expect>");
+    named(&check(c.root()), &[SF121, "lacks"]);
 }
 
 // --- step 6: quotes ------------------------------------------------------------------------------------------------
@@ -239,8 +239,8 @@ fn a_quote_changed_by_one_word_is_the_finding_quote_not_in() {
 #[test]
 fn a_path_attribute_naming_a_missing_file_is_the_finding_which_does_not_exist() {
     let c = copy("path");
-    c.edit(SF94, r#"path="crates/engine/src/kinds.rs""#, r#"path="nowhere/gone.rs""#);
-    named(&check(c.root()), &[SF94, "names nowhere/gone.rs, which does not exist"]);
+    c.edit(SF121, r#"path="docs/live-mysql.xml""#, r#"path="nowhere/gone.rs""#);
+    named(&check(c.root()), &[SF121, "names nowhere/gone.rs, which does not exist"]);
 }
 
 // --- step 8: the owners --------------------------------------------------------------------------------------------
@@ -273,10 +273,10 @@ fn a_column_line_without_its_comment_is_the_finding_has_no_comment_naming_the_li
 #[test]
 fn a_column_of_a_type_none_of_the_eight_is_the_finding_which_is_none_of_the_eight() {
     let c = copy("type");
-    c.edit("schema/cortex/id_counters.sql", "last  INTEGER", "last  SMALLINT");
+    c.edit("schema/cortex/dependencies.sql", "position  INTEGER", "position  SMALLINT");
     named(
         &check(c.root()),
-        &["schema/cortex/id_counters.sql", "column last has the type SMALLINT, which is none of the eight"],
+        &["schema/cortex/dependencies.sql", "column position has the type SMALLINT, which is none of the eight"],
     );
 }
 
@@ -302,18 +302,18 @@ fn a_database_comment_that_differs_from_its_column_s_comment_is_the_finding_is_n
 fn an_engine_table_referring_to_another_engine_s_table_is_the_finding_which_is_not_its_own_or_the_cortex_s() {
     let c = copy("refers");
     c.edit(
-        "engines/mysql/schema/table_options.sql",
-        "REFERENCES cortex.objects (id)",
+        "engines/mysql/schema/columns.sql",
+        "REFERENCES cortex.columns (id)",
         "REFERENCES engine_other.table_options (id)",
     );
-    named(&check(c.root()), &["engines/mysql/schema/table_options.sql", "which is not its own or the cortex's"]);
+    named(&check(c.root()), &["engines/mysql/schema/columns.sql", "which is not its own or the cortex's"]);
 }
 
 #[test]
 fn a_table_whose_primary_key_is_not_the_one_column_id_is_the_finding_not_the_one_column_id() {
     let c = copy("primary-key");
-    c.edit("schema/cortex/subject_areas.sql", "NOT NULL PRIMARY KEY CHECK", "NOT NULL CHECK");
-    named(&check(c.root()), &["schema/cortex/subject_areas.sql", "not the one column id"]);
+    c.edit("schema/cortex/namespaces.sql", "NOT NULL PRIMARY KEY GENERATED", "NOT NULL GENERATED");
+    named(&check(c.root()), &["schema/cortex/namespaces.sql", "not the one column id"]);
 }
 
 // --- step 10: rules ------------------------------------------------------------------------------------------------
@@ -321,10 +321,10 @@ fn a_table_whose_primary_key_is_not_the_one_column_id_is_the_finding_not_the_one
 #[test]
 fn a_rule_whose_view_is_not_named_broken_and_its_rule_is_a_finding_naming_the_file() {
     let c = copy("rule-view");
-    let path = "schema/cortex/rules/one-program-part.sql";
+    let path = "schema/cortex/rules/triggers-on-a-table.sql";
     let file = c.root().join(path);
     let text = fs::read_to_string(&file).expect("read");
-    fs::write(&file, text.replace("cortex.broken_one_program_part", "cortex.one_program_part")).expect("written");
+    fs::write(&file, text.replace("cortex.broken_triggers_on_a_table", "cortex.triggers_on_a_table")).expect("written");
     named(&check(c.root()), &[path]);
 }
 
@@ -404,7 +404,7 @@ fn in_docker_a_role_grant_that_lets_sf_service_create_a_table_is_the_finding_sf_
 #[test]
 fn in_docker_a_table_file_given_an_index_its_dump_does_not_hold_is_the_finding_drifted_from_its_dump() {
     let c = copy("drift");
-    c.append("schema/cortex/subject_areas.sql", "\nCREATE INDEX drift_probe ON cortex.subject_areas (id);\n");
+    c.append("schema/cortex/namespaces.sql", "\nCREATE INDEX drift_probe ON cortex.namespaces (id);\n");
     named(&load(c.root()), &["schema/dump/", "the database drifted from its dump", "drift_probe"]);
 }
 

@@ -27,16 +27,16 @@ g = Svg(1040, 470, "An Iceberg table: what every engine shares lands in the cort
 g.band(10, 10, 420, 450, "cortex: shared")
 g.band(560, 10, 470, 450, "engine_iceberg: only Iceberg (a sketch)")
 cortex = [("objects", 50, "objects", "the table, the view"), ("columns", 130, "columns", "id, name, type, null"),
-          ("keys", 210, "table_keys", "identifier: the upsert key"), ("pf", 290, "partition_fields", "day(ts), bucket[16](id)"),
+          ("keys", 210, "constraints", "identifier: the upsert key"), ("pf", 290, "partitionings", "day(ts), bucket[16](id)"),
           ("sort", 370, "sort_fields", "the sort order")]
 for k, y, t, s in cortex:
     g.box(k, 40, y, 360, 56, t, s, cls="pri")
-ice = [("topt", 50, "table_options", "format version, location, merge-on-read"), ("vrep", 130, "view_representations", "one SQL per dialect"),
-       ("props", 210, "table_properties", "any key = value, as written"), ("copt", 290, "column_options", "field id, initial and write defaults"),
-       ("nest", 370, "nested_fields", "struct, list, map: a tree with field ids")]
+ice = [("topt", 50, "tables", "format version, location, merge-on-read, properties"), ("vrep", 130, "view_representations", "one SQL per dialect"),
+       ("copt", 210, "columns", "field id, initial and write defaults"),
+       ("nest", 290, "nested_fields", "struct, list, map: a tree with field ids")]
 for k, y, t, s in ice:
     g.box(k, 600, y, 400, 56, t, s, cls="eng")
-for a, b in [("topt", "objects"), ("vrep", "objects"), ("copt", "columns"), ("nest", "columns"), ("props", "objects")]:
+for a, b in [("topt", "objects"), ("vrep", "objects"), ("copt", "columns"), ("nest", "columns")]:
     ax, ay, aw, ah = g.boxes[a]; bx, by, bw, bh = g.boxes[b]
     g.parts.append(f'<line x1="{ax}" y1="{ay + ah / 2}" x2="{bx + bw + 2}" y2="{by + bh / 2}" class="ea" marker-end="url(#mka)"/>')
     g.lines.append((a, b, ax, ay + ah / 2, bx + bw + 2, by + bh / 2))
