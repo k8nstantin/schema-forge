@@ -1,0 +1,15 @@
+[package]
+name = "schema-forge-specs"
+description = "The spec check: the specs and every owner's folder have their shape, and every folder loads on PostgreSQL 18"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.schema-forge]
+role = "tool"
+
+[dependencies]
+roxmltree = "=0.21.2"
+toml = "=1.2.1"
