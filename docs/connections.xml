@@ -43,9 +43,13 @@
   <section title="The agent">
     <p>The agent sees connection names, their engines and where they point, and can ask to read a schema from one; the server connects, with the secret it keeps. The agent never sees, sends or chooses a secret, and cannot create a profile; the person does that on the Connections page.</p>
   </section>
+  <section title="Reading a schema from its connection">
+    <p>A schema is tied to the saved connection it is read from and the database on it, with what it reads each time (decision read-scope): everything, or the parts (definitions only, with metadata, with usage), the kinds of object and the objects chosen. A read asks the server's version first and then only what that version has, as the engine declares it (decision version-facts); it reads gently, never inside the database it reads (decision gentle-read); it takes the server's usage when the server keeps it (decision usage-apart); and it reports every step for the read screen (decision read-screen). The connection test names the grants the server's version needs that the account lacks. The research behind it, measured on MySQL 5.7, 8.0, 8.4 and 9.7: <a href="live-mysql.xml">live-mysql.xml</a>.</p>
+  </section>
+
   <section title="Where it is built">
     <list>
-      <item><b>Each engine's live part</b> (its connection fields, its test, its live read, and the <c>Live</c> part of the interface the first engine needs) is built in that engine's own branch and pull request, with its dump reader: the MySQL engine first.</item>
+      <item><b>Each engine's live part</b> (its connection fields, its test, its live read, and the <c>Live</c> part of the interface the first engine needs) is built in that engine's own branch and pull request, with its dump reader: the MySQL engine first. The scoped read, its catalog sources and its usage are the task mysql live (t05, <a href="../specs/tasks/SF-121-mysql-live.xml">SF-121</a>).</item>
       <item><b>Connections in the app</b> (profiles in the workspace, secrets in the keychain or referenced, the Connections page with its test, the agent's tools) is its own piece of work, built with the server and the canvas.</item>
     </list>
   </section>
