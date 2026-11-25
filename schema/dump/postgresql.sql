@@ -4281,7 +4281,6 @@ COMMENT ON COLUMN engine_postgresql.sequences.identity IS 'true when an identity
 
 CREATE TABLE engine_postgresql.triggers (
     id bigint NOT NULL,
-    function bigint,
     function_name text NOT NULL,
     arguments jsonb,
     update_columns jsonb,
@@ -4306,13 +4305,6 @@ COMMENT ON TABLE engine_postgresql.triggers IS 'what PostgreSQL says of a trigge
 --
 
 COMMENT ON COLUMN engine_postgresql.triggers.id IS 'the trigger';
-
-
---
--- Name: COLUMN triggers.function; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.triggers.function IS 'the trigger function it runs, where the store holds it; NULL otherwise';
 
 
 --
@@ -6032,14 +6024,6 @@ ALTER TABLE ONLY engine_postgresql.rules
 
 ALTER TABLE ONLY engine_postgresql.sequences
     ADD CONSTRAINT sequences_id_fkey FOREIGN KEY (id) REFERENCES cortex.sequences(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: triggers triggers_function_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
---
-
-ALTER TABLE ONLY engine_postgresql.triggers
-    ADD CONSTRAINT triggers_function_fkey FOREIGN KEY (function) REFERENCES cortex.objects(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

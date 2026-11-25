@@ -1,7 +1,6 @@
 -- engine_postgresql.triggers: what PostgreSQL says of a trigger beyond the cortex. Owner: postgresql.
 CREATE TABLE engine_postgresql.triggers (
   id              BIGINT NOT NULL PRIMARY KEY REFERENCES cortex.triggers (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the trigger
-  function        BIGINT REFERENCES cortex.objects (id) DEFERRABLE INITIALLY DEFERRED,                                          -- the trigger function it runs, where the store holds it; NULL otherwise
   function_name   TEXT NOT NULL,                                                                                                -- the trigger function, as the server names it (audit.log_change)
   arguments       JSONB,                                                                                                        -- the arguments passed to it; NULL for none
   update_columns  JSONB,                                                                                                        -- UPDATE OF: the ids of the columns it fires on; NULL for any
@@ -12,7 +11,6 @@ CREATE TABLE engine_postgresql.triggers (
 
 COMMENT ON TABLE engine_postgresql.triggers IS 'what PostgreSQL says of a trigger beyond the cortex.';
 COMMENT ON COLUMN engine_postgresql.triggers.id IS 'the trigger';
-COMMENT ON COLUMN engine_postgresql.triggers.function IS 'the trigger function it runs, where the store holds it; NULL otherwise';
 COMMENT ON COLUMN engine_postgresql.triggers.function_name IS 'the trigger function, as the server names it (audit.log_change)';
 COMMENT ON COLUMN engine_postgresql.triggers.arguments IS 'the arguments passed to it; NULL for none';
 COMMENT ON COLUMN engine_postgresql.triggers.update_columns IS 'UPDATE OF: the ids of the columns it fires on; NULL for any';
