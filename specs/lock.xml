@@ -3,8 +3,8 @@
   The schema lock: the SHA-256 of every file that makes up the database's design. Written only in a design
   session, by tools/schema_lock.py with its write option; tools/check.sh refuses any locked file that differs.
 -->
-<lock product="SchemaForge" files="143">
-  <file path="docs/owner-template/README.xml" sha256="ff57e0c216a98fa4258d05fb11e53fbbaa80b858981b77db8d9974f202826330"/>
+<lock product="SchemaForge" files="150">
+  <file path="docs/owner-template/README.xml" sha256="f21fd5be265c0be7ed2691d71ab63028a4679d2e5468f7ccc7121db98ad8772d"/>
   <file path="docs/owner-template/owner.toml" sha256="031cf866bb50d34572fcdd16333b9db6318aab561fe519ad4da1f82dab73a734"/>
   <file path="docs/owner-template/schema/column_codecs.sql" sha256="e083ecbc6ea75577cd264b3185baac2f2b48ef418ef17a8c095736027a3cedbc"/>
   <file path="docs/owner-template/schema/migrations/1_tables.sql" sha256="b72b6999026c96ef7c8aeed38811bfecd8ab398904734fc8dd8313c62d14b4dc"/>
@@ -20,14 +20,20 @@
   <file path="docs/owner-template/schema/table_properties.sql" sha256="d13e65ee7a59ae35cee164c1789d37a0fa20f9e769acaac71d884c5e6b0ec430"/>
   <file path="engines/mysql/owner.toml" sha256="4e8c087074eac7912ab7ef867a642f7fedea46b34b97c8b0ab6a26008fdd4b2a"/>
   <file path="engines/mysql/schema/check_constraint_options.sql" sha256="f1d00894f2f2031bc741ee446e9b9f53b01dc20adba77314c0ad03dbf85c17f4"/>
-  <file path="engines/mysql/schema/column_options.sql" sha256="3b976e46f84ccfca21fbb5b8954ced439ad9cf92132b4d56402dbacdcb4eef8d"/>
-  <file path="engines/mysql/schema/database_options.sql" sha256="de5643eab20607c2ba2fa2df67b01d4dac3267b010658c714bff0256f18a98f7"/>
-  <file path="engines/mysql/schema/index_options.sql" sha256="25626d8a7fb5c5f80f9a6ce8aeb1fe4c3d2c45b0613eb52ceb613bad6c7bc8a2"/>
+  <file path="engines/mysql/schema/column_options.sql" sha256="546e101f70d60a18a42bf01fef531c5e0f55702cfd746144c3badd430ab22705"/>
+  <file path="engines/mysql/schema/column_properties.sql" sha256="d99daea3c782826516ab1f1a5c6f510303a0a84cc7df21aed6427cf7edb7521a"/>
+  <file path="engines/mysql/schema/database_options.sql" sha256="5acb777e98c41deec015a4108f130c15194c134498e47aa7dde13132b8f65ff3"/>
+  <file path="engines/mysql/schema/database_properties.sql" sha256="7cd2d7125532804b015bab80892017d25c78fd80066c724c41f965b345dca90e"/>
+  <file path="engines/mysql/schema/index_options.sql" sha256="aa1faead5c00a02373e9c7a212ca9a2c53b10f92571e3b130cc67689415fe34e"/>
   <file path="engines/mysql/schema/index_part_options.sql" sha256="05df9f1395c24f6edb3945a16936ab5ee9fc57f5723557630e8f2a7568238215"/>
+  <file path="engines/mysql/schema/index_properties.sql" sha256="0be79c9cbefcea42cd1540a6ba49de10d5f7775773fb8399667910b7b8ee21ed"/>
+  <file path="engines/mysql/schema/key_properties.sql" sha256="69b391b8bcc22a507a1dc1a1a310a85bcf7f742013f5cd0a0ddaf8ae6821ab9f"/>
   <file path="engines/mysql/schema/loadable_functions.sql" sha256="3f2d0751eb6bb189c6855a9a9725a5c80db0934ac963a9d7f4ab61dfa46f62f2"/>
   <file path="engines/mysql/schema/merge_tables.sql" sha256="7fa20f697d7e79e6b976dd6db889af3349ed91d8543250ac6f6c71b153b42043"/>
+  <file path="engines/mysql/schema/object_properties.sql" sha256="f3b7dbcc26ab8a21af65286b78ebf3742d4c72d81c9c146a74e2ba56f72630ac"/>
   <file path="engines/mysql/schema/outside_references.sql" sha256="484f62235084dc60c46b0db2d325fa669de78e0f5a7496cf645580390d6289b1"/>
-  <file path="engines/mysql/schema/partition_options.sql" sha256="a563eb53eec6406e0371f07d227cabeb9cf6a8726b70957d0e846b5e059659d2"/>
+  <file path="engines/mysql/schema/partition_options.sql" sha256="09e5a403f4113f3f5f1fbb7935a12f3e66a6705a1ed95860be9d75a02a8a22a1"/>
+  <file path="engines/mysql/schema/partition_properties.sql" sha256="3d87057a54ec10d7852572f4357624ebfdae4747ff4520602d46b8fd4926735b"/>
   <file path="engines/mysql/schema/program_context.sql" sha256="c5e8d4dc133808cc2cafc9ea4e02142717f95283c7e29d850e51b9a507c75b66"/>
   <file path="engines/mysql/schema/relationship_options.sql" sha256="9fecb6d012110820550fc8a3e1c775aafad566d659e7e918e8431ae774a19449"/>
   <file path="engines/mysql/schema/routine_imports.sql" sha256="0982d352e814a86865ba8197dd5fd56d9c3e4b71b7136170b7ff778b854ed8f6"/>
@@ -39,14 +45,15 @@
   <file path="engines/mysql/schema/rules/subpartitions-of-subpartitioned-tables.sql" sha256="7084cbc094d537047c03dbbd3cd185b990eeba5960134320e4d481da6c1dddc3"/>
   <file path="engines/mysql/schema/rules/table-options-on-tables.sql" sha256="396d37022ba6f4ec0d387ee6268b927fe1a3353da834838b7f16c994df0406ab"/>
   <file path="engines/mysql/schema/spatial_reference_systems.sql" sha256="6d83c130cd5cee7c5def4d99a8a057ae103daf70fb50ea82824137aa59eba1c3"/>
-  <file path="engines/mysql/schema/subpartition_options.sql" sha256="c9bc510d034d325c4636dc5266c1e5cc24f683e1f475d397aa5e6f2fa7540d20"/>
+  <file path="engines/mysql/schema/subpartition_options.sql" sha256="ee8c7c8289adca870c54f39e9ef41588b566b8e5e5f75aac6bf12badc8090849"/>
+  <file path="engines/mysql/schema/subpartition_properties.sql" sha256="605e3f2d8956b4df1f9dccf3720447f69f26a5ddfd39dd3ca587e44c1a45cd8f"/>
   <file path="engines/mysql/schema/subpartitionings.sql" sha256="d97d0ed5fc808e52bc22294c2489ff7b71064a412fb3d8dead1c392f065f0199"/>
   <file path="engines/mysql/schema/subpartitions.sql" sha256="193b856aab17809902535e5a49a7bb6944b1b8818b48ae7393888f8c6dc50274"/>
   <file path="engines/mysql/schema/table_key_column_options.sql" sha256="5388eb412febc6ee45f0c587a78a20748664ac73ad2f472206e329d5dc6583db"/>
-  <file path="engines/mysql/schema/table_key_options.sql" sha256="eae6241ebff65a190b915a5e99152cb28e80ad337d34df698954e7454a5fdef2"/>
-  <file path="engines/mysql/schema/table_options.sql" sha256="7b8f0a943b9562babef27a98847cc2a210693defa0ebc9482f0bd96b2bf17624"/>
+  <file path="engines/mysql/schema/table_key_options.sql" sha256="7ff5ae2fc4d36ac303aac97c7c212ff2bded49cc9c197601f57bf6046771da2f"/>
+  <file path="engines/mysql/schema/table_options.sql" sha256="1709c9a4cf900f57bb49b378627c4e570185b0246be0f2bc72bb7c85c1d3fca5"/>
   <file path="engines/mysql/schema/table_partitioning_options.sql" sha256="3f1217e33e6845632e15cccc1769253c24a8e59973454ead655f1801adda49ac"/>
-  <file path="engines/mysql/schema/tablespaces.sql" sha256="0156f121d9ba195c21cd882d336da83d67f48755fc821fbb20c27070858a9a74"/>
+  <file path="engines/mysql/schema/tablespaces.sql" sha256="4d9604aaaf73c2c08ac5f629206071df645eeb4df6f778e563191e1ef17d039e"/>
   <file path="engines/mysql/schema/view_column_names.sql" sha256="b56a3dd0fff01b184d47818366b6ae077a68da59d075337d16299379c3f9a355"/>
   <file path="engines/mysql/schema/view_options.sql" sha256="75f5a65fdc223c711722d54dc10791e1a273480e6b834221b29a4d2cdcefb549"/>
   <file path="engines/quill/owner.toml" sha256="83dbd3a7efcc91cea9f61a7e55712887e5c278ea67bb89dc3ac08804729583f9"/>
@@ -131,7 +138,7 @@
   <file path="schema/cortex/value_changes.sql" sha256="aff8ed50e13c0bbda5534219e6fc035e524452b06066cbe4d26f2f8ff9885921"/>
   <file path="schema/cortex/verbatim_statements.sql" sha256="af3e31fdf699d423abc17531989019ba6e4a31ef1e60e891b2222cf11097a100"/>
   <file path="schema/cortex/view_queries.sql" sha256="c7ebc16819ecb189d243da08d2ae6a15a1875bfbdd5384f50d467e3eb25dc6be"/>
-  <file path="schema/dump/mysql.sql" sha256="361760d1d578eb505807dcb6fbffbb45d75172e7564a6589f910f5938c4a6027"/>
+  <file path="schema/dump/mysql.sql" sha256="f5f7cfaa45e615d7d0fe5f45edc75ee6caf34086189f62fb213d0549f8be7024"/>
   <file path="schema/dump/quill.sql" sha256="ab1bc30f94a46bc183837f4d36ad6cc7fb6054f470c83080a3087c13062f8a01"/>
   <file path="schema/dump/usage.sql" sha256="a8cace8d015508686461fcb5fee45e133d352252b6af2b295abc0cdd1bdc14e9"/>
   <file path="schema/dump/workspace.sql" sha256="6cd92bff775bc16cce45b7d68a1aa7846d15df067b79ddea0bbf7c7864862342"/>

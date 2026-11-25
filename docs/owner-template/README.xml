@@ -14,10 +14,10 @@
       <row><cell>1. Options of a cortex part</cell><cell>what the engine says of a table, a column, a key... beyond the cortex; at most one row per part</cell><cell>the part's own id, a foreign key</cell><cell><a href="schema/table_options.sql"><c>table_options.sql</c></a></cell></row>
       <row><cell>2. An ordered list</cell><cell>many things per part, in order</cell><cell><c>&lt;parent&gt;.&lt;word&gt;&lt;n&gt;</c>, n from <c>cortex.id_counters</c></cell><cell><a href="schema/column_codecs.sql"><c>column_codecs.sql</c></a></cell></row>
       <row><cell>3. A kind only this engine has</cell><cell>an object the cortex has no kind for (a pool, a tablespace)</cell><cell>the object's id: the object is a <c>cortex.objects</c> row of a kind the engine declares</cell><cell><a href="schema/storage_pools.sql"><c>storage_pools.sql</c></a></cell></row>
-      <row><cell>4. Open-ended properties</cell><cell>only where the engine itself lets anyone name a key (Iceberg's table properties)</cell><cell><c>&lt;parent&gt;.&lt;word&gt;&lt;n&gt;</c></cell><cell><a href="schema/table_properties.sql"><c>table_properties.sql</c></a></cell></row>
+      <row><cell>4. Open-ended properties</cell><cell>where the engine lets anyone name a key (Iceberg's table properties), and for the engine's own options that are not its core: a storage engine's, a version's, a cloud's, a seldom written one (MySQL's key_block_size)</cell><cell><c>&lt;parent&gt;.&lt;word&gt;&lt;n&gt;</c></cell><cell><a href="schema/table_properties.sql"><c>table_properties.sql</c></a></cell></row>
       <row><cell>5. A tree</cell><cell>nested things (fields of a struct of structs)</cell><cell><c>&lt;parent&gt;.&lt;word&gt;&lt;n&gt;</c>, a <c>parent</c> column referring to the same table</cell><cell><a href="schema/nested_fields.sql"><c>nested_fields.sql</c></a></cell></row>
     </table>
-    <p>A value the engine names belongs in a typed column of shape 1, never in shape 4: shape 4 is for keys nobody can list.</p>
+    <p>Typed columns are the engine's core: the options every version has and that people and the agent ask of a design (a table's engine, charset, row format). Everything else the engine names goes to shape 4, one row per option, so the engine's schema never grows a column for a new release (decision typed-core).</p>
   </section>
   <section title="Every file, every column">
     <list>
