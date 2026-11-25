@@ -285,7 +285,7 @@ root = ET.parse(f"{REPO}/specs/root.xml").getroot()
 dec = ""
 for d in root.find("decisions").findall("decision"):
     w = d.get("where") or ""
-    if d.get("status") == "confirmed" and ("schema" in w or "engine" in w or "t05" in w):
+    if d.get("status") == "confirmed" and ("schema" in w or "engine" in w or "t06" in w):
         dec += f'<tr><td><code>{e(d.get("id"))}</code></td><td>{e(" ".join("".join(d.itertext()).split()))}</td><td class="small">{e(d.get("date"))}</td></tr>'
 opend = "".join(f'<li><code>{e(d.get("id"))}</code> {e(" ".join("".join(d.itertext()).split()))} <span class="pill open">before {e(d.get("closes-before"))}</span></li>'
                 for d in root.find("decisions").findall("decision") if d.get("status") == "open")
