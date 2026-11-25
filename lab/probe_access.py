@@ -44,13 +44,13 @@ def root(engine, container, sql):
 SETUP = {
     "mysql": (f"""DROP USER IF EXISTS sf_lab_reader@'%'; CREATE USER sf_lab_reader@'%' IDENTIFIED BY '{PW}';
                  GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON shop.* TO sf_lab_reader@'%';
-                 GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON torture.* TO sf_lab_reader@'%';
+                 GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON features.* TO sf_lab_reader@'%';
                  GRANT SHOW_ROUTINE ON *.* TO sf_lab_reader@'%';""",
               "GRANT SELECT ON performance_schema.* TO sf_lab_reader@'%'; GRANT SELECT ON mysql.innodb_table_stats TO sf_lab_reader@'%';"),
     "postgresql": ("""DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sf_lab_reader') THEN
                        REVOKE pg_read_all_stats FROM sf_lab_reader; DROP OWNED BY sf_lab_reader; DROP ROLE sf_lab_reader; END IF; END $$;
                     CREATE ROLE sf_lab_reader LOGIN;
-                    GRANT USAGE ON SCHEMA shop, torture TO sf_lab_reader; GRANT SELECT ON ALL TABLES IN SCHEMA shop, torture TO sf_lab_reader;""",
+                    GRANT USAGE ON SCHEMA shop, features TO sf_lab_reader; GRANT SELECT ON ALL TABLES IN SCHEMA shop, features TO sf_lab_reader;""",
                    "GRANT pg_read_all_stats TO sf_lab_reader;"),
 }
 

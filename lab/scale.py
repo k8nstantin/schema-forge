@@ -3,7 +3,7 @@ with versioning on, then every part rebuilt from the store and compared with wha
 property. The schemas read are LAB_SCHEMAS; their snapshots go to LAB_OUT, which for anything private must be outside
 the repository. Nothing of them is printed but counts and the first differences' property names.
 
-  LAB_SCHEMAS=a,b LAB_OUT=~/private/out python3 lab/scale.py [--versioning]
+  LAB_SCHEMAS=a,b LAB_OUT=~/private/out python3 lab/scale.py [--postgresql] [--versioning]
 """
 import json
 import os
@@ -47,24 +47,26 @@ def main():
         raise SystemExit("LAB_SCHEMAS and LAB_OUT name the schemas and where their snapshots go")
     os.makedirs(X.OUT, exist_ok=True)
     failures = 0
-    for version, container in X.MYSQL:
+    engine = "postgresql" if "--postgresql" in sys.argv else "mysql"
+    servers, read = (X.POSTGRES, X.extract_pg) if engine == "postgresql" else (X.MYSQL, X.extract_mysql)
+    for version, container in servers:
         t = time.time()
-        parts = X.extract_mysql(version, container)
+        parts = read(version, container)
         t_read = time.time() - t
-        snap = {"engine": "mysql", "version": version, "parts": parts}
-        json.dump(snap, open(os.path.join(X.OUT, f"mysql-{version}.json"), "w"), indent=1, sort_keys=True, default=str)
+        snap = {"engine": engine, "version": version, "parts": parts}
+        json.dump(snap, open(os.path.join(X.OUT, f"{engine}-{version}.json"), "w"), indent=1, sort_keys=True, default=str)
         kinds = {}
         for p in parts:
             kinds[p["kind"]] = kinds.get(p["kind"], 0) + 1
         t = time.time()
-        db, merged = V.build("mysql", snap, f"lab_scale_mysql_{version.replace('.', '_')}")
+        db, merged = V.build(engine, snap, f"lab_scale_{engine}_{version.replace('.', '_')}")
         t_store = time.time() - t
         # a view is listed by TABLES and VIEWS: one part once merged, and it must carry the server's definition
-        undefined = [p["kind"] for _, p, _, _ in merged if p["kind"] in ("table", "view", "routine", "trigger", "event")
+        undefined = [p["kind"] for _, p, _, _ in merged if engine == "mysql" and p["kind"] in ("table", "view", "routine", "trigger", "event")
                      and "__show_create" not in p["props"]]
         missing_def = len(undefined)
         t = time.time()
-        back = stored(db, "mysql", sorted({c for c, *_ in merged}))
+        back = stored(db, engine, sorted({c for c, *_ in merged}))
         t_back = time.time() - t
         exact, diffs = 0, {}
         for c, p, s, o in merged:
@@ -85,7 +87,7 @@ def main():
                       "(SELECT count(*) FROM log.changes) || ' changes'", db)
         ok = exact == len(merged) and not extra and not missing_def
         failures += not ok
-        print(f"{'pass' if ok else 'FAIL'}  mysql {version}: {len(parts)} parts read ({', '.join(f'{k} {n}' for k, n in sorted(kinds.items()))})")
+        print(f"{'pass' if ok else 'FAIL'}  {engine} {version}: {len(parts)} parts read ({', '.join(f'{k} {n}' for k, n in sorted(kinds.items()))})")
         print(f"      read {t_read:.1f}s, stored {t_store:.1f}s, rebuilt {t_back:.1f}s; {size}")
         print(f"      {exact} of {len(merged)} parts rebuilt exactly" + (f"; {extra} extra in the store" if extra else "")
               + (f"; without a definition: {', '.join(sorted(set(undefined)))} ({missing_def})" if missing_def else ""))

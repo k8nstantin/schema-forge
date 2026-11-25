@@ -13,7 +13,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 PW = next(l.split('"')[1] for l in open(os.path.join(ROOT, "engines/mysql/tests/live.rs")) if l.startswith("const ROOT"))
-SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,torture,Gotcha Zone").split(","))  # the schemas a run reads
+SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,features,Quoted Names").split(","))  # the schemas a run reads
 
 
 class Server:

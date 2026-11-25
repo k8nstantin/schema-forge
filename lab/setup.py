@@ -75,7 +75,7 @@ def pg_up(name, version, port):
 
 def samples(engine, version):
     d = os.path.join(HERE, "samples", engine)
-    files = ["shop.sql", "torture.sql"] + (["torture80.sql"] if engine == "mysql" and version != "5.7" else []) + ["gotchas.sql"]
+    files = ["shop.sql", "features.sql"] + (["features80.sql"] if engine == "mysql" and version != "5.7" else []) + ["quoted_names.sql"]
     sql = "".join(open(os.path.join(d, f)).read() + "\n" for f in files)
     if engine == "mysql":
         sql += open(os.path.join(ROOT, "engines/mysql/tests/samples/live/workload.sql")).read()
@@ -93,7 +93,7 @@ def main():
     for v, port in MYSQL:
         name = mysql_up(v, port)
         sh("docker", "exec", name, "mysql", "-uroot", f"-p{PW}", "-e",
-           "DROP DATABASE IF EXISTS shop; DROP DATABASE IF EXISTS torture; DROP DATABASE IF EXISTS `Gotcha Zone`")
+           "DROP DATABASE IF EXISTS shop; DROP DATABASE IF EXISTS features; DROP DATABASE IF EXISTS `Quoted Names`")
         sh("docker", "exec", "-i", name, "mysql", "-uroot", f"-p{PW}", "--comments", stdin=samples("mysql", v))
         note = ""
         for path in (baseline.split(":") if baseline else []):
@@ -113,8 +113,8 @@ def main():
                 sh("docker", "restart", name)
                 pg_up(name, v, port)
             sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "CREATE EXTENSION IF NOT EXISTS pg_stat_statements")
-        sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", 'DROP SCHEMA IF EXISTS shop, torture, audit, "Gotcha Zone" CASCADE')
-        sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "DROP ROLE IF EXISTS torture_reader")
+        sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", 'DROP SCHEMA IF EXISTS shop, features, audit, "Quoted Names" CASCADE')
+        sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "DROP ROLE IF EXISTS features_reader")
         sh("docker", "exec", "-i", name, "psql", "-U", "postgres", "-q", "-v", "ON_ERROR_STOP=1", stdin=samples("postgresql", v))
         print(f"{name}: 127.0.0.1:{port}, lab samples loaded{', every statistic counted' if v == '18' else ', default statistics'}")
     pg_up(*STORE)

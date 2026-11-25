@@ -1,6 +1,6 @@
 -- What MySQL has from 8.0 on: CHECK constraints, expression index parts, invisible columns and indexes, descending
 -- parts, expression defaults, multi-valued JSON indexes.
-CREATE TABLE torture.modern (
+CREATE TABLE features.modern (
   id INT PRIMARY KEY,
   qty INT NOT NULL DEFAULT (1),
   price DECIMAL(10,2) NOT NULL,

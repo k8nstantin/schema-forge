@@ -247,7 +247,7 @@ def run(engine, container, seed):
         P.SCHEMAS = (zone,)
         S = P.in_list(P.SCHEMAS)
         plugins = json.loads(json.dumps(P.PLUGINS, default=str))
-        roster_sql = P.PLUGINS[engine]["roster"].replace(P.in_list(("shop", "torture", "Gotcha Zone")), S)
+        roster_sql = P.PLUGINS[engine]["roster"].replace(P.in_list(("shop", "features", "Quoted Names")), S)
         P.PLUGINS[engine]["roster"] = roster_sql
         probed = P.probe(s)
     finally:
@@ -260,7 +260,7 @@ def run(engine, container, seed):
     unread = read.get("unread", {})
     s.ask(drop)
     if missing or extra or empty or unread:
-        return "gotcha", f"missing {sorted(missing)[:3]} extra {sorted(extra)[:3]} empty {empty[:2]} unread {list(unread.items())[:2]}"
+        return "failed", f"missing {sorted(missing)[:3]} extra {sorted(extra)[:3]} empty {empty[:2]} unread {list(unread.items())[:2]}"
     return "pass", f"{len(objs)} objects"
 
 
@@ -275,9 +275,9 @@ def main():
             tally[container][outcome] += 1
             if outcome != "pass":
                 print(f"  {container} seed {seed}: {outcome}: {said}")
-    print("== the fuzzer: per server, schemas that passed, gotchas found, schemas the server refused (the generator's to learn)")
+    print("== the fuzzer: per server, schemas that passed, failures found, schemas the server refused (the generator's to learn)")
     for c, t in tally.items():
-        print(f"  {c:14} pass {t.get('pass', 0):3}  gotcha {t.get('gotcha', 0):3}  generator {t.get('generator', 0):3}")
+        print(f"  {c:14} pass {t.get('pass', 0):3}  failed {t.get("failed", 0):3}  generator {t.get('generator', 0):3}")
 
 
 if __name__ == "__main__":

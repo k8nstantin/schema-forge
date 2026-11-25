@@ -1,8 +1,8 @@
-"""The lab's gotcha suite, on every server: the names a reader must quote, a reserved word, the same name in two
+"""The quoted-names test, on every server: the names a reader must quote, a reserved word, the same name in two
 cases, a view whose table is gone, PostgreSQL's overloaded functions and partition trees. Every object must be in
 the roster once, every definition read or reported unreadable with the server's reason, nothing lost in silence.
 
-  python3 lab/gotchas.py
+  python3 lab/quoted_names.py
 """
 import probe as P
 
@@ -10,8 +10,8 @@ EXPECT = {
     "mysql": {("table", "Order"), ("table", "my.table"), ("table", "it's"), ("table", "MixedCase"), ("table", "mixedcase"),
               ("view", "v broken"), ("procedure", "select")},
     "postgresql": {("table", "Order"), ("table", "my.table"), ("table", "it's"), ("table", "MixedCase"), ("table", "mixedcase"),
-                   ("function", '"Gotcha Zone".area(double precision)'), ("function", '"Gotcha Zone".area(double precision,double precision)'),
-                   ("function", '"Gotcha Zone"."select"()'), ("partitioned table", "logs"), ("partition", "logs_2025"),
+                   ("function", '"Quoted Names".area(double precision)'), ("function", '"Quoted Names".area(double precision,double precision)'),
+                   ("function", '"Quoted Names"."select"()'), ("partitioned table", "logs"), ("partition", "logs_2025"),
                    ("partition", "logs_2026"), ("view", "v1"), ("view", "v on v")},
 }
 
@@ -21,7 +21,7 @@ def main():
     for engine, container in P.SERVERS:
         s = P.Server(engine, container)
         probed = P.probe(s)
-        zone = [o for o in probed["roster"] if o["schema"] == "Gotcha Zone"]
+        zone = [o for o in probed["roster"] if o["schema"] == "Quoted Names"]
         got = {(o["kind"], o["name"]) for o in zone}
         missing = EXPECT[engine] - got
         twice = len(zone) - len({(o["kind"], o["name"]) for o in zone})

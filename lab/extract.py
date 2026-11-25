@@ -15,7 +15,7 @@ ROOT = os.path.dirname(HERE)
 PW = next(l.split('"')[1] for l in open(os.path.join(ROOT, "engines/mysql/tests/live.rs")) if l.startswith("const ROOT"))
 MYSQL = [("5.7", "sf-mysql-5.7"), ("8.0", "sf-mysql-8.0"), ("8.4", "sf-mysql-8.4"), ("9.7", "sf-mysql-9.7")]
 POSTGRES = [(v, f"sf-pg-{v}") for v in ("15", "16", "17", "18")]
-SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,torture,audit").split(","))  # the schemas a run reads
+SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,features,audit").split(","))  # the schemas a run reads
 OUT = os.path.expanduser(os.environ.get("LAB_OUT", os.path.join(HERE, "out")))  # private schemas go outside the repository
 
 # MySQL: information_schema tables by the part they describe, the columns that name the part, and the volatile ones.
@@ -151,7 +151,7 @@ PG_PARTS = {
     "relation": """SELECT n.nspname || '.' || c.relname AS key, n.nspname AS parent, to_jsonb(c)
         - 'oid' - 'relnamespace' - 'reltype' - 'reloftype' - 'relowner' - 'relfilenode' - 'reltablespace' - 'relpages'
         - 'reltuples' - 'relallvisible' - 'relallfrozen' - 'reltoastrelid' - 'relfrozenxid' - 'relminmxid' - 'relam'
-        - 'relrewrite' - 'relhasindex' - 'relhastriggers' - 'relhasrules' - 'relhassubclass' - 'relnatts' - 'relchecks'
+        - 'relrewrite' - 'relpartbound' - 'relhasindex' - 'relhastriggers' - 'relhasrules' - 'relhassubclass' - 'relnatts' - 'relchecks'
         || jsonb_build_object('owner', pg_get_userbyid(c.relowner), 'am', am.amname, 'acl', c.relacl::text[],
         'comment', obj_description(c.oid, 'pg_class'), 'partition_key', pg_get_partkeydef(c.oid),
         'partition_bound', pg_get_expr(c.relpartbound, c.oid),
@@ -164,16 +164,19 @@ PG_PARTS = {
         - 'atthasdef' - 'atthasmissing' - 'attmissingval' - 'attstattarget' - 'attndims' - 'attacl' - 'attoptions'
         - 'attfdwoptions' - 'atttypmod' - 'attcompression'
         || jsonb_build_object('type', format_type(a.atttypid, a.atttypmod), 'default', pg_get_expr(d.adbin, d.adrelid),
-        'collation', CASE WHEN a.attcollation <> t.typcollation THEN co.collname END, 'comment', col_description(c.oid, a.attnum),
-        'acl', a.attacl::text[], 'options', a.attoptions) AS props
+        'collation', CASE WHEN a.attcollation <> t.typcollation THEN quote_ident(cn.nspname) || '.' || quote_ident(co.collname) END, 'comment', col_description(c.oid, a.attnum),
+        'acl', a.attacl::text[], 'options', (SELECT array_agg(o) FROM unnest(a.attoptions) o WHERE NOT starts_with(o, 'pg_attver='))) AS props
       FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
       JOIN pg_type t ON t.oid = a.atttypid LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
-      LEFT JOIN pg_collation co ON co.oid = a.attcollation
+      LEFT JOIN pg_collation co ON co.oid = a.attcollation LEFT JOIN pg_namespace cn ON cn.oid = co.collnamespace
       WHERE n.nspname = ANY(%(s)s) AND a.attnum > 0 AND NOT a.attisdropped AND c.relkind IN ('r','p','v','m','f')""",
     "index": """SELECT n.nspname || '.' || ic.relname AS key, n.nspname || '.' || tc.relname AS parent,
         to_jsonb(i) - 'indexrelid' - 'indrelid' - 'indcollation' - 'indclass' - 'indexprs' - 'indpred' - 'indkey' - 'indoption'
         || jsonb_build_object('definition', pg_get_indexdef(i.indexrelid), 'am', am.amname, 'options', ic.reloptions,
-        'predicate', pg_get_expr(i.indpred, i.indrelid), 'comment', obj_description(i.indexrelid, 'pg_class')) AS props
+        'predicate', pg_get_expr(i.indpred, i.indrelid), 'comment', obj_description(i.indexrelid, 'pg_class'),
+        'constraint', (SELECT co.conname FROM pg_constraint co WHERE co.conindid = i.indexrelid AND co.conrelid = i.indrelid AND co.contype IN ('p','u','x')),
+        'parent_index', (SELECT pn.nspname || '.' || pc.relname FROM pg_inherits h JOIN pg_class pc ON pc.oid = h.inhparent
+          JOIN pg_namespace pn ON pn.oid = pc.relnamespace WHERE h.inhrelid = i.indexrelid)) AS props
       FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_class tc ON tc.oid = i.indrelid
       JOIN pg_namespace n ON n.oid = tc.relnamespace JOIN pg_am am ON am.oid = ic.relam WHERE n.nspname = ANY(%(s)s)""",
     "constraint": """SELECT n.nspname || '.' || coalesce(rc.relname, ty.typname) || '.' || co.conname AS key,
@@ -187,7 +190,8 @@ PG_PARTS = {
         to_jsonb(s) - 'seqrelid' - 'seqtypid' || jsonb_build_object('type', format_type(s.seqtypid, NULL),
         'owned_by', (SELECT tc.relname || '.' || a.attname FROM pg_depend d JOIN pg_class tc ON tc.oid = d.refobjid
           JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
-          WHERE d.objid = c.oid AND d.classid = 'pg_class'::regclass AND d.deptype IN ('a','i') LIMIT 1)) AS props
+          WHERE d.objid = c.oid AND d.classid = 'pg_class'::regclass AND d.deptype IN ('a','i') LIMIT 1),
+        'identity', EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = c.oid AND d.classid = 'pg_class'::regclass AND d.deptype = 'i')) AS props
       FROM pg_sequence s JOIN pg_class c ON c.oid = s.seqrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = ANY(%(s)s)""",
     "type": """SELECT n.nspname || '.' || t.typname AS key, n.nspname AS parent,
         jsonb_build_object('typtype', t.typtype, 'base', CASE WHEN t.typtype = 'd' THEN format_type(t.typbasetype, t.typtypmod) END,
@@ -195,7 +199,10 @@ PG_PARTS = {
         'labels', (SELECT array_agg(e.enumlabel ORDER BY e.enumsortorder) FROM pg_enum e WHERE e.enumtypid = t.oid),
         'fields', (SELECT jsonb_agg(jsonb_build_object('name', a.attname, 'type', format_type(a.atttypid, a.atttypmod)) ORDER BY a.attnum)
                    FROM pg_attribute a WHERE a.attrelid = t.typrelid AND a.attnum > 0),
-        'range_subtype', (SELECT format_type(r.rngsubtype, NULL) FROM pg_range r WHERE r.rngtypid = t.oid)) AS props
+        'range_subtype', (SELECT format_type(r.rngsubtype, NULL) FROM pg_range r WHERE r.rngtypid = t.oid),
+        'multirange', (SELECT format_type(r.rngmultitypid, NULL) FROM pg_range r WHERE r.rngtypid = t.oid),
+        'collation', (SELECT quote_ident(cn.nspname) || '.' || quote_ident(co.collname) FROM pg_collation co JOIN pg_namespace cn ON cn.oid = co.collnamespace WHERE co.oid = t.typcollation AND t.typcollation <> (SELECT typcollation FROM pg_type WHERE oid = t.typbasetype)),
+        'owner', pg_get_userbyid(t.typowner), 'acl', t.typacl::text[]) AS props
       FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = ANY(%(s)s) AND t.typtype IN ('e','c','d','r')
         AND (t.typtype <> 'c' OR (SELECT relkind FROM pg_class WHERE oid = t.typrelid) = 'c')""",
     "routine": """SELECT n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' AS key, n.nspname AS parent,
@@ -203,7 +210,10 @@ PG_PARTS = {
         - 'proargdefaults' - 'protrftypes' - 'prosupport' - 'prosqlbody' - 'provariadic' - 'procost' - 'prorows'
         || jsonb_build_object('language', l.lanname, 'returns', pg_get_function_result(p.oid),
         'arguments', pg_get_function_arguments(p.oid), 'owner', pg_get_userbyid(p.proowner),
-        'comment', obj_description(p.oid, 'pg_proc'), 'acl', p.proacl::text[]) AS props
+        'comment', obj_description(p.oid, 'pg_proc'), 'acl', p.proacl::text[],
+        'create', CASE WHEN p.prokind <> 'a' THEN pg_get_functiondef(p.oid) END,
+        'made_by', (SELECT CASE d.deptype WHEN 'e' THEN 'extension' ELSE 'type' END FROM pg_depend d
+          WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype IN ('i','e') LIMIT 1)) AS props
       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_language l ON l.oid = p.prolang WHERE n.nspname = ANY(%(s)s)""",
     "trigger": """SELECT n.nspname || '.' || c.relname || '.' || tg.tgname AS key, n.nspname || '.' || c.relname AS parent,
         to_jsonb(tg) - 'oid' - 'tgrelid' - 'tgparentid' - 'tgfoid' - 'tgconstrrelid' - 'tgconstrindid' - 'tgconstraint'
