@@ -304,7 +304,7 @@ fn an_engine_table_referring_to_another_engine_s_table_is_the_finding_which_is_n
     c.edit(
         "engines/mysql/schema/table_options.sql",
         "REFERENCES cortex.objects (id)",
-        "REFERENCES engine_quill.record_options (id)",
+        "REFERENCES engine_other.table_options (id)",
     );
     named(&check(c.root()), &["engines/mysql/schema/table_options.sql", "which is not its own or the cortex's"]);
 }

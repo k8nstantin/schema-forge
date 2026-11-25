@@ -5,6 +5,8 @@ resolver = "3"
 # Every crate declares its role in `[package.metadata.schema-forge]`; tools/architecture fails the build when the
 # roles depend on each other in a way docs/engines.xml does not allow, or a database is named outside its engine.
 members = ["crates/*", "engines/*", "tools/*"]
+# An engine whose schema is designed before its crate is written: its folder holds owner.toml and schema/ only.
+exclude = ["engines/postgresql"]
 
 [workspace.package]
 version = "0.2.0"

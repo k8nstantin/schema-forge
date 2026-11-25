@@ -29,6 +29,19 @@ NO_DEFAULT_NULL = ("text", "tinytext", "mediumtext", "longtext", "blob", "tinybl
                    "geometrycollection", "geomcollection")
 
 
+def default_sql(c, version):
+    """A column's default as SHOW CREATE writes it after DEFAULT, from information_schema's COLUMN_DEFAULT and EXTRA;
+    None for no default written (DEFAULT NULL is written from nullability alone)."""
+    d, extra = c.get("COLUMN_DEFAULT"), c.get("EXTRA") or ""
+    if c.get("GENERATION_EXPRESSION") or d is None:
+        return None
+    if "DEFAULT_GENERATED" in extra:
+        return d if re.fullmatch(r"CURRENT_TIMESTAMP(\(\d\))?", d) else f"({d})"
+    if c["DATA_TYPE"] == "bit" or (not mysql8(version) and re.fullmatch(r"CURRENT_TIMESTAMP(\(\d\))?", d)):
+        return d
+    return text_lit(d)
+
+
 def column(c, table_cs, table_coll, version, charset_default):
     t = c["COLUMN_TYPE"]
     out = f"  {q(c['COLUMN_NAME'])} {t}"
@@ -53,7 +66,13 @@ def column(c, table_cs, table_coll, version, charset_default):
     if c.get("SRS_ID") is not None:
         out += f" /*!80003 SRID {c['SRS_ID']} */"
     d = c.get("COLUMN_DEFAULT")
-    if not gen:
+    if not gen and "__default_sql" in c:
+        # the store holds the default as the SQL SHOW CREATE writes after DEFAULT
+        if c["__default_sql"] is not None:
+            out += f" DEFAULT {c['__default_sql']}"
+        elif nullable and c["DATA_TYPE"] not in NO_DEFAULT_NULL and "auto_increment" not in extra:
+            out += " DEFAULT NULL"
+    elif not gen:
         if "DEFAULT_GENERATED" in extra and d is not None:
             if re.fullmatch(r"CURRENT_TIMESTAMP(\(\d\))?", d):
                 out += f" DEFAULT {d}"
@@ -240,7 +259,7 @@ def main():
         exact, why, first = 0, Counter(), {}
         tables = tables_of(snap)
         for key, (t, cols, idx, fks, checks, parts) in tables.items():
-            want = normal(t.get("__show_create", ""))
+            want = t.get("__show_create", "")
             got = create_table(t, cols, idx, fks, checks, version, charset_default, parts)
             if got == want:
                 exact += 1
