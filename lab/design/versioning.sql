@@ -16,7 +16,7 @@ CREATE TABLE log.changes (
   id        bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,  -- in the order they happened
   turn      bigint NOT NULL REFERENCES log.turns (id),
   tab       text   NOT NULL,                                   -- schema.table
-  row_id    text   NOT NULL,                                   -- the row's id
+  row_id    bigint NOT NULL,                                   -- the row's id
   op        text   NOT NULL CHECK (op IN ('insert', 'update', 'delete')),
   before    jsonb,                                             -- update: only the columns that changed; delete: the whole row
   after     jsonb                                              -- update: only the columns that changed; insert: the whole row
@@ -44,7 +44,7 @@ CREATE TABLE log.state (
   open     bigint  REFERENCES log.turns (id)   -- the turn being made; NULL between turns
 );
 
--- Every versioned table: the global schema's and every plugin's. Each has a text id.
+-- Every versioned table: the global schema's and every plugin's. Each has a bigint id.
 CREATE OR REPLACE FUNCTION log.versioned() RETURNS TABLE (tab text) LANGUAGE sql STABLE AS $$
   SELECT n.nspname || '.' || c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind = 'r' AND (n.nspname = 'core' OR n.nspname LIKE 'engine\_%') ORDER BY 1
@@ -221,7 +221,7 @@ BEGIN
 END $$;
 
 -- What changed between two savepoints (or turns on one line): each row's first state and last.
-CREATE OR REPLACE FUNCTION log.compare(p_from text, p_to text) RETURNS TABLE (tab text, row_id text, what text) LANGUAGE sql STABLE AS $$
+CREATE OR REPLACE FUNCTION log.compare(p_from text, p_to text) RETURNS TABLE (tab text, row_id bigint, what text) LANGUAGE sql STABLE AS $$
   WITH a AS (SELECT turn FROM log.savepoints WHERE name = p_from), b AS (SELECT turn FROM log.savepoints WHERE name = p_to),
   span AS (SELECT x.turn FROM log.ancestry((SELECT turn FROM b)) x
            WHERE x.depth < (SELECT depth FROM log.ancestry((SELECT turn FROM b)) WHERE turn = (SELECT turn FROM a)))
