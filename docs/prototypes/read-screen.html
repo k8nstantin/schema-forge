@@ -1,0 +1,279 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- The read screen, a prototype (decision read-screen): what the canvas (t09) builds, its steps and counts then from the real read. -->
+<title>Reading the Source</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: the gear train is the machine (left, wide); the logbook explains each step as it turns (right); steps listed below. */
+:root{
+  --bg:#F7F3FA;--surface:#FFFFFF;--ink:#1F062A;--ink2:#4A3556;--muted:#7A6A84;--line:#E3D9EA;
+  --accent:#9500BF;--accent-soft:#F1DDFA;--done:#0E7C86;--done-soft:#DDF2F3;--steel:#C9BED1;--steel-dark:#9C8DA8;--warn:#8A5A00;--warn-soft:#FBF0DA;
+  --head:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#140A1A;--surface:#1E1226;--ink:#F3EAF8;--ink2:#D2C2DC;--muted:#A08FAD;--line:#352640;
+  --accent:#D67BFF;--accent-soft:#3A1650;--done:#4FC3CC;--done-soft:#0F3236;--steel:#4A3B55;--steel-dark:#6E5C7C;--warn:#E8B04C;--warn-soft:#3A2A0C;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#140A1A;--surface:#1E1226;--ink:#F3EAF8;--ink2:#D2C2DC;--muted:#A08FAD;--line:#352640;
+  --accent:#D67BFF;--accent-soft:#3A1650;--done:#4FC3CC;--done-soft:#0F3236;--steel:#4A3B55;--steel-dark:#6E5C7C;--warn:#E8B04C;--warn-soft:#3A2A0C;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1160px;margin:0 auto;display:grid;gap:18px}
+header{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:end;justify-content:space-between}
+h1{font-family:var(--head);font-size:clamp(22px,3vw,30px);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0;font-size:14px}
+.sub code,.mono{font-family:var(--mono);font-size:.92em}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{font:600 13px var(--mono);border:0;background:none;color:var(--ink2);padding:7px 11px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.btn{font:600 13px var(--head);border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:10px;padding:7px 14px;cursor:pointer}
+.btn:hover{background:var(--accent-soft)}
+button:focus-visible,label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.toggle{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--ink2);cursor:pointer}
+.main{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:18px}
+@media (max-width:860px){.main{grid-template-columns:1fr}}
+.machine{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0;position:relative}
+canvas{display:block;width:100%;height:auto;aspect-ratio:16/10;max-width:100%}
+.status{display:flex;flex-wrap:wrap;gap:8px 16px;font:500 12px var(--mono);color:var(--muted);padding:6px 4px 0}
+.status b{color:var(--ink);font-weight:600}
+.gentle{display:inline-flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--done)}
+.log{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.kicker{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0}
+.log h2{font-family:var(--head);font-size:21px;margin:0;line-height:1.25;text-wrap:balance}
+.log p{margin:0;color:var(--ink2);max-width:62ch}
+.asks{font:500 12px/1.55 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;white-space:pre;color:var(--ink2)}
+.found{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.found div{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.found b{display:block;font:600 20px var(--head);font-variant-numeric:tabular-nums}
+.found span{font-size:12px;color:var(--muted)}
+.note{font-size:13px;border-radius:10px;padding:8px 10px;background:var(--warn-soft);color:var(--warn)}
+.note[hidden]{display:none!important}
+ol.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+ol.steps li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:28px 1fr;gap:2px 10px;align-items:start}
+ol.steps .n{grid-row:span 2;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:600 12px var(--mono);background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+ol.steps .t{font:600 14px var(--head)}
+ol.steps .d{font-size:12px;color:var(--muted)}
+ol.steps li.now{border-color:var(--accent)}
+ol.steps li.now .n{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+ol.steps li.done .n{background:var(--done-soft);color:var(--done);border-color:var(--done)}
+ol.steps li.skip{opacity:.55}
+ol.steps li.skip .d::after{content:" · not on this version"}
+.foot{font-size:12px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Reading <span class="mono">shop</span> from <span class="mono" id="conn">local-mysql-8.4</span></h1>
+      <p class="sub">Version first, then only what that version has. One connection, one statement at a time, read only.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Server version" id="versions"></div>
+      <label class="toggle"><input type="checkbox" id="ps" checked> performance_schema on</label>
+      <button class="btn" id="replay" type="button">Read again</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="machine" aria-label="The read, as a gear train">
+      <canvas id="gears" width="1280" height="800" role="img" aria-label="A train of meshing gears, one per step of the read; the gear of the current step is lit."></canvas>
+      <div class="status">
+        <span>step <b id="stepNo">1</b> of <b id="stepAll">8</b></span>
+        <span>statements sent <b id="sent">0</b></span>
+        <span class="gentle"><span class="dot"></span>lock wait 5 s · 10 s per statement · read only</span>
+        <span>elapsed <b id="elapsed">0.0 s</b></span>
+      </div>
+    </section>
+
+    <section class="log" aria-live="polite">
+      <p class="kicker" id="kicker">Now gathering</p>
+      <h2 id="title">Connecting</h2>
+      <p id="why"></p>
+      <div class="asks" id="asks"></div>
+      <div class="found" id="found"></div>
+      <p class="note" id="note" hidden></p>
+    </section>
+  </div>
+
+  <ol class="steps" id="steps"></ol>
+  <p class="foot">Counts from a probe of local MySQL 5.7.44, 8.0.46, 8.4.13 and 9.7.4 servers reading a four-table <span class="mono">shop</span> database, loaded into the design's <span class="mono">cortex</span> and <span class="mono">usage</span> tables. A prototype of the canvas's read screen.</p>
+</div>
+
+<script>
+const SERVERS = {
+  "5.7": {v: "5.7.44", is: 61, ps: 88, digests: 17, p95: false, sample: false},
+  "8.0": {v: "8.0.46", is: 79, ps: 111, digests: 17, p95: true, sample: true},
+  "8.4": {v: "8.4.13", is: 78, ps: 114, digests: 17, p95: true, sample: true},
+  "9.7": {v: "9.7.4", is: 84, ps: 117, digests: 17, p95: true, sample: true},
+};
+
+function stepsFor(key, psOn) {
+  const s = SERVERS[key];
+  const old = key === "5.7";
+  return [
+    {t: "The version", d: "what the server is", usage: false,
+     why: "Before anything else the read asks which server this is. Every later question depends on the answer: 5.7 keeps its catalog in files, 8.0 and later in a data dictionary, and each version has tables the others lack.",
+     asks: "SELECT VERSION(), @@version_comment,\n       CURRENT_USER(), @@performance_schema;",
+     found: [[s.v, "MySQL version"], [psOn ? "on" : "off", "performance_schema"], ["sf_reader", "read as"]], sent: 1, ms: 900},
+    {t: "What it offers", d: "the catalog tables it has", usage: false,
+     why: "The read lists the catalog tables this version has and matches them to what the engine declares for it (cortex.catalog_sources). It asks only for what exists here.",
+     asks: "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES\n WHERE TABLE_SCHEMA IN ('information_schema','performance_schema');",
+     found: [[s.is, "information_schema tables"], [s.ps, "performance_schema tables"]], sent: 1, ms: 1000,
+     note: old ? "5.7: no CHECK_CONSTRAINTS, no INNODB_TABLESPACES, no VIEW_TABLE_USAGE. The read uses 5.7's own tables instead." : ""},
+    {t: "The structure", d: "tables, columns, keys, indexes", usage: false,
+     why: "Names and attributes come from information_schema, one database at a time with its name a constant. Each object's exact DDL comes from SHOW CREATE and goes through the same reader as a dump.",
+     asks: "SELECT ... FROM information_schema.TABLES  WHERE TABLE_SCHEMA = 'shop';\nSELECT ... FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = 'shop';\nSHOW CREATE TABLE shop.orders;  -- one per object",
+     found: [[4, "tables"], [1, "view"], [3, "foreign keys"], [12, "index columns"]], sent: 9, ms: 1700,
+     note: old ? "5.7 hides routines from a read-only account without SELECT ON mysql.proc. The connection test says so first." : ""},
+    {t: "Sizes and estimates", d: "rows, data and index size", usage: false,
+     why: "Row counts and sizes are InnoDB's estimates. The read takes them as the server has them, never counting rows or forcing fresh statistics, and keeps each with the time it was read.",
+     asks: "SELECT TABLE_NAME, TABLE_ROWS, DATA_LENGTH, INDEX_LENGTH, UPDATE_TIME\n  FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'shop';",
+     found: [[15, "rows, estimated"], ["64 KB", "data"], ["112 KB", "indexes"]], sent: 1, ms: 900},
+    {t: "Table usage", d: "rows read and written per table", usage: true,
+     why: "performance_schema counts every row read and written per table since the server started. It lives in memory, so reading it takes no lock on your data. The read keeps the server's uptime, so two snapshots give what happened between them.",
+     asks: "SELECT * FROM performance_schema.table_io_waits_summary_by_table\n WHERE OBJECT_SCHEMA = 'shop';\nSELECT * FROM performance_schema.table_lock_waits_summary_by_table\n WHERE OBJECT_SCHEMA = 'shop';",
+     found: [["orders", "hottest table"], [17, "rows read"], [5, "rows written"]], sent: 2, ms: 1200},
+    {t: "Index usage", d: "which indexes are read", usage: true,
+     why: "Reads per index show which indexes earn their keep. An index never read since the server started is a candidate to drop, never a verdict: the uptime says how long it has been watched.",
+     asks: "SELECT * FROM performance_schema.table_io_waits_summary_by_index_usage\n WHERE OBJECT_SCHEMA = 'shop';\nSELECT ... FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = 'shop';",
+     found: [[15, "index rows"], [3, "never read"], ["k_created_unused", "one of them"]], sent: 2, ms: 1200},
+    {t: "Query digests", d: "each statement shape, what it cost", usage: true,
+     why: "Every statement shape that ran in shop, values made ?, with how often it ran, rows examined against rows sent, and runs that used no index." + (s.p95 ? " This version also keeps the 95th and 99th percentile, processor time and a sample of the statement, kept as is." : " 5.7 keeps no percentiles and no sample statement."),
+     asks: "SELECT * FROM performance_schema.events_statements_summary_by_digest\n WHERE SCHEMA_NAME = 'shop';",
+     found: [[s.digests, "statement shapes"], [2, "ran with no index"], [s.p95 ? "yes" : "no", "p95, p99, sample"]], sent: 2, ms: 1400},
+    {t: "Into the design", d: "one import turn, one snapshot", usage: false,
+     why: "The structure lands in the cortex and the engine's tables as one import turn, logged and undoable. The usage is appended as a snapshot in its own owner, outside the design's log.",
+     asks: "cortex.source_reads   one row: connection, version, account, uptime\ncortex.turns          one import turn\nusage.snapshots       one snapshot, and its rows",
+     found: [[1, "import turn"], [1, "usage snapshot"], ["0", "locks held on shop"]], sent: 0, ms: 1000},
+  ].map(st => ({...st, skip: st.usage && !psOn}));
+}
+
+// ---- the gear train: each gear meshes with the last, so turning one turns them all ----
+const cv = document.getElementById("gears"), cx = cv.getContext("2d");
+const MOD = 9;                                   // tooth size: teeth = 2r / MOD, so neighbours mesh
+const PLAN = [64, 40, 76, 46, 58, 88, 42, 70];   // radii, one gear per step
+const ANG = [0.15, -0.55, 0.35, -0.4, 0.5, -0.3, 0.45, 0];
+let gears = [];
+function layout() {
+  gears = []; let x = 150, y = 420, prev = null;
+  PLAN.forEach((r, i) => {
+    const teeth = Math.max(8, Math.round(2 * r / MOD));
+    const rr = teeth * MOD / 2;
+    if (prev) { const d = prev.r + rr + 2; x = prev.x + d * Math.cos(ANG[i]); y = prev.y + d * Math.sin(ANG[i]); }
+    const g = {x, y, r: rr, teeth, ratio: 1, phase: 0};
+    if (prev) { g.ratio = -prev.ratio * prev.r / rr; g.phase = Math.PI / teeth; }
+    gears.push(g); prev = g;
+  });
+  // fit the train to the canvas
+  const minX = Math.min(...gears.map(g => g.x - g.r)), maxX = Math.max(...gears.map(g => g.x + g.r));
+  const minY = Math.min(...gears.map(g => g.y - g.r)), maxY = Math.max(...gears.map(g => g.y + g.r));
+  const s = Math.min(1180 / (maxX - minX), 640 / (maxY - minY));
+  gears.forEach(g => { g.x = 50 + (g.x - minX) * s; g.y = 60 + (g.y - minY) * s + (680 - (maxY - minY) * s) / 2; g.r *= s; });
+}
+layout();
+
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function gearPath(g, a) {
+  const tip = g.r + MOD * 0.55, root = g.r - MOD * 0.7, n = g.teeth;
+  cx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const t = a + i * 2 * Math.PI / n, w = Math.PI / n;
+    const pts = [[root, t - w * 0.62], [tip, t - w * 0.32], [tip, t + w * 0.32], [root, t + w * 0.62]];
+    pts.forEach(([rad, ang], k) => { const px = g.x + rad * Math.cos(ang), py = g.y + rad * Math.sin(ang); (i === 0 && k === 0) ? cx.moveTo(px, py) : cx.lineTo(px, py); });
+    const nx = t + w * 1.38; cx.lineTo(g.x + root * Math.cos(nx), g.y + root * Math.sin(nx));
+  }
+  cx.closePath();
+}
+
+let steps = [], now = 0, angle = 0, running = false, t0 = 0, stepStart = 0, sent = 0, doneAll = false;
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function draw() {
+  const C = {steel: css("--steel"), dark: css("--steel-dark"), accent: css("--accent"), done: css("--done"), surf: css("--surface"), ink: css("--ink"), muted: css("--muted"), bg: css("--bg")};
+  cx.clearRect(0, 0, cv.width, cv.height);
+  gears.forEach((g, i) => {
+    const st = steps[i] || {};
+    const state = st.skip ? "skip" : (i < now || doneAll) ? "done" : i === now ? "now" : "todo";
+    const a = angle * g.ratio + g.phase;
+    cx.save();
+    if (state === "now") { cx.shadowColor = C.accent; cx.shadowBlur = 28; }
+    gearPath(g, a);
+    cx.fillStyle = state === "now" ? C.accent : state === "done" ? C.done : C.steel;
+    cx.globalAlpha = state === "skip" ? 0.35 : 1;
+    cx.fill(); cx.restore();
+    cx.globalAlpha = state === "skip" ? 0.35 : 1;
+    // the hub and spokes
+    cx.beginPath(); cx.arc(g.x, g.y, g.r * 0.62, 0, 7); cx.fillStyle = C.surf; cx.fill();
+    cx.strokeStyle = state === "todo" || state === "skip" ? C.dark : (state === "now" ? C.accent : C.done); cx.lineWidth = 3;
+    for (let k = 0; k < 4; k++) { const s = a + k * Math.PI / 2; cx.beginPath(); cx.moveTo(g.x + g.r * 0.18 * Math.cos(s), g.y + g.r * 0.18 * Math.sin(s)); cx.lineTo(g.x + g.r * 0.6 * Math.cos(s), g.y + g.r * 0.6 * Math.sin(s)); cx.stroke(); }
+    cx.beginPath(); cx.arc(g.x, g.y, g.r * 0.62, 0, 7); cx.stroke();
+    cx.beginPath(); cx.arc(g.x, g.y, g.r * 0.16, 0, 7); cx.fillStyle = cx.strokeStyle; cx.fill();
+    // its number and name, upright
+    cx.globalAlpha = 1;
+    cx.fillStyle = state === "skip" ? C.muted : C.ink; cx.textAlign = "center";
+    cx.font = `600 ${Math.max(15, g.r * 0.2)}px "JetBrains Mono", monospace`;
+    cx.fillText(String(i + 1), g.x, g.y - g.r * 0.24);
+    cx.font = `600 ${Math.max(14, Math.min(20, g.r * 0.17))}px "Space Grotesk", sans-serif`;
+    const label = st.t || "";
+    const words = label.split(" "); const lines = words.length > 2 ? [words.slice(0, 2).join(" "), words.slice(2).join(" ")] : [label];
+    lines.forEach((ln, k) => cx.fillText(ln, g.x, g.y + g.r * 0.05 + k * Math.max(16, g.r * 0.19)));
+  });
+}
+
+function show(i) {
+  const st = steps[i];
+  document.getElementById("kicker").textContent = doneAll ? "Read complete" : st.skip ? "Skipped on this server" : "Now gathering";
+  document.getElementById("title").textContent = `${i + 1}. ${st.t}`;
+  document.getElementById("why").textContent = st.skip ? "performance_schema is off on this server, so there is no usage to read. The structure is read without it, and the read records that usage was not available." : st.why;
+  document.getElementById("asks").textContent = st.asks;
+  document.getElementById("found").innerHTML = st.skip ? "" : st.found.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("");
+  const note = document.getElementById("note"); note.hidden = !st.note; note.textContent = st.note || "";
+  document.getElementById("stepNo").textContent = i + 1;
+  document.querySelectorAll("#steps li").forEach((li, k) => {
+    li.className = steps[k].skip ? "skip" : (k < i || doneAll) ? "done" : k === i ? "now" : "";
+  });
+}
+
+function build() {
+  const key = document.querySelector("#versions [aria-pressed=true]").dataset.v;
+  const psOn = document.getElementById("ps").checked;
+  steps = stepsFor(key, psOn);
+  document.getElementById("conn").textContent = `local-mysql-${key}`;
+  document.getElementById("stepAll").textContent = steps.length;
+  document.getElementById("steps").innerHTML = steps.map((s, i) => `<li><span class="n">${i + 1}</span><span class="t">${s.t}</span><span class="d">${s.d}</span></li>`).join("");
+  now = 0; sent = 0; doneAll = false; t0 = performance.now(); stepStart = t0; running = true;
+  document.getElementById("sent").textContent = 0;
+  show(0); if (reduce) draw();
+}
+
+function tick(ts) {
+  if (running) {
+    const st = steps[now];
+    const dur = st.skip ? 500 : st.ms;
+    if (!reduce) angle += 0.012;
+    if (ts - stepStart > dur) {
+      sent += st.skip ? 0 : st.sent; document.getElementById("sent").textContent = sent;
+      if (now < steps.length - 1) { now++; stepStart = ts; show(now); }
+      else { running = false; doneAll = true; show(now); }
+      if (reduce) draw();
+    }
+    document.getElementById("elapsed").textContent = ((Math.min(ts, ts) - t0) / 1000).toFixed(1) + " s";
+  }
+  if (!reduce) draw();
+  requestAnimationFrame(tick);
+}
+
+const vs = document.getElementById("versions");
+Object.keys(SERVERS).forEach(k => {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = k; b.dataset.v = k; b.setAttribute("aria-pressed", k === "8.4");
+  b.onclick = () => { vs.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); build(); };
+  vs.appendChild(b);
+});
+document.getElementById("ps").onchange = build;
+document.getElementById("replay").onclick = build;
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", draw);
+build(); draw(); requestAnimationFrame(tick);
+</script>
