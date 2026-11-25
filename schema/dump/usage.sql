@@ -4592,6 +4592,27 @@ COMMENT ON COLUMN usage.query_digests.max_wait_ps IS 'the longest run, in picose
 
 
 --
+-- Name: COLUMN query_digests.p95_ps; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON COLUMN usage.query_digests.p95_ps IS '95 runs in 100 took no longer, in picoseconds; NULL when the server does not keep it (before 8.0)';
+
+
+--
+-- Name: COLUMN query_digests.p99_ps; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON COLUMN usage.query_digests.p99_ps IS '99 runs in 100 took no longer, in picoseconds; NULL when the server does not keep it';
+
+
+--
+-- Name: COLUMN query_digests.p999_ps; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON COLUMN usage.query_digests.p999_ps IS '999 runs in 1000 took no longer, in picoseconds; NULL when the server does not keep it';
+
+
+--
 -- Name: COLUMN query_digests.cpu_ps; Type: COMMENT; Schema: usage; Owner: sf_owner
 --
 

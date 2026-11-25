@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 QUOTE = {"desc", "binary", "columns", "column", "index", "trigger", "on", "unique", "deferrable", "connection", "collation"}
 TYPES = {"TEXT", "INTEGER", "NUMERIC", "BOOLEAN", "UUID", "TIMESTAMPTZ", "JSONB", "BIGINT"}
-COLUMN = re.compile(r'^(\s+)("?[a-z_]+"?)\s+([A-Z]+)\b(.*)$')
+COLUMN = re.compile(r'^(\s+)("?[a-z_][a-z0-9_]*"?)\s+([A-Z]+)\b(.*)$')
 
 
 def files():
