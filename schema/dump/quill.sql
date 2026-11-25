@@ -3956,6 +3956,7 @@ CREATE TABLE cortex.source_reads (
     connection_id uuid NOT NULL,
     connection_name text NOT NULL,
     database_name text NOT NULL,
+    scope jsonb NOT NULL,
     server_version text NOT NULL,
     server_edition text,
     read_as text NOT NULL,
@@ -4016,6 +4017,13 @@ COMMENT ON COLUMN cortex.source_reads.connection_name IS 'its name when it was r
 --
 
 COMMENT ON COLUMN cortex.source_reads.database_name IS 'the database read, as the server names it (shop)';
+
+
+--
+-- Name: COLUMN source_reads.scope; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.source_reads.scope IS 'what the person asked to read (decision read-scope): everything, or the parts (definitions, metadata, usage), the kinds of object and the objects chosen';
 
 
 --

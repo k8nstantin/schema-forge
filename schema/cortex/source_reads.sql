@@ -8,6 +8,7 @@ CREATE TABLE cortex.source_reads (
   connection_id    UUID        NOT NULL,                                        -- the saved connection read through, as the workspace's connections row holds it
   connection_name  TEXT        NOT NULL CHECK (length(connection_name) >= 1),   -- its name when it was read (prod-replica)
   database_name    TEXT        NOT NULL CHECK (length(database_name) >= 1),     -- the database read, as the server names it (shop)
+  scope            JSONB       NOT NULL,                                        -- what the person asked to read (decision read-scope): everything, or the parts (definitions, metadata, usage), the kinds of object and the objects chosen
   server_version   TEXT        NOT NULL CHECK (length(server_version) >= 1),    -- the version the server gave (8.4.13)
   server_edition   TEXT,                                                        -- what the server says it is beyond its version (MySQL Community Server - GPL); NULL when it says nothing
   read_as          TEXT        NOT NULL CHECK (length(read_as) >= 1),           -- the account the server says the read ran as (sf_reader@%)
@@ -25,6 +26,7 @@ COMMENT ON COLUMN cortex.source_reads.turn IS 'the import turn the structure rea
 COMMENT ON COLUMN cortex.source_reads.connection_id IS 'the saved connection read through, as the workspace''s connections row holds it';
 COMMENT ON COLUMN cortex.source_reads.connection_name IS 'its name when it was read (prod-replica)';
 COMMENT ON COLUMN cortex.source_reads.database_name IS 'the database read, as the server names it (shop)';
+COMMENT ON COLUMN cortex.source_reads.scope IS 'what the person asked to read (decision read-scope): everything, or the parts (definitions, metadata, usage), the kinds of object and the objects chosen';
 COMMENT ON COLUMN cortex.source_reads.server_version IS 'the version the server gave (8.4.13)';
 COMMENT ON COLUMN cortex.source_reads.server_edition IS 'what the server says it is beyond its version (MySQL Community Server - GPL); NULL when it says nothing';
 COMMENT ON COLUMN cortex.source_reads.read_as IS 'the account the server says the read ran as (sf_reader@%)';

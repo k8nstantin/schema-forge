@@ -27,6 +27,16 @@
     <note>The engine today supports 8.0, 8.4 and 9.7 (<c>engines/mysql/src/versions.rs</c>), and its live read queries tables 5.7 does not have. Supporting 5.7 is engine work: its versions, what it lacks, and a live read that asks a 5.7 the 5.7 way.</note>
   </section>
 
+  <section title="What to read: the person chooses">
+    <p>Once connected, the first choice is simple: <b>everything</b>, all the server can give, or <b>choose</b>. Choosing opens three finer choices, each set to all until changed, so nobody faces a wall of options:</p>
+    <list>
+      <item><b>The parts</b>: definitions only; with metadata (sizes and statistics); with usage, when the server keeps it.</item>
+      <item><b>The kinds of object</b>, as the engine declares them for this version: tables, views, procedures, functions, triggers, events.</item>
+      <item><b>The objects</b>: picked from the list the catalog gives, or by a name pattern.</item>
+    </list>
+    <p>The choice stays with the schema's connection, so the next read asks the same (decision read-scope), and the read runs only the steps it needs: definitions only never touches <c>performance_schema</c>.</p>
+  </section>
+
   <section title="The structure: how to read it">
     <list>
       <item><b>Always one database at a time, its name a constant</b> (<c>WHERE TABLE_SCHEMA = ?</c>). On 5.7 a catalog query without it scans the data directory and opens every table's files; with it, the server opens only that database's (<a href="https://docs.oracle.com/cd/E17952_01/mysql-5.7-en/information-schema-optimization.html">5.7 manual</a>). Joining <c>TABLES</c> to <c>COLUMNS</c> is about 30 times faster on 8.0 than 5.7 (<a href="https://dev.mysql.com/blog-archive/mysql-8-0-scaling-and-performance-of-information_schema/">MySQL blog</a>): query each catalog table once per database and join in the engine, never in SQL.</item>
@@ -63,6 +73,7 @@
       <item><b>One connection, one statement at a time</b>, one database at a time, each catalog table asked once per database with the database's name a constant; never a parallel read.</item>
       <item><b>A read-only session that gives way</b>: <c>SET SESSION TRANSACTION READ ONLY</c>; <c>lock_wait_timeout</c> of a few seconds, so a read waiting behind a DDL gives up and says so rather than queueing (a waiting metadata lock holds up the statements that come after it); <c>max_execution_time</c> on every SELECT (5.7.8 on).</item>
       <item><b>Nothing that touches the data</b>: no <c>COUNT(*)</c> of a user table, no <c>ANALYZE</c>, <c>FLUSH</c> or <c>OPTIMIZE</c>, no forced statistics, no <c>TRUNCATE</c> of <c>performance_schema</c>, no change of a setting or a consumer. Rows and sizes are the server's estimates.</item>
+      <item><b>Never inside the database it reads</b>: no <c>USE</c>; every statement names the database. A statement run inside it is counted with that database's own, so the read would show up in the usage it reads (the probe saw it: 20 statement shapes where 17 were the workload's).</item>
       <item><b>Only the database read</b>: its tables', indexes' and statements' rows (<c>WHERE OBJECT_SCHEMA = ?</c>, <c>SCHEMA_NAME = ?</c>), never the whole server's; <c>performance_schema</c> lives in memory and reading it takes no lock on user data.</item>
       <item><b>Bounded</b>: a read stops when it has taken longer than a limit the person sets (a parameter, never code), keeping what it read and saying what it did not.</item>
     </list>
