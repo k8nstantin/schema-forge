@@ -43,6 +43,9 @@ COMMENT ON COLUMN usage.query_digests.digest_text IS 'the statement with its val
 COMMENT ON COLUMN usage.query_digests.executions IS 'how often it ran since the server started';
 COMMENT ON COLUMN usage.query_digests.total_wait_ps IS 'the time all its runs took, in picoseconds; NULL when not timed';
 COMMENT ON COLUMN usage.query_digests.max_wait_ps IS 'the longest run, in picoseconds; NULL when not timed';
+COMMENT ON COLUMN usage.query_digests.p95_ps IS '95 runs in 100 took no longer, in picoseconds; NULL when the server does not keep it (before 8.0)';
+COMMENT ON COLUMN usage.query_digests.p99_ps IS '99 runs in 100 took no longer, in picoseconds; NULL when the server does not keep it';
+COMMENT ON COLUMN usage.query_digests.p999_ps IS '999 runs in 1000 took no longer, in picoseconds; NULL when the server does not keep it';
 COMMENT ON COLUMN usage.query_digests.cpu_ps IS 'the processor time its runs took, in picoseconds; NULL when the server does not keep it';
 COMMENT ON COLUMN usage.query_digests.rows_examined IS 'rows its runs looked at; NULL when not counted';
 COMMENT ON COLUMN usage.query_digests.rows_sent IS 'rows its runs returned; NULL when not counted';

@@ -9,7 +9,7 @@ OWNERS = [("cortex", "schema/cortex"), ("workspace", "schema/workspace")] + [
     for d in sorted(glob.glob(f"{REPO}/engines/*/schema"))] + [
     (os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO)) for d in sorted(glob.glob(f"{REPO}/features/*/schema"))]
 TYPES = "TEXT|INTEGER|BIGINT|NUMERIC|BOOLEAN|UUID|TIMESTAMPTZ|JSONB"
-COLDEF = re.compile(r'^\s+("?[a-z_]+"?)\s+(' + TYPES + r')\b(.*?)(?:--\s*(.*))?$')
+COLDEF = re.compile(r'^\s+("?[a-z_][a-z0-9_]*"?)\s+(' + TYPES + r')\b(.*?)(?:--\s*(.*))?$')
 
 
 def short(name):
