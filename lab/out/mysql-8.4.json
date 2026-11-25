@@ -59,6 +59,7 @@
     "TABLE_SCHEMA": "shop",
     "TABLE_TYPE": "BASE TABLE",
     "VERSION": 10,
+    "__auto_increment": 5,
     "__index_order": [
      "PRIMARY",
      "uk_email",
@@ -105,6 +106,7 @@
     "TABLE_SCHEMA": "shop",
     "TABLE_TYPE": "BASE TABLE",
     "VERSION": 10,
+    "__auto_increment": 5,
     "__index_order": [
      "PRIMARY",
      "k_status",
@@ -128,6 +130,7 @@
     "TABLE_SCHEMA": "shop",
     "TABLE_TYPE": "BASE TABLE",
     "VERSION": 10,
+    "__auto_increment": 4,
     "__index_order": [
      "PRIMARY",
      "uk_sku"
@@ -257,6 +260,7 @@
     "TABLE_SCHEMA": "features",
     "TABLE_TYPE": "BASE TABLE",
     "VERSION": 10,
+    "__auto_increment": 1000,
     "__index_order": [
      "PRIMARY",
      "uk_name",

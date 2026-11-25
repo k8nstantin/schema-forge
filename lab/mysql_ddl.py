@@ -116,6 +116,8 @@ OPTION_ORDER = ["min_rows", "max_rows", "pack_keys", "stats_persistent", "stats_
 
 def table_options(t, version, charset_default):
     out = f") ENGINE={ENGINE_NAMES.get(t['ENGINE'], t['ENGINE'])}"
+    if t.get("__auto_increment"):
+        out += f" AUTO_INCREMENT={t['__auto_increment']}"
     cs = t["TABLE_COLLATION"].split("_")[0]
     out += f" DEFAULT CHARSET={cs}"
     if t["TABLE_COLLATION"] != charset_default.get(cs) or (mysql8(version) and cs == "utf8mb4"):

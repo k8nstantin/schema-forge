@@ -206,6 +206,7 @@ CREATE TABLE engine_mysql.table (
   id                 bigint  PRIMARY KEY,
   kind               text    NOT NULL DEFAULT 'table' CHECK (kind = 'table'),
   engine             text    NOT NULL,
+  auto_increment     bigint,                   -- the next number the table gives, kept so a table written back goes on from it
   collation_name     text    NOT NULL,
   row_format         text,                     -- each option only where the table's statement writes it
   avg_row_length     bigint,

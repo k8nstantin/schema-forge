@@ -12,13 +12,13 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import random  # noqa: E402
 import store as S2  # noqa: E402
-import versioning_test as V  # noqa: E402
+import common as C  # noqa: E402
 
 
 def attempt(sql, db):
     """A statement inside a turn of the log, so what refuses it is the schema, never the log."""
     sql = sql.replace("BEGIN;", "BEGIN; SELECT log.begin_turn('attempt');", 1)
-    r = subprocess.run(["docker", "exec", "-i", V.SERVER, "psql", "-U", "postgres", "-d", db, "-At", "-v", "ON_ERROR_STOP=1", "-q"],
+    r = subprocess.run(["docker", "exec", "-i", C.SERVER, "psql", "-U", "postgres", "-d", db, "-At", "-v", "ON_ERROR_STOP=1", "-q"],
                        input=sql, capture_output=True, text=True)
     return r.returncode == 0, next((l for l in r.stderr.splitlines() if l.startswith("ERROR")), "")[:140]
 
@@ -30,7 +30,7 @@ def ms(f):
 
 
 def one(sql, db):
-    return V.psql(sql, db).strip()
+    return C.psql(sql, db).strip()
 
 
 def main():
@@ -59,7 +59,7 @@ def main():
     touched_tables = json.loads(one(f"""SELECT json_agg(DISTINCT x) FROM (SELECT {col['object']} AS x UNION
         SELECT k.object_id FROM core.constraint k JOIN core.constraint_column cc ON cc.constraint_id = k.id WHERE cc.ref_column_id = {col['id']}) y""", new))
     before = S2.write(S2.load_back(new), version)
-    _, t = ms(lambda: V.psql(f"BEGIN; SELECT log.begin_turn('rename a column'); UPDATE core.column SET name = name || '_renamed' WHERE id = {col['id']}; "
+    _, t = ms(lambda: C.psql(f"BEGIN; SELECT log.begin_turn('rename a column'); UPDATE core.column SET name = name || '_renamed' WHERE id = {col['id']}; "
                              "SELECT log.end_turn(); COMMIT;", new))
     after = S2.write(S2.load_back(new), version)
     changed = [k for k in after if after[k] != before[k]]
@@ -68,7 +68,7 @@ def main():
           f"{len(touched_tables)} tables use the column: {ok(len(changed) == len(touched_tables))}")
     name = one(f"SELECT name FROM core.column WHERE id = {col['id']}", new)[:-len('_renamed')]
     tname = one(f"SELECT n.name || '.' || o.name FROM core.object o JOIN core.namespace n ON n.id = o.namespace_id WHERE o.id = {col['object']}", new)
-    tabs = V.psql("SELECT string_agg(n.nspname || '.' || c.relname, ' ') FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+    tabs = C.psql("SELECT string_agg(n.nspname || '.' || c.relname, ' ') FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                   "WHERE n.nspname IN ('core', 'engine_mysql') AND c.relkind = 'r'", old).split()
     pat = name.replace("'", "''")
     copies = one("SELECT " + " + ".join(f"(SELECT count(*) FROM {t} x WHERE (to_jsonb(x)::text LIKE '%\"{pat}\"%' OR to_jsonb(x)::text LIKE '%.{pat}\"%') "
@@ -81,7 +81,7 @@ def main():
         print("== no foreign keys in this schema: the tests of tables other tables refer to are left to a schema that has them")
     else:
         print("== rename a table other tables refer to")
-        _, t = ms(lambda: V.psql(f"BEGIN; SELECT log.begin_turn('rename a table'); UPDATE core.object SET name = name || '_r' WHERE id = {tid}; "
+        _, t = ms(lambda: C.psql(f"BEGIN; SELECT log.begin_turn('rename a table'); UPDATE core.object SET name = name || '_r' WHERE id = {tid}; "
                                  "SELECT log.end_turn(); COMMIT;", new))
         print(f"  new: 1 row, {t:.0f} ms")
         tkey = one(f"SELECT n.name || '.' || left(o.name, -2) FROM core.object o JOIN core.namespace n ON n.id = o.namespace_id WHERE o.id = {tid}", new)
@@ -98,13 +98,13 @@ def main():
     print("== drop a table no key uses, then undo it")
     big = one("""SELECT o.id FROM core.object o WHERE o.kind = 'table' AND NOT EXISTS (SELECT 1 FROM core.constraint k WHERE k.ref_object_id = o.id)
         ORDER BY (SELECT count(*) FROM core.column c WHERE c.object_id = o.id) DESC LIMIT 1""", new)
-    V.psql("SELECT log.savepoint('before drop');", new)
+    C.psql("SELECT log.savepoint('before drop');", new)
     h0 = one("SELECT log.state_hash();", new)
-    _, t = ms(lambda: V.psql(f"BEGIN; SELECT log.begin_turn('drop'); DELETE FROM core.object WHERE id = {big}; SELECT log.end_turn(); COMMIT;", new))
+    _, t = ms(lambda: C.psql(f"BEGIN; SELECT log.begin_turn('drop'); DELETE FROM core.object WHERE id = {big}; SELECT log.end_turn(); COMMIT;", new))
     gone = one("SELECT string_agg(tab || ' ' || n, ', ' ORDER BY tab) FROM (SELECT tab, count(*) n FROM log.changes "
                "WHERE turn = (SELECT max(id) FROM log.turns) GROUP BY tab) x", new)
     print(f"  one DELETE took with it: {gone} ({t:.0f} ms)")
-    _, t = ms(lambda: V.psql("SELECT log.restore('before drop');", new))
+    _, t = ms(lambda: C.psql("SELECT log.restore('before drop');", new))
     print(f"  restored, global and plugin rows together: {ok(one('SELECT log.state_hash();', new) == h0)} ({t:.0f} ms)")
 
     print("== a plugin row may only extend what it is for")
@@ -207,7 +207,7 @@ def edit(db, rnd, n, version="8.4"):
             sql.append(f"DELETE FROM core.object WHERE id = (SELECT t.id FROM core.object t WHERE t.kind = 'table' AND {UNUSED} "
                        f"ORDER BY t.id OFFSET {rnd.randint(0, 50)} LIMIT 1);")
     sql.append("SELECT log.end_turn(); COMMIT;")
-    V.psql("\n".join(sql), db)
+    C.psql("\n".join(sql), db)
 
 
 def versioning(snap, turns=300):
@@ -218,7 +218,7 @@ def versioning(snap, turns=300):
     hashes = {}
 
     def save(name):
-        V.psql(f"SELECT log.savepoint('{name}');", db)
+        C.psql(f"SELECT log.savepoint('{name}');", db)
         hashes[name] = one("SELECT log.state_hash();", db)
 
     def at(name):
@@ -240,9 +240,9 @@ def versioning(snap, turns=300):
         moved, tm = ms(lambda: one(f"SELECT log.switch('{target}');", db))
         print(f"  switch to {target}: {moved} changes in {tm:.0f} ms; state is {name}'s: {at(name)}")
     for name in ("imported", "main2", "experiment1"):
-        got, tm = ms(lambda: V.psql(f"BEGIN; SELECT log.move_to((SELECT turn FROM log.savepoints WHERE name = '{name}')); SELECT log.state_hash(); ROLLBACK;", db).splitlines()[-1])
+        got, tm = ms(lambda: C.psql(f"BEGIN; SELECT log.move_to((SELECT turn FROM log.savepoints WHERE name = '{name}')); SELECT log.state_hash(); ROLLBACK;", db).splitlines()[-1])
         print(f"  open {name} read only: {'exact' if got == hashes[name] else 'WRONG'} in {tm:.0f} ms; working state untouched: {at('main3')}")
-    _, tm = ms(lambda: V.psql("SELECT log.restore('main2');", db))
+    _, tm = ms(lambda: C.psql("SELECT log.restore('main2');", db))
     print(f"  restore main2: {at('main2')} in {tm:.0f} ms")
     st = S2.load_back(db)
     written, tm = ms(lambda: S2.write(st, snap["version"]))
@@ -265,7 +265,6 @@ def survive(snap, turns=100):
     """Edits survive a real server: the edited store written as SQL, loaded into a fresh server, read back into a new
     store; both stores must write the same statements."""
     import extract as X
-    import roundtrip as R
     import setup as SU
     version = snap["version"]
     db = f"lab_store_mysql_{version.replace('.', '_')}"
@@ -275,9 +274,9 @@ def survive(snap, turns=100):
         edit(db, rnd, n, version)
     st = S2.load_back(db)
     mine = S2.write(st, version)
-    name = R.fresh(version)
+    name = C.fresh_mysql(version)
     try:
-        R.ready(name)
+        C.ready_mysql(name)
         r = subprocess.run(["docker", "exec", "-i", name, "mysql", "-uroot", f"-p{SU.PW}", "--force", "--comments", "--default-character-set=utf8mb4"],
                            input=S2.script(st, version), capture_output=True)
         refused = [l for l in r.stderr.decode(errors="replace").splitlines() if l.startswith("ERROR")]

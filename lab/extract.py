@@ -2,7 +2,7 @@
 interpreted. One snapshot per server: lab/out/<engine>-<version>.json, {engine, version, parts: [{kind, key, parent,
 props}]}. Volatile properties (row counts, sizes, times, oids) are left out: they are usage, not design.
 
-  python3 lab/extract.py            every server of SERVERS
+  python3 lab/extract.py [--mysql | --postgresql]      every server, or one engine's
 """
 import base64
 import json
@@ -102,6 +102,9 @@ def table_facts(props):
     m = re.search(r" UNION=\((.*?)\)", last)
     if m:
         props["__merge_union"] = [n.strip().strip("`").replace("``", "`") for n in m.group(1).split(",")]
+    m = re.search(r" AUTO_INCREMENT=(\d+)", last)  # TABLES.AUTO_INCREMENT is cached on 8.0 and later; this is not
+    if m:
+        props["__auto_increment"] = int(m.group(1))
     m = re.search(r" INSERT_METHOD=(\w+)", last)
     if m:
         props["__insert_method"] = m.group(1)
@@ -273,7 +276,10 @@ def extract_pg(version, container):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
+    only = [e for e in ("mysql", "postgresql") if f"--{e}" in sys.argv]
     for engine, servers, fn in (("mysql", MYSQL, extract_mysql), ("postgresql", POSTGRES, extract_pg)):
+        if only and engine not in only:
+            continue
         for version, container in servers:
             parts = fn(version, container)
             out = {"engine": engine, "version": version, "parts": parts}

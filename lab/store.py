@@ -19,9 +19,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import extract as X  # noqa: E402
 import mysql_ddl as D  # noqa: E402
 import mysql_programs as P  # noqa: E402
-import roundtrip as R  # noqa: E402
 import setup as SU  # noqa: E402
-import versioning_test as V  # noqa: E402
+import common as C  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OPTIONS = ["row_format", "avg_row_length", "min_rows", "max_rows", "pack_keys", "checksum", "delay_key_write", "key_block_size",
@@ -85,7 +84,7 @@ def rows_of(snap):
         opts = dict(o.split("=", 1) for o in (t.get("CREATE_OPTIONS") or "").split() if "=" in o)
         unknown = set(opts) - set(OPTIONS)
         assert not unknown, f"table options the store has no column for: {unknown}"
-        r = {"id": i, "kind": "table", "engine": D.ENGINE_NAMES.get(t["ENGINE"], t["ENGINE"]), "collation_name": t["TABLE_COLLATION"],
+        r = {"id": i, "kind": "table", "engine": D.ENGINE_NAMES.get(t["ENGINE"], t["ENGINE"]), "auto_increment": t.get("__auto_increment"), "collation_name": t["TABLE_COLLATION"],
              "merge_union": t.get("__merge_union"), "insert_method": t.get("__insert_method")}
         r.update({k: opts.get(k) for k in OPTIONS})
         out["engine_mysql.table"].append(r)
@@ -254,17 +253,17 @@ def copy_sql(table, rows):
 
 
 def build(db, rows):
-    V.psql(f"DROP DATABASE IF EXISTS {db} WITH (FORCE); CREATE DATABASE {db};", "postgres")
-    V.psql(open(os.path.join(HERE, "design", "store.sql")).read() + open(os.path.join(HERE, "design", "versioning.sql")).read()
+    C.psql(f"DROP DATABASE IF EXISTS {db} WITH (FORCE); CREATE DATABASE {db};", "postgres")
+    C.psql(open(os.path.join(HERE, "design", "store.sql")).read() + open(os.path.join(HERE, "design", "versioning.sql")).read()
            + "\nSELECT log.attach(); SELECT log.init('main');", db)
     t = time.time()
-    V.psql("BEGIN; SELECT log.begin_turn('import');\n" + "".join(copy_sql(k, rows[k]) for k in ORDER if rows.get(k))
+    C.psql("BEGIN; SELECT log.begin_turn('import');\n" + "".join(copy_sql(k, rows[k]) for k in ORDER if rows.get(k))
            + "SELECT log.end_turn(); COMMIT;", db)
     return time.time() - t
 
 
 def load_back(db):
-    return {k: {r["id"]: r for r in json.loads(V.psql(f"SELECT coalesce(json_agg(to_jsonb(t)), '[]') FROM {k} t;", db))} for k in ORDER}
+    return {k: {r["id"]: r for r in json.loads(C.psql(f"SELECT coalesce(json_agg(to_jsonb(t)), '[]') FROM {k} t;", db))} for k in ORDER}
 
 
 def charset_default(version):
@@ -293,6 +292,7 @@ def write(st, version):
             t = {"TABLE_NAME": o["name"], "TABLE_SCHEMA": schema, "ENGINE": mt["engine"], "TABLE_COLLATION": mt["collation_name"],
                  "CREATE_OPTIONS": " ".join(f"{k}={mt[k]}" for k in OPTIONS if mt.get(k) is not None),
                  "TABLE_COMMENT": o.get("comment") or "", "__merge_union": mt.get("merge_union"), "__insert_method": mt.get("insert_method"),
+                 "__auto_increment": mt.get("auto_increment"),
                  "__index_order": [i["name"] for i in sorted(by["core.index"][o["id"]], key=lambda i: i["position"])]}
             cid = {c["id"]: c for c in by["core.column"][o["id"]]}
             icols = []
@@ -370,7 +370,7 @@ def script(st, version):
     chunks = []
 
     def say(sql, charset="utf8mb4"):
-        enc = R.PY.get(charset.split("_")[0], "utf-8")
+        enc = C.PY.get(charset.split("_")[0], "utf-8")
         chunks.append(sql.encode(enc, errors="mysql_latin1" if enc == "cp1252" else "strict"))
     say("SET NAMES utf8mb4;\nSET SESSION innodb_strict_mode = 0;\nSET FOREIGN_KEY_CHECKS = 0;\n")
     coll = {}
@@ -381,7 +381,7 @@ def script(st, version):
     objs = st["core.object"]
     for o in sorted((o for o in objs.values() if o["kind"] == "table"), key=lambda o: o["id"]):
         schema = ns[o["namespace_id"]]["name"]
-        say(f"USE {D.q(schema)};\nSET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO';\n{R.implicit_collate(text[('table', schema, o['name'])])};\n")
+        say(f"USE {D.q(schema)};\nSET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO';\n{C.implicit_collate(text[('table', schema, o['name'])])};\n")
     helpers = set()
     rank = {"view": 0, "procedure": 1, "function": 1, "trigger": 2, "event": 3}
     progs = sorted((o for o in objs.values() if o["kind"] in rank),
@@ -406,10 +406,10 @@ def script(st, version):
                             and st["core.trigger"][p["id"]]["timing"] == tr["timing"] and st["core.trigger"][p["id"]]["events"] == tr["events"]
                             and st["engine_mysql.trigger"][p["id"]]["action_order"] == order - 1)
                 stmt = stmt.replace(" FOR EACH ROW ", f" FOR EACH ROW FOLLOWS {D.q(prev['name'])} ", 1)
-        say(f"USE {current};\nSET SESSION sql_mode = {R.lit(pr['sql_mode'] or '')};\n"
-            + (f"SET SESSION time_zone = {R.lit(pr['time_zone'])};\n" if pr.get("time_zone") else "")
-            + f"SET NAMES {pr['character_set_client']} COLLATE {pr['collation_connection']};\nDELIMITER {R.DELIM}\n")
-        say(stmt + R.DELIM + "\n", pr["character_set_client"])
+        say(f"USE {current};\nSET SESSION sql_mode = {C.lit(pr['sql_mode'] or '')};\n"
+            + (f"SET SESSION time_zone = {C.lit(pr['time_zone'])};\n" if pr.get("time_zone") else "")
+            + f"SET NAMES {pr['character_set_client']} COLLATE {pr['collation_connection']};\nDELIMITER {C.DELIM}\n")
+        say(stmt + C.DELIM + "\n", pr["character_set_client"])
         say("DELIMITER ;\nSET NAMES utf8mb4;\n")
     for h in sorted(helpers):
         say(f"DROP DATABASE {D.q('sf_context_' + h)};\n")
@@ -425,7 +425,7 @@ def main():
         rows, broken = rows_of(snap)
         db = f"lab_store_mysql_{version.replace('.', '_')}"
         t_load = build(db, rows)
-        size = V.psql("SELECT pg_size_pretty(sum(pg_total_relation_size(c.oid))) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+        size = C.psql("SELECT pg_size_pretty(sum(pg_total_relation_size(c.oid))) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                       "WHERE n.nspname IN ('core', 'engine_mysql') AND c.relkind = 'r'", db)
         t = time.time()
         st = load_back(db)
@@ -447,16 +447,16 @@ def main():
             if kind == "trigger" and not D.mysql8(version):
                 exact[kind] += got.get((kind, schema, name)) is not None  # 5.7 shows the statement as typed: checked by the round trip
                 continue
-            want = D.normal(pr["__show_create"]) if kind == "table" else pr["__show_create"]
+            want = pr["__show_create"]
             exact[kind] += got.get((kind, schema, name)) == want
         total = sum(len(v) for v in rows.values())
         print(f"{'pass' if exact == n else 'FAIL'}  mysql {version}: {total} rows, loaded with versioning in {t_load:.1f}s, {size}; "
               f"written from the store in {t_write:.1f}s: " + ", ".join(f"{exact[k]}/{n[k]} {k}s" for k in sorted(n))
               + (f"; {len(broken)} broken views not stored" if broken else ""))
         if roundtrip:
-            name = R.fresh(version)
+            name = C.fresh_mysql(version)
             try:
-                R.ready(name)
+                C.ready_mysql(name)
                 sql = script(st, version)
                 r = subprocess.run(["docker", "exec", "-i", name, "mysql", "-uroot", f"-p{SU.PW}", "--force", "--comments",
                                     "--default-character-set=utf8mb4"], input=sql, capture_output=True)
@@ -468,18 +468,16 @@ def main():
                 X.SCHEMAS = saved
                 skip = {f"{s}.{v}" for s, v in broken}
                 def settled(parts):
-                    """What the round trip leaves as it is: a table's AUTO_INCREMENT counter is data, not design; 5.7
-                    shows a trigger as it was typed, and the writer types it its own way."""
+                    """What the round trip leaves as it is: 5.7 shows a trigger as it was typed, and the writer types
+                    it its own way."""
                     out = []
                     for p in parts:
                         pr = dict(p["props"])
-                        if p["kind"] == "table" and "__show_create" in pr:
-                            pr["__show_create"] = D.normal(pr["__show_create"])
                         if p["kind"] == "trigger" and not D.mysql8(version):
                             pr.pop("__show_create", None)
                         out.append(dict(p, props=pr))
                     return out
-                diffs, m = R.compare(settled(snap["parts"]), settled(again), skip)
+                diffs, m = C.compare(settled(snap["parts"]), settled(again), skip)
                 ok = not refused and not diffs
                 print(f"      {'pass' if ok else 'FAIL'}  round trip: {len(sql) // 1024} KB of SQL from the store, {len(refused)} refused, "
                       f"{m} parts compared, {sum(diffs.values())} properties differ")
