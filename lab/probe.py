@@ -13,7 +13,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 PW = next(l.split('"')[1] for l in open(os.path.join(ROOT, "engines/mysql/tests/live.rs")) if l.startswith("const ROOT"))
-SCHEMAS = ("shop", "torture", "Gotcha Zone")
+SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,torture,Gotcha Zone").split(","))  # the schemas a run reads
 
 
 class Server:
@@ -79,6 +79,7 @@ PLUGINS = {
         "roster": f"""SELECT CASE WHEN c.relispartition THEN 'partition' ELSE CASE c.relkind WHEN 'r' THEN 'table' WHEN 'p' THEN 'partitioned table' WHEN 'v' THEN 'view'
               WHEN 'm' THEN 'materialized view' WHEN 'S' THEN 'sequence' WHEN 'f' THEN 'foreign table' END END, n.nspname, c.relname, c.oid::regclass::text
             FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname IN ({S}) AND c.relkind IN ('r','p','v','m','S','f')
+              AND NOT (c.relkind = 'S' AND EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.deptype = 'i'))
             UNION ALL SELECT CASE p.prokind WHEN 'p' THEN 'procedure' ELSE 'function' END, n.nspname, p.oid::regprocedure::text, p.oid::text FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
               WHERE n.nspname IN ({S}) AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'i')
             UNION ALL SELECT 'trigger', n.nspname, c.relname || '.' || t.tgname, t.oid::text FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -168,6 +169,24 @@ def pg_indexes(o):
 
 # --- the three phases -----------------------------------------------------------------------------------------------
 
+def broken_views(server, version, roster):
+    """MySQL: the views that no longer work (a table they read is gone), with the server's reason. From 8.0 the reason
+    is on the view's own row of information_schema.TABLES; 5.7 says it only when the views are checked, all at once."""
+    views = [o for o in roster if o["kind"] == "view"]
+    if server.engine != "mysql" or not views:
+        return {}
+    if not version.startswith("5."):
+        rows = server.ask(f"SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA IN ({S}) "
+                          "AND TABLE_TYPE = 'VIEW' AND TABLE_COMMENT LIKE 'View % references invalid%'")
+        return {f"{r[0]}.{r[1]}": r[2] for r in rows}
+    rows = server.ask("CHECK TABLE " + ", ".join(q_my(o["schema"], o["name"]) for o in views))
+    out = {}
+    for name, _, kind, said in rows:
+        if kind == "Error" and name not in out:
+            out[name] = said
+    return out
+
+
 def probe(server):
     """The version, the roster and every group's state: cheap, nothing else."""
     p = PLUGINS[server.engine]
@@ -177,6 +196,10 @@ def probe(server):
         kind, schema, name = row[:3]
         roster.append({"kind": kind, "schema": schema, "name": name, "id": row[3] if len(row) > 3 else None,
                        "display": f"{schema}.{name}"})
+    broken = broken_views(server, version, roster)
+    for o in roster:
+        if o["display"] in broken:
+            o["broken"] = broken[o["display"]]
     groups = []
     for name, (gives, check, source) in p["groups"].items():
         try:

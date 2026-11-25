@@ -35,6 +35,12 @@ def main():
               f"{len(read['definitions'])} read, {len(unread)} unreadable"
               + (f"; missing {sorted(missing)}" if missing else "") + (f"; {twice} listed twice" if twice else "")
               + (f"; empty {empty}" if empty else "") + (f"; {lost} lost in silence" if lost else ""))
+        if engine == "mysql":
+            b = [o for o in zone if o.get("broken")]
+            flagged = [o["name"] for o in b] == ["v broken"]
+            ok = ok and flagged
+            failures += not flagged
+            print(f"        broken views flagged: {[(o['name'], o['broken'][:60]) for o in b]}{'' if flagged else '  FAIL: v broken not flagged'}")
         for k, why in unread.items():
             print(f"        unreadable, as the server says: {k}: {why}")
         if engine == "postgresql":
