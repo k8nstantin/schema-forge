@@ -10,9 +10,9 @@
 
   <start>Pointed at this file, in any session the operator chooses (rules kickoff), you build from the files alone: on a checkout of the head of main updated from origin, read them whole before you write anything, and take nothing said earlier in the session, or remembered from other work, as authority. Your label is &lt;model&gt;-&lt;effort&gt; as the root's method model says. Read whole, in this order (root method read): every .rs file and every Cargo.toml under crates/, engines/ and tools/ as merged on main; specs/root.xml; specs/rules.xml; this file; then the files it names. Cut the branch SF-121-mysql-live-v1-&lt;model&gt;-&lt;effort&gt; from the head of main. Every commit message starts with SF-121 and carries no attribution of any kind; commit, push and open the PR under the GitHub account of whoever runs the build (decision service-accounts). Build what this file says, run its gates, push the branch and open the PR into main titled "SF-121 mysql live v1 · &lt;model&gt;-&lt;effort&gt;" with the body the root's method pr lists. Show on the screen, as it happens, each step by its number and name, each test run with its result, and each gate. What this file, the root, the rules and the merged code do not say is a stop, not a guess.</start>
 
-  <piece>A schema read live by the scope the person chose, the server's version first and only what that version has, gently, with metadata and, when the server keeps it, usage; every step reported as it happens. In the engine interface: the scope, the catalog sources an engine declares for each version, and the scoped live read with its source, its metadata and usage, and its steps; the kit requiring the catalog sources. In MySQL: 5.7 as its oldest version, with what 5.7 lacks found in a schema for it; its catalog sources; its scoped read on 5.7, 8.0, 8.4, 9.7 and the later releases, never inside the database it reads; performance_schema's usage as the server gives it; and a connection test naming the grants this version needs. In Quill: the scoped read of its definitions, with no usage. Nothing else: no store, no table written, no screen (the read screen is the canvas's, t10).</piece>
+  <piece>A schema read live by the scope the person chose, the server's version first and only what that version has, gently, with metadata and, when the server keeps it, usage; every step reported as it happens. In the engine interface: the scope, the catalog sources an engine declares for each version, and the scoped live read with its source, its metadata and usage, and its steps; the kit requiring the catalog sources. In MySQL: 5.7 as its oldest version, with what 5.7 lacks found in a schema for it; its catalog sources; its scoped read on 5.7, 8.0, 8.4, 9.7 and the later releases, never inside the database it reads; performance_schema's usage as the server gives it; and a connection test naming the grants this version needs. Nothing else: no store, no table written, no screen (the read screen is the canvas's, t10).</piece>
 
-  <before>Merged on main: MySQL's tables (t04) and everything before them, Quill among them; the design that keeps what this read returns: schema/cortex/source_reads.sql, the owner features/usage, and the decisions live-first, mysql-versions, version-facts, usage-apart, gentle-read, read-scope and read-screen.</before>
+  <before>Merged on main: MySQL's tables (t04) and everything before them; the design that keeps what this read returns: schema/cortex/source_reads.sql, the owner features/usage, and the decisions live-first, mysql-versions, version-facts, usage-apart, gentle-read, read-scope and read-screen.</before>
   <after>The store (t07) writes a read's source to cortex.source_reads, its definitions as one import turn, and its metadata and usage as a snapshot of the owner usage; the canvas (t10) shows its steps as the read screen.</after>
 
   <reflects>
@@ -39,7 +39,7 @@
   </reads>
 
   <command>
-    <form>No command: a part of the engine interface and of the MySQL and Quill engines.</form>
+    <form>No command: a part of the engine interface and of the MySQL engine.</form>
     <runs>In the process that calls it.</runs>
   </command>
 
@@ -64,11 +64,8 @@
       <step n="9" name="the steps">The steps reported are, in order: the version; what it offers (the catalog tables this version has); the structure; sizes and estimates; table usage; index usage; query digests. A step the scope does not need is reported skipped with `not asked for`. Each ReadStep's statements are those it sent, in order, the session's three settings in the first step's.</step>
       <step n="10" name="the grants it needs">The test's Rights step names, for the server's version, every grant of catalog_sources the account lacks for the databases it reads: a grant that leaves definitions unread (SHOW VIEW, TRIGGER, EVENT, and routines' grant for the version) fails it as it does today; one that leaves only metadata or usage unread (PROCESS, SELECT ON performance_schema.*) is a Warning naming the grant and what will not be read. read_live puts the grants missing in Source.missing_grants.</step>
     </module>
-    <module path="engines/quill/src/live.rs">
-      <step n="11" name="Quill reads by the scope">Quill declares one catalog source for each of its versions (the Quill file: every definition, no grant, usage false) and reads live by the scope: the definitions the scope takes, as its read gives them, usage None, usage_available false, missing_grants empty; its steps are the version and the structure, and, when the scope asks for metadata or usage, sizes and usage reported skipped with `Quill keeps no usage`.</step>
-    </module>
     <tests path="engines/mysql/tests/live_read.rs">
-      <how>Rust tests: those of steps 1 to 6 and 11 on values of their own and the engines' declarations, reaching no database (in crates/engine/tests/interface.rs, engines/mysql/tests/live_read.rs and engines/quill/tests/, each where its step's code is); those named in Docker start MySQL servers in Docker (mysql:5.7, run as linux/amd64 on a machine that is not, mysql:8.0, mysql:8.4, mysql:9.7), load engines/mysql/tests/samples/live/shop.sql into each, run workload.sql against it, and read it through a profile of the test's own, each server removed when its test ends; they are marked ignored with the reason `needs Docker and the MySQL images`, as engines/mysql/tests/live.rs marks its own.</how>
+      <how>Rust tests: those of steps 1 to 6 on values of their own and the engines' declarations, reaching no database (in crates/engine/tests/interface.rs and engines/mysql/tests/live_read.rs, each where its step's code is); those named in Docker start MySQL servers in Docker (mysql:5.7, run as linux/amd64 on a machine that is not, mysql:8.0, mysql:8.4, mysql:9.7), load engines/mysql/tests/samples/live/shop.sql into each, run workload.sql against it, and read it through a profile of the test's own, each server removed when its test ends; they are marked ignored with the reason `needs Docker and the MySQL images`, as engines/mysql/tests/live.rs marks its own.</how>
       <prove step="1">everything and definitions only, and a scope of chosen parts, kinds and objects, come back the same from their JSON, and anything else is refused naming what is wrong</prove>
       <prove step="1">an object pattern takes names as a LIKE does, percent any run and underscore one character</prove>
       <prove step="3">a read that takes longer than its limit keeps what it read and reports every step it did not take as skipped</prove>
@@ -76,7 +73,6 @@
       <prove step="5">5.7 is the oldest version and every feature is in the versions the release notes say</prove>
       <prove step="5">a schema for 5.7 with a check constraint, an invisible column, an expression part or a descending part is a problem for each, saying it is not in MySQL 5.7</prove>
       <prove step="6">every MySQL version declares its catalog sources, 5.7's naming SELECT ON mysql.proc for routines and none of the tables only 8.0 has</prove>
-      <prove step="11">Quill reads by the scope with no usage, and reports its usage step skipped</prove>
       <prove step="7">in Docker, the shop sample read live from 5.7, 8.0, 8.4 and 9.7 is the same schema as a dump of it read from the same server</prove>
       <prove step="7">in Docker, no statement of the read is counted with the database it reads</prove>
       <prove step="7">in Docker, the read's first statements open a read-only session with a lock wait timeout and a time limit on every statement</prove>
@@ -98,8 +94,8 @@
       <cmd>cargo test -p schema-forge-engine</cmd>
       <expect>every test passes, none ignored</expect>
     </gate>
-    <gate id="Engines" kind="local" proves="steps 5, 6 and 11, and that nothing else of MySQL or Quill changed">
-      <cmd>cargo test -p schema-forge-mysql -p schema-forge-quill</cmd>
+    <gate id="Engines" kind="local" proves="steps 5 and 6, and that nothing else of MySQL changed">
+      <cmd>cargo test -p schema-forge-mysql</cmd>
       <expect>every test passes but the ones ignored for Docker, which are as many as on main and this task's own Docker tests</expect>
     </gate>
     <gate id="Live read" kind="docker" proves="steps 7 to 10 on four versions">
@@ -116,8 +112,8 @@
     </gate>
   </gates>
 
-  <owns>crates/engine/src/live.rs; crates/engine/src/lib.rs (its exports); crates/engine/src/kit.rs (step 4); crates/engine/tests/interface.rs (the tests of steps 1 to 4); engines/mysql/src/live.rs; engines/mysql/src/live/**; engines/mysql/src/lib.rs (Live for Mysql); engines/mysql/src/versions.rs; engines/mysql/src/kinds.rs (the spatial reference system's availability); engines/mysql/src/checks.rs (step 5); engines/mysql/tests/live_read.rs; engines/quill/src/** (its live part); engines/quill/tests/** (step 11); Cargo.lock.</owns>
-  <forbid>engines/mysql/owner.toml; engines/mysql/schema/**; engines/mysql/tests/samples/**; engines/quill/owner.toml; engines/quill/schema/**; schema/**; features/**; crates/model/**; every other file of crates/engine and engines/mysql/src; specs/**; tools/**; docs/**.</forbid>
+  <owns>crates/engine/src/live.rs; crates/engine/src/lib.rs (its exports); crates/engine/src/kit.rs (step 4); crates/engine/tests/interface.rs (the tests of steps 1 to 4); engines/mysql/src/live.rs; engines/mysql/src/live/**; engines/mysql/src/lib.rs (Live for Mysql); engines/mysql/src/versions.rs; engines/mysql/src/kinds.rs (the spatial reference system's availability); engines/mysql/src/checks.rs (step 5); engines/mysql/tests/live_read.rs; Cargo.lock.</owns>
+  <forbid>engines/mysql/owner.toml; engines/mysql/schema/**; engines/mysql/tests/samples/**; schema/**; features/**; crates/model/**; every other file of crates/engine and engines/mysql/src; specs/**; tools/**; docs/**.</forbid>
 
   <done>The scoped live read on the branch; every gate green and in the PR; nothing outside owns touched. After this task a schema is read from a live MySQL of any supported version, 5.7 among them, only as the person chose, the version first, gently and never inside the database, with its metadata and usage as the server gives them and every step reported, ready for the store to keep and the canvas to show.</done>
 </task>

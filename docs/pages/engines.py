@@ -75,7 +75,6 @@ engine_is = "".join(card(a, b) for a, b in [
 guards = "".join(card(a, b) for a, b in [
     ("The conformance kit", "Runs every engine through the same tests: its declarations, its round trip (every sample read, written and read back the same) and its tables."),
     ("The architecture check", "Fails the build when shared code names a database, an engine depends on another, or two crates claim the same database."),
-    ("Quill, the engine nobody uses", "A made-up engine built unlike any real one; every test of shared code runs on it beside the real engines, so nothing shared can quietly assume one database."),
 ])
 iceberg_cards = "".join(card(a, b) for a, b in [
     ("Format versions 1, 2 and 3", "Version 3 brings default values (initial and write), nanosecond timestamps, variant, geometry and geography, row lineage and deletion vectors; each feature marked with its version. Format 4 will be new rows in the same crate."),

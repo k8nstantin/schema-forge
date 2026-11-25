@@ -22,7 +22,7 @@
   <phase n="1" name="study">
     <do>Read the engine interface as merged: crates/engine (the Engine trait and its parts, the section layout in src/sections.rs, kinds, options, types, the conformance kit in src/kit.rs) and crates/model.</do>
     <do>Read the MySQL engine, engines/mysql, as the worked example of a whole engine: its versions, types, kinds, options, readers, writer, its tables (engines/mysql/schema) and its tests and samples.</do>
-    <do>Read Quill (engines/quill, or crates/engine/tests/example before task t03 is built): the made-up engine, unlike MySQL on purpose, every shared test runs beside.</do>
+    <do>Read the kit's example engine (crates/engine/tests/example): a made-up engine small enough to read in one go, implementing every part of the interface.</do>
     <do>Read docs/engines.xml (why every database is a plugin), docs/writing-an-engine.xml (the how, section by section) and the owner template (docs/owner-template/README.xml: the five shapes of an engine's tables).</do>
     <do>Read the new database's own documentation: its versions and what each brought; its types and every spelling a dump uses; its DDL grammar; its dump formats; its catalog (the views or tables that describe a live schema); its kinds of object.</do>
     <ends>Nothing changed. Tell your human what you learned and what surprised you.</ends>

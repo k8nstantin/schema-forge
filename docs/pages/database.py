@@ -41,9 +41,9 @@ g.box("ws", 360, 80, 200, 110, "sf_workspace", f"workspace · {n['workspace']} t
 g.box("f1", 360, 210, 300, 120, "sf_<shop's id>", "a MySQL schema", cls="file")
 g.box("c1", 380, 262, 130, 54, "cortex", f"{n['cortex']} tables", cls="pri")
 g.box("e1", 520, 262, 124, 54, "engine_mysql", f"{n['engine_mysql']} tables", cls="eng")
-g.box("f2", 690, 210, 300, 120, "sf_<notes' id>", "a Quill schema", cls="file")
+g.box("f2", 690, 210, 300, 120, "sf_<lake's id>", "another MySQL schema", cls="file")
 g.box("c2", 710, 262, 130, 54, "cortex", f"{n['cortex']} tables", cls="pri")
-g.box("e2", 850, 262, 124, 54, "engine_quill", f"{n['engine_quill']} table", cls="eng")
+g.box("e2", 850, 262, 124, 54, "engine_mysql", f"{n['engine_mysql']} tables", cls="eng")
 g.parts.append('<line x1="165" y1="150" x2="165" y2="112" class="es" marker-end="url(#mks)"/>')
 g.parts.append('<line x1="290" y1="85" x2="328" y2="85" class="es" marker-end="url(#mks)"/>')
 g.text(20, 386, "- - -  workspace_schemas.id in sf_workspace = the schema's own schema_identity.id (UUIDv7), and its database is named from it", "lb m")
@@ -341,7 +341,7 @@ foreign key cannot state is a view the database enforces at every commit. Everyt
 <section id="workspace"><h2>The workspace</h2><p class="lede"><code>sf_workspace</code>: the schemas by their stable ids, and the saved connections. A connection keeps the value of each field its engine declares, never a secret.</p>
 <figure>{ws_svg}</figure></section>
 
-<section id="engines"><h2>Each engine's tables</h2><p class="lede">What one engine alone says (MySQL's charset and row format, Quill's fast records) lives in that engine's namespace, <code>engine_&lt;engine&gt;</code>: a table named for the cortex table it extends (<code>engine_mysql.table_key_options</code>) or for what only it has (<code>engine_mysql.tablespaces</code>).</p>{eng_figs}</section>
+<section id="engines"><h2>Each engine's tables</h2><p class="lede">What one engine alone says (MySQL's charset and row format) lives in that engine's namespace, <code>engine_&lt;engine&gt;</code>: a table named for the cortex table it extends (<code>engine_mysql.table_key_options</code>) or for what only it has (<code>engine_mysql.tablespaces</code>).</p>{eng_figs}</section>
 
 <section id="tables"><h2>Every table</h2><p class="lede">Grouped as above. Each with what it holds, how its row is named, its columns, what refers to it, its constraints, the rules that read it, and its file whole.</p>{toc}</section>
 {body_tables}
