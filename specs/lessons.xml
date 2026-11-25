@@ -6,7 +6,7 @@
   <lesson id="build-without-a-plan" date="2026-11-23">
     <found>A first canvas and server were built straight from a one-line request, with no written design: the canvas read MySQL's connection fields by name (host, port, user, databases), so it worked for one engine and would have broken on every other.</found>
     <seen>The branch ui-mysql-end-to-end before 2026-11-23, discarded whole; the operator: "fixes is bad planning".</seen>
-    <does>The schema and the spec come first (root method schema, rules the-schema-decides); shared code names no engine's word (rules engine-neutral-shared-code), and every test of shared code runs on Quill beside MySQL.</does>
+    <does>The schema and the spec come first (root method schema, rules the-schema-decides); shared code names no engine's word (rules engine-neutral-shared-code), and every test of shared code runs on every registered engine.</does>
   </lesson>
 
   <lesson id="claimed-before-checked" date="2026-11-23">

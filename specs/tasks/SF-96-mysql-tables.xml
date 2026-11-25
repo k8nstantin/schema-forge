@@ -12,8 +12,8 @@
 
   <piece>MySQL's Tables (t02): every option the MySQL engine declares (engines/mysql/src/options.rs) written as rows of its own tables in the namespace engine_mysql (engines/mysql/schema) and read back, so every MySQL sample goes through the cortex's rows and MySQL's and comes back the same. And the kit made to require Tables of an engine that reads. Nothing else: no option added, renamed or removed, no file of engines/mysql/schema changed, no database (t07).</piece>
 
-  <before>Merged on main: Quill and the registry (t03), the tables interface (t02), the spec check (t01) and everything before them; engines/mysql/owner.toml and engines/mysql/schema as the design session wrote them.</before>
-  <after>The store (t07) writes MySQL's rows into the namespace engine_mysql of a schema's database and reads them back, as it does Quill's.</after>
+  <before>Merged on main: the registry (t03), the tables interface (t02), the spec check (t01) and everything before them; engines/mysql/owner.toml and engines/mysql/schema as the design session wrote them.</before>
+  <after>The store (t07) writes MySQL's rows into the namespace engine_mysql of a schema's database and reads them back.</after>
 
   <reflects>
     <file path="specs/rules.xml">
@@ -83,14 +83,14 @@
       <cmd>cargo run -q -p schema-forge-specs</cmd>
       <expect>the last line is `spec check: 0 findings`</expect>
     </gate>
-    <gate id="Everything" kind="docker" proves="the repository passes, Quill's kit with tables required among it">
+    <gate id="Everything" kind="docker" proves="the repository passes, the kit with tables required among it">
       <cmd>tools/check.sh</cmd>
       <expect>the last line is `== All checks passed`</expect>
     </gate>
   </gates>
 
   <owns>engines/mysql/src/tables.rs; engines/mysql/src/lib.rs (the module and Engine::tables); engines/mysql/tests/tables.rs; crates/engine/src/kit.rs (step 8); Cargo.lock.</owns>
-  <forbid>engines/mysql/owner.toml; engines/mysql/schema/**; engines/mysql/src/options.rs and every other file of engines/mysql/src; schema/**; features/**; engines/quill/**; crates/model/**; every other file of crates/engine; specs/**; tools/**; docs/**.</forbid>
+  <forbid>engines/mysql/owner.toml; engines/mysql/schema/**; engines/mysql/src/options.rs and every other file of engines/mysql/src; schema/**; features/**; crates/model/**; every other file of crates/engine; specs/**; tools/**; docs/**.</forbid>
 
   <done>MySQL's Tables on the branch; every gate green and in the PR; nothing outside owns touched. After this task every MySQL sample goes to the cortex's rows and MySQL's and back with nothing lost, and no engine that reads can be registered without tables.</done>
 </task>

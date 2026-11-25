@@ -115,7 +115,7 @@ pub trait Tables: Send + Sync {
     /// Its owner.toml.
     fn card(&self) -> &'static str;
 
-    /// Its table files, each named by its table's full name (engine_quill.record_options), in name order.
+    /// Its table files, each named by its table's full name (engine_example.table_options), in name order.
     fn files(&self) -> &[File];
 
     /// Its rules/ files, each named by its rule.
