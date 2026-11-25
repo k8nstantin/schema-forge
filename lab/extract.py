@@ -12,8 +12,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 PW = next(l.split('"')[1] for l in open(os.path.join(ROOT, "engines/mysql/tests/live.rs")) if l.startswith("const ROOT"))
-MYSQL = [("5.7", "sf-mysql-5-7"), ("8.0", "sf-mysql-8-0"), ("8.4", "sf-mysql-8-4"), ("9.7", "sf-mysql-9-7")]
-POSTGRES = [(v, f"sf-pg-{v}") for v in ("14", "15", "16", "17", "18")]
+MYSQL = [("5.7", "sf-mysql-5.7"), ("8.0", "sf-mysql-8.0"), ("8.4", "sf-mysql-8.4"), ("9.7", "sf-mysql-9.7")]
+POSTGRES = [(v, f"sf-pg-{v}") for v in ("15", "16", "17", "18")]
 SCHEMAS = ("shop", "torture", "audit")
 
 # MySQL: information_schema tables by the part they describe, the columns that name the part, and the volatile ones.

@@ -242,8 +242,8 @@ def read(server, probed, choice):
     return out
 
 
-SERVERS = [("mysql", "sf-mysql-5-7"), ("mysql", "sf-mysql-8-0"), ("mysql", "sf-mysql-8-4"), ("mysql", "sf-mysql-9-7"),
-           ("postgresql", "sf-pg-14"), ("postgresql", "sf-pg-15"), ("postgresql", "sf-pg-16"), ("postgresql", "sf-pg-17"),
+SERVERS = [("mysql", "sf-mysql-5.7"), ("mysql", "sf-mysql-8.0"), ("mysql", "sf-mysql-8.4"), ("mysql", "sf-mysql-9.7"),
+           ("postgresql", "sf-pg-15"), ("postgresql", "sf-pg-16"), ("postgresql", "sf-pg-17"),
            ("postgresql", "sf-pg-18")]
 
 MODES = {

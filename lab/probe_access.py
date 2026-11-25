@@ -69,7 +69,7 @@ def show(label, s):
 
 
 def main():
-    for engine, container in (("mysql", "sf-mysql-8-4"), ("postgresql", "sf-pg-18")):
+    for engine, container in (("mysql", "sf-mysql-8.4"), ("postgresql", "sf-pg-18")):
         print(f"== {engine} ({container})")
         root(engine, container, SETUP[engine][0])
         show("read-only, no statistics grants", As(engine, container, "sf_lab_reader"))

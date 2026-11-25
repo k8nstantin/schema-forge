@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from concepts import CONCEPT_OF, SHARED, split  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SERVER = "sf-pg-18"
+SERVER = "sf-store"  # our own PostgreSQL, apart from the test targets
 SNAPSHOTS = {"mysql": "mysql-8.4", "postgresql": "postgresql-18"}
 
 
