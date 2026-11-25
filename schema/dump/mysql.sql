@@ -4666,9 +4666,7 @@ CREATE TABLE engine_mysql.tablespaces (
     datafile text,
     file_block_size text,
     engine text,
-    autoextend_size text,
-    encryption text,
-    engine_attribute text
+    encryption text
 );
 
 
@@ -4710,24 +4708,10 @@ COMMENT ON COLUMN engine_mysql.tablespaces.engine IS 'its storage engine; NULL w
 
 
 --
--- Name: COLUMN tablespaces.autoextend_size; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.tablespaces.autoextend_size IS 'how much its file grows at a time; NULL when not written';
-
-
---
 -- Name: COLUMN tablespaces.encryption; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
 COMMENT ON COLUMN engine_mysql.tablespaces.encryption IS 'whether it is encrypted (Y, N); NULL when not written';
-
-
---
--- Name: COLUMN tablespaces.engine_attribute; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.tablespaces.engine_attribute IS 'what its storage engine is told about it; NULL when not written';
 
 
 --
@@ -4874,35 +4858,13 @@ CREATE TABLE engine_mysql.table_options (
     id text NOT NULL,
     engine text,
     auto_increment integer,
-    autoextend_size text,
-    avg_row_length integer,
     charset text,
     "collation" text,
-    checksum text,
     compression text,
-    connection text,
-    data_directory text,
-    index_directory text,
-    delay_key_write text,
     encryption text,
-    engine_attribute text,
-    secondary_engine text,
-    secondary_engine_attribute text,
-    insert_method text,
-    key_block_size integer,
-    max_rows integer,
-    min_rows integer,
-    pack_keys text,
     row_format text,
-    stats_auto_recalc text,
-    stats_persistent text,
-    stats_sample_pages text,
     tablespace text,
-    CONSTRAINT table_options_auto_increment_check CHECK ((auto_increment >= 0)),
-    CONSTRAINT table_options_avg_row_length_check CHECK ((avg_row_length >= 0)),
-    CONSTRAINT table_options_key_block_size_check CHECK ((key_block_size >= 0)),
-    CONSTRAINT table_options_max_rows_check CHECK ((max_rows >= 0)),
-    CONSTRAINT table_options_min_rows_check CHECK ((min_rows >= 0))
+    CONSTRAINT table_options_auto_increment_check CHECK ((auto_increment >= 0))
 );
 
 
@@ -4937,20 +4899,6 @@ COMMENT ON COLUMN engine_mysql.table_options.auto_increment IS 'the next number 
 
 
 --
--- Name: COLUMN table_options.autoextend_size; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.autoextend_size IS 'how much its file grows at a time; NULL when not written';
-
-
---
--- Name: COLUMN table_options.avg_row_length; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.avg_row_length IS 'the row length it is sized for; NULL when not written';
-
-
---
 -- Name: COLUMN table_options.charset; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -4965,45 +4913,10 @@ COMMENT ON COLUMN engine_mysql.table_options."collation" IS 'its default collati
 
 
 --
--- Name: COLUMN table_options.checksum; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.checksum IS 'whether a live checksum of its rows is kept (0, 1); NULL when not written';
-
-
---
 -- Name: COLUMN table_options.compression; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
 COMMENT ON COLUMN engine_mysql.table_options.compression IS 'how its pages are compressed (zlib, lz4, none); NULL when not written';
-
-
---
--- Name: COLUMN table_options.connection; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.connection IS 'where a FEDERATED table''s rows are; NULL when not written';
-
-
---
--- Name: COLUMN table_options.data_directory; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.data_directory IS 'where its data file is; NULL when not written';
-
-
---
--- Name: COLUMN table_options.index_directory; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.index_directory IS 'where its index file is; NULL when not written';
-
-
---
--- Name: COLUMN table_options.delay_key_write; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.delay_key_write IS 'whether index writes wait until it is closed (0, 1); NULL when not written';
 
 
 --
@@ -5014,87 +4927,10 @@ COMMENT ON COLUMN engine_mysql.table_options.encryption IS 'whether it is encryp
 
 
 --
--- Name: COLUMN table_options.engine_attribute; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.engine_attribute IS 'what its storage engine is told about it; NULL when not written';
-
-
---
--- Name: COLUMN table_options.secondary_engine; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.secondary_engine IS 'the secondary engine it is loaded into; NULL when not written';
-
-
---
--- Name: COLUMN table_options.secondary_engine_attribute; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.secondary_engine_attribute IS 'what its secondary engine is told about it; NULL when not written';
-
-
---
--- Name: COLUMN table_options.insert_method; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.insert_method IS 'where a MERGE table inserts (NO, FIRST, LAST); NULL when not written';
-
-
---
--- Name: COLUMN table_options.key_block_size; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.key_block_size IS 'the size of its compressed pages, in KB; NULL when not written';
-
-
---
--- Name: COLUMN table_options.max_rows; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.max_rows IS 'the most rows it is sized for; NULL when not written';
-
-
---
--- Name: COLUMN table_options.min_rows; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.min_rows IS 'the fewest rows it is sized for; NULL when not written';
-
-
---
--- Name: COLUMN table_options.pack_keys; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.pack_keys IS 'whether its indexes are packed (0, 1, DEFAULT); NULL when not written';
-
-
---
 -- Name: COLUMN table_options.row_format; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
 COMMENT ON COLUMN engine_mysql.table_options.row_format IS 'how its rows are stored (DYNAMIC, COMPACT, COMPRESSED, REDUNDANT, FIXED); NULL when not written';
-
-
---
--- Name: COLUMN table_options.stats_auto_recalc; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.stats_auto_recalc IS 'whether its statistics are recalculated on their own (0, 1, DEFAULT); NULL when not written';
-
-
---
--- Name: COLUMN table_options.stats_persistent; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.stats_persistent IS 'whether its statistics are kept on disk (0, 1, DEFAULT); NULL when not written';
-
-
---
--- Name: COLUMN table_options.stats_sample_pages; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_options.stats_sample_pages IS 'how many pages its statistics sample; NULL when not written';
 
 
 --
@@ -5171,13 +5007,7 @@ CREATE TABLE engine_mysql.column_options (
     on_update text,
     srid integer,
     invisible boolean,
-    column_format text,
-    storage text,
-    engine_attribute text,
-    secondary_engine_attribute text,
-    CONSTRAINT column_options_column_format_check CHECK ((column_format = ANY (ARRAY['FIXED'::text, 'DYNAMIC'::text, 'DEFAULT'::text]))),
-    CONSTRAINT column_options_srid_check CHECK ((srid >= 0)),
-    CONSTRAINT column_options_storage_check CHECK ((storage = ANY (ARRAY['DISK'::text, 'MEMORY'::text])))
+    CONSTRAINT column_options_srid_check CHECK ((srid >= 0))
 );
 
 
@@ -5240,31 +5070,63 @@ COMMENT ON COLUMN engine_mysql.column_options.invisible IS 'true when SELECT * l
 
 
 --
--- Name: COLUMN column_options.column_format; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+-- Name: column_properties; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON COLUMN engine_mysql.column_options.column_format IS 'how it is stored (NDB); NULL when not written';
+CREATE TABLE engine_mysql.column_properties (
+    id text NOT NULL,
+    "column" text NOT NULL,
+    "position" numeric NOT NULL,
+    key text NOT NULL,
+    value text NOT NULL,
+    CONSTRAINT column_properties_check CHECK (((substr(id, 1, (length("column") + 9)) = ("column" || '.property'::text)) AND (substr(id, (length("column") + 10)) ~ '^[1-9][0-9]*$'::text))),
+    CONSTRAINT column_properties_key_check CHECK ((key ~ '^[a-z_]+$'::text)),
+    CONSTRAINT column_properties_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_mysql.column_properties OWNER TO sf_owner;
+
+--
+-- Name: TABLE column_properties; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.column_properties IS 'the options of a column that are not MySQL''s core, each as MySQL writes it (decision typed-core). Shipped in the MySQL plugin (engines/mysql); created in a schema database whose engine is mysql, and in no other. Shape 4, open-ended properties: one row per option, its key the option''s as MySQL names it (key_block_size), its value as written; an option of a storage engine, of a version, of a cloud or seldom written, so that MySQL adding one never adds a column.';
 
 
 --
--- Name: COLUMN column_options.storage; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+-- Name: COLUMN column_properties.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON COLUMN engine_mysql.column_options.storage IS 'where it is stored (NDB); NULL when not written';
-
-
---
--- Name: COLUMN column_options.engine_attribute; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.column_options.engine_attribute IS 'what its storage engine is told about it; NULL when not written';
+COMMENT ON COLUMN engine_mysql.column_properties.id IS '<part>.property<n>, n given once from id_counters and never reused: o_orders.c_status.property1';
 
 
 --
--- Name: COLUMN column_options.secondary_engine_attribute; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+-- Name: COLUMN column_properties."column"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON COLUMN engine_mysql.column_options.secondary_engine_attribute IS 'what its secondary engine is told about it; NULL when not written';
+COMMENT ON COLUMN engine_mysql.column_properties."column" IS 'the part it belongs to';
+
+
+--
+-- Name: COLUMN column_properties."position"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.column_properties."position" IS 'its place among the part''s options, as written; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered';
+
+
+--
+-- Name: COLUMN column_properties.key; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.column_properties.key IS 'the option, as MySQL''s options name it (key_block_size)';
+
+
+--
+-- Name: COLUMN column_properties.value; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.column_properties.value IS 'its value, exactly as written';
 
 
 --
@@ -5274,9 +5136,7 @@ COMMENT ON COLUMN engine_mysql.column_options.secondary_engine_attribute IS 'wha
 CREATE TABLE engine_mysql.database_options (
     id text NOT NULL,
     charset text,
-    "collation" text,
-    encryption boolean,
-    read_only boolean
+    "collation" text
 );
 
 
@@ -5311,17 +5171,63 @@ COMMENT ON COLUMN engine_mysql.database_options."collation" IS 'its default coll
 
 
 --
--- Name: COLUMN database_options.encryption; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+-- Name: database_properties; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON COLUMN engine_mysql.database_options.encryption IS 'true when its tables are encrypted by default (DEFAULT ENCRYPTION ''Y''); NULL when not written';
+CREATE TABLE engine_mysql.database_properties (
+    id text NOT NULL,
+    namespace text NOT NULL,
+    "position" numeric NOT NULL,
+    key text NOT NULL,
+    value text NOT NULL,
+    CONSTRAINT database_properties_check CHECK (((substr(id, 1, (length(namespace) + 9)) = (namespace || '.property'::text)) AND (substr(id, (length(namespace) + 10)) ~ '^[1-9][0-9]*$'::text))),
+    CONSTRAINT database_properties_key_check CHECK ((key ~ '^[a-z_]+$'::text)),
+    CONSTRAINT database_properties_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_mysql.database_properties OWNER TO sf_owner;
+
+--
+-- Name: TABLE database_properties; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.database_properties IS 'the options of a database that are not MySQL''s core, each as MySQL writes it (decision typed-core). Shipped in the MySQL plugin (engines/mysql); created in a schema database whose engine is mysql, and in no other. Shape 4, open-ended properties: one row per option, its key the option''s as MySQL names it (key_block_size), its value as written; an option of a storage engine, of a version, of a cloud or seldom written, so that MySQL adding one never adds a column.';
 
 
 --
--- Name: COLUMN database_options.read_only; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+-- Name: COLUMN database_properties.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON COLUMN engine_mysql.database_options.read_only IS 'true when nothing in it may change (READ ONLY = 1); NULL when not written';
+COMMENT ON COLUMN engine_mysql.database_properties.id IS '<part>.property<n>, n given once from id_counters and never reused: n_shop.property1';
+
+
+--
+-- Name: COLUMN database_properties.namespace; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.database_properties.namespace IS 'the part it belongs to';
+
+
+--
+-- Name: COLUMN database_properties."position"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.database_properties."position" IS 'its place among the part''s options, as written; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered';
+
+
+--
+-- Name: COLUMN database_properties.key; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.database_properties.key IS 'the option, as MySQL''s options name it (key_block_size)';
+
+
+--
+-- Name: COLUMN database_properties.value; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.database_properties.value IS 'its value, exactly as written';
 
 
 --
@@ -5331,11 +5237,8 @@ COMMENT ON COLUMN engine_mysql.database_options.read_only IS 'true when nothing 
 CREATE TABLE engine_mysql.index_options (
     id text NOT NULL,
     comment text,
-    key_block_size integer,
     parser text,
-    invisible boolean,
-    engine_attribute text,
-    CONSTRAINT index_options_key_block_size_check CHECK ((key_block_size >= 0))
+    invisible boolean
 );
 
 
@@ -5363,13 +5266,6 @@ COMMENT ON COLUMN engine_mysql.index_options.comment IS 'what it is for; NULL wh
 
 
 --
--- Name: COLUMN index_options.key_block_size; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.index_options.key_block_size IS 'its block size, in KB; NULL when not written';
-
-
---
 -- Name: COLUMN index_options.parser; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -5381,13 +5277,6 @@ COMMENT ON COLUMN engine_mysql.index_options.parser IS 'the full-text parser it 
 --
 
 COMMENT ON COLUMN engine_mysql.index_options.invisible IS 'true when the optimizer ignores it; NULL when not written';
-
-
---
--- Name: COLUMN index_options.engine_attribute; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.index_options.engine_attribute IS 'what its storage engine is told about it; NULL when not written';
 
 
 --
@@ -5425,6 +5314,186 @@ COMMENT ON COLUMN engine_mysql.index_part_options.length IS 'how many characters
 
 
 --
+-- Name: index_properties; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.index_properties (
+    id text NOT NULL,
+    index text NOT NULL,
+    "position" numeric NOT NULL,
+    key text NOT NULL,
+    value text NOT NULL,
+    CONSTRAINT index_properties_check CHECK (((substr(id, 1, (length(index) + 9)) = (index || '.property'::text)) AND (substr(id, (length(index) + 10)) ~ '^[1-9][0-9]*$'::text))),
+    CONSTRAINT index_properties_key_check CHECK ((key ~ '^[a-z_]+$'::text)),
+    CONSTRAINT index_properties_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_mysql.index_properties OWNER TO sf_owner;
+
+--
+-- Name: TABLE index_properties; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.index_properties IS 'the options of an index that are not MySQL''s core, each as MySQL writes it (decision typed-core). Shipped in the MySQL plugin (engines/mysql); created in a schema database whose engine is mysql, and in no other. Shape 4, open-ended properties: one row per option, its key the option''s as MySQL names it (key_block_size), its value as written; an option of a storage engine, of a version, of a cloud or seldom written, so that MySQL adding one never adds a column.';
+
+
+--
+-- Name: COLUMN index_properties.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.index_properties.id IS '<part>.property<n>, n given once from id_counters and never reused: o_orders.index1.property1';
+
+
+--
+-- Name: COLUMN index_properties.index; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.index_properties.index IS 'the part it belongs to';
+
+
+--
+-- Name: COLUMN index_properties."position"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.index_properties."position" IS 'its place among the part''s options, as written; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered';
+
+
+--
+-- Name: COLUMN index_properties.key; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.index_properties.key IS 'the option, as MySQL''s options name it (key_block_size)';
+
+
+--
+-- Name: COLUMN index_properties.value; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.index_properties.value IS 'its value, exactly as written';
+
+
+--
+-- Name: key_properties; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.key_properties (
+    id text NOT NULL,
+    table_key text NOT NULL,
+    "position" numeric NOT NULL,
+    key text NOT NULL,
+    value text NOT NULL,
+    CONSTRAINT key_properties_check CHECK (((substr(id, 1, (length(table_key) + 9)) = (table_key || '.property'::text)) AND (substr(id, (length(table_key) + 10)) ~ '^[1-9][0-9]*$'::text))),
+    CONSTRAINT key_properties_key_check CHECK ((key ~ '^[a-z_]+$'::text)),
+    CONSTRAINT key_properties_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_mysql.key_properties OWNER TO sf_owner;
+
+--
+-- Name: TABLE key_properties; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.key_properties IS 'the options of a primary or unique key that are not MySQL''s core, each as MySQL writes it (decision typed-core). Shipped in the MySQL plugin (engines/mysql); created in a schema database whose engine is mysql, and in no other. Shape 4, open-ended properties: one row per option, its key the option''s as MySQL names it (key_block_size), its value as written; an option of a storage engine, of a version, of a cloud or seldom written, so that MySQL adding one never adds a column.';
+
+
+--
+-- Name: COLUMN key_properties.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.key_properties.id IS '<part>.property<n>, n given once from id_counters and never reused: o_orders.key1.property1';
+
+
+--
+-- Name: COLUMN key_properties.table_key; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.key_properties.table_key IS 'the part it belongs to';
+
+
+--
+-- Name: COLUMN key_properties."position"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.key_properties."position" IS 'its place among the part''s options, as written; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered';
+
+
+--
+-- Name: COLUMN key_properties.key; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.key_properties.key IS 'the option, as MySQL''s options name it (key_block_size)';
+
+
+--
+-- Name: COLUMN key_properties.value; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.key_properties.value IS 'its value, exactly as written';
+
+
+--
+-- Name: object_properties; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.object_properties (
+    id text NOT NULL,
+    object text NOT NULL,
+    "position" numeric NOT NULL,
+    key text NOT NULL,
+    value text NOT NULL,
+    CONSTRAINT object_properties_check CHECK (((substr(id, 1, (length(object) + 9)) = (object || '.property'::text)) AND (substr(id, (length(object) + 10)) ~ '^[1-9][0-9]*$'::text))),
+    CONSTRAINT object_properties_key_check CHECK ((key ~ '^[a-z_]+$'::text)),
+    CONSTRAINT object_properties_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_mysql.object_properties OWNER TO sf_owner;
+
+--
+-- Name: TABLE object_properties; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.object_properties IS 'the options of a table or a tablespace that are not MySQL''s core, each as MySQL writes it (decision typed-core). Shipped in the MySQL plugin (engines/mysql); created in a schema database whose engine is mysql, and in no other. Shape 4, open-ended properties: one row per option, its key the option''s as MySQL names it (key_block_size), its value as written; an option of a storage engine, of a version, of a cloud or seldom written, so that MySQL adding one never adds a column.';
+
+
+--
+-- Name: COLUMN object_properties.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.object_properties.id IS '<part>.property<n>, n given once from id_counters and never reused: o_orders.property1';
+
+
+--
+-- Name: COLUMN object_properties.object; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.object_properties.object IS 'the part it belongs to';
+
+
+--
+-- Name: COLUMN object_properties."position"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.object_properties."position" IS 'its place among the part''s options, as written; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered';
+
+
+--
+-- Name: COLUMN object_properties.key; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.object_properties.key IS 'the option, as MySQL''s options name it (key_block_size)';
+
+
+--
+-- Name: COLUMN object_properties.value; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.object_properties.value IS 'its value, exactly as written';
+
+
+--
 -- Name: partition_options; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -5432,13 +5501,7 @@ CREATE TABLE engine_mysql.partition_options (
     id text NOT NULL,
     engine text,
     comment text,
-    data_directory text,
-    index_directory text,
-    max_rows integer,
-    min_rows integer,
-    tablespace text,
-    CONSTRAINT partition_options_max_rows_check CHECK ((max_rows >= 0)),
-    CONSTRAINT partition_options_min_rows_check CHECK ((min_rows >= 0))
+    tablespace text
 );
 
 
@@ -5473,38 +5536,70 @@ COMMENT ON COLUMN engine_mysql.partition_options.comment IS 'what it holds; NULL
 
 
 --
--- Name: COLUMN partition_options.data_directory; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.partition_options.data_directory IS 'where its data file is; NULL when not written';
-
-
---
--- Name: COLUMN partition_options.index_directory; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.partition_options.index_directory IS 'where its index file is; NULL when not written';
-
-
---
--- Name: COLUMN partition_options.max_rows; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.partition_options.max_rows IS 'the most rows it is sized for; NULL when not written';
-
-
---
--- Name: COLUMN partition_options.min_rows; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.partition_options.min_rows IS 'the fewest rows it is sized for; NULL when not written';
-
-
---
 -- Name: COLUMN partition_options.tablespace; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
 COMMENT ON COLUMN engine_mysql.partition_options.tablespace IS 'the tablespace it is stored in; NULL when not written';
+
+
+--
+-- Name: partition_properties; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.partition_properties (
+    id text NOT NULL,
+    partition text NOT NULL,
+    "position" numeric NOT NULL,
+    key text NOT NULL,
+    value text NOT NULL,
+    CONSTRAINT partition_properties_check CHECK (((substr(id, 1, (length(partition) + 9)) = (partition || '.property'::text)) AND (substr(id, (length(partition) + 10)) ~ '^[1-9][0-9]*$'::text))),
+    CONSTRAINT partition_properties_key_check CHECK ((key ~ '^[a-z_]+$'::text)),
+    CONSTRAINT partition_properties_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_mysql.partition_properties OWNER TO sf_owner;
+
+--
+-- Name: TABLE partition_properties; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.partition_properties IS 'the options of a partition that are not MySQL''s core, each as MySQL writes it (decision typed-core). Shipped in the MySQL plugin (engines/mysql); created in a schema database whose engine is mysql, and in no other. Shape 4, open-ended properties: one row per option, its key the option''s as MySQL names it (key_block_size), its value as written; an option of a storage engine, of a version, of a cloud or seldom written, so that MySQL adding one never adds a column.';
+
+
+--
+-- Name: COLUMN partition_properties.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.partition_properties.id IS '<part>.property<n>, n given once from id_counters and never reused: o_orders.partition1.property1';
+
+
+--
+-- Name: COLUMN partition_properties.partition; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.partition_properties.partition IS 'the part it belongs to';
+
+
+--
+-- Name: COLUMN partition_properties."position"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.partition_properties."position" IS 'its place among the part''s options, as written; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered';
+
+
+--
+-- Name: COLUMN partition_properties.key; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.partition_properties.key IS 'the option, as MySQL''s options name it (key_block_size)';
+
+
+--
+-- Name: COLUMN partition_properties.value; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.partition_properties.value IS 'its value, exactly as written';
 
 
 --
@@ -5583,13 +5678,7 @@ CREATE TABLE engine_mysql.subpartition_options (
     id text NOT NULL,
     engine text,
     comment text,
-    data_directory text,
-    index_directory text,
-    max_rows integer,
-    min_rows integer,
-    tablespace text,
-    CONSTRAINT subpartition_options_max_rows_check CHECK ((max_rows >= 0)),
-    CONSTRAINT subpartition_options_min_rows_check CHECK ((min_rows >= 0))
+    tablespace text
 );
 
 
@@ -5624,38 +5713,70 @@ COMMENT ON COLUMN engine_mysql.subpartition_options.comment IS 'what it holds; N
 
 
 --
--- Name: COLUMN subpartition_options.data_directory; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartition_options.data_directory IS 'where its data file is; NULL when not written';
-
-
---
--- Name: COLUMN subpartition_options.index_directory; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartition_options.index_directory IS 'where its index file is; NULL when not written';
-
-
---
--- Name: COLUMN subpartition_options.max_rows; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartition_options.max_rows IS 'the most rows it is sized for; NULL when not written';
-
-
---
--- Name: COLUMN subpartition_options.min_rows; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartition_options.min_rows IS 'the fewest rows it is sized for; NULL when not written';
-
-
---
 -- Name: COLUMN subpartition_options.tablespace; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
 COMMENT ON COLUMN engine_mysql.subpartition_options.tablespace IS 'the tablespace it is stored in; NULL when not written';
+
+
+--
+-- Name: subpartition_properties; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.subpartition_properties (
+    id text NOT NULL,
+    subpartition text NOT NULL,
+    "position" numeric NOT NULL,
+    key text NOT NULL,
+    value text NOT NULL,
+    CONSTRAINT subpartition_properties_check CHECK (((substr(id, 1, (length(subpartition) + 9)) = (subpartition || '.property'::text)) AND (substr(id, (length(subpartition) + 10)) ~ '^[1-9][0-9]*$'::text))),
+    CONSTRAINT subpartition_properties_key_check CHECK ((key ~ '^[a-z_]+$'::text)),
+    CONSTRAINT subpartition_properties_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_mysql.subpartition_properties OWNER TO sf_owner;
+
+--
+-- Name: TABLE subpartition_properties; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.subpartition_properties IS 'the options of a subpartition that are not MySQL''s core, each as MySQL writes it (decision typed-core). Shipped in the MySQL plugin (engines/mysql); created in a schema database whose engine is mysql, and in no other. Shape 4, open-ended properties: one row per option, its key the option''s as MySQL names it (key_block_size), its value as written; an option of a storage engine, of a version, of a cloud or seldom written, so that MySQL adding one never adds a column.';
+
+
+--
+-- Name: COLUMN subpartition_properties.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartition_properties.id IS '<part>.property<n>, n given once from id_counters and never reused: o_orders.partition1.sub1.property1';
+
+
+--
+-- Name: COLUMN subpartition_properties.subpartition; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartition_properties.subpartition IS 'the part it belongs to';
+
+
+--
+-- Name: COLUMN subpartition_properties."position"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartition_properties."position" IS 'its place among the part''s options, as written; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered';
+
+
+--
+-- Name: COLUMN subpartition_properties.key; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartition_properties.key IS 'the option, as MySQL''s options name it (key_block_size)';
+
+
+--
+-- Name: COLUMN subpartition_properties.value; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartition_properties.value IS 'its value, exactly as written';
 
 
 --
@@ -5709,10 +5830,7 @@ CREATE TABLE engine_mysql.table_key_options (
     id text NOT NULL,
     method text,
     comment text,
-    key_block_size integer,
     invisible boolean,
-    engine_attribute text,
-    CONSTRAINT table_key_options_key_block_size_check CHECK ((key_block_size >= 0)),
     CONSTRAINT table_key_options_method_check CHECK ((method = ANY (ARRAY['BTREE'::text, 'HASH'::text])))
 );
 
@@ -5748,24 +5866,10 @@ COMMENT ON COLUMN engine_mysql.table_key_options.comment IS 'what it is for; NUL
 
 
 --
--- Name: COLUMN table_key_options.key_block_size; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_key_options.key_block_size IS 'its block size, in KB; NULL when not written';
-
-
---
 -- Name: COLUMN table_key_options.invisible; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
 COMMENT ON COLUMN engine_mysql.table_key_options.invisible IS 'true when the optimizer ignores it; NULL when not written';
-
-
---
--- Name: COLUMN table_key_options.engine_attribute; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.table_key_options.engine_attribute IS 'what its storage engine is told about it; NULL when not written';
 
 
 --
@@ -6712,11 +6816,59 @@ ALTER TABLE ONLY engine_mysql.column_options
 
 
 --
+-- Name: column_properties column_properties_column_key_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.column_properties
+    ADD CONSTRAINT column_properties_column_key_key UNIQUE ("column", key);
+
+
+--
+-- Name: column_properties column_properties_column_position_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.column_properties
+    ADD CONSTRAINT column_properties_column_position_key UNIQUE ("column", "position");
+
+
+--
+-- Name: column_properties column_properties_pkey; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.column_properties
+    ADD CONSTRAINT column_properties_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: database_options database_options_pkey; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
 --
 
 ALTER TABLE ONLY engine_mysql.database_options
     ADD CONSTRAINT database_options_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: database_properties database_properties_namespace_key_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.database_properties
+    ADD CONSTRAINT database_properties_namespace_key_key UNIQUE (namespace, key);
+
+
+--
+-- Name: database_properties database_properties_namespace_position_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.database_properties
+    ADD CONSTRAINT database_properties_namespace_position_key UNIQUE (namespace, "position");
+
+
+--
+-- Name: database_properties database_properties_pkey; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.database_properties
+    ADD CONSTRAINT database_properties_pkey PRIMARY KEY (id);
 
 
 --
@@ -6733,6 +6885,54 @@ ALTER TABLE ONLY engine_mysql.index_options
 
 ALTER TABLE ONLY engine_mysql.index_part_options
     ADD CONSTRAINT index_part_options_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: index_properties index_properties_index_key_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.index_properties
+    ADD CONSTRAINT index_properties_index_key_key UNIQUE (index, key);
+
+
+--
+-- Name: index_properties index_properties_index_position_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.index_properties
+    ADD CONSTRAINT index_properties_index_position_key UNIQUE (index, "position");
+
+
+--
+-- Name: index_properties index_properties_pkey; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.index_properties
+    ADD CONSTRAINT index_properties_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: key_properties key_properties_pkey; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.key_properties
+    ADD CONSTRAINT key_properties_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: key_properties key_properties_table_key_key_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.key_properties
+    ADD CONSTRAINT key_properties_table_key_key_key UNIQUE (table_key, key);
+
+
+--
+-- Name: key_properties key_properties_table_key_position_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.key_properties
+    ADD CONSTRAINT key_properties_table_key_position_key UNIQUE (table_key, "position");
 
 
 --
@@ -6760,6 +6960,30 @@ ALTER TABLE ONLY engine_mysql.merge_tables
 
 
 --
+-- Name: object_properties object_properties_object_key_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.object_properties
+    ADD CONSTRAINT object_properties_object_key_key UNIQUE (object, key);
+
+
+--
+-- Name: object_properties object_properties_object_position_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.object_properties
+    ADD CONSTRAINT object_properties_object_position_key UNIQUE (object, "position");
+
+
+--
+-- Name: object_properties object_properties_pkey; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.object_properties
+    ADD CONSTRAINT object_properties_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: outside_references outside_references_object_position_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -6781,6 +7005,30 @@ ALTER TABLE ONLY engine_mysql.outside_references
 
 ALTER TABLE ONLY engine_mysql.partition_options
     ADD CONSTRAINT partition_options_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: partition_properties partition_properties_partition_key_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.partition_properties
+    ADD CONSTRAINT partition_properties_partition_key_key UNIQUE (partition, key);
+
+
+--
+-- Name: partition_properties partition_properties_partition_position_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.partition_properties
+    ADD CONSTRAINT partition_properties_partition_position_key UNIQUE (partition, "position");
+
+
+--
+-- Name: partition_properties partition_properties_pkey; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.partition_properties
+    ADD CONSTRAINT partition_properties_pkey PRIMARY KEY (id);
 
 
 --
@@ -6845,6 +7093,30 @@ ALTER TABLE ONLY engine_mysql.spatial_reference_systems
 
 ALTER TABLE ONLY engine_mysql.subpartition_options
     ADD CONSTRAINT subpartition_options_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: subpartition_properties subpartition_properties_pkey; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.subpartition_properties
+    ADD CONSTRAINT subpartition_properties_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: subpartition_properties subpartition_properties_subpartition_key_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.subpartition_properties
+    ADD CONSTRAINT subpartition_properties_subpartition_key_key UNIQUE (subpartition, key);
+
+
+--
+-- Name: subpartition_properties subpartition_properties_subpartition_position_key; Type: CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.subpartition_properties
+    ADD CONSTRAINT subpartition_properties_subpartition_position_key UNIQUE (subpartition, "position");
 
 
 --
@@ -9043,11 +9315,27 @@ ALTER TABLE ONLY engine_mysql.column_options
 
 
 --
+-- Name: column_properties column_properties_column_fkey; Type: FK CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.column_properties
+    ADD CONSTRAINT column_properties_column_fkey FOREIGN KEY ("column") REFERENCES cortex.columns(id) ON DELETE CASCADE;
+
+
+--
 -- Name: database_options database_options_id_fkey; Type: FK CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
 --
 
 ALTER TABLE ONLY engine_mysql.database_options
     ADD CONSTRAINT database_options_id_fkey FOREIGN KEY (id) REFERENCES cortex.namespaces(id) ON DELETE CASCADE;
+
+
+--
+-- Name: database_properties database_properties_namespace_fkey; Type: FK CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.database_properties
+    ADD CONSTRAINT database_properties_namespace_fkey FOREIGN KEY (namespace) REFERENCES cortex.namespaces(id) ON DELETE CASCADE;
 
 
 --
@@ -9067,6 +9355,22 @@ ALTER TABLE ONLY engine_mysql.index_part_options
 
 
 --
+-- Name: index_properties index_properties_index_fkey; Type: FK CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.index_properties
+    ADD CONSTRAINT index_properties_index_fkey FOREIGN KEY (index) REFERENCES cortex.indexes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: key_properties key_properties_table_key_fkey; Type: FK CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.key_properties
+    ADD CONSTRAINT key_properties_table_key_fkey FOREIGN KEY (table_key) REFERENCES cortex.table_keys(id) ON DELETE CASCADE;
+
+
+--
 -- Name: loadable_functions loadable_functions_id_fkey; Type: FK CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -9083,6 +9387,14 @@ ALTER TABLE ONLY engine_mysql.merge_tables
 
 
 --
+-- Name: object_properties object_properties_object_fkey; Type: FK CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.object_properties
+    ADD CONSTRAINT object_properties_object_fkey FOREIGN KEY (object) REFERENCES cortex.objects(id) ON DELETE CASCADE;
+
+
+--
 -- Name: outside_references outside_references_object_fkey; Type: FK CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -9096,6 +9408,14 @@ ALTER TABLE ONLY engine_mysql.outside_references
 
 ALTER TABLE ONLY engine_mysql.partition_options
     ADD CONSTRAINT partition_options_id_fkey FOREIGN KEY (id) REFERENCES cortex.partitions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: partition_properties partition_properties_partition_fkey; Type: FK CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.partition_properties
+    ADD CONSTRAINT partition_properties_partition_fkey FOREIGN KEY (partition) REFERENCES cortex.partitions(id) ON DELETE CASCADE;
 
 
 --
@@ -9144,6 +9464,14 @@ ALTER TABLE ONLY engine_mysql.spatial_reference_systems
 
 ALTER TABLE ONLY engine_mysql.subpartition_options
     ADD CONSTRAINT subpartition_options_id_fkey FOREIGN KEY (id) REFERENCES engine_mysql.subpartitions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: subpartition_properties subpartition_properties_subpartition_fkey; Type: FK CONSTRAINT; Schema: engine_mysql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_mysql.subpartition_properties
+    ADD CONSTRAINT subpartition_properties_subpartition_fkey FOREIGN KEY (subpartition) REFERENCES engine_mysql.subpartitions(id) ON DELETE CASCADE;
 
 
 --
@@ -9974,11 +10302,27 @@ GRANT SELECT ON TABLE engine_mysql.column_options TO sf_reader;
 
 
 --
+-- Name: TABLE column_properties; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.column_properties TO sf_service;
+GRANT SELECT ON TABLE engine_mysql.column_properties TO sf_reader;
+
+
+--
 -- Name: TABLE database_options; Type: ACL; Schema: engine_mysql; Owner: sf_owner
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.database_options TO sf_service;
 GRANT SELECT ON TABLE engine_mysql.database_options TO sf_reader;
+
+
+--
+-- Name: TABLE database_properties; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.database_properties TO sf_service;
+GRANT SELECT ON TABLE engine_mysql.database_properties TO sf_reader;
 
 
 --
@@ -9998,11 +10342,43 @@ GRANT SELECT ON TABLE engine_mysql.index_part_options TO sf_reader;
 
 
 --
+-- Name: TABLE index_properties; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.index_properties TO sf_service;
+GRANT SELECT ON TABLE engine_mysql.index_properties TO sf_reader;
+
+
+--
+-- Name: TABLE key_properties; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.key_properties TO sf_service;
+GRANT SELECT ON TABLE engine_mysql.key_properties TO sf_reader;
+
+
+--
+-- Name: TABLE object_properties; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.object_properties TO sf_service;
+GRANT SELECT ON TABLE engine_mysql.object_properties TO sf_reader;
+
+
+--
 -- Name: TABLE partition_options; Type: ACL; Schema: engine_mysql; Owner: sf_owner
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.partition_options TO sf_service;
 GRANT SELECT ON TABLE engine_mysql.partition_options TO sf_reader;
+
+
+--
+-- Name: TABLE partition_properties; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.partition_properties TO sf_service;
+GRANT SELECT ON TABLE engine_mysql.partition_properties TO sf_reader;
 
 
 --
@@ -10027,6 +10403,14 @@ GRANT SELECT ON TABLE engine_mysql.routine_options TO sf_reader;
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.subpartition_options TO sf_service;
 GRANT SELECT ON TABLE engine_mysql.subpartition_options TO sf_reader;
+
+
+--
+-- Name: TABLE subpartition_properties; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.subpartition_properties TO sf_service;
+GRANT SELECT ON TABLE engine_mysql.subpartition_properties TO sf_reader;
 
 
 --
