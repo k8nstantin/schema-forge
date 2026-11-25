@@ -314,6 +314,7 @@ CREATE TABLE workspace.schema_connections (
     schema_id uuid NOT NULL,
     connection_id uuid NOT NULL,
     database_name text NOT NULL,
+    scope jsonb DEFAULT '{"everything": true}'::jsonb NOT NULL,
     created_at timestamp with time zone NOT NULL,
     CONSTRAINT schema_connections_database_name_check CHECK ((length(database_name) >= 1)),
     CONSTRAINT schema_connections_id_check CHECK ((uuid_extract_version(id) = 7))
@@ -355,6 +356,13 @@ COMMENT ON COLUMN workspace.schema_connections.connection_id IS 'the saved conne
 --
 
 COMMENT ON COLUMN workspace.schema_connections.database_name IS 'the database on that server it is read from, as the server names it (shop)';
+
+
+--
+-- Name: COLUMN schema_connections.scope; Type: COMMENT; Schema: workspace; Owner: sf_owner
+--
+
+COMMENT ON COLUMN workspace.schema_connections.scope IS 'what is read from it each time (decision read-scope): everything unless the person chose otherwise; a later read asks the same';
 
 
 --

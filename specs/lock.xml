@@ -120,7 +120,7 @@
   <file path="schema/cortex/schema_migrations.sql" sha256="d015ed7303c3db8d6387c09e243d54bfaa39ea3e738995445bc6a0c664eef304"/>
   <file path="schema/cortex/sequences.sql" sha256="6d9b5589c720776020fdb6a1106a840f9ec6778a875c585ac517e6efb88b0304"/>
   <file path="schema/cortex/sort_fields.sql" sha256="41ef180b921693816ebd58584439bef2dd812046ba4951616fff73eca7eda7c4"/>
-  <file path="schema/cortex/source_reads.sql" sha256="edbd3c4e45ced180ad8add410c12dae0863e8273edddf745da95299eddaf18d7"/>
+  <file path="schema/cortex/source_reads.sql" sha256="c01d9e52e3c6af5803789aec60c0bb8ea82009d02544908c8cc4e2e15b2622c3"/>
   <file path="schema/cortex/subject_areas.sql" sha256="6953c5a7fa814da4e86a4e81c6d020f29e8cf0f36bc695547ad686f5aeef72a2"/>
   <file path="schema/cortex/table_key_columns.sql" sha256="7b2d125df6a8110ff18008ea9128d3437dd31460507eec3ee2e75c3a840a560c"/>
   <file path="schema/cortex/table_keys.sql" sha256="0253ea8572df4d770e883755dc26ff2f461f902cb1a41d0ba90d4f09b772bc24"/>
@@ -131,10 +131,10 @@
   <file path="schema/cortex/value_changes.sql" sha256="aff8ed50e13c0bbda5534219e6fc035e524452b06066cbe4d26f2f8ff9885921"/>
   <file path="schema/cortex/verbatim_statements.sql" sha256="af3e31fdf699d423abc17531989019ba6e4a31ef1e60e891b2222cf11097a100"/>
   <file path="schema/cortex/view_queries.sql" sha256="c7ebc16819ecb189d243da08d2ae6a15a1875bfbdd5384f50d467e3eb25dc6be"/>
-  <file path="schema/dump/mysql.sql" sha256="2b876fc9cb66055ec45a2b0622d0f58eab4692f801a55df1a8859f3daa5608e3"/>
-  <file path="schema/dump/quill.sql" sha256="518cadd5545134d35c5852479231167855036dad7c023842ce0dd4d52b53c2ef"/>
-  <file path="schema/dump/usage.sql" sha256="2536bb2fdc3c48ef9693a93f924984c9641f3ffa143b0e8652fbe04dd5297d82"/>
-  <file path="schema/dump/workspace.sql" sha256="feeea67b931bbbd4b6c2bfe95fae1fe656298f6171d4ee015202875c5e827ae2"/>
+  <file path="schema/dump/mysql.sql" sha256="361760d1d578eb505807dcb6fbffbb45d75172e7564a6589f910f5938c4a6027"/>
+  <file path="schema/dump/quill.sql" sha256="ab1bc30f94a46bc183837f4d36ad6cc7fb6054f470c83080a3087c13062f8a01"/>
+  <file path="schema/dump/usage.sql" sha256="a8cace8d015508686461fcb5fee45e133d352252b6af2b295abc0cdd1bdc14e9"/>
+  <file path="schema/dump/workspace.sql" sha256="6cd92bff775bc16cce45b7d68a1aa7846d15df067b79ddea0bbf7c7864862342"/>
   <file path="schema/workspace/connection_test_steps.sql" sha256="d1c0f0c843a152a3d43b21ecc31ae6c306c2d3e8bbe14dd01abc10b70a5748b2"/>
   <file path="schema/workspace/connection_tests.sql" sha256="a2c8c016f69bf432ae79c31913cbb7d027f411b400f47de1542fa451ff54f843"/>
   <file path="schema/workspace/connection_values.sql" sha256="600e3caf196edbf81a540af4a39e98f365c8fd447e81acec39f04edec821e115"/>
@@ -142,7 +142,7 @@
   <file path="schema/workspace/grants.sql" sha256="7a14690c3a86f2b79d42808fec9211ff11300a778b48bcff866873d460eada6f"/>
   <file path="schema/workspace/owner.toml" sha256="c5eaa5f600dee679a37cb0f09601b1e1f8811eb154a25b8364384c93b860fce0"/>
   <file path="schema/workspace/parameters.sql" sha256="d486cce9defdbce36c0905c54aa566fb337b49c711dc9cd3d001779d030b7b3f"/>
-  <file path="schema/workspace/schema_connections.sql" sha256="2c107756de11075f8c74f8f6884c5b1d28c72123aa9f1fd51b6fc92f5c0b0720"/>
+  <file path="schema/workspace/schema_connections.sql" sha256="44da0a0a343abfb2913838829b768c2d2f650036fc6bf60874f5e245d8583a47"/>
   <file path="schema/workspace/schema_migrations.sql" sha256="6875b57dfa2c85960103e47b5933b64ba49d296cbee8f4342d6c2c2a1364fac8"/>
   <file path="schema/workspace/seeds/parameters.sql" sha256="b5dc269bb3b7be5e6545d23ff6b0823e6183b66a4e26c5cdc37ec9dd8dbf0d7a"/>
   <file path="schema/workspace/workspace_identity.sql" sha256="1b77c3a0e4f84519309d5b5c7284d157acd1e550a8b36a5d85d48644fe377b4e"/>
