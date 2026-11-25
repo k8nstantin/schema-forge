@@ -1,0 +1,211 @@
+"""The lab's extractor: every property each catalog gives of every part of a schema, under its own names, nothing
+interpreted. One snapshot per server: lab/out/<engine>-<version>.json, {engine, version, parts: [{kind, key, parent,
+props}]}. Volatile properties (row counts, sizes, times, oids) are left out: they are usage, not design.
+
+  python3 lab/extract.py            every server of SERVERS
+"""
+import json
+import os
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+PW = next(l.split('"')[1] for l in open(os.path.join(ROOT, "engines/mysql/tests/live.rs")) if l.startswith("const ROOT"))
+MYSQL = [("5.7", "sf-mysql-5-7"), ("8.0", "sf-mysql-8-0"), ("8.4", "sf-mysql-8-4"), ("9.7", "sf-mysql-9-7")]
+POSTGRES = [(v, f"sf-pg-{v}") for v in ("14", "15", "16", "17", "18")]
+SCHEMAS = ("shop", "torture", "audit")
+
+# MySQL: information_schema tables by the part they describe, the columns that name the part, and the volatile ones.
+MY_TABLES = [
+    ("namespace", "SCHEMATA", "SCHEMA_NAME IN ({s})", ["SCHEMA_NAME"], None, []),
+    ("table", "TABLES", "TABLE_SCHEMA IN ({s})", ["TABLE_SCHEMA", "TABLE_NAME"], ["TABLE_SCHEMA"],
+     ["TABLE_ROWS", "AVG_ROW_LENGTH", "DATA_LENGTH", "MAX_DATA_LENGTH", "INDEX_LENGTH", "DATA_FREE", "CREATE_TIME",
+      "UPDATE_TIME", "CHECK_TIME", "CHECKSUM", "AUTO_INCREMENT"]),
+    ("column", "COLUMNS", "TABLE_SCHEMA IN ({s})", ["TABLE_SCHEMA", "TABLE_NAME", "COLUMN_NAME"], ["TABLE_SCHEMA", "TABLE_NAME"], []),
+    ("index_part", "STATISTICS", "TABLE_SCHEMA IN ({s})", ["TABLE_SCHEMA", "TABLE_NAME", "INDEX_NAME", "SEQ_IN_INDEX"],
+     ["TABLE_SCHEMA", "TABLE_NAME", "INDEX_NAME"], ["CARDINALITY"]),
+    ("constraint", "TABLE_CONSTRAINTS", "TABLE_SCHEMA IN ({s})", ["TABLE_SCHEMA", "TABLE_NAME", "CONSTRAINT_NAME", "CONSTRAINT_TYPE"],
+     ["TABLE_SCHEMA", "TABLE_NAME"], []),
+    ("key_column", "KEY_COLUMN_USAGE", "TABLE_SCHEMA IN ({s})", ["TABLE_SCHEMA", "TABLE_NAME", "CONSTRAINT_NAME", "ORDINAL_POSITION"],
+     ["TABLE_SCHEMA", "TABLE_NAME", "CONSTRAINT_NAME"], []),
+    ("foreign_key", "REFERENTIAL_CONSTRAINTS", "CONSTRAINT_SCHEMA IN ({s})", ["CONSTRAINT_SCHEMA", "TABLE_NAME", "CONSTRAINT_NAME"],
+     ["CONSTRAINT_SCHEMA", "TABLE_NAME"], []),
+    ("check", "CHECK_CONSTRAINTS", "CONSTRAINT_SCHEMA IN ({s})", ["CONSTRAINT_SCHEMA", "CONSTRAINT_NAME"], ["CONSTRAINT_SCHEMA"], []),
+    ("view", "VIEWS", "TABLE_SCHEMA IN ({s})", ["TABLE_SCHEMA", "TABLE_NAME"], ["TABLE_SCHEMA"], []),
+    ("routine", "ROUTINES", "ROUTINE_SCHEMA IN ({s})", ["ROUTINE_SCHEMA", "ROUTINE_NAME", "ROUTINE_TYPE"], ["ROUTINE_SCHEMA"],
+     ["CREATED", "LAST_ALTERED"]),
+    ("parameter", "PARAMETERS", "SPECIFIC_SCHEMA IN ({s})", ["SPECIFIC_SCHEMA", "SPECIFIC_NAME", "ROUTINE_TYPE", "ORDINAL_POSITION"],
+     ["SPECIFIC_SCHEMA", "SPECIFIC_NAME"], []),
+    ("trigger", "TRIGGERS", "TRIGGER_SCHEMA IN ({s})", ["TRIGGER_SCHEMA", "TRIGGER_NAME"], ["EVENT_OBJECT_SCHEMA", "EVENT_OBJECT_TABLE"],
+     ["CREATED"]),
+    ("event", "EVENTS", "EVENT_SCHEMA IN ({s})", ["EVENT_SCHEMA", "EVENT_NAME"], ["EVENT_SCHEMA"],
+     ["CREATED", "LAST_ALTERED", "LAST_EXECUTED"]),
+    ("partition", "PARTITIONS", "TABLE_SCHEMA IN ({s}) AND PARTITION_NAME IS NOT NULL",
+     ["TABLE_SCHEMA", "TABLE_NAME", "PARTITION_NAME", "SUBPARTITION_NAME"], ["TABLE_SCHEMA", "TABLE_NAME"],
+     ["TABLE_ROWS", "AVG_ROW_LENGTH", "DATA_LENGTH", "MAX_DATA_LENGTH", "INDEX_LENGTH", "DATA_FREE", "CREATE_TIME",
+      "UPDATE_TIME", "CHECK_TIME", "CHECKSUM"]),
+]
+
+
+def mysql(container, sql):
+    r = subprocess.run(["docker", "exec", "-i", container, "mysql", "-uroot", f"-p{PW}", "-B", "-N", "--raw"], input=sql,
+                       capture_output=True, text=True)
+    if r.returncode:
+        raise SystemExit(f"{container}: {r.stderr.strip()[-300:]}")
+    return [l.split("\t") for l in r.stdout.splitlines()]
+
+
+def extract_mysql(version, container):
+    parts = []
+    s = ",".join(f"'{x}'" for x in SCHEMAS)
+    have = {r[0] for r in mysql(container, "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='information_schema'")}
+    for kind, table, where, key, parent, volatile in MY_TABLES:
+        if table not in have:
+            continue
+        cols = [c[0] for c in mysql(container, f"SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA="
+                                                f"'information_schema' AND TABLE_NAME='{table}' ORDER BY ORDINAL_POSITION")]
+        obj = "JSON_OBJECT(" + ",".join(f"'{c}',`{c}`" for c in cols) + ")"
+        for (row,) in mysql(container, f"SELECT {obj} FROM information_schema.{table} WHERE {where.format(s=s)}"):
+            p = json.loads(row)
+            for v in volatile:
+                p.pop(v, None)
+            parts.append({"kind": kind, "key": ".".join(str(p.get(k)) for k in key),
+                          "parent": ".".join(str(p.get(k)) for k in parent) if parent else None, "props": p})
+    # the definition as the server writes it, beside the catalog
+    for p in [x for x in parts if x["kind"] in ("table", "view", "routine", "trigger", "event")]:
+        pr = p["props"]
+        if p["kind"] in ("table", "view"):
+            what = "VIEW" if pr.get("TABLE_TYPE") == "VIEW" or p["kind"] == "view" else "TABLE"
+            stmt = f"SHOW CREATE {what} `{pr['TABLE_SCHEMA']}`.`{pr['TABLE_NAME']}`"
+        elif p["kind"] == "routine":
+            stmt = f"SHOW CREATE {pr['ROUTINE_TYPE']} `{pr['ROUTINE_SCHEMA']}`.`{pr['ROUTINE_NAME']}`"
+        elif p["kind"] == "trigger":
+            stmt = f"SHOW CREATE TRIGGER `{pr['TRIGGER_SCHEMA']}`.`{pr['TRIGGER_NAME']}`"
+        else:
+            stmt = f"SHOW CREATE EVENT `{pr['EVENT_SCHEMA']}`.`{pr['EVENT_NAME']}`"
+        out = mysql(container, stmt)
+        if out and p["kind"] == "table" and pr.get("TABLE_TYPE") == "VIEW":
+            continue
+        cell = {"table": 1, "view": 1, "routine": 2, "trigger": 2, "event": 3}[p["kind"]]
+        if out and len(out[0]) > cell:
+            pr["__show_create"] = out[0][cell].replace("\\n", "\n")
+    return parts
+
+
+def pg(container, sql):
+    r = subprocess.run(["docker", "exec", "-i", container, "psql", "-U", "postgres", "-At", "-v", "ON_ERROR_STOP=1"],
+                       input=sql, capture_output=True, text=True)
+    if r.returncode:
+        raise SystemExit(f"{container}: {r.stderr.strip()[-400:]}")
+    return r.stdout
+
+
+# PostgreSQL: one query per part, each giving {key, parent, props} with every column of its catalog row that is not
+# an oid or volatile, names resolved, and the server's own rendering of its definition.
+PG_PARTS = {
+    "namespace": """SELECT n.nspname AS key, NULL AS parent, to_jsonb(n) - 'oid' - 'nspowner' || jsonb_build_object(
+        'owner', pg_get_userbyid(n.nspowner), 'acl', n.nspacl::text[], 'comment', obj_description(n.oid, 'pg_namespace')) AS props
+      FROM pg_namespace n WHERE n.nspname = ANY(%(s)s)""",
+    "relation": """SELECT n.nspname || '.' || c.relname AS key, n.nspname AS parent, to_jsonb(c)
+        - 'oid' - 'relnamespace' - 'reltype' - 'reloftype' - 'relowner' - 'relfilenode' - 'reltablespace' - 'relpages'
+        - 'reltuples' - 'relallvisible' - 'relallfrozen' - 'reltoastrelid' - 'relfrozenxid' - 'relminmxid' - 'relam'
+        - 'relrewrite' - 'relhasindex' - 'relhastriggers' - 'relhasrules' - 'relhassubclass' - 'relnatts' - 'relchecks'
+        || jsonb_build_object('owner', pg_get_userbyid(c.relowner), 'am', am.amname, 'acl', c.relacl::text[],
+        'comment', obj_description(c.oid, 'pg_class'), 'partition_key', pg_get_partkeydef(c.oid),
+        'partition_bound', pg_get_expr(c.relpartbound, c.oid),
+        'inherits', (SELECT array_agg(pn.nspname || '.' || p.relname ORDER BY i.inhseqno) FROM pg_inherits i JOIN pg_class p ON p.oid = i.inhparent JOIN pg_namespace pn ON pn.oid = p.relnamespace WHERE i.inhrelid = c.oid),
+        'view_definition', CASE WHEN c.relkind IN ('v','m') THEN pg_get_viewdef(c.oid) END) AS props
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace LEFT JOIN pg_am am ON am.oid = c.relam
+      WHERE n.nspname = ANY(%(s)s) AND c.relkind IN ('r','p','v','m','f','S')""",
+    "column": """SELECT n.nspname || '.' || c.relname || '.' || a.attname AS key, n.nspname || '.' || c.relname AS parent,
+        to_jsonb(a) - 'attrelid' - 'atttypid' - 'attcollation' - 'attlen' - 'attbyval' - 'attalign' - 'attcacheoff'
+        - 'atthasdef' - 'atthasmissing' - 'attmissingval' - 'attstattarget' - 'attndims' - 'attacl' - 'attoptions'
+        - 'attfdwoptions' - 'atttypmod' - 'attcompression'
+        || jsonb_build_object('type', format_type(a.atttypid, a.atttypmod), 'default', pg_get_expr(d.adbin, d.adrelid),
+        'collation', CASE WHEN a.attcollation <> t.typcollation THEN co.collname END, 'comment', col_description(c.oid, a.attnum),
+        'acl', a.attacl::text[], 'options', a.attoptions) AS props
+      FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+      JOIN pg_type t ON t.oid = a.atttypid LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+      LEFT JOIN pg_collation co ON co.oid = a.attcollation
+      WHERE n.nspname = ANY(%(s)s) AND a.attnum > 0 AND NOT a.attisdropped AND c.relkind IN ('r','p','v','m','f')""",
+    "index": """SELECT n.nspname || '.' || ic.relname AS key, n.nspname || '.' || tc.relname AS parent,
+        to_jsonb(i) - 'indexrelid' - 'indrelid' - 'indcollation' - 'indclass' - 'indexprs' - 'indpred' - 'indkey' - 'indoption'
+        || jsonb_build_object('definition', pg_get_indexdef(i.indexrelid), 'am', am.amname, 'options', ic.reloptions,
+        'predicate', pg_get_expr(i.indpred, i.indrelid), 'comment', obj_description(i.indexrelid, 'pg_class')) AS props
+      FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_class tc ON tc.oid = i.indrelid
+      JOIN pg_namespace n ON n.oid = tc.relnamespace JOIN pg_am am ON am.oid = ic.relam WHERE n.nspname = ANY(%(s)s)""",
+    "constraint": """SELECT n.nspname || '.' || coalesce(rc.relname, ty.typname) || '.' || co.conname AS key,
+        n.nspname || '.' || coalesce(rc.relname, ty.typname) AS parent,
+        to_jsonb(co) - 'oid' - 'connamespace' - 'conrelid' - 'contypid' - 'conindid' - 'conparentid' - 'confrelid'
+        - 'conkey' - 'confkey' - 'conpfeqop' - 'conppeqop' - 'conffeqop' - 'conexclop' - 'conbin' - 'confdelsetcols'
+        || jsonb_build_object('definition', pg_get_constraintdef(co.oid), 'comment', obj_description(co.oid, 'pg_constraint')) AS props
+      FROM pg_constraint co JOIN pg_namespace n ON n.oid = co.connamespace LEFT JOIN pg_class rc ON rc.oid = co.conrelid
+      LEFT JOIN pg_type ty ON ty.oid = co.contypid WHERE n.nspname = ANY(%(s)s)""",
+    "sequence": """SELECT n.nspname || '.' || c.relname AS key, n.nspname AS parent,
+        to_jsonb(s) - 'seqrelid' - 'seqtypid' || jsonb_build_object('type', format_type(s.seqtypid, NULL),
+        'owned_by', (SELECT tc.relname || '.' || a.attname FROM pg_depend d JOIN pg_class tc ON tc.oid = d.refobjid
+          JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+          WHERE d.objid = c.oid AND d.classid = 'pg_class'::regclass AND d.deptype IN ('a','i') LIMIT 1)) AS props
+      FROM pg_sequence s JOIN pg_class c ON c.oid = s.seqrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = ANY(%(s)s)""",
+    "type": """SELECT n.nspname || '.' || t.typname AS key, n.nspname AS parent,
+        jsonb_build_object('typtype', t.typtype, 'base', CASE WHEN t.typtype = 'd' THEN format_type(t.typbasetype, t.typtypmod) END,
+        'notnull', t.typnotnull, 'default', t.typdefault, 'comment', obj_description(t.oid, 'pg_type'),
+        'labels', (SELECT array_agg(e.enumlabel ORDER BY e.enumsortorder) FROM pg_enum e WHERE e.enumtypid = t.oid),
+        'fields', (SELECT jsonb_agg(jsonb_build_object('name', a.attname, 'type', format_type(a.atttypid, a.atttypmod)) ORDER BY a.attnum)
+                   FROM pg_attribute a WHERE a.attrelid = t.typrelid AND a.attnum > 0),
+        'range_subtype', (SELECT format_type(r.rngsubtype, NULL) FROM pg_range r WHERE r.rngtypid = t.oid)) AS props
+      FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = ANY(%(s)s) AND t.typtype IN ('e','c','d','r')
+        AND (t.typtype <> 'c' OR (SELECT relkind FROM pg_class WHERE oid = t.typrelid) = 'c')""",
+    "routine": """SELECT n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' AS key, n.nspname AS parent,
+        to_jsonb(p) - 'oid' - 'pronamespace' - 'proowner' - 'prolang' - 'prorettype' - 'proargtypes' - 'proallargtypes'
+        - 'proargdefaults' - 'protrftypes' - 'prosupport' - 'prosqlbody' - 'provariadic' - 'procost' - 'prorows'
+        || jsonb_build_object('language', l.lanname, 'returns', pg_get_function_result(p.oid),
+        'arguments', pg_get_function_arguments(p.oid), 'owner', pg_get_userbyid(p.proowner),
+        'comment', obj_description(p.oid, 'pg_proc'), 'acl', p.proacl::text[]) AS props
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_language l ON l.oid = p.prolang WHERE n.nspname = ANY(%(s)s)""",
+    "trigger": """SELECT n.nspname || '.' || c.relname || '.' || tg.tgname AS key, n.nspname || '.' || c.relname AS parent,
+        to_jsonb(tg) - 'oid' - 'tgrelid' - 'tgparentid' - 'tgfoid' - 'tgconstrrelid' - 'tgconstrindid' - 'tgconstraint'
+        - 'tgattr' - 'tgargs' - 'tgqual' || jsonb_build_object('definition', pg_get_triggerdef(tg.oid)) AS props
+      FROM pg_trigger tg JOIN pg_class c ON c.oid = tg.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = ANY(%(s)s) AND NOT tg.tgisinternal""",
+    "policy": """SELECT schemaname || '.' || tablename || '.' || policyname AS key, schemaname || '.' || tablename AS parent,
+        to_jsonb(p) - 'schemaname' - 'tablename' AS props FROM pg_policies p WHERE schemaname = ANY(%(s)s)""",
+    "rule": """SELECT schemaname || '.' || tablename || '.' || rulename AS key, schemaname || '.' || tablename AS parent,
+        to_jsonb(r) - 'schemaname' - 'tablename' AS props FROM pg_rules r WHERE schemaname = ANY(%(s)s)""",
+    "extension": """SELECT e.extname AS key, NULL AS parent, jsonb_build_object('version', e.extversion,
+        'schema', n.nspname, 'relocatable', e.extrelocatable) AS props
+      FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname <> 'plpgsql'""",
+    "collation": """SELECT n.nspname || '.' || c.collname AS key, n.nspname AS parent, to_jsonb(c) - 'oid' - 'collnamespace'
+        - 'collowner' - 'collversion' AS props FROM pg_collation c JOIN pg_namespace n ON n.oid = c.collnamespace
+      WHERE n.nspname = ANY(%(s)s)""",
+}
+
+
+def extract_pg(version, container):
+    parts = []
+    s = "ARRAY[" + ",".join(f"'{x}'" for x in SCHEMAS) + "]"
+    for kind, q in PG_PARTS.items():
+        sql = f"SELECT coalesce(json_agg(json_build_object('key', key, 'parent', parent, 'props', props)), '[]') FROM ({q % {'s': s}}) x;"
+        for r in json.loads(pg(container, sql)):
+            props = {k: v for k, v in r["props"].items() if v is not None}
+            parts.append({"kind": kind, "key": r["key"], "parent": r["parent"], "props": props})
+    return parts
+
+
+def main():
+    os.makedirs(os.path.join(HERE, "out"), exist_ok=True)
+    for engine, servers, fn in (("mysql", MYSQL, extract_mysql), ("postgresql", POSTGRES, extract_pg)):
+        for version, container in servers:
+            parts = fn(version, container)
+            out = {"engine": engine, "version": version, "parts": parts}
+            path = os.path.join(HERE, "out", f"{engine}-{version}.json")
+            json.dump(out, open(path, "w"), indent=1, sort_keys=True, default=str)
+            kinds = {}
+            for p in parts:
+                kinds[p["kind"]] = kinds.get(p["kind"], 0) + 1
+            print(f"{engine} {version}: {len(parts)} parts  " + ", ".join(f"{k} {n}" for k, n in sorted(kinds.items())))
+
+
+if __name__ == "__main__":
+    main()

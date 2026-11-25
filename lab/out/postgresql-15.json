@@ -1,0 +1,3392 @@
+{
+ "engine": "postgresql",
+ "parts": [
+  {
+   "key": "shop",
+   "kind": "namespace",
+   "parent": null,
+   "props": {
+    "nspname": "shop",
+    "owner": "postgres"
+   }
+  },
+  {
+   "key": "audit",
+   "kind": "namespace",
+   "parent": null,
+   "props": {
+    "nspname": "audit",
+    "owner": "postgres"
+   }
+  },
+  {
+   "key": "torture",
+   "kind": "namespace",
+   "parent": null,
+   "props": {
+    "acl": [
+     "postgres=UC/postgres",
+     "torture_reader=U/postgres"
+    ],
+    "comment": "every kind of object",
+    "nspacl": [
+     "postgres=UC/postgres",
+     "torture_reader=U/postgres"
+    ],
+    "nspname": "torture",
+    "owner": "postgres"
+   }
+  },
+  {
+   "key": "torture.parent",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "parent",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.child",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "child",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.booking",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "booking",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.measurements",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "owner": "postgres",
+    "partition_key": "RANGE (taken)",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "p",
+    "relname": "measurements",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.measurements_2024",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "inherits": [
+     "torture.measurements"
+    ],
+    "owner": "postgres",
+    "partition_bound": "FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')",
+    "relforcerowsecurity": false,
+    "relispartition": true,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "measurements_2024",
+    "relpartbound": "{PARTITIONBOUNDSPEC :strategy r :is_default false :modulus 0 :remainder 0 :listdatums <> :lowerdatums ({PARTITIONRANGEDATUM :kind 0 :value {CONST :consttype 1082 :consttypmod -1 :constcollid 0 :constlen 4 :constbyval true :constisnull false :location 90 :constvalue 4 [ 62 34 0 0 0 0 0 0 ]} :location 90}) :upperdatums ({PARTITIONRANGEDATUM :kind 0 :value {CONST :consttype 1082 :consttypmod -1 :constcollid 0 :constlen 4 :constbyval true :constisnull false :location 108 :constvalue 4 [ 172 35 0 0 0 0 0 0 ]} :location 108}) :location 84}",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.measurements_2025",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "inherits": [
+     "torture.measurements"
+    ],
+    "owner": "postgres",
+    "partition_bound": "FOR VALUES FROM ('2025-01-01') TO ('2026-01-01')",
+    "partition_key": "LIST (region)",
+    "relforcerowsecurity": false,
+    "relispartition": true,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "p",
+    "relname": "measurements_2025",
+    "relpartbound": "{PARTITIONBOUNDSPEC :strategy r :is_default false :modulus 0 :remainder 0 :listdatums <> :lowerdatums ({PARTITIONRANGEDATUM :kind 0 :value {CONST :consttype 1082 :consttypmod -1 :constcollid 0 :constlen 4 :constbyval true :constisnull false :location 90 :constvalue 4 [ 172 35 0 0 0 0 0 0 ]} :location 90}) :upperdatums ({PARTITIONRANGEDATUM :kind 0 :value {CONST :consttype 1082 :consttypmod -1 :constcollid 0 :constlen 4 :constbyval true :constisnull false :location 108 :constvalue 4 [ 25 37 0 0 0 0 0 0 ]} :location 108}) :location 84}",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.measurements_2025_east",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "inherits": [
+     "torture.measurements_2025"
+    ],
+    "owner": "postgres",
+    "partition_bound": "FOR VALUES IN ('east')",
+    "relforcerowsecurity": false,
+    "relispartition": true,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "measurements_2025_east",
+    "relpartbound": "{PARTITIONBOUNDSPEC :strategy l :is_default false :modulus 0 :remainder 0 :listdatums ({CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 98 :constvalue 8 [ 32 0 0 0 101 97 115 116 ]}) :lowerdatums <> :upperdatums <> :location 94}",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.measurements_2025_rest",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "inherits": [
+     "torture.measurements_2025"
+    ],
+    "owner": "postgres",
+    "partition_bound": "DEFAULT",
+    "relforcerowsecurity": false,
+    "relispartition": true,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "measurements_2025_rest",
+    "relpartbound": "{PARTITIONBOUNDSPEC :strategy l :is_default true :modulus 0 :remainder 0 :listdatums <> :lowerdatums <> :upperdatums <> :location 83}",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.by_hash_0",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "inherits": [
+     "torture.by_hash"
+    ],
+    "owner": "postgres",
+    "partition_bound": "FOR VALUES WITH (modulus 2, remainder 0)",
+    "relforcerowsecurity": false,
+    "relispartition": true,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "by_hash_0",
+    "relpartbound": "{PARTITIONBOUNDSPEC :strategy h :is_default false :modulus 2 :remainder 0 :listdatums <> :lowerdatums <> :upperdatums <> :location 71}",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.by_hash",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "owner": "postgres",
+    "partition_key": "HASH (id)",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "p",
+    "relname": "by_hash",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.by_hash_1",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "inherits": [
+     "torture.by_hash"
+    ],
+    "owner": "postgres",
+    "partition_bound": "FOR VALUES WITH (modulus 2, remainder 1)",
+    "relforcerowsecurity": false,
+    "relispartition": true,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "by_hash_1",
+    "relpartbound": "{PARTITIONBOUNDSPEC :strategy h :is_default false :modulus 2 :remainder 1 :listdatums <> :lowerdatums <> :upperdatums <> :location 71}",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.base_event",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "base_event",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.click_event",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "inherits": [
+     "torture.base_event"
+    ],
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "click_event",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.v_paid",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "v",
+    "relname": "v_paid",
+    "reloptions": [
+     "security_barrier=true",
+     "check_option=cascaded"
+    ],
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false,
+    "view_definition": " SELECT kinds.id,\n    kinds.name\n   FROM torture.kinds\n  WHERE (kinds.status = 'paid'::torture.status);"
+   }
+  },
+  {
+   "key": "torture.mv_counts",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": false,
+    "relisshared": false,
+    "relkind": "m",
+    "relname": "mv_counts",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false,
+    "view_definition": " SELECT kinds.status,\n    count(*) AS n\n   FROM torture.kinds\n  GROUP BY kinds.status;"
+   }
+  },
+  {
+   "key": "torture.scratch",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "scratch",
+    "reloptions": [
+     "fillfactor=70",
+     "autovacuum_enabled=false"
+    ],
+    "relpersistence": "u",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.kinds",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "acl": [
+     "postgres=arwdDxt/postgres",
+     "torture_reader=r/postgres"
+    ],
+    "am": "heap",
+    "comment": "every column type",
+    "owner": "postgres",
+    "relacl": [
+     "postgres=arwdDxt/postgres",
+     "torture_reader=r/postgres"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "kinds",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": true
+   }
+  },
+  {
+   "key": "shop.customers_id_seq",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "S",
+    "relname": "customers_id_seq",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.products_id_seq",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "S",
+    "relname": "products_id_seq",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.orders_id_seq",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "S",
+    "relname": "orders_id_seq",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.customers",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "customers",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.orders",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "orders",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.order_items",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "order_items",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.products",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "products",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.big_orders",
+   "kind": "relation",
+   "parent": "shop",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "v",
+    "relname": "big_orders",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false,
+    "view_definition": " SELECT o.id,\n    c.email\n   FROM (shop.orders o\n     JOIN shop.customers c ON ((c.id = o.customer_id)));"
+   }
+  },
+  {
+   "key": "torture.ticket_seq",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "S",
+    "relname": "ticket_seq",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "torture.kinds_id_seq",
+   "kind": "relation",
+   "parent": "torture",
+   "props": {
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "S",
+    "relname": "kinds_id_seq",
+    "relpersistence": "p",
+    "relreplident": "n",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "shop.customers.id",
+   "kind": "column",
+   "parent": "shop.customers",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "d",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25169576"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "shop.customers.email",
+   "kind": "column",
+   "parent": "shop.customers",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "email",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25169576"
+    ],
+    "type": "character varying(100)"
+   }
+  },
+  {
+   "key": "shop.customers.country",
+   "kind": "column",
+   "parent": "shop.customers",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "country",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25169576"
+    ],
+    "type": "character(2)"
+   }
+  },
+  {
+   "key": "shop.customers.created",
+   "kind": "column",
+   "parent": "shop.customers",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "created",
+    "attnotnull": false,
+    "attnum": 4,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25169576"
+    ],
+    "type": "timestamp without time zone"
+   }
+  },
+  {
+   "key": "shop.products.id",
+   "kind": "column",
+   "parent": "shop.products",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "d",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25191968"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "shop.products.sku",
+   "kind": "column",
+   "parent": "shop.products",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "sku",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25191968"
+    ],
+    "type": "character varying(20)"
+   }
+  },
+  {
+   "key": "shop.products.price",
+   "kind": "column",
+   "parent": "shop.products",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "price",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "m",
+    "options": [
+     "pg_attver=25191968"
+    ],
+    "type": "numeric(10,2)"
+   }
+  },
+  {
+   "key": "shop.orders.id",
+   "kind": "column",
+   "parent": "shop.orders",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "d",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25207032"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "shop.orders.customer_id",
+   "kind": "column",
+   "parent": "shop.orders",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "customer_id",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25207032"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "shop.orders.placed",
+   "kind": "column",
+   "parent": "shop.orders",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "placed",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25207032"
+    ],
+    "type": "timestamp without time zone"
+   }
+  },
+  {
+   "key": "shop.orders.status",
+   "kind": "column",
+   "parent": "shop.orders",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "status",
+    "attnotnull": false,
+    "attnum": 4,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25207032"
+    ],
+    "type": "character varying(10)"
+   }
+  },
+  {
+   "key": "shop.order_items.order_id",
+   "kind": "column",
+   "parent": "shop.order_items",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "order_id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25222912"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "shop.order_items.product_id",
+   "kind": "column",
+   "parent": "shop.order_items",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "product_id",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25222912"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "shop.order_items.qty",
+   "kind": "column",
+   "parent": "shop.order_items",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "qty",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25222912"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "shop.big_orders.id",
+   "kind": "column",
+   "parent": "shop.big_orders",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25239824"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "shop.big_orders.email",
+   "kind": "column",
+   "parent": "shop.big_orders",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "email",
+    "attnotnull": false,
+    "attnum": 2,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25239824"
+    ],
+    "type": "character varying(100)"
+   }
+  },
+  {
+   "key": "torture.kinds.id",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "a",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.kinds.amount",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "amount",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "m",
+    "comment": "never negative",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "torture.money_amount"
+   }
+  },
+  {
+   "key": "torture.kinds.mail",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "mail",
+    "attnotnull": false,
+    "attnum": 4,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "torture.email"
+   }
+  },
+  {
+   "key": "torture.kinds.home",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "home",
+    "attnotnull": false,
+    "attnum": 6,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "torture.address"
+   }
+  },
+  {
+   "key": "torture.kinds.doc",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "doc",
+    "attnotnull": false,
+    "attnum": 8,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "jsonb"
+   }
+  },
+  {
+   "key": "torture.kinds.window_",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "window_",
+    "attnotnull": false,
+    "attnum": 10,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "tstzrange"
+   }
+  },
+  {
+   "key": "torture.kinds.ratio",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "ratio",
+    "attnotnull": false,
+    "attnum": 11,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "double precision"
+   }
+  },
+  {
+   "key": "torture.kinds.name",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "name",
+    "attnotnull": true,
+    "attnum": 12,
+    "attstorage": "x",
+    "collation": "ci",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.kinds.ticket",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "ticket",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "p",
+    "default": "nextval('torture.ticket_seq'::regclass)",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.kinds.status",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "status",
+    "attnotnull": true,
+    "attnum": 5,
+    "attstorage": "p",
+    "default": "'new'::torture.status",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "torture.status"
+   }
+  },
+  {
+   "key": "torture.kinds.tags",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "tags",
+    "attnotnull": false,
+    "attnum": 7,
+    "attstorage": "x",
+    "default": "'{}'::text[]",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "text[]"
+   }
+  },
+  {
+   "key": "torture.kinds.ident",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "ident",
+    "attnotnull": false,
+    "attnum": 9,
+    "attstorage": "p",
+    "default": "gen_random_uuid()",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "uuid"
+   }
+  },
+  {
+   "key": "torture.kinds.name_upper",
+   "kind": "column",
+   "parent": "torture.kinds",
+   "props": {
+    "attgenerated": "s",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "name_upper",
+    "attnotnull": false,
+    "attnum": 13,
+    "attstorage": "x",
+    "default": "upper(name)",
+    "options": [
+     "pg_attver=25285000"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.parent.id",
+   "kind": "column",
+   "parent": "torture.parent",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25330968"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "torture.parent.code",
+   "kind": "column",
+   "parent": "torture.parent",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "code",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25330968"
+    ],
+    "type": "character(3)"
+   }
+  },
+  {
+   "key": "torture.child.id",
+   "kind": "column",
+   "parent": "torture.child",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25341632"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "torture.child.parent_id",
+   "kind": "column",
+   "parent": "torture.child",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "parent_id",
+    "attnotnull": false,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25341632"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "torture.child.parent_code",
+   "kind": "column",
+   "parent": "torture.child",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "parent_code",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25341632"
+    ],
+    "type": "character(3)"
+   }
+  },
+  {
+   "key": "torture.booking.room",
+   "kind": "column",
+   "parent": "torture.booking",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "room",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25362040"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "torture.booking.during",
+   "kind": "column",
+   "parent": "torture.booking",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "during",
+    "attnotnull": false,
+    "attnum": 2,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25362040"
+    ],
+    "type": "tstzrange"
+   }
+  },
+  {
+   "key": "torture.measurements.id",
+   "kind": "column",
+   "parent": "torture.measurements",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25377656"
+    ],
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.measurements.taken",
+   "kind": "column",
+   "parent": "torture.measurements",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "taken",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25377656"
+    ],
+    "type": "date"
+   }
+  },
+  {
+   "key": "torture.measurements.region",
+   "kind": "column",
+   "parent": "torture.measurements",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "region",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25377656"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.measurements.value",
+   "kind": "column",
+   "parent": "torture.measurements",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "value",
+    "attnotnull": false,
+    "attnum": 4,
+    "attstorage": "m",
+    "options": [
+     "pg_attver=25377656"
+    ],
+    "type": "numeric"
+   }
+  },
+  {
+   "key": "torture.measurements_2024.id",
+   "kind": "column",
+   "parent": "torture.measurements_2024",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25384536"
+    ],
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.measurements_2024.taken",
+   "kind": "column",
+   "parent": "torture.measurements_2024",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "taken",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25384536"
+    ],
+    "type": "date"
+   }
+  },
+  {
+   "key": "torture.measurements_2024.region",
+   "kind": "column",
+   "parent": "torture.measurements_2024",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "region",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25384536"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.measurements_2024.value",
+   "kind": "column",
+   "parent": "torture.measurements_2024",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "value",
+    "attnotnull": false,
+    "attnum": 4,
+    "attstorage": "m",
+    "options": [
+     "pg_attver=25384536"
+    ],
+    "type": "numeric"
+   }
+  },
+  {
+   "key": "torture.measurements_2025.id",
+   "kind": "column",
+   "parent": "torture.measurements_2025",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25397632"
+    ],
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.measurements_2025.taken",
+   "kind": "column",
+   "parent": "torture.measurements_2025",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "taken",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25397632"
+    ],
+    "type": "date"
+   }
+  },
+  {
+   "key": "torture.measurements_2025.region",
+   "kind": "column",
+   "parent": "torture.measurements_2025",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "region",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25397632"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.measurements_2025.value",
+   "kind": "column",
+   "parent": "torture.measurements_2025",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "value",
+    "attnotnull": false,
+    "attnum": 4,
+    "attstorage": "m",
+    "options": [
+     "pg_attver=25397632"
+    ],
+    "type": "numeric"
+   }
+  },
+  {
+   "key": "torture.measurements_2025_east.id",
+   "kind": "column",
+   "parent": "torture.measurements_2025_east",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25404728"
+    ],
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.measurements_2025_east.taken",
+   "kind": "column",
+   "parent": "torture.measurements_2025_east",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "taken",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25404728"
+    ],
+    "type": "date"
+   }
+  },
+  {
+   "key": "torture.measurements_2025_east.region",
+   "kind": "column",
+   "parent": "torture.measurements_2025_east",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "region",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25404728"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.measurements_2025_east.value",
+   "kind": "column",
+   "parent": "torture.measurements_2025_east",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "value",
+    "attnotnull": false,
+    "attnum": 4,
+    "attstorage": "m",
+    "options": [
+     "pg_attver=25404728"
+    ],
+    "type": "numeric"
+   }
+  },
+  {
+   "key": "torture.measurements_2025_rest.id",
+   "kind": "column",
+   "parent": "torture.measurements_2025_rest",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25417656"
+    ],
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.measurements_2025_rest.taken",
+   "kind": "column",
+   "parent": "torture.measurements_2025_rest",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "taken",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25417656"
+    ],
+    "type": "date"
+   }
+  },
+  {
+   "key": "torture.measurements_2025_rest.region",
+   "kind": "column",
+   "parent": "torture.measurements_2025_rest",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "region",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25417656"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.measurements_2025_rest.value",
+   "kind": "column",
+   "parent": "torture.measurements_2025_rest",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "value",
+    "attnotnull": false,
+    "attnum": 4,
+    "attstorage": "m",
+    "options": [
+     "pg_attver=25417656"
+    ],
+    "type": "numeric"
+   }
+  },
+  {
+   "key": "torture.by_hash.id",
+   "kind": "column",
+   "parent": "torture.by_hash",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25430328"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "torture.by_hash_0.id",
+   "kind": "column",
+   "parent": "torture.by_hash_0",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25435192"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "torture.by_hash_1.id",
+   "kind": "column",
+   "parent": "torture.by_hash_1",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25440440"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "torture.base_event.id",
+   "kind": "column",
+   "parent": "torture.base_event",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25445600"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "torture.base_event.at",
+   "kind": "column",
+   "parent": "torture.base_event",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "at",
+    "attnotnull": false,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25445600"
+    ],
+    "type": "timestamp with time zone"
+   }
+  },
+  {
+   "key": "torture.click_event.id",
+   "kind": "column",
+   "parent": "torture.click_event",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25450264"
+    ],
+    "type": "integer"
+   }
+  },
+  {
+   "key": "torture.click_event.at",
+   "kind": "column",
+   "parent": "torture.click_event",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 1,
+    "attisdropped": false,
+    "attislocal": false,
+    "attname": "at",
+    "attnotnull": false,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25450264"
+    ],
+    "type": "timestamp with time zone"
+   }
+  },
+  {
+   "key": "torture.click_event.url",
+   "kind": "column",
+   "parent": "torture.click_event",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "url",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25450264"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.scratch.k",
+   "kind": "column",
+   "parent": "torture.scratch",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "k",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25462424"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.scratch.v",
+   "kind": "column",
+   "parent": "torture.scratch",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "v",
+    "attnotnull": false,
+    "attnum": 2,
+    "attstorage": "x",
+    "options": [
+     "pg_attver=25462424"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.v_paid.id",
+   "kind": "column",
+   "parent": "torture.v_paid",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25477032"
+    ],
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.v_paid.name",
+   "kind": "column",
+   "parent": "torture.v_paid",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "name",
+    "attnotnull": false,
+    "attnum": 2,
+    "attstorage": "x",
+    "collation": "ci",
+    "options": [
+     "pg_attver=25477032"
+    ],
+    "type": "text"
+   }
+  },
+  {
+   "key": "torture.mv_counts.status",
+   "kind": "column",
+   "parent": "torture.mv_counts",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "status",
+    "attnotnull": false,
+    "attnum": 1,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25483104"
+    ],
+    "type": "torture.status"
+   }
+  },
+  {
+   "key": "torture.mv_counts.n",
+   "kind": "column",
+   "parent": "torture.mv_counts",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "n",
+    "attnotnull": false,
+    "attnum": 2,
+    "attstorage": "p",
+    "options": [
+     "pg_attver=25483104"
+    ],
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.parent_pkey",
+   "kind": "index",
+   "parent": "torture.parent",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX parent_pkey ON torture.parent USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.parent_code_key",
+   "kind": "index",
+   "parent": "torture.parent",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX parent_code_key ON torture.parent USING btree (code)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.child_pkey",
+   "kind": "index",
+   "parent": "torture.child",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX child_pkey ON torture.child USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.booking_room_during_excl",
+   "kind": "index",
+   "parent": "torture.booking",
+   "props": {
+    "am": "gist",
+    "definition": "CREATE INDEX booking_room_during_excl ON torture.booking USING gist (room, during)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": true,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.mv_counts_status",
+   "kind": "index",
+   "parent": "torture.mv_counts",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX mv_counts_status ON torture.mv_counts USING btree (status)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.scratch_pkey",
+   "kind": "index",
+   "parent": "torture.scratch",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX scratch_pkey ON torture.scratch USING btree (k)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "shop.customers_pkey",
+   "kind": "index",
+   "parent": "shop.customers",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX customers_pkey ON shop.customers USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "shop.customers_email_key",
+   "kind": "index",
+   "parent": "shop.customers",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX customers_email_key ON shop.customers USING btree (email)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "shop.k_country",
+   "kind": "index",
+   "parent": "shop.customers",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX k_country ON shop.customers USING btree (country)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "shop.k_created_unused",
+   "kind": "index",
+   "parent": "shop.customers",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX k_created_unused ON shop.customers USING btree (created)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "shop.products_pkey",
+   "kind": "index",
+   "parent": "shop.products",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX products_pkey ON shop.products USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "shop.products_sku_key",
+   "kind": "index",
+   "parent": "shop.products",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX products_sku_key ON shop.products USING btree (sku)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "shop.orders_pkey",
+   "kind": "index",
+   "parent": "shop.orders",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX orders_pkey ON shop.orders USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "shop.k_status",
+   "kind": "index",
+   "parent": "shop.orders",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX k_status ON shop.orders USING btree (status)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "shop.order_items_pkey",
+   "kind": "index",
+   "parent": "shop.order_items",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX order_items_pkey ON shop.order_items USING btree (order_id, product_id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.k_doc",
+   "kind": "index",
+   "parent": "torture.kinds",
+   "props": {
+    "am": "gin",
+    "definition": "CREATE INDEX k_doc ON torture.kinds USING gin (doc jsonb_path_ops)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.kinds_pkey",
+   "kind": "index",
+   "parent": "torture.kinds",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX kinds_pkey ON torture.kinds USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.uk_name",
+   "kind": "index",
+   "parent": "torture.kinds",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE UNIQUE INDEX uk_name ON torture.kinds USING btree (lower(name)) INCLUDE (status) WHERE (status <> 'shipped'::torture.status)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false,
+    "predicate": "(status <> 'shipped'::torture.status)"
+   }
+  },
+  {
+   "key": "torture.k_tags",
+   "kind": "index",
+   "parent": "torture.kinds",
+   "props": {
+    "am": "gin",
+    "definition": "CREATE INDEX k_tags ON torture.kinds USING gin (tags)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.k_name_trgm",
+   "kind": "index",
+   "parent": "torture.kinds",
+   "props": {
+    "am": "gist",
+    "definition": "CREATE INDEX k_name_trgm ON torture.kinds USING gist (name gist_trgm_ops)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.k_window",
+   "kind": "index",
+   "parent": "torture.kinds",
+   "props": {
+    "am": "gist",
+    "definition": "CREATE INDEX k_window ON torture.kinds USING gist (window_)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.k_ident_brin",
+   "kind": "index",
+   "parent": "torture.kinds",
+   "props": {
+    "am": "brin",
+    "definition": "CREATE INDEX k_ident_brin ON torture.kinds USING brin (id) WITH (pages_per_range='32')",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false,
+    "options": [
+     "pages_per_range=32"
+    ]
+   }
+  },
+  {
+   "key": "torture.k_status_desc",
+   "kind": "index",
+   "parent": "torture.kinds",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX k_status_desc ON torture.kinds USING btree (status DESC NULLS LAST, id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false
+   }
+  },
+  {
+   "key": "torture.parent.parent_code_key",
+   "kind": "constraint",
+   "parent": "torture.parent",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "parent_code_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (code)"
+   }
+  },
+  {
+   "key": "torture.parent.parent_pkey",
+   "kind": "constraint",
+   "parent": "torture.parent",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "parent_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)"
+   }
+  },
+  {
+   "key": "torture.child.fk_code",
+   "kind": "constraint",
+   "parent": "torture.child",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": "r",
+    "confmatchtype": "f",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "fk_code",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (parent_code) REFERENCES torture.parent(code) MATCH FULL ON DELETE RESTRICT"
+   }
+  },
+  {
+   "key": "torture.child.fk_parent",
+   "kind": "constraint",
+   "parent": "torture.child",
+   "props": {
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "n",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "fk_parent",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (parent_id) REFERENCES torture.parent(id) ON UPDATE SET NULL ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED"
+   }
+  },
+  {
+   "key": "torture.child.child_pkey",
+   "kind": "constraint",
+   "parent": "torture.child",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "child_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)"
+   }
+  },
+  {
+   "key": "torture.booking.booking_room_during_excl",
+   "kind": "constraint",
+   "parent": "torture.booking",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "booking_room_during_excl",
+    "connoinherit": true,
+    "contype": "x",
+    "convalidated": true,
+    "definition": "EXCLUDE USING gist (room WITH =, during WITH &&)"
+   }
+  },
+  {
+   "key": "torture.scratch.scratch_pkey",
+   "kind": "constraint",
+   "parent": "torture.scratch",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "scratch_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (k)"
+   }
+  },
+  {
+   "key": "torture.kinds.kinds_pkey",
+   "kind": "constraint",
+   "parent": "torture.kinds",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "kinds_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)"
+   }
+  },
+  {
+   "key": "torture.kinds.ck_ratio",
+   "kind": "constraint",
+   "parent": "torture.kinds",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "ck_ratio",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK (((ratio >= (0)::double precision) AND (ratio <= (1)::double precision)))"
+   }
+  },
+  {
+   "key": "shop.customers.customers_email_key",
+   "kind": "constraint",
+   "parent": "shop.customers",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "customers_email_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (email)"
+   }
+  },
+  {
+   "key": "shop.customers.customers_pkey",
+   "kind": "constraint",
+   "parent": "shop.customers",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "customers_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)"
+   }
+  },
+  {
+   "key": "shop.orders.fk_cust",
+   "kind": "constraint",
+   "parent": "shop.orders",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": "a",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "fk_cust",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (customer_id) REFERENCES shop.customers(id)"
+   }
+  },
+  {
+   "key": "shop.orders.orders_pkey",
+   "kind": "constraint",
+   "parent": "shop.orders",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "orders_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)"
+   }
+  },
+  {
+   "key": "shop.order_items.order_items_product_id_fkey",
+   "kind": "constraint",
+   "parent": "shop.order_items",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": "a",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "order_items_product_id_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (product_id) REFERENCES shop.products(id)"
+   }
+  },
+  {
+   "key": "shop.order_items.order_items_order_id_fkey",
+   "kind": "constraint",
+   "parent": "shop.order_items",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": "a",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "order_items_order_id_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (order_id) REFERENCES shop.orders(id)"
+   }
+  },
+  {
+   "key": "shop.order_items.order_items_pkey",
+   "kind": "constraint",
+   "parent": "shop.order_items",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "order_items_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (order_id, product_id)"
+   }
+  },
+  {
+   "key": "shop.products.products_sku_key",
+   "kind": "constraint",
+   "parent": "shop.products",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "products_sku_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (sku)"
+   }
+  },
+  {
+   "key": "shop.products.products_pkey",
+   "kind": "constraint",
+   "parent": "shop.products",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "products_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)"
+   }
+  },
+  {
+   "key": "torture.email.email_check",
+   "kind": "constraint",
+   "parent": "torture.email",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "email_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((VALUE ~ '@'::citext))"
+   }
+  },
+  {
+   "key": "torture.money_amount.money_amount_check",
+   "kind": "constraint",
+   "parent": "torture.money_amount",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "money_amount_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((VALUE >= (0)::numeric))"
+   }
+  },
+  {
+   "key": "shop.customers_id_seq",
+   "kind": "sequence",
+   "parent": "shop",
+   "props": {
+    "owned_by": "customers.id",
+    "seqcache": 1,
+    "seqcycle": false,
+    "seqincrement": 1,
+    "seqmax": 2147483647,
+    "seqmin": 1,
+    "seqstart": 1,
+    "type": "integer"
+   }
+  },
+  {
+   "key": "shop.products_id_seq",
+   "kind": "sequence",
+   "parent": "shop",
+   "props": {
+    "owned_by": "products.id",
+    "seqcache": 1,
+    "seqcycle": false,
+    "seqincrement": 1,
+    "seqmax": 2147483647,
+    "seqmin": 1,
+    "seqstart": 1,
+    "type": "integer"
+   }
+  },
+  {
+   "key": "shop.orders_id_seq",
+   "kind": "sequence",
+   "parent": "shop",
+   "props": {
+    "owned_by": "orders.id",
+    "seqcache": 1,
+    "seqcycle": false,
+    "seqincrement": 1,
+    "seqmax": 2147483647,
+    "seqmin": 1,
+    "seqstart": 1,
+    "type": "integer"
+   }
+  },
+  {
+   "key": "torture.ticket_seq",
+   "kind": "sequence",
+   "parent": "torture",
+   "props": {
+    "owned_by": "kinds.ticket",
+    "seqcache": 10,
+    "seqcycle": true,
+    "seqincrement": 5,
+    "seqmax": 9999999,
+    "seqmin": 1000,
+    "seqstart": 1000,
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.kinds_id_seq",
+   "kind": "sequence",
+   "parent": "torture",
+   "props": {
+    "owned_by": "kinds.id",
+    "seqcache": 1,
+    "seqcycle": false,
+    "seqincrement": 2,
+    "seqmax": 9223372036854775807,
+    "seqmin": 1,
+    "seqstart": 10,
+    "type": "bigint"
+   }
+  },
+  {
+   "key": "torture.address",
+   "kind": "type",
+   "parent": "torture",
+   "props": {
+    "fields": [
+     {
+      "name": "street",
+      "type": "text"
+     },
+     {
+      "name": "city",
+      "type": "text"
+     },
+     {
+      "name": "zip",
+      "type": "character varying(10)"
+     }
+    ],
+    "notnull": false,
+    "typtype": "c"
+   }
+  },
+  {
+   "key": "torture.email",
+   "kind": "type",
+   "parent": "torture",
+   "props": {
+    "base": "citext",
+    "notnull": false,
+    "typtype": "d"
+   }
+  },
+  {
+   "key": "torture.floatrange",
+   "kind": "type",
+   "parent": "torture",
+   "props": {
+    "notnull": false,
+    "range_subtype": "double precision",
+    "typtype": "r"
+   }
+  },
+  {
+   "key": "torture.money_amount",
+   "kind": "type",
+   "parent": "torture",
+   "props": {
+    "base": "numeric(18,4)",
+    "default": "0",
+    "notnull": true,
+    "typtype": "d"
+   }
+  },
+  {
+   "key": "torture.status",
+   "kind": "type",
+   "parent": "torture",
+   "props": {
+    "labels": [
+     "new",
+     "paid",
+     "shipped"
+    ],
+    "notnull": false,
+    "typtype": "e"
+   }
+  },
+  {
+   "key": "shop.paid_orders()",
+   "kind": "routine",
+   "parent": "shop",
+   "props": {
+    "arguments": "",
+    "language": "sql",
+    "owner": "postgres",
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "paid_orders",
+    "pronargdefaults": 0,
+    "pronargs": 0,
+    "proparallel": "u",
+    "proretset": true,
+    "prosecdef": false,
+    "prosrc": " SELECT id FROM shop.orders WHERE status = 'paid' ",
+    "provolatile": "s",
+    "returns": "SETOF integer"
+   }
+  },
+  {
+   "key": "shop.default_status()",
+   "kind": "routine",
+   "parent": "shop",
+   "props": {
+    "arguments": "",
+    "language": "plpgsql",
+    "owner": "postgres",
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "default_status",
+    "pronargdefaults": 0,
+    "pronargs": 0,
+    "proparallel": "u",
+    "proretset": false,
+    "prosecdef": false,
+    "prosrc": " BEGIN NEW.status := COALESCE(NEW.status, 'new'); RETURN NEW; END ",
+    "provolatile": "v",
+    "returns": "trigger"
+   }
+  },
+  {
+   "key": "torture.floatrange(double precision, double precision)",
+   "kind": "routine",
+   "parent": "torture",
+   "props": {
+    "arguments": "double precision, double precision",
+    "language": "internal",
+    "owner": "postgres",
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "floatrange",
+    "pronargdefaults": 0,
+    "pronargs": 2,
+    "proparallel": "s",
+    "proretset": false,
+    "prosecdef": false,
+    "prosrc": "range_constructor2",
+    "provolatile": "i",
+    "returns": "torture.floatrange"
+   }
+  },
+  {
+   "key": "torture.floatrange(double precision, double precision, text)",
+   "kind": "routine",
+   "parent": "torture",
+   "props": {
+    "arguments": "double precision, double precision, text",
+    "language": "internal",
+    "owner": "postgres",
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "floatrange",
+    "pronargdefaults": 0,
+    "pronargs": 3,
+    "proparallel": "s",
+    "proretset": false,
+    "prosecdef": false,
+    "prosrc": "range_constructor3",
+    "provolatile": "i",
+    "returns": "torture.floatrange"
+   }
+  },
+  {
+   "key": "torture.floatmultirange()",
+   "kind": "routine",
+   "parent": "torture",
+   "props": {
+    "arguments": "",
+    "language": "internal",
+    "owner": "postgres",
+    "proisstrict": true,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "floatmultirange",
+    "pronargdefaults": 0,
+    "pronargs": 0,
+    "proparallel": "s",
+    "proretset": false,
+    "prosecdef": false,
+    "prosrc": "multirange_constructor0",
+    "provolatile": "i",
+    "returns": "torture.floatmultirange"
+   }
+  },
+  {
+   "key": "torture.floatmultirange(torture.floatrange)",
+   "kind": "routine",
+   "parent": "torture",
+   "props": {
+    "arguments": "torture.floatrange",
+    "language": "internal",
+    "owner": "postgres",
+    "proisstrict": true,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "floatmultirange",
+    "pronargdefaults": 0,
+    "pronargs": 1,
+    "proparallel": "s",
+    "proretset": false,
+    "prosecdef": false,
+    "prosrc": "multirange_constructor1",
+    "provolatile": "i",
+    "returns": "torture.floatmultirange"
+   }
+  },
+  {
+   "key": "torture.floatmultirange(VARIADIC torture.floatrange[])",
+   "kind": "routine",
+   "parent": "torture",
+   "props": {
+    "arguments": "VARIADIC torture.floatrange[]",
+    "language": "internal",
+    "owner": "postgres",
+    "proargmodes": [
+     "v"
+    ],
+    "proisstrict": true,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "floatmultirange",
+    "pronargdefaults": 0,
+    "pronargs": 1,
+    "proparallel": "s",
+    "proretset": false,
+    "prosecdef": false,
+    "prosrc": "multirange_constructor2",
+    "provolatile": "i",
+    "returns": "torture.floatmultirange"
+   }
+  },
+  {
+   "key": "torture.f_cents(m numeric)",
+   "kind": "routine",
+   "parent": "torture",
+   "props": {
+    "arguments": "m numeric",
+    "language": "sql",
+    "owner": "postgres",
+    "proargnames": [
+     "m"
+    ],
+    "proisstrict": true,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "f_cents",
+    "pronargdefaults": 0,
+    "pronargs": 1,
+    "proparallel": "s",
+    "proretset": false,
+    "prosecdef": false,
+    "prosrc": " SELECT (m * 100)::bigint ",
+    "provolatile": "i",
+    "returns": "bigint"
+   }
+  },
+  {
+   "key": "torture.f_paid(p_status torture.status)",
+   "kind": "routine",
+   "parent": "torture",
+   "props": {
+    "arguments": "p_status torture.status DEFAULT 'paid'::torture.status",
+    "language": "plpgsql",
+    "owner": "postgres",
+    "proargmodes": [
+     "i",
+     "t",
+     "t"
+    ],
+    "proargnames": [
+     "p_status",
+     "id",
+     "name"
+    ],
+    "proconfig": [
+     "search_path=torture"
+    ],
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "f_paid",
+    "pronargdefaults": 1,
+    "pronargs": 1,
+    "proparallel": "u",
+    "proretset": true,
+    "prosecdef": true,
+    "prosrc": " BEGIN RETURN QUERY SELECT k.id, k.name FROM torture.kinds k WHERE k.status = p_status; END ",
+    "provolatile": "s",
+    "returns": "TABLE(id bigint, name text)"
+   }
+  },
+  {
+   "key": "torture.p_purge(INOUT n integer)",
+   "kind": "routine",
+   "parent": "torture",
+   "props": {
+    "arguments": "INOUT n integer",
+    "language": "plpgsql",
+    "owner": "postgres",
+    "proargmodes": [
+     "b"
+    ],
+    "proargnames": [
+     "n"
+    ],
+    "proisstrict": false,
+    "prokind": "p",
+    "proleakproof": false,
+    "proname": "p_purge",
+    "pronargdefaults": 0,
+    "pronargs": 1,
+    "proparallel": "u",
+    "proretset": false,
+    "prosecdef": false,
+    "prosrc": " BEGIN DELETE FROM torture.scratch; n := 0; END ",
+    "provolatile": "v"
+   }
+  },
+  {
+   "key": "audit.log_change()",
+   "kind": "routine",
+   "parent": "audit",
+   "props": {
+    "arguments": "",
+    "language": "plpgsql",
+    "owner": "postgres",
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "log_change",
+    "pronargdefaults": 0,
+    "pronargs": 0,
+    "proparallel": "u",
+    "proretset": false,
+    "prosecdef": false,
+    "prosrc": " BEGIN RETURN NULL; END ",
+    "provolatile": "v",
+    "returns": "trigger"
+   }
+  },
+  {
+   "key": "shop.orders.orders_status",
+   "kind": "trigger",
+   "parent": "shop.orders",
+   "props": {
+    "definition": "CREATE TRIGGER orders_status BEFORE INSERT ON shop.orders FOR EACH ROW EXECUTE FUNCTION shop.default_status()",
+    "tgdeferrable": false,
+    "tgenabled": "O",
+    "tginitdeferred": false,
+    "tgisinternal": false,
+    "tgname": "orders_status",
+    "tgnargs": 0,
+    "tgtype": 7
+   }
+  },
+  {
+   "key": "torture.child.t_child_audit",
+   "kind": "trigger",
+   "parent": "torture.child",
+   "props": {
+    "definition": "CREATE TRIGGER t_child_audit AFTER INSERT ON torture.child REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION audit.log_change()",
+    "tgdeferrable": false,
+    "tgenabled": "O",
+    "tginitdeferred": false,
+    "tgisinternal": false,
+    "tgname": "t_child_audit",
+    "tgnargs": 0,
+    "tgnewtable": "new_rows",
+    "tgtype": 4
+   }
+  },
+  {
+   "key": "torture.child.t_child_when",
+   "kind": "trigger",
+   "parent": "torture.child",
+   "props": {
+    "definition": "CREATE TRIGGER t_child_when BEFORE UPDATE ON torture.child FOR EACH ROW WHEN ((old.parent_id IS DISTINCT FROM new.parent_id)) EXECUTE FUNCTION audit.log_change()",
+    "tgdeferrable": false,
+    "tgenabled": "O",
+    "tginitdeferred": false,
+    "tgisinternal": false,
+    "tgname": "t_child_when",
+    "tgnargs": 0,
+    "tgtype": 19
+   }
+  },
+  {
+   "key": "torture.kinds.own_rows",
+   "kind": "policy",
+   "parent": "torture.kinds",
+   "props": {
+    "cmd": "SELECT",
+    "permissive": "PERMISSIVE",
+    "policyname": "own_rows",
+    "qual": "(status <> 'shipped'::torture.status)",
+    "roles": [
+     "public"
+    ]
+   }
+  },
+  {
+   "key": "torture.scratch.r_scratch",
+   "kind": "rule",
+   "parent": "torture.scratch",
+   "props": {
+    "definition": "CREATE RULE r_scratch AS\n    ON DELETE TO torture.scratch DO INSTEAD NOTHING;",
+    "rulename": "r_scratch"
+   }
+  },
+  {
+   "key": "pg_trgm",
+   "kind": "extension",
+   "parent": null,
+   "props": {
+    "relocatable": true,
+    "schema": "public",
+    "version": "1.6"
+   }
+  },
+  {
+   "key": "citext",
+   "kind": "extension",
+   "parent": null,
+   "props": {
+    "relocatable": true,
+    "schema": "public",
+    "version": "1.6"
+   }
+  },
+  {
+   "key": "btree_gist",
+   "kind": "extension",
+   "parent": null,
+   "props": {
+    "relocatable": true,
+    "schema": "public",
+    "version": "1.7"
+   }
+  },
+  {
+   "key": "torture.ci",
+   "kind": "collation",
+   "parent": "torture",
+   "props": {
+    "collencoding": -1,
+    "colliculocale": "und-u-ks-level2",
+    "collisdeterministic": false,
+    "collname": "ci",
+    "collprovider": "i"
+   }
+  }
+ ],
+ "version": "15"
+}
