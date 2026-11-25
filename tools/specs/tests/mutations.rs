@@ -135,9 +135,9 @@ fn a_depends_naming_no_earlier_task_is_the_finding_which_is_no_earlier_task() {
     c.edit(
         "specs/root.xml",
         r#"key="SF-94" name="tables interface" file="specs/tasks/SF-94-tables-interface.xml" depends="t01""#,
-        r#"key="SF-94" name="tables interface" file="specs/tasks/SF-94-tables-interface.xml" depends="t09""#,
+        r#"key="SF-94" name="tables interface" file="specs/tasks/SF-94-tables-interface.xml" depends="t10""#,
     );
-    named(&check(c.root()), &["task t02 depends on t09, which is no earlier task"]);
+    named(&check(c.root()), &["task t02 depends on t10, which is no earlier task"]);
 }
 
 #[test]
@@ -160,7 +160,7 @@ fn an_open_decision_that_closes_before_no_task_is_the_finding_which_is_no_task()
     let c = copy("no-task");
     c.edit(
         "specs/root.xml",
-        r#"<decision id="operation-kinds" status="open" closes-before="t07">"#,
+        r#"<decision id="operation-kinds" status="open" closes-before="t08">"#,
         r#"<decision id="operation-kinds" status="open" closes-before="t99">"#,
     );
     named(&check(c.root()), &["decision operation-kinds closes before t99, which is no task"]);
@@ -173,7 +173,7 @@ fn a_task_file_written_while_a_decision_that_closes_before_it_is_open_is_the_fin
     let c = copy("written-while");
     c.edit(
         "specs/root.xml",
-        r#"<decision id="operation-kinds" status="open" closes-before="t07">"#,
+        r#"<decision id="operation-kinds" status="open" closes-before="t08">"#,
         r#"<decision id="operation-kinds" status="open" closes-before="t02">"#,
     );
     named(&check(c.root()), &["is written while decision operation-kinds is open"]);

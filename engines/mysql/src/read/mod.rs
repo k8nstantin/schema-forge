@@ -924,7 +924,7 @@ mod tests {
         assert!(
             read(BUILT_IN, "/*M!999999\\- enable the sandbox mode */\nCREATE TABLE t (a int);".into(), "8.4").is_err()
         );
-        assert!(is_mariadb("-- MySQL dump 10.19\n-- Server version\t10.11.6-MariaDB-ubu2204\n"));
+        assert!(is_mariadb("-- MySQL dump 10.19\n-- Server version\t11.11.6-MariaDB-ubu2204\n"));
         assert!(!is_mariadb("-- MySQL dump 10.13\n-- Server version\t8.4.13\n"));
         let e = read(
             BUILT_IN,

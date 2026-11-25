@@ -58,7 +58,7 @@
   <file path="features/usage/schema/query_digests.sql" sha256="315159434c031d1f04a7e9f33a10c4826cd9f6615f5b1f87dc5fdaf7a204229c"/>
   <file path="features/usage/schema/rules/index-usage-on-its-table.sql" sha256="c35cd97ccd618d52439efeee2482691ff8c1c0a4e4881fcbaf9a78b1571007ff"/>
   <file path="features/usage/schema/snapshots.sql" sha256="424b7dbffdc9d220add988a168876e3f3d536b81c414ea311862fa5005b87bf1"/>
-  <file path="postgres/manifest.toml" sha256="91d0959ea5c33754446f8aa99d19bc79be162121791a8c150e133863378985af"/>
+  <file path="postgres/manifest.toml" sha256="d8e75bb68508d4aa724ca0d43c7b8a50a6d70c449e620f8d0c01cd0db634aad1"/>
   <file path="schema/cortex/catalog_sources.sql" sha256="b36572ddbdfd61618adc39ac7b7ea1196a4b57ed8950b13af0116baca8095d56"/>
   <file path="schema/cortex/check_constraints.sql" sha256="0dfe4670a9fc60333925803aaa974f7db376e519ff7cec28da375640bb14e6e6"/>
   <file path="schema/cortex/column_identities.sql" sha256="4572b4c63afddc40c7130dca713800e5d2af86c130deb60ec0785b85cf4039a8"/>
