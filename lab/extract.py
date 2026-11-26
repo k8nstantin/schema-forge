@@ -249,6 +249,8 @@ PG_PARTS = {
         'columns', (SELECT jsonb_agg(a.attname ORDER BY k.n) FROM unnest(co.conkey) WITH ORDINALITY k(attnum, n)
                     JOIN pg_attribute a ON a.attrelid = co.conrelid AND a.attnum = k.attnum),
         'ref_table', (SELECT quote_ident(fn.nspname) || '.' || quote_ident(fc.relname) FROM pg_class fc JOIN pg_namespace fn ON fn.oid = fc.relnamespace WHERE fc.oid = co.confrelid),
+        'delete_set_columns', (SELECT jsonb_agg(a.attname ORDER BY k.n) FROM unnest(co.confdelsetcols) WITH ORDINALITY k(attnum, n)
+                               JOIN pg_attribute a ON a.attrelid = co.conrelid AND a.attnum = k.attnum),
         'ref_columns', (SELECT jsonb_agg(a.attname ORDER BY k.n) FROM unnest(co.confkey) WITH ORDINALITY k(attnum, n)
                         JOIN pg_attribute a ON a.attrelid = co.confrelid AND a.attnum = k.attnum),
         'expression', CASE WHEN co.contype = 'c' THEN pg_get_expr(co.conbin, coalesce(nullif(co.conrelid, 0), 0)) END,

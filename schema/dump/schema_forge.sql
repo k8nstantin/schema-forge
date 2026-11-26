@@ -4598,6 +4598,7 @@ CREATE TABLE engine_postgresql.constraints (
     is_local boolean DEFAULT true NOT NULL,
     inherit_count integer DEFAULT 0 NOT NULL,
     operators jsonb,
+    delete_set_columns jsonb,
     CONSTRAINT constraints_inherit_count_check CHECK ((inherit_count >= 0))
 );
 
@@ -4658,6 +4659,13 @@ COMMENT ON COLUMN engine_postgresql.constraints.inherit_count IS 'how many paren
 --
 
 COMMENT ON COLUMN engine_postgresql.constraints.operators IS 'an exclusion''s operators, one per part (["=", "&&"]); NULL otherwise';
+
+
+--
+-- Name: COLUMN constraints.delete_set_columns; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.constraints.delete_set_columns IS 'ON DELETE SET NULL (...) or SET DEFAULT (...): the ids of the only columns it sets, in order; NULL for all of them';
 
 
 --

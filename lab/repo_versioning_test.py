@@ -164,7 +164,7 @@ def main():
         ("creates a table", False, "BEGIN; SET LOCAL ROLE sf_agent; CREATE TABLE cortex.agent_attempt (id bigint); COMMIT;"),
         ("alters a table", False, "BEGIN; SET LOCAL ROLE sf_agent; ALTER TABLE cortex.objects ADD COLUMN x int; COMMIT;"),
         ("drops a table", False, "BEGIN; SET LOCAL ROLE sf_agent; DROP TABLE engine_mysql.events; COMMIT;"),
-        ("rewrites the log", False, "BEGIN; SET LOCAL ROLE sf_agent; UPDATE cortex.row_changes SET after = NULL WHERE id = 1; COMMIT;"),
+        ("rewrites the log", False, "BEGIN; SET LOCAL ROLE sf_agent; UPDATE cortex.row_changes SET after = NULL; COMMIT;"),
         ("deletes from the log", False, "BEGIN; SET LOCAL ROLE sf_agent; DELETE FROM cortex.turns WHERE parent IS NULL; COMMIT;"),
         ("changes a locked version", False, "BEGIN; SET LOCAL ROLE sf_agent; UPDATE cortex.locked_versions SET message = 'x'; COMMIT;"),
         ("changes what the engine declares", False, "BEGIN; SET LOCAL ROLE sf_agent; DELETE FROM cortex.object_kinds WHERE id = 'mysql/event'; COMMIT;"),
@@ -175,7 +175,9 @@ def main():
     ]
     for label, want, sql in agent:
         ok, why = attempt(sql, db)
-        print(f"  {'pass' if ok == want else 'FAIL'}  {label}: {'allowed' if ok else 'refused (' + why + ')'}")
+        # a refusal counts only when the database's own rights gave it: never a mistake in the statement
+        right = ok == want and (want or "permission denied" in why or "must be owner" in why)
+        print(f"  {'pass' if right else 'FAIL'}  {label}: {'allowed' if ok else 'refused (' + why + ')'}")
 
     feed(db)
 

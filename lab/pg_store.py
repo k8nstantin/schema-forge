@@ -188,7 +188,9 @@ def rows_of(snap):
             "ref_object_id": obj.get(ref), "ref_namespace": None, "ref_object": None, "on_delete": pr.get("confdeltype"),
             "on_update": pr.get("confupdtype"), "match": pr.get("confmatchtype")})
         out["engine_postgresql.constraint"].append({"id": i, "validated": pr["convalidated"], "no_inherit": pr["connoinherit"],
-                                                    "is_local": pr["conislocal"], "inherit_count": pr["coninhcount"], "operators": pr.get("operators")})
+                                                    "is_local": pr["conislocal"], "inherit_count": pr["coninhcount"], "operators": pr.get("operators"),
+                                                    "delete_set_columns": [col[f"{parent}.{c}"] for c in pr["delete_set_columns"]]
+                                                    if pr.get("delete_set_columns") else None})
         if not on_type:
             for k, c in enumerate(pr.get("columns") or []):
                 out["core.constraint_column"].append({"id": nid(), "constraint_id": i, "position": k + 1, "column_id": col[f"{parent}.{c}"],
@@ -350,6 +352,9 @@ def constraint_def(S, c):
             out += f" ON UPDATE {ACTION[c['on_update']]}"
         if ACTION.get(c["on_delete"]):
             out += f" ON DELETE {ACTION[c['on_delete']]}"
+            only = st["engine_postgresql.constraint"].get(c["id"], {}).get("delete_set_columns")
+            if only:
+                out += " (" + ", ".join(qi(st["core.column"][x]["name"]) for x in only) + ")"
     elif c["kind"] == "check":
         out = f"CHECK ({c['expression']})" + (" NO INHERIT" if pc.get("no_inherit") else "")
     elif c["kind"] == "exclusion":

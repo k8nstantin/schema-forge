@@ -51,7 +51,8 @@ def to_locked(old, version):
     ids = defaultdict(lambda: str(uuid.uuid7()))
     U = lambda i: None if i is None else ids[i]  # noqa: E731
     design = str(uuid.uuid7())
-    st = {k: {r["id"]: r for r in rs} for k, rs in old.items()}
+    old = defaultdict(list, old)
+    st = defaultdict(dict, {k: {r["id"]: r for r in rs} for k, rs in old.items()})
     out = defaultdict(list)
 
     def add(table, row):
@@ -159,7 +160,8 @@ def to_locked(old, version):
         add("engine_postgresql.index_parts", {"id": U(p["id"]), "nulls_first": p["nulls_first"], "operator_class": p["operator_class"],
                                               "collation": p["collation_name"]})
     for c in old["engine_postgresql.constraint"]:
-        add("engine_postgresql.constraints", {"id": U(c["id"]), **{k: c[k] for k in ("validated", "no_inherit", "is_local", "inherit_count", "operators")}})
+        add("engine_postgresql.constraints", {"id": U(c["id"]), **{k: c[k] for k in ("validated", "no_inherit", "is_local", "inherit_count", "operators")},
+                                              "delete_set_columns": [U(x) for x in c["delete_set_columns"]] if c.get("delete_set_columns") else None})
     for r in old["engine_postgresql.routine"]:
         add("engine_postgresql.routines", {"id": U(r["id"]), **{k: r[k] for k in ("strict", "leakproof", "returns_set",
                                                                                    "cost", "result_rows", "config", "owner", "acl")},
@@ -363,7 +365,7 @@ def main():
             name = C.fresh_pg(version)
             try:
                 C.ready_pg(name)
-                sql = P.script(S.st)
+                sql = snap.get("prelude", "") + P.script(S.st)  # what the server needs before the schema: its roles, a stand-in
                 r = subprocess.run(["docker", "exec", "-i", name, "psql", "-U", "postgres", "-q"], input=sql, capture_output=True, text=True)
                 refused = [line for line in r.stderr.splitlines() if "ERROR:" in line]
                 saved, X.SCHEMAS = X.SCHEMAS, tuple(n["name"] for n in S.ns.values() if n["parent_id"])

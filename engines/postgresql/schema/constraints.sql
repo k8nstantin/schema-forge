@@ -7,6 +7,7 @@ CREATE TABLE engine_postgresql.constraints (
   is_local       BOOLEAN NOT NULL DEFAULT true,                                                                 -- false when it comes from a parent table only
   inherit_count  INTEGER NOT NULL DEFAULT 0 CHECK (inherit_count >= 0),                                         -- how many parents it comes from
   operators      JSONB,                                                                                         -- an exclusion's operators, one per part (["=", "&&"]); NULL otherwise
+  delete_set_columns  JSONB,  -- ON DELETE SET NULL (...) or SET DEFAULT (...): the ids of the only columns it sets, in order; NULL for all of them
   UNIQUE (design, id),
   FOREIGN KEY (design, id) REFERENCES cortex.constraints (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
 );
@@ -18,4 +19,5 @@ COMMENT ON COLUMN engine_postgresql.constraints.validated IS 'false when made NO
 COMMENT ON COLUMN engine_postgresql.constraints.no_inherit IS 'true when it does not pass to child tables';
 COMMENT ON COLUMN engine_postgresql.constraints.is_local IS 'false when it comes from a parent table only';
 COMMENT ON COLUMN engine_postgresql.constraints.inherit_count IS 'how many parents it comes from';
+COMMENT ON COLUMN engine_postgresql.constraints.delete_set_columns IS 'ON DELETE SET NULL (...) or SET DEFAULT (...): the ids of the only columns it sets, in order; NULL for all of them';
 COMMENT ON COLUMN engine_postgresql.constraints.operators IS 'an exclusion''s operators, one per part (["=", "&&"]); NULL otherwise';
