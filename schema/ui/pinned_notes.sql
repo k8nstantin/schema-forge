@@ -8,7 +8,7 @@ CREATE TABLE ui.pinned_notes (
   "index"       BIGINT REFERENCES cortex.indexes (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,          -- the index it is pinned to; NULL when pinned elsewhere
   area          BIGINT REFERENCES ui.subject_areas (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,        -- the subject area it is pinned to; NULL when pinned elsewhere
   perspective   BIGINT REFERENCES ui.custom_perspectives (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the perspective it is pinned to; NULL when pinned elsewhere
-  turn          UUID REFERENCES cortex.turns (id),                                                              -- the turn it is pinned to; NULL when pinned elsewhere
+  turn          UUID REFERENCES cortex.turns (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,              -- the turn it is pinned to; NULL when pinned elsewhere
   position      NUMERIC NOT NULL UNIQUE CHECK (position > 0),                                                   -- its place among the notes; an order key
   text          TEXT NOT NULL CHECK (length(text) >= 1),                                                        -- the note, as written
   done          BOOLEAN NOT NULL DEFAULT false,                                                                 -- true once it has been worked through

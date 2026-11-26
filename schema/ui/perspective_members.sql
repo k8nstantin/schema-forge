@@ -6,7 +6,8 @@ CREATE TABLE ui.perspective_members (
   "column"     BIGINT REFERENCES cortex.columns (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,                   -- one of its columns, shown alone; NULL for the whole object
   position     NUMERIC NOT NULL CHECK (position > 0),                                                                   -- its place in the perspective; an order key
   colour       TEXT CHECK (colour ~ '^#[0-9a-f]{6}$'),                                                                  -- its own colour, as #rrggbb; NULL to follow the perspective's colour_by
-  UNIQUE (perspective, position) DEFERRABLE INITIALLY DEFERRED
+  UNIQUE (perspective, position) DEFERRABLE INITIALLY DEFERRED,
+  UNIQUE NULLS NOT DISTINCT (perspective, object, "column") DEFERRABLE INITIALLY DEFERRED
 );
 
 COMMENT ON TABLE ui.perspective_members IS 'the tables and columns a custom perspective shows, in order.';

@@ -109,16 +109,16 @@
   <file path="schema/cortex/turns.sql" sha256="66d64c84f12fbe913b9d041ff0af4726b79bf80fe91ef6abe92d1cb4e9f0c4de"/>
   <file path="schema/cortex/verbatim_statements.sql" sha256="bcd65e76016317171b68899208e6595d544df64baec62b74db46e4c351115b7e"/>
   <file path="schema/cortex/views.sql" sha256="6c645c9fa24e0127073dcc2ec52c5523ec410534e2e1f4feec144eefd04f36ae"/>
-  <file path="schema/dump/mysql.sql" sha256="021cf0eb55510bf6e0782d595b8c16937381d450ece336813d84a36c73d733f0"/>
-  <file path="schema/dump/postgresql.sql" sha256="854bf57d6532109caef0e96e355c42d9790c7336d60505c2c8742d519d18a98b"/>
-  <file path="schema/dump/usage.sql" sha256="a319845929beba40a094bccdd27b22141c4b261252d48d787f906230ac3c176e"/>
+  <file path="schema/dump/mysql.sql" sha256="b0e23f853e6fc6f237482c06d8c0bad42a6df1abbe00233e692194f6286a1c6b"/>
+  <file path="schema/dump/postgresql.sql" sha256="8757de63995f6ae37f27d0222b8832d49b4116b6cd2af797ce33d13fcfd5e21b"/>
+  <file path="schema/dump/usage.sql" sha256="6e9b1c7a6b6bcbce5efd36a3cb6d54dfcc3a6221a7ced6d75db273e58cf15fc1"/>
   <file path="schema/dump/workspace.sql" sha256="6cd92bff775bc16cce45b7d68a1aa7846d15df067b79ddea0bbf7c7864862342"/>
   <file path="schema/ui/custom_perspectives.sql" sha256="843316a3313e7858fc80ec86b87dd894a371990df8f41df3b44be23242b706f9"/>
-  <file path="schema/ui/layout_pins.sql" sha256="c599b1bec170842d9119b61c95906eb08a781ba166f634eb90fb06cccc519fad"/>
-  <file path="schema/ui/object_places.sql" sha256="75b3ad3563be2a8daa444184267527cae17a58f81ff81250abb2ac0839b7864a"/>
+  <file path="schema/ui/layout_pins.sql" sha256="120ab09b3c4153cc7c64b2871337513d15bcec9a8fc7785a87f975791f9739ff"/>
+  <file path="schema/ui/object_places.sql" sha256="14020fb209dc2a9b874c8502bd8341407d2db74cc163adcab7f1875a2ca9853c"/>
   <file path="schema/ui/owner.toml" sha256="a78ed652381e7dcf89cf9212a55d1e2ae1d19cc4a1dc4e07d6b97cb8616a5cc2"/>
-  <file path="schema/ui/perspective_members.sql" sha256="d9511c3cf16b3470159d4b33f2349aae26b13848a867deb3410e176a07258720"/>
-  <file path="schema/ui/pinned_notes.sql" sha256="6afbaf113699ed66481e5848983d4f657b432f087be98115c203f68e4a1fce07"/>
+  <file path="schema/ui/perspective_members.sql" sha256="b10db1651d39b339566f85a9d33ecb5f9d68e5d478327adc20f80a58510f9a94"/>
+  <file path="schema/ui/pinned_notes.sql" sha256="8ebe0451d36135b97194757a41dc245fabc87f4169e0adadfdb15019f5a3ceed"/>
   <file path="schema/ui/rules/perspective-columns-of-their-object.sql" sha256="7393f8f5f18cb95aa2479699e761e01d34c1b602586e832bf5319367b080f2a1"/>
   <file path="schema/ui/subject_areas.sql" sha256="7ece986ce916c0472267ffea0be8d54170d6ef94a0394f808540e57d941a467a"/>
   <file path="schema/workspace/connection_test_steps.sql" sha256="d1c0f0c843a152a3d43b21ecc31ae6c306c2d3e8bbe14dd01abc10b70a5748b2"/>

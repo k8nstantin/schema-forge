@@ -1,11 +1,11 @@
--- The log's working, on the locked design's own tables (cortex.branches, turns, operations, row_changes, savepoints,
+-- The log's working, on the locked design's own tables, versioning the cortex, the ui and every engine (cortex.branches, turns, operations, row_changes, savepoints,
 -- locked_versions): what the store will do, written here to prove the tables carry it. Lab code, in its own schema
 -- sf_log; it writes only the locked tables. Between turns the design holds its current branch's newest turn.
 
 CREATE SCHEMA sf_log;
 
--- every table of the design the log keeps: the cortex's design and every engine's; never the log itself, nor what
--- the engine declares, what was applied or what was read
+-- every table of the design the log keeps: the cortex's design, the ui and every engine's; never the log itself, nor
+-- what the engine declares, what was applied or what was read
 CREATE FUNCTION sf_log.versioned() RETURNS TABLE (tab text) LANGUAGE sql STABLE AS $$
   SELECT n.nspname || '.' || c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind = 'r' AND (n.nspname LIKE 'engine\_%' OR n.nspname = 'ui' OR (n.nspname = 'cortex' AND c.relname NOT IN
