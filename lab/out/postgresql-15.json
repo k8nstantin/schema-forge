@@ -7067,6 +7067,147 @@
     "collname": "nocase",
     "collprovider": "i"
    }
+  },
+  {
+   "key": "postgres",
+   "kind": "role",
+   "parent": null,
+   "props": {
+    "bypassrls": true,
+    "connection_limit": -1,
+    "createdb": true,
+    "createrole": true,
+    "inherit": true,
+    "login": true,
+    "replication": true,
+    "rolname": "postgres",
+    "superuser": true
+   }
+  },
+  {
+   "key": "sf_owner",
+   "kind": "role",
+   "parent": null,
+   "props": {
+    "bypassrls": false,
+    "connection_limit": -1,
+    "createdb": false,
+    "createrole": false,
+    "inherit": true,
+    "login": false,
+    "replication": false,
+    "rolname": "sf_owner",
+    "superuser": false
+   }
+  },
+  {
+   "key": "sf_service",
+   "kind": "role",
+   "parent": null,
+   "props": {
+    "bypassrls": false,
+    "connection_limit": -1,
+    "createdb": false,
+    "createrole": false,
+    "inherit": true,
+    "login": true,
+    "replication": false,
+    "rolname": "sf_service",
+    "superuser": false
+   }
+  },
+  {
+   "key": "sf_agent",
+   "kind": "role",
+   "parent": null,
+   "props": {
+    "bypassrls": false,
+    "connection_limit": -1,
+    "createdb": false,
+    "createrole": false,
+    "inherit": true,
+    "login": true,
+    "replication": false,
+    "rolname": "sf_agent",
+    "superuser": false
+   }
+  },
+  {
+   "key": "sf_reader",
+   "kind": "role",
+   "parent": null,
+   "props": {
+    "bypassrls": false,
+    "connection_limit": -1,
+    "createdb": false,
+    "createrole": false,
+    "inherit": true,
+    "login": true,
+    "replication": false,
+    "rolname": "sf_reader",
+    "superuser": false
+   }
+  },
+  {
+   "key": "features_reader",
+   "kind": "role",
+   "parent": null,
+   "props": {
+    "bypassrls": false,
+    "connection_limit": -1,
+    "createdb": false,
+    "createrole": false,
+    "inherit": true,
+    "login": false,
+    "replication": false,
+    "rolname": "features_reader",
+    "superuser": false
+   }
+  },
+  {
+   "key": "every_owner",
+   "kind": "role",
+   "parent": null,
+   "props": {
+    "bypassrls": false,
+    "connection_limit": -1,
+    "createdb": false,
+    "createrole": false,
+    "inherit": true,
+    "login": false,
+    "replication": false,
+    "rolname": "every_owner",
+    "superuser": false
+   }
+  },
+  {
+   "key": "every_reader",
+   "kind": "role",
+   "parent": null,
+   "props": {
+    "bypassrls": false,
+    "connection_limit": -1,
+    "createdb": false,
+    "createrole": false,
+    "inherit": true,
+    "login": false,
+    "replication": false,
+    "rolname": "every_reader",
+    "superuser": false
+   }
+  },
+  {
+   "key": "every_owner every r",
+   "kind": "default_acl",
+   "parent": "every",
+   "props": {
+    "acl": [
+     "every_reader=r/every_owner"
+    ],
+    "objtype": "r",
+    "role": "every_owner",
+    "schema": "every"
+   }
   }
  ],
  "version": "15"

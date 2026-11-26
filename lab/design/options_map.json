@@ -176,12 +176,10 @@
    "keys": [
     "is_local",
     "inherit_count",
-    "options",
-    "acl"
+    "options"
    ],
    "target": "cortex.columns",
    "types": {
-    "acl": "json",
     "inherit_count": "number",
     "is_local": "boolean",
     "options": "json"
@@ -232,24 +230,11 @@
     "replica_identity_index": "boolean"
    }
   },
-  "engine_postgresql.namespaces": {
-   "keys": [
-    "owner",
-    "acl"
-   ],
-   "target": "cortex.namespaces",
-   "types": {
-    "acl": "json",
-    "owner": "string"
-   }
-  },
   "engine_postgresql.relations": {
    "keys": [
     "persistence",
     "options",
     "access_method",
-    "owner",
-    "acl",
     "row_security",
     "force_row_security",
     "replica_identity",
@@ -258,10 +243,8 @@
    "target": "cortex.objects",
    "types": {
     "access_method": "string",
-    "acl": "json",
     "force_row_security": "boolean",
     "options": "json",
-    "owner": "string",
     "persistence": "string",
     "populated": "boolean",
     "replica_identity": "string",
@@ -277,17 +260,13 @@
     "returns_set",
     "cost",
     "result_rows",
-    "config",
-    "owner",
-    "acl"
+    "config"
    ],
    "target": "cortex.routines",
    "types": {
-    "acl": "json",
     "config": "json",
     "cost": "number",
     "leakproof": "boolean",
-    "owner": "string",
     "parallel": "string",
     "result_rows": "number",
     "returns_set": "boolean",
@@ -331,16 +310,12 @@
   },
   "engine_postgresql.types": {
    "keys": [
-    "owner",
-    "acl",
     "range_subtype",
     "multirange"
    ],
    "target": "cortex.objects",
    "types": {
-    "acl": "json",
     "multirange": "string",
-    "owner": "string",
     "range_subtype": "string"
    }
   },
@@ -441,6 +416,42 @@
    "target": "cortex.memberships",
    "types": {
     "default_role": "boolean"
+   }
+  },
+  "engine_postgresql.roles": {
+   "keys": [
+    "login",
+    "superuser",
+    "createdb",
+    "createrole",
+    "inherit",
+    "replication",
+    "bypassrls",
+    "connection_limit",
+    "valid_until"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "login": "boolean",
+    "superuser": "boolean",
+    "createdb": "boolean",
+    "createrole": "boolean",
+    "inherit": "boolean",
+    "replication": "boolean",
+    "bypassrls": "boolean",
+    "connection_limit": "number",
+    "valid_until": "string"
+   }
+  },
+  "engine_postgresql.memberships": {
+   "keys": [
+    "inherit_option",
+    "set_option"
+   ],
+   "target": "cortex.memberships",
+   "types": {
+    "inherit_option": "boolean",
+    "set_option": "boolean"
    }
   }
  }

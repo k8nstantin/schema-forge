@@ -393,6 +393,21 @@ PG_PARTS = {
     "collation": """SELECT n.nspname || '.' || c.collname AS key, n.nspname AS parent, to_jsonb(c) - 'oid' - 'collnamespace'
         - 'collowner' - 'collversion' AS props FROM pg_collation c JOIN pg_namespace n ON n.oid = c.collnamespace
       WHERE n.nspname = ANY(%(s)s)""",
+    # the cluster's roles (never their passwords; PostgreSQL's own pg_ roles are not people's), who is a member of which,
+    # and what a role's future objects grant as they are made
+    "role": """SELECT r.rolname AS key, NULL AS parent, jsonb_build_object('rolname', r.rolname, 'login', r.rolcanlogin,
+        'superuser', r.rolsuper, 'createdb', r.rolcreatedb, 'createrole', r.rolcreaterole, 'inherit', r.rolinherit,
+        'replication', r.rolreplication, 'bypassrls', r.rolbypassrls, 'connection_limit', r.rolconnlimit,
+        'valid_until', r.rolvaliduntil::text, 'comment', shobj_description(r.oid, 'pg_authid')) AS props
+      FROM pg_roles r WHERE r.rolname !~ '^pg_'""",
+    "membership": """SELECT pg_get_userbyid(m.roleid) || ' to ' || pg_get_userbyid(m.member) AS key, NULL AS parent,
+        to_jsonb(m) - 'oid' - 'roleid' - 'member' - 'grantor'
+          || jsonb_build_object('role', pg_get_userbyid(m.roleid), 'member', pg_get_userbyid(m.member)) AS props
+      FROM pg_auth_members m WHERE pg_get_userbyid(m.roleid) !~ '^pg_'""",
+    "default_acl": """SELECT pg_get_userbyid(d.defaclrole) || ' ' || coalesce(n.nspname, '*') || ' ' || d.defaclobjtype::text AS key, n.nspname AS parent,
+        jsonb_build_object('role', pg_get_userbyid(d.defaclrole), 'schema', n.nspname, 'objtype', d.defaclobjtype::text,
+                           'acl', d.defaclacl::text[]) AS props
+      FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace WHERE n.nspname IS NULL OR n.nspname = ANY(%(s)s)""",
 }
 
 

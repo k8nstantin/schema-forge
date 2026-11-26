@@ -471,8 +471,25 @@ def script(st):
             roles |= {a.partition("=")[0] for a in r.get("acl") or []}
     for p in st["engine_postgresql.policy"].values():
         roles |= set(p["roles"])
-    for r in sorted(roles - {"", "public", owner_default}):
-        sql.append(f"DO $$ BEGIN CREATE ROLE {qi(r)} NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;")
+    defs = st.get("engine_postgresql.role_def") or {}
+    if defs:   # the design's roles, with what each may do; one the server has already (postgres) is left as it is
+        for r in defs.values():
+            attrs = " ".join(("" if r.get(k) else "NO") + k.upper() for k in ("login", "superuser", "createdb", "createrole", "inherit", "replication", "bypassrls"))
+            attrs += f" CONNECTION LIMIT {r['connection_limit']}" if r.get("connection_limit", -1) != -1 else ""
+            attrs += f" VALID UNTIL {lit(r['valid_until'])}" if r.get("valid_until") else ""
+            sql.append(f"DO $$ BEGIN CREATE ROLE {qi(r['name'])} {attrs}; EXCEPTION WHEN duplicate_object THEN NULL; END $$;")
+            if r.get("comment"):
+                sql.append(f"COMMENT ON ROLE {qi(r['name'])} IS {lit(r['comment'])};")
+        for m in (st.get("engine_postgresql.membership") or {}).values():
+            opts = [o for o, on in (("ADMIN OPTION", m["admin_option"]),) if on]
+            if "inherit_option" in m:
+                opts = [f"ADMIN {str(m['admin_option']).upper()}", f"INHERIT {str(m['inherit_option']).upper()}", f"SET {str(m['set_option']).upper()}"]
+                sql.append(f"GRANT {qi(m['role'])} TO {qi(m['member'])} WITH {', '.join(opts)};")
+            else:
+                sql.append(f"GRANT {qi(m['role'])} TO {qi(m['member'])}{' WITH ADMIN OPTION' if m['admin_option'] else ''};")
+    else:
+        for r in sorted(roles - {"", "public", owner_default}):
+            sql.append(f"DO $$ BEGIN CREATE ROLE {qi(r)} NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;")
     schemas = [n for n in S.ns.values() if n["parent_id"]]
     for n in sorted(schemas, key=lambda n: n["name"]):
         pn = st["engine_postgresql.namespace"].get(n["id"], {})
@@ -481,6 +498,10 @@ def script(st):
             sql.append(f"COMMENT ON SCHEMA {qi(n['name'])} IS {lit(n['comment'])};")
         if pn.get("acl"):
             sql += grants(f"SCHEMA {qi(n['name'])}", pn["acl"], pn.get("owner") or owner_default)
+    for d in (st.get("engine_postgresql.default_acl") or {}).values():
+        sql.append(f"ALTER DEFAULT PRIVILEGES FOR ROLE {qi(d['role'])}" + (f" IN SCHEMA {qi(d['schema'])}" if d["schema"] else "")
+                   + f" GRANT {d['privilege']} ON {d['object_type'].replace('_', ' ').upper()} TO {'PUBLIC' if d['grantee'] == 'PUBLIC' else qi(d['grantee'])}"
+                   + (" WITH GRANT OPTION;" if d["grantable"] else ";"))
     for e in st["engine_postgresql.extension"].values():
         sql.append(f"CREATE EXTENSION IF NOT EXISTS {qi(e['name'])} WITH SCHEMA {qi(e['schema_name'])} VERSION {lit(e['version'])};")
     for c in st["engine_postgresql.collation"].values():

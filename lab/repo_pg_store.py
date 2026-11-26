@@ -40,13 +40,14 @@ ORDER = ["cortex.designs", "cortex.namespaces", "cortex.required_extensions",
          "cortex.objects", "cortex.columns", "cortex.indexes", "cortex.index_parts", "cortex.constraints", "cortex.constraint_columns",
          "cortex.dependencies", "cortex.views", "cortex.routines", "cortex.routine_parameters", "cortex.triggers", "cortex.partitionings",
          "cortex.partitions", "cortex.sequences", "cortex.column_identities", "cortex.domains", "cortex.enum_values",
-         "engine_postgresql.namespaces", "engine_postgresql.collations", "engine_postgresql.relations", "engine_postgresql.inheritance",
+         "engine_postgresql.collations", "engine_postgresql.relations", "engine_postgresql.inheritance",
          "engine_postgresql.columns", "engine_postgresql.indexes", "engine_postgresql.index_parts", "engine_postgresql.constraints",
          "engine_postgresql.routines", "engine_postgresql.types", "engine_postgresql.sequences", "engine_postgresql.triggers", "engine_postgresql.trigger_columns",
-         "engine_postgresql.policies", "engine_postgresql.rules"]
+         "engine_postgresql.policies", "engine_postgresql.rules", "engine_postgresql.roles", "cortex.namespace_owners", "cortex.privileges",
+         "cortex.memberships", "engine_postgresql.memberships", "engine_postgresql.default_privileges"]
 
 
-def to_locked(old, version):
+def to_locked(old, version, parts=()):
     """The first store's rows as rows of the locked design: one design, every id a UUIDv7."""
     ids = defaultdict(lambda: str(uuid.uuid7()))
     U = lambda i: None if i is None else ids[i]  # noqa: E731
@@ -178,7 +179,74 @@ def to_locked(old, version):
                                            "check_expression": p["check_expr"]})
     for r in old["engine_postgresql.rule"]:
         add("engine_postgresql.rules", {"id": U(r["id"]), "object": U(r["object_id"]), "name": r["name"], "definition": r["definition"]})
+    access(out, parts, design, add)
     return out, design
+
+
+ACL = {"r": "SELECT", "a": "INSERT", "w": "UPDATE", "d": "DELETE", "D": "TRUNCATE", "x": "REFERENCES", "t": "TRIGGER", "m": "MAINTAIN",
+       "U": "USAGE", "C": "CREATE", "X": "EXECUTE", "T": "TEMPORARY", "c": "CONNECT", "s": "SET", "A": "ALTER SYSTEM"}
+DEFACL = {"r": "tables", "S": "sequences", "f": "functions", "T": "types", "n": "schemas", "L": "large_objects"}
+
+
+def acl_items(acl):
+    """An aclitem[] as (grantee, privilege, grantable), in its order; the grantor is the owner's and is not kept."""
+    for item in acl or []:
+        grantee, _, rest = item.partition("=")
+        letters = rest.partition("/")[0]
+        for k, ch in enumerate(letters):
+            if ch != "*":
+                yield grantee.strip('"'), ACL[ch], k + 1 < len(letters) and letters[k + 1] == "*"
+
+
+def access(out, parts, design, add):
+    """Who may do what (decision who-may-do-what): the cluster's roles as server objects, each owner a reference to one,
+    each aclitem a row of cortex.privileges, memberships, and each role's default privileges."""
+    objects = out["cortex.objects"]
+    role = {}
+    for k, p in enumerate(p for p in parts if p["kind"] == "role"):
+        pr = p["props"]
+        i = role[pr["rolname"]] = str(uuid.uuid7())
+        add("cortex.objects", {"id": i, "namespace": None, "kind": "role", "name": pr["rolname"], "signature": "", "parent": None,
+                               "position": len(objects) + 1, "comment": pr.get("comment"), "notes": None})
+        add("engine_postgresql.roles", {"id": i, **{k: pr.get(k) for k in ("login", "superuser", "createdb", "createrole", "inherit",
+                                                                         "replication", "bypassrls", "connection_limit", "valid_until")}})
+    place = Counter()
+
+    def grant(acl, **target):
+        for grantee, priv, grantable in acl_items(acl):
+            key = tuple(target.values())
+            place[key] += 1
+            add("cortex.privileges", {"id": str(uuid.uuid7()), "grantee": role.get(grantee), "grantee_name": None if grantee in role else (grantee or "PUBLIC"),
+                                      "namespace": target.get("namespace"), "object": target.get("object"), "column": target.get("column"),
+                                      "privilege": priv, "grantable": grantable, "position": place[key]})
+    obj_rows = {o["id"]: o for o in objects}
+    for t in ("engine_postgresql.relations", "engine_postgresql.routines", "engine_postgresql.types"):
+        for r in out[t]:
+            owner, acl = r.pop("owner", None), r.pop("acl", None)
+            o = obj_rows[r["id"]]
+            o["owner"], o["owner_name"] = (role[owner], None) if owner in role else (None, owner)
+            grant(acl, object=r["id"])
+    for r in out.pop("engine_postgresql.namespaces", []):   # a schema's owner and grants: nothing of it stays an option
+        owner, acl = r.pop("owner", None), r.pop("acl", None)
+        if owner:
+            add("cortex.namespace_owners", {"id": r["id"], "owner": role.get(owner), "owner_name": None if owner in role else owner})
+        grant(acl, namespace=r["id"])
+    for r in out["engine_postgresql.columns"]:
+        grant(r.pop("acl", None), column=r["id"])
+    for k, p in enumerate(p for p in parts if p["kind"] == "membership"):
+        pr = p["props"]
+        i = str(uuid.uuid7())
+        add("cortex.memberships", {"id": i, "role": role[pr["role"]], "member": role[pr["member"]], "admin_option": pr["admin_option"], "position": k + 1})
+        if "set_option" in pr:
+            add("engine_postgresql.memberships", {"id": i, "inherit_option": pr["inherit_option"], "set_option": pr["set_option"]})
+    ns = {n["name"]: n["id"] for n in out["cortex.namespaces"] if n["parent"]}
+    for p in (p for p in parts if p["kind"] == "default_acl"):
+        pr = p["props"]
+        for k, (grantee, priv, grantable) in enumerate(acl_items(pr["acl"])):
+            add("engine_postgresql.default_privileges", {"id": str(uuid.uuid7()), "role": role[pr["role"]], "namespace": ns.get(pr["schema"]),
+                                                         "object_type": DEFACL[pr["objtype"]], "grantee": role.get(grantee),
+                                                         "grantee_name": None if grantee in role else (grantee or "PUBLIC"),
+                                                         "privilege": priv, "grantable": grantable, "position": k + 1})
 
 
 def from_locked(st):
@@ -276,8 +344,6 @@ def from_locked(st):
             "attributes": json.dumps([{"name": f["name"], "type": f["type"]} for f in fields]) if fields else None,
             "base": d.get("base"), "not_null": not d.get("nullable", True), "default_value": d.get("default_value"),
             "collation_name": d.get("collation"), "range_subtype": t["range_subtype"], "multirange": t["multirange"], "owner": t["owner"], "acl": t["acl"]}
-    for n in st["engine_postgresql.namespaces"].values():
-        out["engine_postgresql.namespace"][n["id"]] = {"id": n["id"], "owner": n["owner"], "acl": n["acl"]}
     for c in st["engine_postgresql.collations"].values():
         out["engine_postgresql.collation"][c["id"]] = {**{k: c[k] for k in ("id", "name", "provider", "locale", "lc_collate", "lc_ctype",
                                                                           "deterministic", "comment")}, "namespace_id": c["namespace"]}
@@ -313,7 +379,52 @@ def from_locked(st):
         out["engine_postgresql.rule"][r["id"]] = {"id": r["id"], "object_id": r["object"], "name": r["name"], "definition": r["definition"]}
     for k in P.ORDER:
         out.setdefault(k, {})
+    access_back(st, out)
     return out
+
+
+def access_back(st, out):
+    """The roles, owners and grants of the design, in the shape the first store's writer reads: each owner a role's name, each
+    target's privileges its aclitem[] again, the grantor its owner."""
+    objs = st["cortex.objects"]
+    name = lambda i, n: objs[i]["name"] if i else n  # noqa: E731
+    letter = {v: k for k, v in ACL.items()}
+    by = defaultdict(list)
+    for g in sorted(st["cortex.privileges"].values(), key=lambda g: g["position"]):
+        by[g["namespace"] or g["object"] or g["column"]].append(g)
+
+    def acl(target, owner):
+        items = {}
+        for g in by.get(target, []):
+            who = "" if g["grantee_name"] == "PUBLIC" else name(g["grantee"], g["grantee_name"])
+            items[who] = items.get(who, "") + letter[g["privilege"]] + ("*" if g["grantable"] else "")
+        return [f"{w}={l}/{owner}" for w, l in items.items()] or None
+    for t in ("engine_postgresql.relation", "engine_postgresql.routine", "engine_postgresql.type"):
+        for i, r in out[t].items():
+            o = objs[i]
+            r["owner"] = name(o.get("owner"), o.get("owner_name"))
+            r["acl"] = acl(i, r["owner"] or "postgres")
+    owners = st["cortex.namespace_owners"]
+    for n in st["cortex.namespaces"].values():
+        if n["parent"] is None:
+            continue
+        own = owners.get(n["id"])
+        owner = name(own["owner"], own["owner_name"]) if own else None
+        out["engine_postgresql.namespace"][n["id"]] = {"id": n["id"], "owner": owner, "acl": acl(n["id"], owner or "postgres")}
+    for c in st["cortex.columns"].values():
+        if by.get(c["id"]):
+            row = out["engine_postgresql.column"].setdefault(c["id"], {"id": c["id"], "is_local": True, "inherit_count": 0, "options": None})
+            row["acl"] = acl(c["id"], name(objs[c["object"]].get("owner"), objs[c["object"]].get("owner_name")) or "postgres")
+    out["engine_postgresql.role_def"] = {o["id"]: {"name": o["name"], "comment": o["comment"], **st["engine_postgresql.roles"].get(o["id"], {})}
+                                         for o in sorted(objs.values(), key=lambda o: o["position"]) if o["kind"] == "role"}
+    out["engine_postgresql.membership"] = {m["id"]: {"role": objs[m["role"]]["name"], "member": objs[m["member"]]["name"], "admin_option": m["admin_option"],
+                                                     **st["engine_postgresql.memberships"].get(m["id"], {})}
+                                           for m in sorted(st["cortex.memberships"].values(), key=lambda m: m["position"])}
+    ns = st["cortex.namespaces"]
+    out["engine_postgresql.default_acl"] = {d["id"]: {"role": objs[d["role"]]["name"], "schema": ns[d["namespace"]]["name"] if d["namespace"] else None,
+                                                      "object_type": d["object_type"], "grantee": name(d["grantee"], d["grantee_name"]),
+                                                      "privilege": d["privilege"], "grantable": d["grantable"]}
+                                            for d in sorted(st["engine_postgresql.default_privileges"].values(), key=lambda d: d["position"])}
 
 
 def jsonish(rows):
@@ -326,7 +437,7 @@ def main():
     for path in [a for a in sys.argv[1:] if not a.startswith("--")]:
         snap = json.load(open(path))
         version = snap["version"]
-        rows, design = to_locked(P.rows_of(snap), version)
+        rows, design = to_locked(P.rows_of(snap), version, snap["parts"])
         db = f"lab_repo_postgresql_{version}"
         R.build(db)
         t = time.time()

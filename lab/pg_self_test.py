@@ -17,6 +17,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.dont_write_bytecode = True
+import common as C  # noqa: E402
 import extract as X  # noqa: E402
 
 ROOT = os.path.dirname(HERE)
@@ -56,16 +57,23 @@ def psql(container, sql):
 def main():
     versions = sys.argv[1:] or ["15", "16", "17", "18"]
     for v in versions:
-        c = f"sf-pg-{v}"
-        psql(c, "".join(f"DROP SCHEMA IF EXISTS {n} CASCADE;\n" for n in NAMESPACES))
-        psql(c, prelude(v) + dump_for(v))
-        X.SCHEMAS = NAMESPACES
-        parts = X.extract_pg(v, c)
-        path = os.path.join(HERE, "out", f"self-postgresql-{v}.json")
-        json.dump({"engine": "postgresql", "version": v, "prelude": prelude(v), "parts": parts}, open(path, "w"), indent=1, sort_keys=True, default=str)
-        print(f"postgresql {v}: our own schema loaded and captured, {len(parts)} parts")
-        r = subprocess.run([sys.executable, "-B", os.path.join(HERE, "repo_pg_store.py"), "--roundtrip", path], capture_output=True, text=True)
-        print((r.stdout + r.stderr).strip())
+        # a server of its own for the run, made and dropped here: nothing of the samples' database is read with ours
+        c = f"sf-pg-self-{v}"
+        C.S.remove(c)
+        C.S.sh("docker", "run", "-d", "--name", c, "-e", f"POSTGRES_PASSWORD={C.S.PW}", f"postgres:{v}-alpine")
+        try:
+            C.ready_pg(c)
+            psql(c, prelude(v) + dump_for(v))
+            X.SCHEMAS = NAMESPACES
+            parts = X.extract_pg(v, c)
+            path = os.path.join(HERE, "out", f"self-postgresql-{v}.json")
+            json.dump({"engine": "postgresql", "version": v, "prelude": prelude(v), "source": c, "parts": parts}, open(path, "w"),
+                      indent=1, sort_keys=True, default=str)
+            print(f"postgresql {v}: our own schema loaded and captured, {len(parts)} parts")
+            r = subprocess.run([sys.executable, "-B", os.path.join(HERE, "repo_pg_store.py"), "--roundtrip", path], capture_output=True, text=True)
+            print((r.stdout + r.stderr).strip())
+        finally:
+            C.S.remove(c)
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ def main():
         loaded.append(rows["cortex.designs"][0]["name"])
     for path in sorted(glob.glob(f"{HERE}/out/postgresql-*.json")) + sorted(glob.glob(f"{HERE}/out/self-postgresql-*.json")):
         snap = json.load(open(path))
-        rows, _ = RP.to_locked(P.rows_of(snap), snap["version"])
+        rows, _ = RP.to_locked(P.rows_of(snap), snap["version"], snap["parts"])
         rows["cortex.designs"][0]["name"] = f"{'ours' if 'self-' in path else 'fixture'}-postgresql-{snap['version']}"
         rows = RP.jsonish(R.OL.to_options(rows))
         C.psql("BEGIN;\nSET ROLE sf_service;\n" + "".join(R.copy_sql(k, rows[k]) for k in RP.ORDER if rows.get(k)) + "COMMIT;\n", DB)

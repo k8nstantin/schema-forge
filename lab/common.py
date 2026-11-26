@@ -70,7 +70,7 @@ def ready_mysql(name):
 def schema_dump(container, schemas):
     """PostgreSQL's own word on a database's structure: pg_dump --schema-only of the schemas named, as statements,
     without the lines that differ between any two dumps (comments, SET, the restrict key)."""
-    args = ["docker", "exec", container, "pg_dump", "-U", "postgres", "-d", SOURCE_DB, "--schema-only", "--no-owner"] + [f"--schema={n}" for n in schemas]
+    args = ["docker", "exec", container, "pg_dump", "-U", "postgres", "-d", SOURCE_DB, "--schema-only"] + [f"--schema={n}" for n in schemas]
     out = subprocess.run(args, capture_output=True, text=True).stdout
     keep = "\n".join(l for l in out.split("\n") if l and not l.startswith(("--", "SET ", "SELECT pg_catalog.set_config", "\\restrict", "\\unrestrict")))
     return sorted(st.strip() for st in keep.split(";\n") if st.strip())
