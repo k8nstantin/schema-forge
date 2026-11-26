@@ -69,7 +69,7 @@ engine_is = "".join(card(a, b) for a, b in [
     ("Its types", "Every type and every spelling a dump uses, mapped to Apache Arrow's types, so a move between databases names what is kept, widened, approximated or lost."),
     ("Its kinds and options", "What kinds of object it has (tables, views, routines, pools) and the options of each, declared as data: the canvas builds its forms from them, and the kit refuses an option not declared."),
     ("Reading and writing", "Its own grammar for its dumps and DDL, its live catalog through a connection, and SQL written back that loads into the real database."),
-    ("Its tables", f"What only it has, in its own namespace <code>engine_&lt;id&gt;</code> of each schema's database, versioned on its own, from <a href=\"{e(L.get('template', '#'))}\">the owner template</a>. MySQL brings {n_mysql}."),
+    ("Its tables", f"What only it has, in its own namespace <code>engine_&lt;id&gt;</code> of the one database, <code>schema_forge</code>, every row carrying its design, versioned on its own, from <a href=\"{e(L.get('template', '#'))}\">the owner template</a>. MySQL brings {n_mysql}."),
     ("Add-ons", "An extension of the database (PostGIS, a company's conventions) is a crate of its own that adds types, statements and rules to the engine, registered with one line, never a fork."),
 ])
 guards = "".join(card(a, b) for a, b in [

@@ -311,9 +311,9 @@ undrawn_note = ", ".join(f"<code>{e(a)}.{e(c)}</code>" for a, c, b in undrawn)
 body = f"""
 <div class="tb" role="group" aria-label="Title block">
   <div><span>Engine</span><b>PostgreSQL 18, bundled</b></div><div><span>Database</span><b>schema_forge</b></div>
-  <div><span>Tables</span><b>{ntab}</b></div><div><span>Rules</span><b>{nq}</b></div><div><span>Date</span><b>2026-11-24</b></div>
+  <div><span>Tables</span><b>{ntab}</b></div><div><span>Rules</span><b>{nq or "on ice"}</b></div><div><span>Date</span><b>2026-11-26</b></div>
 </div>
-<h1>%PRODUCT% Database <span class="draft">Draft 2</span></h1>
+<h1>%PRODUCT% Database <span class="draft">Draft 3</span></h1>
 <p class="lede">Every table %PRODUCT% keeps its work in, designed first and locked: no build creates or changes one. The cortex is what every
 engine shares; each engine ships its own tables in its plugin, in its own namespace, in the same database as the cortex rows they refer to, so
 PostgreSQL enforces every reference. Every column is typed, checked and documented, in its file and in the database's own comments, and a rule a
@@ -342,6 +342,7 @@ foreign key cannot state is a view the database enforces at every commit. Everyt
 {body_tables}
 
 <section id="rules"><h2>Rules</h2><p class="lede">What a foreign key cannot say. Each rule is a view of the rows breaking it, one file each; <code>cortex.enforce_rules</code> reads which tables the view depends on and puts the triggers on them, so PostgreSQL itself refuses any commit that breaks a rule, whatever wrote it. No list of tables is kept by hand.</p>
+<p class="lede"><b>On ice since 2026-11-26.</b> Every rule view waits in <code>lab/rules-on-ice</code> until the rules are their own owner and schema (decision rules-tables), each checking only the designs a commit changed; the machinery below stays. Until then the foreign keys hold every design apart by themselves.</p>
 <figure>{rules_svg}<figcaption>Tested on PostgreSQL 18: a key on a view, a number its counter never gave, a nullable primary key column and a MySQL table option on a view are each refused at commit; 3,000 rows commit in about 30 ms.</figcaption></figure>
 {rules_html}</section>
 
