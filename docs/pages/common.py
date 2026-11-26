@@ -220,17 +220,13 @@ def task_title(task):
     return f"{task.get('id')} · {task.get('name')}: {task.get('title')}"
 
 
-MODE = "artifact"   # "artifact": links to the published pages; "site": relative links between the site's files
 FILES = {"site": "index.html", "home": "start.html", "database": "database.html", "template": "template.html",
          "build-spec": "build-spec.html", "engines": "engines.html", "contribute": "contribute.html"}
 
 
 def links():
-    """Where each page is: the published pages' links, or the site's own files (relative, so any domain serves it)."""
-    if MODE == "site":
-        return dict(FILES)
-    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "links.json")
-    return json.load(open(p)) if os.path.exists(p) else {}
+    """Where each page is: the site's own files, relative, so any domain serves it."""
+    return dict(FILES)
 
 
 CSS = r"""
@@ -334,25 +330,24 @@ def page(key, title, css, body, sub=""):
     L = links()
     site = L.get("site", "#")
     nav = (f'<nav class="nav" aria-label="%PRODUCT%"><a class="brand" href="{"#top" if key == "site" else site}"'
-           f'{"" if key == "site" or MODE == "site" else ' target="_blank" rel="noopener"'}>%PRODUCT%</a>')
+           '>%PRODUCT%</a>')
     for k, name in PAGES:
         href = L.get(k, "#")
-        cur = ' aria-current="page"' if k == key else ("" if MODE == "site" else ' target="_blank" rel="noopener"')
+        cur = ' aria-current="page"' if k == key else ""
         nav += f'<a href="{"#top" if k == key else href}"{cur}>{e(name)}</a>'
     nav += '<a href="%REPO%" target="_blank" rel="noopener">GitHub</a>'
     if sub:
         nav += f'<div class="sub">{sub}</div>'
     nav += "</nav>"
-    icon = '<link rel="icon" href="favicon.svg" type="image/svg+xml">\n' if MODE == "site" else ""
+    icon = '<link rel="icon" href="favicon.svg" type="image/svg+xml">\n'
     note = " ".join("".join(_BRIEF.find("page-note").itertext()).split()).replace("%SITE%", SITE_URL).replace("%PRODUCT%", PRODUCT)
     agent = f'<link rel="alternate" type="application/xml" title="{e(note)}" href="{e(SITE_URL)}agents.xml">\n'
     said = " ".join("".join(_BRIEF.find("page-agent").itertext()).split()).replace("%SITE%", SITE_URL).replace("%PRODUCT%", PRODUCT)
     box = (f'<aside class="agents" aria-label="For coding agents"><p class="kicker">For coding agents</p><p>{e(said)}</p>'
            f'<a class="btn btn-outline" href="{e(SITE_URL)}agents.xml">The brief: agents.xml</a></aside>'
            )
-    head = ('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-            if MODE == "site" else "")
-    out = (f'{head}{agent}<title>{e(title)}</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n{icon}{FONTS}\n'
+    head = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    out = (f'{head}{agent}<title>{e(title)}</title>\n{icon}{FONTS}\n'
             f'<style>{CSS}{css}</style>\n<div class="wrap"><span id="top"></span>{nav}{body}{box}'
             '<p class="foot"><span>%PRODUCT% · MIT or Apache-2.0</span><a href="%REPO%">GitHub</a>'
             '<a href="%REPO%/discussions">Discussions</a>'

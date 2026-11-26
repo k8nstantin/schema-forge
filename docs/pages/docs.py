@@ -24,9 +24,8 @@ def doc_file(doc_id):
 
 
 def doc_href(doc_id):
-    """A doc's page: relative on the site, the site's address from a published preview."""
-    import common
-    return doc_file(doc_id) if common.MODE == "site" else f"{SITE_URL}{doc_file(doc_id)}"
+    """A doc's page, relative on the site."""
+    return doc_file(doc_id)
 
 
 def slug(title):
