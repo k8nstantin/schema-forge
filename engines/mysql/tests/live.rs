@@ -28,7 +28,7 @@ impl Server {
 
     fn named(version: &str, name: &str) -> Self {
         let name = name.to_string();
-        let _ = Command::new("docker").args(["rm", "-f", &name]).output();
+        let _ = Command::new("docker").args(["rm", "-f", "-v", &name]).output();
         let image = format!("mysql:{version}");
         let env = format!("MYSQL_ROOT_PASSWORD={ROOT}");
         let ok = Command::new("docker")
@@ -119,7 +119,7 @@ impl Server {
 
 impl Drop for Server {
     fn drop(&mut self) {
-        let _ = Command::new("docker").args(["rm", "-f", &self.name]).output();
+        let _ = Command::new("docker").args(["rm", "-f", "-v", &self.name]).output();
     }
 }
 

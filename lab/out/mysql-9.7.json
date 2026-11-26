@@ -28,20 +28,16 @@
    }
   },
   {
-   "key": "shop.big_orders",
-   "kind": "table",
-   "parent": "shop",
+   "key": "features_js",
+   "kind": "namespace",
+   "parent": null,
    "props": {
-    "CREATE_OPTIONS": null,
-    "ENGINE": null,
-    "ROW_FORMAT": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_COLLATION": null,
-    "TABLE_COMMENT": "VIEW",
-    "TABLE_NAME": "big_orders",
-    "TABLE_SCHEMA": "shop",
-    "TABLE_TYPE": "VIEW",
-    "VERSION": null
+    "CATALOG_NAME": "def",
+    "DEFAULT_CHARACTER_SET_NAME": "utf8mb4",
+    "DEFAULT_COLLATION_NAME": "utf8mb4_0900_ai_ci",
+    "DEFAULT_ENCRYPTION": "NO",
+    "SCHEMA_NAME": "features_js",
+    "SQL_PATH": null
    }
   },
   {
@@ -70,7 +66,7 @@
    }
   },
   {
-   "key": "shop.order_items",
+   "key": "shop.products",
    "kind": "table",
    "parent": "shop",
    "props": {
@@ -80,15 +76,16 @@
     "TABLE_CATALOG": "def",
     "TABLE_COLLATION": "utf8mb4_0900_ai_ci",
     "TABLE_COMMENT": "",
-    "TABLE_NAME": "order_items",
+    "TABLE_NAME": "products",
     "TABLE_SCHEMA": "shop",
     "TABLE_TYPE": "BASE TABLE",
     "VERSION": 10,
+    "__auto_increment": 4,
     "__index_order": [
      "PRIMARY",
-     "fk_p"
+     "uk_sku"
     ],
-    "__show_create": "CREATE TABLE `order_items` (\n  `order_id` int NOT NULL,\n  `product_id` int NOT NULL,\n  `qty` int DEFAULT NULL,\n  PRIMARY KEY (`order_id`,`product_id`),\n  KEY `fk_p` (`product_id`),\n  CONSTRAINT `fk_o` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`),\n  CONSTRAINT `fk_p` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+    "__show_create": "CREATE TABLE `products` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `sku` varchar(20) NOT NULL,\n  `price` decimal(10,2) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `uk_sku` (`sku`)\n) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
    }
   },
   {
@@ -116,7 +113,7 @@
    }
   },
   {
-   "key": "shop.products",
+   "key": "shop.order_items",
    "kind": "table",
    "parent": "shop",
    "props": {
@@ -126,16 +123,146 @@
     "TABLE_CATALOG": "def",
     "TABLE_COLLATION": "utf8mb4_0900_ai_ci",
     "TABLE_COMMENT": "",
-    "TABLE_NAME": "products",
+    "TABLE_NAME": "order_items",
     "TABLE_SCHEMA": "shop",
     "TABLE_TYPE": "BASE TABLE",
     "VERSION": 10,
-    "__auto_increment": 4,
     "__index_order": [
      "PRIMARY",
-     "uk_sku"
+     "fk_p"
     ],
-    "__show_create": "CREATE TABLE `products` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `sku` varchar(20) NOT NULL,\n  `price` decimal(10,2) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `uk_sku` (`sku`)\n) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+    "__show_create": "CREATE TABLE `order_items` (\n  `order_id` int NOT NULL,\n  `product_id` int NOT NULL,\n  `qty` int DEFAULT NULL,\n  PRIMARY KEY (`order_id`,`product_id`),\n  KEY `fk_p` (`product_id`),\n  CONSTRAINT `fk_o` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`),\n  CONSTRAINT `fk_p` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+   }
+  },
+  {
+   "key": "shop.big_orders",
+   "kind": "table",
+   "parent": "shop",
+   "props": {
+    "CREATE_OPTIONS": null,
+    "ENGINE": null,
+    "ROW_FORMAT": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": null,
+    "TABLE_COMMENT": "VIEW",
+    "TABLE_NAME": "big_orders",
+    "TABLE_SCHEMA": "shop",
+    "TABLE_TYPE": "VIEW",
+    "VERSION": null
+   }
+  },
+  {
+   "key": "features.kinds",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": "row_format=DYNAMIC",
+    "ENGINE": "InnoDB",
+    "ROW_FORMAT": "Dynamic",
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": "utf8mb4_unicode_ci",
+    "TABLE_COMMENT": "every column type",
+    "TABLE_NAME": "kinds",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "BASE TABLE",
+    "VERSION": 10,
+    "__auto_increment": 1000,
+    "__index_order": [
+     "PRIMARY",
+     "uk_name",
+     "k_status_seen",
+     "k_note",
+     "sp_shape",
+     "ft_note"
+    ],
+    "__show_create": "CREATE TABLE `kinds` (\n  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'the row',\n  `tiny` tinyint(1) NOT NULL DEFAULT '0',\n  `small` smallint(5) unsigned zerofill DEFAULT NULL,\n  `money` decimal(18,4) NOT NULL DEFAULT '0.0000',\n  `ratio` double DEFAULT NULL,\n  `born` date DEFAULT NULL,\n  `seen` datetime(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),\n  `stamp` timestamp NULL DEFAULT NULL,\n  `yr` year DEFAULT NULL,\n  `t` time(3) DEFAULT NULL,\n  `name` varchar(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,\n  `note` text COLLATE utf8mb4_unicode_ci,\n  `blob_` blob,\n  `bits` bit(8) DEFAULT NULL,\n  `status` enum('new','paid','shipped') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'new',\n  `flags` set('a','b','c') COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `doc` json DEFAULT NULL,\n  `shape` geometry NOT NULL,\n  `name_upper` varchar(100) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (upper(`name`)) VIRTUAL,\n  `money_cents` bigint GENERATED ALWAYS AS ((`money` * 100)) STORED,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `uk_name` (`name`),\n  KEY `k_status_seen` (`status`,`seen`),\n  KEY `k_note` (`note`(20)),\n  SPATIAL KEY `sp_shape` (`shape`),\n  FULLTEXT KEY `ft_note` (`note`)\n) ENGINE=InnoDB AUTO_INCREMENT=1000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='every column type'"
+   }
+  },
+  {
+   "key": "features.parent",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": "",
+    "ENGINE": "InnoDB",
+    "ROW_FORMAT": "Dynamic",
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": "utf8mb4_unicode_ci",
+    "TABLE_COMMENT": "",
+    "TABLE_NAME": "parent",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "BASE TABLE",
+    "VERSION": 10,
+    "__index_order": [
+     "PRIMARY",
+     "uk_code"
+    ],
+    "__show_create": "CREATE TABLE `parent` (\n  `id` int NOT NULL,\n  `code` char(3) COLLATE utf8mb4_unicode_ci NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `uk_code` (`code`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+   }
+  },
+  {
+   "key": "features.child",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": "",
+    "ENGINE": "InnoDB",
+    "ROW_FORMAT": "Dynamic",
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": "utf8mb4_unicode_ci",
+    "TABLE_COMMENT": "",
+    "TABLE_NAME": "child",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "BASE TABLE",
+    "VERSION": 10,
+    "__index_order": [
+     "PRIMARY",
+     "fk_parent",
+     "fk_code"
+    ],
+    "__show_create": "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `parent_id` int DEFAULT NULL,\n  `parent_code` char(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `fk_parent` (`parent_id`),\n  KEY `fk_code` (`parent_code`),\n  CONSTRAINT `fk_code` FOREIGN KEY (`parent_code`) REFERENCES `parent` (`code`) ON DELETE RESTRICT,\n  CONSTRAINT `fk_parent` FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`) ON DELETE CASCADE ON UPDATE SET NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+   }
+  },
+  {
+   "key": "features.by_range",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": "partitioned",
+    "ENGINE": "InnoDB",
+    "ROW_FORMAT": "Dynamic",
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": "utf8mb4_unicode_ci",
+    "TABLE_COMMENT": "",
+    "TABLE_NAME": "by_range",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "BASE TABLE",
+    "VERSION": 10,
+    "__index_order": [
+     "PRIMARY"
+    ],
+    "__show_create": "CREATE TABLE `by_range` (\n  `id` int NOT NULL,\n  `d` date NOT NULL,\n  PRIMARY KEY (`id`,`d`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n/*!50100 PARTITION BY RANGE (year(`d`))\n(PARTITION p2024 VALUES LESS THAN (2025) ENGINE = InnoDB,\n PARTITION p2025 VALUES LESS THAN (2026) ENGINE = InnoDB,\n PARTITION pmax VALUES LESS THAN MAXVALUE ENGINE = InnoDB) */"
+   }
+  },
+  {
+   "key": "features.by_list",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": "partitioned",
+    "ENGINE": "InnoDB",
+    "ROW_FORMAT": "Dynamic",
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": "utf8mb4_unicode_ci",
+    "TABLE_COMMENT": "",
+    "TABLE_NAME": "by_list",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "BASE TABLE",
+    "VERSION": 10,
+    "__index_order": [
+     "PRIMARY"
+    ],
+    "__show_create": "CREATE TABLE `by_list` (\n  `id` int NOT NULL,\n  `region` int NOT NULL,\n  PRIMARY KEY (`id`,`region`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n/*!50100 PARTITION BY LIST (`region`)\n(PARTITION p_east VALUES IN (1,2) ENGINE = InnoDB,\n PARTITION p_west VALUES IN (3,4) ENGINE = InnoDB) */"
    }
   },
   {
@@ -181,95 +308,24 @@
    }
   },
   {
-   "key": "features.by_list",
+   "key": "features.myisam_log",
    "kind": "table",
    "parent": "features",
    "props": {
-    "CREATE_OPTIONS": "partitioned",
-    "ENGINE": "InnoDB",
+    "CREATE_OPTIONS": "pack_keys=1 checksum=1 delay_key_write=1",
+    "ENGINE": "MyISAM",
     "ROW_FORMAT": "Dynamic",
     "TABLE_CATALOG": "def",
     "TABLE_COLLATION": "utf8mb4_unicode_ci",
     "TABLE_COMMENT": "",
-    "TABLE_NAME": "by_list",
+    "TABLE_NAME": "myisam_log",
     "TABLE_SCHEMA": "features",
     "TABLE_TYPE": "BASE TABLE",
     "VERSION": 10,
     "__index_order": [
      "PRIMARY"
     ],
-    "__show_create": "CREATE TABLE `by_list` (\n  `id` int NOT NULL,\n  `region` int NOT NULL,\n  PRIMARY KEY (`id`,`region`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n/*!50100 PARTITION BY LIST (`region`)\n(PARTITION p_east VALUES IN (1,2) ENGINE = InnoDB,\n PARTITION p_west VALUES IN (3,4) ENGINE = InnoDB) */"
-   }
-  },
-  {
-   "key": "features.by_range",
-   "kind": "table",
-   "parent": "features",
-   "props": {
-    "CREATE_OPTIONS": "partitioned",
-    "ENGINE": "InnoDB",
-    "ROW_FORMAT": "Dynamic",
-    "TABLE_CATALOG": "def",
-    "TABLE_COLLATION": "utf8mb4_unicode_ci",
-    "TABLE_COMMENT": "",
-    "TABLE_NAME": "by_range",
-    "TABLE_SCHEMA": "features",
-    "TABLE_TYPE": "BASE TABLE",
-    "VERSION": 10,
-    "__index_order": [
-     "PRIMARY"
-    ],
-    "__show_create": "CREATE TABLE `by_range` (\n  `id` int NOT NULL,\n  `d` date NOT NULL,\n  PRIMARY KEY (`id`,`d`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n/*!50100 PARTITION BY RANGE (year(`d`))\n(PARTITION p2024 VALUES LESS THAN (2025) ENGINE = InnoDB,\n PARTITION p2025 VALUES LESS THAN (2026) ENGINE = InnoDB,\n PARTITION pmax VALUES LESS THAN MAXVALUE ENGINE = InnoDB) */"
-   }
-  },
-  {
-   "key": "features.child",
-   "kind": "table",
-   "parent": "features",
-   "props": {
-    "CREATE_OPTIONS": "",
-    "ENGINE": "InnoDB",
-    "ROW_FORMAT": "Dynamic",
-    "TABLE_CATALOG": "def",
-    "TABLE_COLLATION": "utf8mb4_unicode_ci",
-    "TABLE_COMMENT": "",
-    "TABLE_NAME": "child",
-    "TABLE_SCHEMA": "features",
-    "TABLE_TYPE": "BASE TABLE",
-    "VERSION": 10,
-    "__index_order": [
-     "PRIMARY",
-     "fk_parent",
-     "fk_code"
-    ],
-    "__show_create": "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `parent_id` int DEFAULT NULL,\n  `parent_code` char(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `fk_parent` (`parent_id`),\n  KEY `fk_code` (`parent_code`),\n  CONSTRAINT `fk_code` FOREIGN KEY (`parent_code`) REFERENCES `parent` (`code`) ON DELETE RESTRICT,\n  CONSTRAINT `fk_parent` FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`) ON DELETE CASCADE ON UPDATE SET NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-   }
-  },
-  {
-   "key": "features.kinds",
-   "kind": "table",
-   "parent": "features",
-   "props": {
-    "CREATE_OPTIONS": "row_format=DYNAMIC",
-    "ENGINE": "InnoDB",
-    "ROW_FORMAT": "Dynamic",
-    "TABLE_CATALOG": "def",
-    "TABLE_COLLATION": "utf8mb4_unicode_ci",
-    "TABLE_COMMENT": "every column type",
-    "TABLE_NAME": "kinds",
-    "TABLE_SCHEMA": "features",
-    "TABLE_TYPE": "BASE TABLE",
-    "VERSION": 10,
-    "__auto_increment": 1000,
-    "__index_order": [
-     "PRIMARY",
-     "uk_name",
-     "k_status_seen",
-     "k_note",
-     "sp_shape",
-     "ft_note"
-    ],
-    "__show_create": "CREATE TABLE `kinds` (\n  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'the row',\n  `tiny` tinyint(1) NOT NULL DEFAULT '0',\n  `small` smallint(5) unsigned zerofill DEFAULT NULL,\n  `money` decimal(18,4) NOT NULL DEFAULT '0.0000',\n  `ratio` double DEFAULT NULL,\n  `born` date DEFAULT NULL,\n  `seen` datetime(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),\n  `stamp` timestamp NULL DEFAULT NULL,\n  `yr` year DEFAULT NULL,\n  `t` time(3) DEFAULT NULL,\n  `name` varchar(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,\n  `note` text COLLATE utf8mb4_unicode_ci,\n  `blob_` blob,\n  `bits` bit(8) DEFAULT NULL,\n  `status` enum('new','paid','shipped') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'new',\n  `flags` set('a','b','c') COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `doc` json DEFAULT NULL,\n  `shape` geometry NOT NULL,\n  `name_upper` varchar(100) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (upper(`name`)) VIRTUAL,\n  `money_cents` bigint GENERATED ALWAYS AS ((`money` * 100)) STORED,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `uk_name` (`name`),\n  KEY `k_status_seen` (`status`,`seen`),\n  KEY `k_note` (`note`(20)),\n  SPATIAL KEY `sp_shape` (`shape`),\n  FULLTEXT KEY `ft_note` (`note`)\n) ENGINE=InnoDB AUTO_INCREMENT=1000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='every column type'"
+    "__show_create": "CREATE TABLE `myisam_log` (\n  `id` int NOT NULL,\n  `msg` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci PACK_KEYS=1 CHECKSUM=1 DELAY_KEY_WRITE=1"
    }
   },
   {
@@ -298,6 +354,57 @@
    }
   },
   {
+   "key": "features.v_paid",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": null,
+    "ENGINE": null,
+    "ROW_FORMAT": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": null,
+    "TABLE_COMMENT": "VIEW",
+    "TABLE_NAME": "v_paid",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "VIEW",
+    "VERSION": null
+   }
+  },
+  {
+   "key": "features.v_by_status",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": null,
+    "ENGINE": null,
+    "ROW_FORMAT": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": null,
+    "TABLE_COMMENT": "VIEW",
+    "TABLE_NAME": "v_by_status",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "VIEW",
+    "VERSION": null
+   }
+  },
+  {
+   "key": "features.v_join",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": null,
+    "ENGINE": null,
+    "ROW_FORMAT": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": null,
+    "TABLE_COMMENT": "VIEW",
+    "TABLE_NAME": "v_join",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "VIEW",
+    "VERSION": null
+   }
+  },
+  {
    "key": "features.modern",
    "kind": "table",
    "parent": "features",
@@ -320,83 +427,6 @@
      "k_tags"
     ],
     "__show_create": "CREATE TABLE `modern` (\n  `id` int NOT NULL,\n  `qty` int NOT NULL DEFAULT (1),\n  `price` decimal(10,2) NOT NULL,\n  `secret` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL /*!80023 INVISIBLE */,\n  `tags` json DEFAULT NULL,\n  `created` datetime NOT NULL DEFAULT (now()),\n  PRIMARY KEY (`id`),\n  KEY `k_desc` (`created` DESC,`id`),\n  KEY `k_hidden` (`price`) /*!80000 INVISIBLE */,\n  KEY `k_lower` ((lower(`secret`))),\n  KEY `k_tags` ((cast(json_extract(`tags`,_latin1'$[*]') as unsigned array))),\n  CONSTRAINT `ck_price` CHECK ((`price` >= 0)) /*!80016 NOT ENFORCED */,\n  CONSTRAINT `ck_qty` CHECK ((`qty` > 0))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-   }
-  },
-  {
-   "key": "features.myisam_log",
-   "kind": "table",
-   "parent": "features",
-   "props": {
-    "CREATE_OPTIONS": "pack_keys=1 checksum=1 delay_key_write=1",
-    "ENGINE": "MyISAM",
-    "ROW_FORMAT": "Dynamic",
-    "TABLE_CATALOG": "def",
-    "TABLE_COLLATION": "utf8mb4_unicode_ci",
-    "TABLE_COMMENT": "",
-    "TABLE_NAME": "myisam_log",
-    "TABLE_SCHEMA": "features",
-    "TABLE_TYPE": "BASE TABLE",
-    "VERSION": 10,
-    "__index_order": [
-     "PRIMARY"
-    ],
-    "__show_create": "CREATE TABLE `myisam_log` (\n  `id` int NOT NULL,\n  `msg` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci PACK_KEYS=1 CHECKSUM=1 DELAY_KEY_WRITE=1"
-   }
-  },
-  {
-   "key": "features.parent",
-   "kind": "table",
-   "parent": "features",
-   "props": {
-    "CREATE_OPTIONS": "",
-    "ENGINE": "InnoDB",
-    "ROW_FORMAT": "Dynamic",
-    "TABLE_CATALOG": "def",
-    "TABLE_COLLATION": "utf8mb4_unicode_ci",
-    "TABLE_COMMENT": "",
-    "TABLE_NAME": "parent",
-    "TABLE_SCHEMA": "features",
-    "TABLE_TYPE": "BASE TABLE",
-    "VERSION": 10,
-    "__index_order": [
-     "PRIMARY",
-     "uk_code"
-    ],
-    "__show_create": "CREATE TABLE `parent` (\n  `id` int NOT NULL,\n  `code` char(3) COLLATE utf8mb4_unicode_ci NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `uk_code` (`code`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-   }
-  },
-  {
-   "key": "features.v_join",
-   "kind": "table",
-   "parent": "features",
-   "props": {
-    "CREATE_OPTIONS": null,
-    "ENGINE": null,
-    "ROW_FORMAT": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_COLLATION": null,
-    "TABLE_COMMENT": "VIEW",
-    "TABLE_NAME": "v_join",
-    "TABLE_SCHEMA": "features",
-    "TABLE_TYPE": "VIEW",
-    "VERSION": null
-   }
-  },
-  {
-   "key": "features.v_paid",
-   "kind": "table",
-   "parent": "features",
-   "props": {
-    "CREATE_OPTIONS": null,
-    "ENGINE": null,
-    "ROW_FORMAT": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_COLLATION": null,
-    "TABLE_COMMENT": "VIEW",
-    "TABLE_NAME": "v_paid",
-    "TABLE_SCHEMA": "features",
-    "TABLE_TYPE": "VIEW",
-    "VERSION": null
    }
   },
   {
@@ -1966,6 +1996,64 @@
    }
   },
   {
+   "key": "features.v_by_status.status",
+   "kind": "column",
+   "parent": "features.v_by_status",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": 7,
+    "CHARACTER_OCTET_LENGTH": 28,
+    "CHARACTER_SET_NAME": "utf8mb4",
+    "COLLATION_NAME": "utf8mb4_unicode_ci",
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": "new",
+    "COLUMN_KEY": "",
+    "COLUMN_NAME": "status",
+    "COLUMN_TYPE": "enum('new','paid','shipped')",
+    "DATA_TYPE": "enum",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "NO",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "ORDINAL_POSITION": 1,
+    "PRIVILEGES": "select,insert,update,references",
+    "SRS_ID": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "v_by_status",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.v_by_status.n",
+   "kind": "column",
+   "parent": "features.v_by_status",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": "0",
+    "COLUMN_KEY": "",
+    "COLUMN_NAME": "n",
+    "COLUMN_TYPE": "bigint",
+    "DATA_TYPE": "bigint",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "NO",
+    "NUMERIC_PRECISION": 19,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 2,
+    "PRIVILEGES": "select,insert,update,references",
+    "SRS_ID": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "v_by_status",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
    "key": "features.v_join.id",
    "kind": "column",
    "parent": "features.v_join",
@@ -3134,58 +3222,184 @@
    }
   },
   {
-   "key": "features.by_hash.PRIMARY.PRIMARY KEY",
+   "key": "shop.customers.PRIMARY.PRIMARY KEY",
    "kind": "constraint",
-   "parent": "features.by_hash",
+   "parent": "shop.customers",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "customers",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.customers.uk_email.UNIQUE",
+   "kind": "constraint",
+   "parent": "shop.customers",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "uk_email",
+    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_TYPE": "UNIQUE",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "customers",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.products.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "shop.products",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "products",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.products.uk_sku.UNIQUE",
+   "kind": "constraint",
+   "parent": "shop.products",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "uk_sku",
+    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_TYPE": "UNIQUE",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "products",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.orders.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "shop.orders",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "orders",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.orders.fk_cust.FOREIGN KEY",
+   "kind": "constraint",
+   "parent": "shop.orders",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "fk_cust",
+    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_TYPE": "FOREIGN KEY",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "orders",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.order_items.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "shop.order_items",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "order_items",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.order_items.fk_o.FOREIGN KEY",
+   "kind": "constraint",
+   "parent": "shop.order_items",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "fk_o",
+    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_TYPE": "FOREIGN KEY",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "order_items",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.order_items.fk_p.FOREIGN KEY",
+   "kind": "constraint",
+   "parent": "shop.order_items",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "fk_p",
+    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_TYPE": "FOREIGN KEY",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "order_items",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "features.kinds.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "features.kinds",
    "props": {
     "CONSTRAINT_CATALOG": "def",
     "CONSTRAINT_NAME": "PRIMARY",
     "CONSTRAINT_SCHEMA": "features",
     "CONSTRAINT_TYPE": "PRIMARY KEY",
     "ENFORCED": "YES",
-    "TABLE_NAME": "by_hash",
+    "TABLE_NAME": "kinds",
     "TABLE_SCHEMA": "features"
    }
   },
   {
-   "key": "features.by_key_sub.PRIMARY.PRIMARY KEY",
+   "key": "features.kinds.uk_name.UNIQUE",
    "kind": "constraint",
-   "parent": "features.by_key_sub",
+   "parent": "features.kinds",
    "props": {
     "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_NAME": "uk_name",
     "CONSTRAINT_SCHEMA": "features",
-    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "CONSTRAINT_TYPE": "UNIQUE",
     "ENFORCED": "YES",
-    "TABLE_NAME": "by_key_sub",
+    "TABLE_NAME": "kinds",
     "TABLE_SCHEMA": "features"
    }
   },
   {
-   "key": "features.by_list.PRIMARY.PRIMARY KEY",
+   "key": "features.parent.PRIMARY.PRIMARY KEY",
    "kind": "constraint",
-   "parent": "features.by_list",
+   "parent": "features.parent",
    "props": {
     "CONSTRAINT_CATALOG": "def",
     "CONSTRAINT_NAME": "PRIMARY",
     "CONSTRAINT_SCHEMA": "features",
     "CONSTRAINT_TYPE": "PRIMARY KEY",
     "ENFORCED": "YES",
-    "TABLE_NAME": "by_list",
+    "TABLE_NAME": "parent",
     "TABLE_SCHEMA": "features"
    }
   },
   {
-   "key": "features.by_range.PRIMARY.PRIMARY KEY",
+   "key": "features.parent.uk_code.UNIQUE",
    "kind": "constraint",
-   "parent": "features.by_range",
+   "parent": "features.parent",
    "props": {
     "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_NAME": "uk_code",
     "CONSTRAINT_SCHEMA": "features",
-    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "CONSTRAINT_TYPE": "UNIQUE",
     "ENFORCED": "YES",
-    "TABLE_NAME": "by_range",
+    "TABLE_NAME": "parent",
     "TABLE_SCHEMA": "features"
    }
   },
@@ -3232,30 +3446,72 @@
    }
   },
   {
-   "key": "features.kinds.PRIMARY.PRIMARY KEY",
+   "key": "features.by_range.PRIMARY.PRIMARY KEY",
    "kind": "constraint",
-   "parent": "features.kinds",
+   "parent": "features.by_range",
    "props": {
     "CONSTRAINT_CATALOG": "def",
     "CONSTRAINT_NAME": "PRIMARY",
     "CONSTRAINT_SCHEMA": "features",
     "CONSTRAINT_TYPE": "PRIMARY KEY",
     "ENFORCED": "YES",
-    "TABLE_NAME": "kinds",
+    "TABLE_NAME": "by_range",
     "TABLE_SCHEMA": "features"
    }
   },
   {
-   "key": "features.kinds.uk_name.UNIQUE",
+   "key": "features.by_list.PRIMARY.PRIMARY KEY",
    "kind": "constraint",
-   "parent": "features.kinds",
+   "parent": "features.by_list",
    "props": {
     "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "uk_name",
+    "CONSTRAINT_NAME": "PRIMARY",
     "CONSTRAINT_SCHEMA": "features",
-    "CONSTRAINT_TYPE": "UNIQUE",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
     "ENFORCED": "YES",
-    "TABLE_NAME": "kinds",
+    "TABLE_NAME": "by_list",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.by_hash.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "features.by_hash",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "by_hash",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.by_key_sub.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "features.by_key_sub",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "by_key_sub",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.myisam_log.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "features.myisam_log",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "ENFORCED": "YES",
+    "TABLE_NAME": "myisam_log",
     "TABLE_SCHEMA": "features"
    }
   },
@@ -3316,497 +3572,6 @@
    }
   },
   {
-   "key": "features.myisam_log.PRIMARY.PRIMARY KEY",
-   "kind": "constraint",
-   "parent": "features.myisam_log",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "CONSTRAINT_TYPE": "PRIMARY KEY",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "myisam_log",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.parent.PRIMARY.PRIMARY KEY",
-   "kind": "constraint",
-   "parent": "features.parent",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "CONSTRAINT_TYPE": "PRIMARY KEY",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "parent",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.parent.uk_code.UNIQUE",
-   "kind": "constraint",
-   "parent": "features.parent",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "uk_code",
-    "CONSTRAINT_SCHEMA": "features",
-    "CONSTRAINT_TYPE": "UNIQUE",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "parent",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "shop.customers.PRIMARY.PRIMARY KEY",
-   "kind": "constraint",
-   "parent": "shop.customers",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "shop",
-    "CONSTRAINT_TYPE": "PRIMARY KEY",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "customers",
-    "TABLE_SCHEMA": "shop"
-   }
-  },
-  {
-   "key": "shop.customers.uk_email.UNIQUE",
-   "kind": "constraint",
-   "parent": "shop.customers",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "uk_email",
-    "CONSTRAINT_SCHEMA": "shop",
-    "CONSTRAINT_TYPE": "UNIQUE",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "customers",
-    "TABLE_SCHEMA": "shop"
-   }
-  },
-  {
-   "key": "shop.order_items.PRIMARY.PRIMARY KEY",
-   "kind": "constraint",
-   "parent": "shop.order_items",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "shop",
-    "CONSTRAINT_TYPE": "PRIMARY KEY",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "order_items",
-    "TABLE_SCHEMA": "shop"
-   }
-  },
-  {
-   "key": "shop.order_items.fk_o.FOREIGN KEY",
-   "kind": "constraint",
-   "parent": "shop.order_items",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "fk_o",
-    "CONSTRAINT_SCHEMA": "shop",
-    "CONSTRAINT_TYPE": "FOREIGN KEY",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "order_items",
-    "TABLE_SCHEMA": "shop"
-   }
-  },
-  {
-   "key": "shop.order_items.fk_p.FOREIGN KEY",
-   "kind": "constraint",
-   "parent": "shop.order_items",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "fk_p",
-    "CONSTRAINT_SCHEMA": "shop",
-    "CONSTRAINT_TYPE": "FOREIGN KEY",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "order_items",
-    "TABLE_SCHEMA": "shop"
-   }
-  },
-  {
-   "key": "shop.orders.PRIMARY.PRIMARY KEY",
-   "kind": "constraint",
-   "parent": "shop.orders",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "shop",
-    "CONSTRAINT_TYPE": "PRIMARY KEY",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "orders",
-    "TABLE_SCHEMA": "shop"
-   }
-  },
-  {
-   "key": "shop.orders.fk_cust.FOREIGN KEY",
-   "kind": "constraint",
-   "parent": "shop.orders",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "fk_cust",
-    "CONSTRAINT_SCHEMA": "shop",
-    "CONSTRAINT_TYPE": "FOREIGN KEY",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "orders",
-    "TABLE_SCHEMA": "shop"
-   }
-  },
-  {
-   "key": "shop.products.PRIMARY.PRIMARY KEY",
-   "kind": "constraint",
-   "parent": "shop.products",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "shop",
-    "CONSTRAINT_TYPE": "PRIMARY KEY",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "products",
-    "TABLE_SCHEMA": "shop"
-   }
-  },
-  {
-   "key": "shop.products.uk_sku.UNIQUE",
-   "kind": "constraint",
-   "parent": "shop.products",
-   "props": {
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "uk_sku",
-    "CONSTRAINT_SCHEMA": "shop",
-    "CONSTRAINT_TYPE": "UNIQUE",
-    "ENFORCED": "YES",
-    "TABLE_NAME": "products",
-    "TABLE_SCHEMA": "shop"
-   }
-  },
-  {
-   "key": "features.by_hash.PRIMARY.1",
-   "kind": "key_column",
-   "parent": "features.by_hash.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "by_hash",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.by_key_sub.PRIMARY.1",
-   "kind": "key_column",
-   "parent": "features.by_key_sub.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "by_key_sub",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.by_key_sub.PRIMARY.2",
-   "kind": "key_column",
-   "parent": "features.by_key_sub.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "d",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 2,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "by_key_sub",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.by_list.PRIMARY.1",
-   "kind": "key_column",
-   "parent": "features.by_list.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "by_list",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.by_list.PRIMARY.2",
-   "kind": "key_column",
-   "parent": "features.by_list.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "region",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 2,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "by_list",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.by_range.PRIMARY.1",
-   "kind": "key_column",
-   "parent": "features.by_range.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "by_range",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.by_range.PRIMARY.2",
-   "kind": "key_column",
-   "parent": "features.by_range.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "d",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 2,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "by_range",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.child.PRIMARY.1",
-   "kind": "key_column",
-   "parent": "features.child.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "child",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.child.fk_code.1",
-   "kind": "key_column",
-   "parent": "features.child.fk_code",
-   "props": {
-    "COLUMN_NAME": "parent_code",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "fk_code",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": 1,
-    "REFERENCED_COLUMN_NAME": "code",
-    "REFERENCED_TABLE_NAME": "parent",
-    "REFERENCED_TABLE_SCHEMA": "features",
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "child",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.child.fk_parent.1",
-   "kind": "key_column",
-   "parent": "features.child.fk_parent",
-   "props": {
-    "COLUMN_NAME": "parent_id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "fk_parent",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": 1,
-    "REFERENCED_COLUMN_NAME": "id",
-    "REFERENCED_TABLE_NAME": "parent",
-    "REFERENCED_TABLE_SCHEMA": "features",
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "child",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.kinds.PRIMARY.1",
-   "kind": "key_column",
-   "parent": "features.kinds.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "kinds",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.kinds.uk_name.1",
-   "kind": "key_column",
-   "parent": "features.kinds.uk_name",
-   "props": {
-    "COLUMN_NAME": "name",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "uk_name",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "kinds",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.merged.PRIMARY.1",
-   "kind": "key_column",
-   "parent": "features.merged.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "merged",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.modern.PRIMARY.1",
-   "kind": "key_column",
-   "parent": "features.modern.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "modern",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.myisam_log.PRIMARY.1",
-   "kind": "key_column",
-   "parent": "features.myisam_log.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "myisam_log",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.parent.PRIMARY.1",
-   "kind": "key_column",
-   "parent": "features.parent.PRIMARY",
-   "props": {
-    "COLUMN_NAME": "id",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "parent",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
-   "key": "features.parent.uk_code.1",
-   "kind": "key_column",
-   "parent": "features.parent.uk_code",
-   "props": {
-    "COLUMN_NAME": "code",
-    "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "uk_code",
-    "CONSTRAINT_SCHEMA": "features",
-    "ORDINAL_POSITION": 1,
-    "POSITION_IN_UNIQUE_CONSTRAINT": null,
-    "REFERENCED_COLUMN_NAME": null,
-    "REFERENCED_TABLE_NAME": null,
-    "REFERENCED_TABLE_SCHEMA": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "parent",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
    "key": "shop.customers.PRIMARY.1",
    "kind": "key_column",
    "parent": "shop.customers.PRIMARY",
@@ -3841,6 +3606,82 @@
     "REFERENCED_TABLE_SCHEMA": null,
     "TABLE_CATALOG": "def",
     "TABLE_NAME": "customers",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.products.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "shop.products.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "shop",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "products",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.products.uk_sku.1",
+   "kind": "key_column",
+   "parent": "shop.products.uk_sku",
+   "props": {
+    "COLUMN_NAME": "sku",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "uk_sku",
+    "CONSTRAINT_SCHEMA": "shop",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "products",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.orders.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "shop.orders.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "shop",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "orders",
+    "TABLE_SCHEMA": "shop"
+   }
+  },
+  {
+   "key": "shop.orders.fk_cust.1",
+   "kind": "key_column",
+   "parent": "shop.orders.fk_cust",
+   "props": {
+    "COLUMN_NAME": "customer_id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "fk_cust",
+    "CONSTRAINT_SCHEMA": "shop",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": 1,
+    "REFERENCED_COLUMN_NAME": "id",
+    "REFERENCED_TABLE_NAME": "customers",
+    "REFERENCED_TABLE_SCHEMA": "shop",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "orders",
     "TABLE_SCHEMA": "shop"
    }
   },
@@ -3921,79 +3762,326 @@
    }
   },
   {
-   "key": "shop.orders.PRIMARY.1",
+   "key": "features.kinds.PRIMARY.1",
    "kind": "key_column",
-   "parent": "shop.orders.PRIMARY",
+   "parent": "features.kinds.PRIMARY",
    "props": {
     "COLUMN_NAME": "id",
     "CONSTRAINT_CATALOG": "def",
     "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_SCHEMA": "features",
     "ORDINAL_POSITION": 1,
     "POSITION_IN_UNIQUE_CONSTRAINT": null,
     "REFERENCED_COLUMN_NAME": null,
     "REFERENCED_TABLE_NAME": null,
     "REFERENCED_TABLE_SCHEMA": null,
     "TABLE_CATALOG": "def",
-    "TABLE_NAME": "orders",
-    "TABLE_SCHEMA": "shop"
+    "TABLE_NAME": "kinds",
+    "TABLE_SCHEMA": "features"
    }
   },
   {
-   "key": "shop.orders.fk_cust.1",
+   "key": "features.kinds.uk_name.1",
    "kind": "key_column",
-   "parent": "shop.orders.fk_cust",
+   "parent": "features.kinds.uk_name",
    "props": {
-    "COLUMN_NAME": "customer_id",
+    "COLUMN_NAME": "name",
     "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "fk_cust",
-    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_NAME": "uk_name",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "kinds",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.parent.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.parent.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "parent",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.parent.uk_code.1",
+   "kind": "key_column",
+   "parent": "features.parent.uk_code",
+   "props": {
+    "COLUMN_NAME": "code",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "uk_code",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "parent",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.child.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.child.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "child",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.child.fk_code.1",
+   "kind": "key_column",
+   "parent": "features.child.fk_code",
+   "props": {
+    "COLUMN_NAME": "parent_code",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "fk_code",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": 1,
+    "REFERENCED_COLUMN_NAME": "code",
+    "REFERENCED_TABLE_NAME": "parent",
+    "REFERENCED_TABLE_SCHEMA": "features",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "child",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.child.fk_parent.1",
+   "kind": "key_column",
+   "parent": "features.child.fk_parent",
+   "props": {
+    "COLUMN_NAME": "parent_id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "fk_parent",
+    "CONSTRAINT_SCHEMA": "features",
     "ORDINAL_POSITION": 1,
     "POSITION_IN_UNIQUE_CONSTRAINT": 1,
     "REFERENCED_COLUMN_NAME": "id",
-    "REFERENCED_TABLE_NAME": "customers",
-    "REFERENCED_TABLE_SCHEMA": "shop",
+    "REFERENCED_TABLE_NAME": "parent",
+    "REFERENCED_TABLE_SCHEMA": "features",
     "TABLE_CATALOG": "def",
-    "TABLE_NAME": "orders",
-    "TABLE_SCHEMA": "shop"
+    "TABLE_NAME": "child",
+    "TABLE_SCHEMA": "features"
    }
   },
   {
-   "key": "shop.products.PRIMARY.1",
+   "key": "features.by_range.PRIMARY.1",
    "kind": "key_column",
-   "parent": "shop.products.PRIMARY",
+   "parent": "features.by_range.PRIMARY",
    "props": {
     "COLUMN_NAME": "id",
     "CONSTRAINT_CATALOG": "def",
     "CONSTRAINT_NAME": "PRIMARY",
-    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_SCHEMA": "features",
     "ORDINAL_POSITION": 1,
     "POSITION_IN_UNIQUE_CONSTRAINT": null,
     "REFERENCED_COLUMN_NAME": null,
     "REFERENCED_TABLE_NAME": null,
     "REFERENCED_TABLE_SCHEMA": null,
     "TABLE_CATALOG": "def",
-    "TABLE_NAME": "products",
-    "TABLE_SCHEMA": "shop"
+    "TABLE_NAME": "by_range",
+    "TABLE_SCHEMA": "features"
    }
   },
   {
-   "key": "shop.products.uk_sku.1",
+   "key": "features.by_range.PRIMARY.2",
    "kind": "key_column",
-   "parent": "shop.products.uk_sku",
+   "parent": "features.by_range.PRIMARY",
    "props": {
-    "COLUMN_NAME": "sku",
+    "COLUMN_NAME": "d",
     "CONSTRAINT_CATALOG": "def",
-    "CONSTRAINT_NAME": "uk_sku",
-    "CONSTRAINT_SCHEMA": "shop",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 2,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "by_range",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.by_list.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.by_list.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
     "ORDINAL_POSITION": 1,
     "POSITION_IN_UNIQUE_CONSTRAINT": null,
     "REFERENCED_COLUMN_NAME": null,
     "REFERENCED_TABLE_NAME": null,
     "REFERENCED_TABLE_SCHEMA": null,
     "TABLE_CATALOG": "def",
-    "TABLE_NAME": "products",
-    "TABLE_SCHEMA": "shop"
+    "TABLE_NAME": "by_list",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.by_list.PRIMARY.2",
+   "kind": "key_column",
+   "parent": "features.by_list.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "region",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 2,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "by_list",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.by_hash.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.by_hash.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "by_hash",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.by_key_sub.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.by_key_sub.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "by_key_sub",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.by_key_sub.PRIMARY.2",
+   "kind": "key_column",
+   "parent": "features.by_key_sub.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "d",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 2,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "by_key_sub",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.myisam_log.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.myisam_log.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "myisam_log",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.merged.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.merged.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "merged",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.modern.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.modern.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "modern",
+    "TABLE_SCHEMA": "features"
    }
   },
   {
@@ -4145,6 +4233,24 @@
    }
   },
   {
+   "key": "features.v_by_status",
+   "kind": "view",
+   "parent": "features",
+   "props": {
+    "CHARACTER_SET_CLIENT": "latin1",
+    "CHECK_OPTION": "NONE",
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "DEFINER": "root@localhost",
+    "IS_UPDATABLE": "NO",
+    "SECURITY_TYPE": "DEFINER",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "v_by_status",
+    "TABLE_SCHEMA": "features",
+    "VIEW_DEFINITION": "select `features`.`kinds`.`status` AS `status`,count(0) AS `n` from `features`.`kinds` group by `features`.`kinds`.`status`",
+    "__show_create": "CREATE ALGORITHM=TEMPTABLE DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `features`.`v_by_status` AS select `features`.`kinds`.`status` AS `status`,count(0) AS `n` from `features`.`kinds` group by `features`.`kinds`.`status`"
+   }
+  },
+  {
    "key": "features.v_join",
    "kind": "view",
    "parent": "features",
@@ -4239,6 +4345,44 @@
    }
   },
   {
+   "key": "features.p_purge.PROCEDURE",
+   "kind": "routine",
+   "parent": "features",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_CLIENT": "latin1",
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "COLLATION_NAME": null,
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DATA_TYPE": "",
+    "DATETIME_PRECISION": null,
+    "DEFINER": "root@localhost",
+    "DTD_IDENTIFIER": null,
+    "EXTERNAL_LANGUAGE": "SQL",
+    "EXTERNAL_NAME": null,
+    "IS_DETERMINISTIC": "NO",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "PARAMETER_STYLE": "SQL",
+    "ROUTINE_BODY": "SQL",
+    "ROUTINE_CATALOG": "def",
+    "ROUTINE_COMMENT": "",
+    "ROUTINE_DEFINITION": "DELETE FROM features.myisam_log WHERE id < p_before",
+    "ROUTINE_NAME": "p_purge",
+    "ROUTINE_SCHEMA": "features",
+    "ROUTINE_TYPE": "PROCEDURE",
+    "SECURITY_TYPE": "DEFINER",
+    "SPECIFIC_NAME": "p_purge",
+    "SQL_DATA_ACCESS": "MODIFIES SQL DATA",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+    "SQL_PATH": null,
+    "__show_create": "CREATE DEFINER=`root`@`localhost` PROCEDURE `p_purge`(IN p_before INT)\n    MODIFIES SQL DATA\nDELETE FROM features.myisam_log WHERE id < p_before",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
    "key": "features.f_cents.FUNCTION",
    "kind": "routine",
    "parent": "features",
@@ -4273,6 +4417,82 @@
     "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
     "SQL_PATH": null,
     "__show_create": "CREATE DEFINER=`root`@`localhost` FUNCTION `f_cents`(m DECIMAL(18,4)) RETURNS bigint\n    NO SQL\n    DETERMINISTIC\nRETURN m * 100",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
+   "key": "features.f_js.FUNCTION",
+   "kind": "routine",
+   "parent": "features",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_CLIENT": "utf8mb4",
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_CONNECTION": "utf8mb4_0900_ai_ci",
+    "COLLATION_NAME": null,
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "DEFINER": "root@localhost",
+    "DTD_IDENTIFIER": "int",
+    "EXTERNAL_LANGUAGE": "JAVASCRIPT",
+    "EXTERNAL_NAME": null,
+    "IS_DETERMINISTIC": "YES",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "PARAMETER_STYLE": "SQL",
+    "ROUTINE_BODY": "EXTERNAL",
+    "ROUTINE_CATALOG": "def",
+    "ROUTINE_COMMENT": "twice and three",
+    "ROUTINE_DEFINITION": " return lib_math.twice(x) + konst.k; ",
+    "ROUTINE_NAME": "f_js",
+    "ROUTINE_SCHEMA": "features",
+    "ROUTINE_TYPE": "FUNCTION",
+    "SECURITY_TYPE": "DEFINER",
+    "SPECIFIC_NAME": "f_js",
+    "SQL_DATA_ACCESS": "NO SQL",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+    "SQL_PATH": null,
+    "__show_create": "CREATE DEFINER=`root`@`localhost` FUNCTION `f_js`(x INT) RETURNS int\n    NO SQL\n    DETERMINISTIC\n    LANGUAGE JAVASCRIPT\n    USING (`features_js`.`lib_const` AS `konst`, `features`.`lib_math`)\n    COMMENT 'twice and three'\nAS $$ return lib_math.twice(x) + konst.k; $$",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
+   "key": "features.p_js.PROCEDURE",
+   "kind": "routine",
+   "parent": "features",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_CLIENT": "utf8mb4",
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_CONNECTION": "utf8mb4_0900_ai_ci",
+    "COLLATION_NAME": null,
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DATA_TYPE": "",
+    "DATETIME_PRECISION": null,
+    "DEFINER": "root@localhost",
+    "DTD_IDENTIFIER": null,
+    "EXTERNAL_LANGUAGE": "JAVASCRIPT",
+    "EXTERNAL_NAME": null,
+    "IS_DETERMINISTIC": "NO",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "PARAMETER_STYLE": "SQL",
+    "ROUTINE_BODY": "EXTERNAL",
+    "ROUTINE_CATALOG": "def",
+    "ROUTINE_COMMENT": "",
+    "ROUTINE_DEFINITION": " let y = x; ",
+    "ROUTINE_NAME": "p_js",
+    "ROUTINE_SCHEMA": "features",
+    "ROUTINE_TYPE": "PROCEDURE",
+    "SECURITY_TYPE": "DEFINER",
+    "SPECIFIC_NAME": "p_js",
+    "SQL_DATA_ACCESS": "CONTAINS SQL",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+    "SQL_PATH": null,
+    "__show_create": "CREATE DEFINER=`root`@`localhost` PROCEDURE `p_js`(IN x INT)\n    LANGUAGE JAVASCRIPT\nAS $$ let y = x; $$",
     "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
    }
   },
@@ -4346,6 +4566,29 @@
    }
   },
   {
+   "key": "features.p_purge.PROCEDURE.1",
+   "kind": "parameter",
+   "parent": "features.p_purge",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "DTD_IDENTIFIER": "int",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 1,
+    "PARAMETER_MODE": "IN",
+    "PARAMETER_NAME": "p_before",
+    "ROUTINE_TYPE": "PROCEDURE",
+    "SPECIFIC_CATALOG": "def",
+    "SPECIFIC_NAME": "p_purge",
+    "SPECIFIC_SCHEMA": "features"
+   }
+  },
+  {
    "key": "features.f_cents.FUNCTION.0",
    "kind": "parameter",
    "parent": "features.f_cents",
@@ -4389,6 +4632,137 @@
     "SPECIFIC_CATALOG": "def",
     "SPECIFIC_NAME": "f_cents",
     "SPECIFIC_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.f_js.FUNCTION.0",
+   "kind": "parameter",
+   "parent": "features.f_js",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "DTD_IDENTIFIER": "int",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 0,
+    "PARAMETER_MODE": null,
+    "PARAMETER_NAME": null,
+    "ROUTINE_TYPE": "FUNCTION",
+    "SPECIFIC_CATALOG": "def",
+    "SPECIFIC_NAME": "f_js",
+    "SPECIFIC_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.f_js.FUNCTION.1",
+   "kind": "parameter",
+   "parent": "features.f_js",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "DTD_IDENTIFIER": "int",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 1,
+    "PARAMETER_MODE": "IN",
+    "PARAMETER_NAME": "x",
+    "ROUTINE_TYPE": "FUNCTION",
+    "SPECIFIC_CATALOG": "def",
+    "SPECIFIC_NAME": "f_js",
+    "SPECIFIC_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.p_js.PROCEDURE.1",
+   "kind": "parameter",
+   "parent": "features.p_js",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "DTD_IDENTIFIER": "int",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 1,
+    "PARAMETER_MODE": "IN",
+    "PARAMETER_NAME": "x",
+    "ROUTINE_TYPE": "PROCEDURE",
+    "SPECIFIC_CATALOG": "def",
+    "SPECIFIC_NAME": "p_js",
+    "SPECIFIC_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.lib_math",
+   "kind": "library",
+   "parent": "features",
+   "props": {
+    "LANGUAGE": "JAVASCRIPT",
+    "LIBRARY_CATALOG": "def",
+    "LIBRARY_COMMENT": "arithmetic it's handy to share",
+    "LIBRARY_DEFINITION": "\nexport function twice(x) { return 2 * x; }\n",
+    "LIBRARY_NAME": "lib_math",
+    "LIBRARY_SCHEMA": "features",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+    "__show_create": "CREATE LIBRARY `lib_math`\n    COMMENT 'arithmetic it''s handy to share'\n    LANGUAGE JAVASCRIPT\nAS $$\nexport function twice(x) { return 2 * x; }\n$$",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
+   "key": "features_js.lib_const",
+   "kind": "library",
+   "parent": "features_js",
+   "props": {
+    "LANGUAGE": "JAVASCRIPT",
+    "LIBRARY_CATALOG": "def",
+    "LIBRARY_COMMENT": "",
+    "LIBRARY_DEFINITION": " export const k = 3; ",
+    "LIBRARY_NAME": "lib_const",
+    "LIBRARY_SCHEMA": "features_js",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+    "__show_create": "CREATE LIBRARY `lib_const`\n    LANGUAGE JAVASCRIPT\nAS $$ export const k = 3; $$",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
+   "key": "features.f_js.FUNCTION.features_js.lib_const",
+   "kind": "routine_library",
+   "parent": "features.f_js",
+   "props": {
+    "LIBRARY_CATALOG": "def",
+    "LIBRARY_NAME": "lib_const",
+    "LIBRARY_SCHEMA": "features_js",
+    "LIBRARY_VERSION": null,
+    "ROUTINE_CATALOG": "def",
+    "ROUTINE_NAME": "f_js",
+    "ROUTINE_SCHEMA": "features",
+    "ROUTINE_TYPE": "FUNCTION"
+   }
+  },
+  {
+   "key": "features.f_js.FUNCTION.features.lib_math",
+   "kind": "routine_library",
+   "parent": "features.f_js",
+   "props": {
+    "LIBRARY_CATALOG": "def",
+    "LIBRARY_NAME": "lib_math",
+    "LIBRARY_SCHEMA": "features",
+    "LIBRARY_VERSION": null,
+    "ROUTINE_CATALOG": "def",
+    "ROUTINE_NAME": "f_js",
+    "ROUTINE_SCHEMA": "features",
+    "ROUTINE_TYPE": "FUNCTION"
    }
   },
   {
@@ -4503,10 +4877,10 @@
     "INTERVAL_VALUE": "1",
     "ON_COMPLETION": "NOT PRESERVE",
     "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
-    "STARTS": "2026-11-25 14:17:21.000000",
+    "STARTS": "2026-11-26 16:54:36.000000",
     "STATUS": "ENABLED",
     "TIME_ZONE": "SYSTEM",
-    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `nightly` ON SCHEDULE EVERY 1 DAY STARTS '2026-11-25 14:17:21' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM shop.order_items WHERE qty = 0",
+    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `nightly` ON SCHEDULE EVERY 1 DAY STARTS '2026-11-26 16:54:36' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM shop.order_items WHERE qty = 0",
     "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
    }
   },
@@ -4536,6 +4910,35 @@
     "STATUS": "DISABLED",
     "TIME_ZONE": "SYSTEM",
     "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `e_purge` ON SCHEDULE EVERY 1 DAY STARTS '2030-01-01 00:00:00' ON COMPLETION PRESERVE DISABLE COMMENT 'nightly' DO DELETE FROM features.myisam_log WHERE id < 0",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
+   "key": "features.e_replica_off",
+   "kind": "event",
+   "parent": "features",
+   "props": {
+    "CHARACTER_SET_CLIENT": "latin1",
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DEFINER": "root@localhost",
+    "ENDS": null,
+    "EVENT_BODY": "SQL",
+    "EVENT_CATALOG": "def",
+    "EVENT_COMMENT": "",
+    "EVENT_DEFINITION": "DELETE FROM features.myisam_log WHERE id < -1",
+    "EVENT_NAME": "e_replica_off",
+    "EVENT_SCHEMA": "features",
+    "EVENT_TYPE": "RECURRING",
+    "EXECUTE_AT": null,
+    "INTERVAL_FIELD": "HOUR",
+    "INTERVAL_VALUE": "1",
+    "ON_COMPLETION": "NOT PRESERVE",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+    "STARTS": "2030-01-01 00:00:00.000000",
+    "STATUS": "REPLICA_SIDE_DISABLED",
+    "TIME_ZONE": "SYSTEM",
+    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `e_replica_off` ON SCHEDULE EVERY 1 HOUR STARTS '2030-01-01 00:00:00' ON COMPLETION NOT PRESERVE DISABLE ON REPLICA DO DELETE FROM features.myisam_log WHERE id < -1",
     "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
    }
   },
@@ -4747,29 +5150,6 @@
    }
   },
   {
-   "key": "features.by_key_sub.a.asp0",
-   "kind": "partition",
-   "parent": "features.by_key_sub",
-   "props": {
-    "NODEGROUP": "default",
-    "PARTITION_COMMENT": "",
-    "PARTITION_DESCRIPTION": "2025",
-    "PARTITION_EXPRESSION": "year(`d`)",
-    "PARTITION_METHOD": "RANGE",
-    "PARTITION_NAME": "a",
-    "PARTITION_ORDINAL_POSITION": 1,
-    "SECONDARY_LOAD": "0",
-    "SUBPARTITION_EXPRESSION": "`id`",
-    "SUBPARTITION_METHOD": "HASH",
-    "SUBPARTITION_NAME": "asp0",
-    "SUBPARTITION_ORDINAL_POSITION": 1,
-    "TABLESPACE_NAME": null,
-    "TABLE_CATALOG": "def",
-    "TABLE_NAME": "by_key_sub",
-    "TABLE_SCHEMA": "features"
-   }
-  },
-  {
    "key": "features.by_key_sub.a.asp1",
    "kind": "partition",
    "parent": "features.by_key_sub",
@@ -4793,21 +5173,21 @@
    }
   },
   {
-   "key": "features.by_key_sub.b.bsp0",
+   "key": "features.by_key_sub.a.asp0",
    "kind": "partition",
    "parent": "features.by_key_sub",
    "props": {
     "NODEGROUP": "default",
     "PARTITION_COMMENT": "",
-    "PARTITION_DESCRIPTION": "MAXVALUE",
+    "PARTITION_DESCRIPTION": "2025",
     "PARTITION_EXPRESSION": "year(`d`)",
     "PARTITION_METHOD": "RANGE",
-    "PARTITION_NAME": "b",
-    "PARTITION_ORDINAL_POSITION": 2,
+    "PARTITION_NAME": "a",
+    "PARTITION_ORDINAL_POSITION": 1,
     "SECONDARY_LOAD": "0",
     "SUBPARTITION_EXPRESSION": "`id`",
     "SUBPARTITION_METHOD": "HASH",
-    "SUBPARTITION_NAME": "bsp0",
+    "SUBPARTITION_NAME": "asp0",
     "SUBPARTITION_ORDINAL_POSITION": 1,
     "TABLESPACE_NAME": null,
     "TABLE_CATALOG": "def",
@@ -4832,6 +5212,29 @@
     "SUBPARTITION_METHOD": "HASH",
     "SUBPARTITION_NAME": "bsp1",
     "SUBPARTITION_ORDINAL_POSITION": 2,
+    "TABLESPACE_NAME": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "by_key_sub",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.by_key_sub.b.bsp0",
+   "kind": "partition",
+   "parent": "features.by_key_sub",
+   "props": {
+    "NODEGROUP": "default",
+    "PARTITION_COMMENT": "",
+    "PARTITION_DESCRIPTION": "MAXVALUE",
+    "PARTITION_EXPRESSION": "year(`d`)",
+    "PARTITION_METHOD": "RANGE",
+    "PARTITION_NAME": "b",
+    "PARTITION_ORDINAL_POSITION": 2,
+    "SECONDARY_LOAD": "0",
+    "SUBPARTITION_EXPRESSION": "`id`",
+    "SUBPARTITION_METHOD": "HASH",
+    "SUBPARTITION_NAME": "bsp0",
+    "SUBPARTITION_ORDINAL_POSITION": 1,
     "TABLESPACE_NAME": null,
     "TABLE_CATALOG": "def",
     "TABLE_NAME": "by_key_sub",

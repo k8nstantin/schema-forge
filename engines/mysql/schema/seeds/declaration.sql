@@ -33,13 +33,18 @@ INSERT INTO cortex.object_kinds (id, engine, kind, name, position) VALUES
   ('mysql/spatial_reference_system', 'mysql', 'spatial_reference_system', 'Spatial reference system', 10)
 ON CONFLICT (id) DO NOTHING;
 
+INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, since, about) VALUES
+  ('mysql/objects/language', 'mysql', 'objects', 'language', 'string', false, NULL, 'mysql/9.7', 'a library''s language, as SHOW CREATE LIBRARY writes it (JAVASCRIPT)'),
+  ('mysql/dependencies/alias', 'mysql', 'dependencies', 'alias', 'string', true, NULL, 'mysql/9.7', 'the name a routine''s code calls a library it uses by (USING (lib AS util)); NULL for the library''s own name')
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, about) VALUES
   ('mysql/columns/on_update', 'mysql', 'columns', 'on_update', 'string', true, NULL, 'what it becomes whenever its row changes (CURRENT_TIMESTAMP); NULL for none'),
   ('mysql/columns/srid', 'mysql', 'columns', 'srid', 'number', true, NULL, 'the spatial reference system of its shapes; NULL for none'),
   ('mysql/columns/invisible', 'mysql', 'columns', 'invisible', 'boolean', false, NULL, 'true when SELECT * leaves it out (8.0.23 and later)'),
   ('mysql/namespaces/collation', 'mysql', 'namespaces', 'collation', 'string', false, NULL, 'its default collation; its character set is the collation''s'),
   ('mysql/namespaces/encryption', 'mysql', 'namespaces', 'encryption', 'boolean', true, NULL, 'its default encryption (8.0 and later); NULL before'),
-  ('mysql/objects/body', 'mysql', 'objects', 'body', 'string', false, NULL, 'the statements it runs, exactly as SHOW CREATE EVENT holds them'),
+  ('mysql/objects/body', 'mysql', 'objects', 'body', 'string', false, NULL, 'an event''s statements, or a library''s code after AS ($$ ... $$), exactly as SHOW CREATE holds them'),
   ('mysql/objects/interval_value', 'mysql', 'objects', 'interval_value', 'string', true, NULL, 'EVERY''s value as the server gives it (5, ''1:30''); NULL for a one-time event'),
   ('mysql/objects/interval_field', 'mysql', 'objects', 'interval_field', 'string', true, NULL, 'EVERY''s unit (MINUTE, DAY, HOUR_MINUTE); NULL for a one-time event'),
   ('mysql/objects/execute_at', 'mysql', 'objects', 'execute_at', 'string', true, NULL, 'a one-time event''s moment, as the server writes it (2030-01-01 00:00:00), in its time zone; NULL for a recurring one'),

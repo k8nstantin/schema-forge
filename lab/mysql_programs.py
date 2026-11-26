@@ -32,7 +32,15 @@ def written_params(text, name):
     return text[head:i - 1]
 
 
-TRAIT = re.compile(r"    (NO SQL|READS SQL DATA|MODIFIES SQL DATA|DETERMINISTIC|SQL SECURITY INVOKER|COMMENT '(?:[^'\\]|''|\\.)*')\n")
+TRAIT = re.compile(r"    (NO SQL|READS SQL DATA|MODIFIES SQL DATA|DETERMINISTIC|SQL SECURITY INVOKER|LANGUAGE \w+|USING \((?:[^)`]|`(?:[^`]|``)*`)*\)|COMMENT '(?:[^'\\]|''|\\.)*')\n")
+USES = re.compile(r"`((?:[^`]|``)+)`\.`((?:[^`]|``)+)`(?: AS `((?:[^`]|``)+)`)?")
+
+
+def uses(text):
+    """The libraries a routine uses, in its USING order: (schema, library, alias or None). MySQL 9.7's catalog keeps
+    neither the order nor the alias; SHOW CREATE does."""
+    m = re.search(r"\n    USING \(((?:[^)`]|`(?:[^`]|``)*`)*)\)\n", text)
+    return [tuple(x.replace("``", "`") if x else None for x in u) for u in USES.findall(m.group(1))] if m else []
 
 
 def body_of(kind, text, name=None):
@@ -43,7 +51,9 @@ def body_of(kind, text, name=None):
         i = text.index("\n", start + len(written_params(text, name)) + 1) + 1
         while (m := TRAIT.match(text, i)):
             i = m.end()
-        return text[i:]
+        return text[i + 3:] if text.startswith("AS $", i) else text[i:]   # a JavaScript body: its code after AS
+    if kind == "library":
+        return text[text.index("\nAS ") + 4:]
     if kind == "trigger":
         return text[text.index(" FOR EACH ROW ") + 14:]
     if kind == "event":
@@ -74,9 +84,20 @@ def routine(r, params_text, body, version):
         traits.append("DETERMINISTIC")
     if r["SECURITY_TYPE"] == "INVOKER":
         traits.append("SQL SECURITY INVOKER")
+    external = r.get("LANGUAGE") not in (None, "SQL")
+    if external:
+        traits.append(f"LANGUAGE {r['LANGUAGE']}")
+    if r.get("USING"):
+        traits.append("USING (" + ", ".join(f"{D.q(sch)}.{D.q(lib)}" + (f" AS {D.q(alias)}" if alias else "") for sch, lib, alias in r["USING"]) + ")")
     if r.get("ROUTINE_COMMENT"):
         traits.append(f"COMMENT {D.text_lit(r['ROUTINE_COMMENT'])}")
-    return out + "".join(f"    {t}\n" for t in traits) + body
+    return out + "".join(f"    {t}\n" for t in traits) + ("AS " if external else "") + body
+
+
+def library(name, language, comment, body):
+    """CREATE LIBRARY as SHOW CREATE LIBRARY writes it (MySQL 9.7)."""
+    return (f"CREATE LIBRARY {D.q(name)}\n" + (f"    COMMENT {D.text_lit(comment)}\n" if comment else "")
+            + f"    LANGUAGE {language}\nAS {body}")
 
 
 def trigger(t, body):

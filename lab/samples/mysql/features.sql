@@ -39,6 +39,7 @@ CREATE TABLE features.by_key_sub (id INT NOT NULL, d DATE NOT NULL, PRIMARY KEY 
 CREATE TABLE features.myisam_log (id INT PRIMARY KEY, msg VARCHAR(200)) ENGINE=MyISAM CHECKSUM=1 DELAY_KEY_WRITE=1 PACK_KEYS=1;
 CREATE TABLE features.merged (id INT PRIMARY KEY, msg VARCHAR(200)) ENGINE=MRG_MyISAM UNION=(features.myisam_log) INSERT_METHOD=LAST;
 CREATE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW features.v_paid AS SELECT id, name FROM features.kinds WHERE status = 'paid' WITH CASCADED CHECK OPTION;
+CREATE ALGORITHM=TEMPTABLE VIEW features.v_by_status AS SELECT status, COUNT(*) AS n FROM features.kinds GROUP BY status;
 CREATE VIEW features.v_join AS SELECT c.id, p.code FROM features.child c JOIN features.parent p ON p.id = c.parent_id;
 DELIMITER //
 CREATE PROCEDURE features.p_count(IN p_status VARCHAR(10), OUT p_n INT, INOUT p_seen INT)
@@ -47,6 +48,8 @@ BEGIN
   SELECT COUNT(*) INTO p_n FROM features.kinds WHERE status = p_status;
   SET p_seen = p_seen + 1;
 END//
+CREATE PROCEDURE features.p_purge(IN p_before INT) MODIFIES SQL DATA
+  DELETE FROM features.myisam_log WHERE id < p_before//
 CREATE FUNCTION features.f_cents(m DECIMAL(18,4)) RETURNS BIGINT DETERMINISTIC NO SQL
 RETURN m * 100//
 CREATE TRIGGER features.t_child_bi BEFORE INSERT ON features.child FOR EACH ROW SET NEW.parent_code = UPPER(NEW.parent_code)//

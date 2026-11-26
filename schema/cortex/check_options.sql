@@ -61,6 +61,9 @@ CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.constraints
 CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.constraint_columns
   FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
 
+CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.dependencies
+  FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+
 CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.domains
   FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
 

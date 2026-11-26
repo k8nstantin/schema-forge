@@ -345,6 +345,28 @@
     "owner": "string",
     "range_subtype": "string"
    }
+  },
+  "engine_mysql.libraries": {
+   "keys": [
+    "body",
+    "language",
+    "sql_mode"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "body": "string",
+    "language": "string",
+    "sql_mode": "string"
+   }
+  },
+  "engine_mysql.dependencies": {
+   "keys": [
+    "alias"
+   ],
+   "target": "cortex.dependencies",
+   "types": {
+    "alias": "string"
+   }
   }
  }
 }

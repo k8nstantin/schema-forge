@@ -75,8 +75,12 @@ def pg_up(name, version, port):
 
 def samples(engine, version):
     d = os.path.join(HERE, "samples", engine)
-    files = ["shop.sql", "features.sql"] + (["features80.sql"] if engine == "mysql" and version != "5.7" else []) + ["quoted_names.sql"]
+    mysql = engine == "mysql"
+    files = ["shop.sql", "features.sql"] + (["features_replica.sql"] if mysql else []) \
+        + (["features80.sql"] if mysql and version != "5.7" else []) + (["features97.sql"] if mysql and version == "9.7" else []) + ["quoted_names.sql"]
     sql = "".join(open(os.path.join(d, f)).read() + "\n" for f in files)
+    if mysql and version in ("5.7", "8.0"):
+        sql = sql.replace("DISABLE ON REPLICA", "DISABLE ON SLAVE")
     if engine == "mysql":
         sql += open(os.path.join(ROOT, "engines/mysql/tests/samples/live/workload.sql")).read()
     return sql
@@ -93,7 +97,7 @@ def main():
     for v, port in MYSQL:
         name = mysql_up(v, port)
         sh("docker", "exec", name, "mysql", "-uroot", f"-p{PW}", "-e",
-           "DROP DATABASE IF EXISTS shop; DROP DATABASE IF EXISTS features; DROP DATABASE IF EXISTS `Quoted Names`")
+           "DROP DATABASE IF EXISTS shop; DROP DATABASE IF EXISTS features; DROP DATABASE IF EXISTS features_js; DROP DATABASE IF EXISTS `Quoted Names`")
         sh("docker", "exec", "-i", name, "mysql", "-uroot", f"-p{PW}", "--comments", stdin=samples("mysql", v))
         note = ""
         for path in (baseline.split(":") if baseline else []):

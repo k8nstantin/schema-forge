@@ -894,6 +894,7 @@ CREATE TABLE cortex.dependencies (
     object uuid NOT NULL,
     uses uuid NOT NULL,
     "position" numeric NOT NULL,
+    options jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT dependencies_check CHECK ((object <> uses)),
     CONSTRAINT dependencies_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT dependencies_position_check CHECK (("position" > (0)::numeric))
@@ -906,7 +907,7 @@ ALTER TABLE cortex.dependencies OWNER TO sf_owner;
 -- Name: TABLE dependencies; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON TABLE cortex.dependencies IS 'what an object uses: a view''s tables, a MERGE table''s tables, a routine''s tables where the engine says. A used object cannot be dropped before what uses it, and an edit names what it would break; a body is text, so a rename never reaches into it.';
+COMMENT ON TABLE cortex.dependencies IS 'what an object uses: a view''s tables, a MERGE table''s tables, a routine''s tables where the engine says, the libraries a routine uses (MySQL 9.7''s USING), in order. A used object cannot be dropped before what uses it, and an edit names what it would break; a body is text, so a rename never reaches into it.';
 
 
 --
@@ -942,6 +943,13 @@ COMMENT ON COLUMN cortex.dependencies.uses IS 'the object used: it cannot go whi
 --
 
 COMMENT ON COLUMN cortex.dependencies."position" IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
+-- Name: COLUMN dependencies.options; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.dependencies.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"alias": "util"}';
 
 
 --
@@ -1996,7 +2004,7 @@ CREATE TABLE cortex.option_declarations (
     CONSTRAINT option_declarations_choices_check CHECK (((choices IS NULL) OR (jsonb_typeof(choices) = 'array'::text))),
     CONSTRAINT option_declarations_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
     CONSTRAINT option_declarations_name_check CHECK ((name ~ '^[a-z0-9_]+$'::text)),
-    CONSTRAINT option_declarations_part_check CHECK ((part = ANY (ARRAY['namespaces'::text, 'objects'::text, 'columns'::text, 'column_identities'::text, 'constraints'::text, 'constraint_columns'::text, 'domains'::text, 'enum_values'::text, 'indexes'::text, 'index_parts'::text, 'partitionings'::text, 'partitions'::text, 'routines'::text, 'routine_parameters'::text, 'sequences'::text, 'triggers'::text, 'views'::text]))),
+    CONSTRAINT option_declarations_part_check CHECK ((part = ANY (ARRAY['namespaces'::text, 'objects'::text, 'columns'::text, 'column_identities'::text, 'constraints'::text, 'constraint_columns'::text, 'dependencies'::text, 'domains'::text, 'enum_values'::text, 'indexes'::text, 'index_parts'::text, 'partitionings'::text, 'partitions'::text, 'routines'::text, 'routine_parameters'::text, 'sequences'::text, 'triggers'::text, 'views'::text]))),
     CONSTRAINT option_declarations_value_type_check CHECK ((value_type = ANY (ARRAY['string'::text, 'number'::text, 'boolean'::text, 'json'::text])))
 );
 
@@ -6492,6 +6500,13 @@ CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.constraint_c
 --
 
 CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.constraints FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: dependencies options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.dependencies FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
 
 
 --

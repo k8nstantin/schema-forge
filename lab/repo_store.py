@@ -184,6 +184,10 @@ def rows_of(snap, name=None):
     for r in by["parameter"]:
         if r.get("COLLATION_NAME"):
             param_colls[(r["SPECIFIC_SCHEMA"], r["ROUTINE_TYPE"], r["SPECIFIC_NAME"])][r["COLLATION_NAME"]] += 1
+    for r in by["library"]:   # MySQL 9.7: made before the routines that use them
+        i = add_object(("library", r["LIBRARY_SCHEMA"], r["LIBRARY_NAME"]), r["LIBRARY_SCHEMA"], "library", r["LIBRARY_NAME"], r.get("LIBRARY_COMMENT") or None)
+        out["engine_mysql.libraries"].append({"id": i, "body": P.body_of("library", r["__show_create"]), "language": r["LANGUAGE"],
+                                              "sql_mode": r.get("__sql_mode") or ""})
     for r in by["routine"]:
         key = (r["ROUTINE_SCHEMA"], r["ROUTINE_TYPE"], r["ROUTINE_NAME"])
         kind = r["ROUTINE_TYPE"].lower()
@@ -191,7 +195,7 @@ def rows_of(snap, name=None):
         text = r["__show_create"]
         if r.get("COLLATION_NAME"):
             param_colls[key][r["COLLATION_NAME"]] += 1
-        out["cortex.routines"].append({"id": i, "returns": r["DTD_IDENTIFIER"] if kind == "function" else None, "language": r.get("ROUTINE_BODY") or "SQL",
+        out["cortex.routines"].append({"id": i, "returns": r["DTD_IDENTIFIER"] if kind == "function" else None, "language": r["EXTERNAL_LANGUAGE"] if r.get("ROUTINE_BODY") == "EXTERNAL" else (r.get("ROUTINE_BODY") or "SQL"),
                                        "deterministic": r["IS_DETERMINISTIC"] == "YES", "security": r["SECURITY_TYPE"].lower(),
                                        "body": P.body_of("routine", text, r["ROUTINE_NAME"])})
         out["engine_mysql.routines"].append({"id": i, "parameter_text": P.written_params(text, r["ROUTINE_NAME"]), "data_access": r["SQL_DATA_ACCESS"],
@@ -224,7 +228,13 @@ def rows_of(snap, name=None):
     def depends(o, u):
         if u and u != o:
             place[o] += 1
-            out["cortex.dependencies"].append({"id": nid(), "object": o, "uses": u, "position": place[o]})
+            d = nid()
+            out["cortex.dependencies"].append({"id": d, "object": o, "uses": u, "position": place[o]})
+            return d
+    for r in by["routine"]:   # the libraries a routine uses, in its USING order, each with the name its code calls it by
+        for sch, lib, alias in P.uses(r["__show_create"]):
+            d = depends(obj[(r["ROUTINE_SCHEMA"], r["ROUTINE_TYPE"], r["ROUTINE_NAME"])], obj[("library", sch, lib)])
+            out["engine_mysql.dependencies"].append({"id": d, "alias": alias})
     for v in [o for o in out["cortex.objects"] if o["kind"] == "view"]:
         q = next(x for x in out["cortex.views"] if x["id"] == v["id"])["query"]
         seen = []
@@ -249,7 +259,7 @@ ORDER = ["cortex.designs", "cortex.namespaces", "cortex.objects", "cortex.column
          "cortex.routines", "cortex.routine_parameters", "cortex.triggers", "cortex.partitionings", "cortex.partitions",
          "engine_mysql.databases", "engine_mysql.tables", "engine_mysql.columns", "engine_mysql.indexes", "engine_mysql.index_parts",
          "engine_mysql.subpartitionings", "engine_mysql.subpartitions", "engine_mysql.programs", "engine_mysql.routines",
-         "engine_mysql.views", "engine_mysql.events"]
+         "engine_mysql.views", "engine_mysql.events", "engine_mysql.libraries", "engine_mysql.dependencies"]
 
 
 def twin(rows, name):
@@ -387,7 +397,13 @@ def write(st, version):
             r = {"DEFINER": pr["definer"], "ROUTINE_TYPE": o["kind"].upper(), "ROUTINE_NAME": o["name"], "DTD_IDENTIFIER": ro["returns"],
                  "CHARACTER_SET_NAME": mr["returns_charset"], "SQL_DATA_ACCESS": mr["data_access"], "IS_DETERMINISTIC": "YES" if ro["deterministic"] else "NO",
                  "SECURITY_TYPE": ro["security"].upper(), "ROUTINE_COMMENT": o["comment"]}
+            libs = [d for d in sorted(by["cortex.dependencies"][o["id"]], key=lambda d: d["position"]) if objs[d["uses"]]["kind"] == "library"]
+            r.update(LANGUAGE=ro["language"], USING=[(ns[objs[d["uses"]]["namespace"]]["name"], objs[d["uses"]]["name"],
+                                                       st["engine_mysql.dependencies"].get(d["id"], {}).get("alias")) for d in libs])
             out[key] = P.routine(r, mr["parameter_text"], ro["body"], version)
+        elif o["kind"] == "library":
+            lib = st["engine_mysql.libraries"][o["id"]]
+            out[key] = P.library(o["name"], lib["language"], o["comment"], lib["body"])
         elif o["kind"] == "trigger":
             tr = st["cortex.triggers"][o["id"]]
             events = tr["events"] if isinstance(tr["events"], list) else json.loads(tr["events"])
@@ -425,13 +441,17 @@ def script(st, version):
         schema = ns[o["namespace"]]["name"]
         say(f"USE {D.q(schema)};\nSET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO';\n{C.implicit_collate(text[('table', schema, o['name'])])};\n")
     helpers = set()
-    rank = {"view": 0, "procedure": 1, "function": 1, "trigger": 2, "event": 3}
+    rank = {"library": -1, "view": 0, "procedure": 1, "function": 1, "trigger": 2, "event": 3}
     progs = sorted((o for o in objs.values() if o["kind"] in rank),
                    key=lambda o: (rank[o["kind"]], st["cortex.triggers"].get(o["id"], {}).get("action_order", 0), o["position"]))
     for o in progs:
         schema = ns[o["namespace"]]["name"]
-        pr = st["engine_mysql.programs"][o["id"]]
         stmt = text[(o["kind"], schema, o["name"])]
+        if o["kind"] == "library":   # no definer and no client character set: its sql_mode alone
+            say(f"USE {D.q(schema)};\nSET SESSION sql_mode = {C.lit(st['engine_mysql.libraries'][o['id']]['sql_mode'])};\n"
+                f"DELIMITER {C.DELIM}\n{stmt}{C.DELIM}\nDELIMITER ;\n")
+            continue
+        pr = st["engine_mysql.programs"][o["id"]]
         current = D.q(schema)
         under = st["engine_mysql.routines"].get(o["id"], {}).get("parameter_collation")
         if under and under != coll[schema]:
@@ -476,13 +496,13 @@ def main():
         n, exact = Counter(), Counter()
         for p in snap["parts"]:
             pr = p["props"]
-            if "__show_create" not in pr or p["kind"] not in ("table", "routine", "trigger", "event", "view"):
+            if "__show_create" not in pr or p["kind"] not in ("table", "routine", "trigger", "event", "view", "library"):
                 continue
             if p["kind"] == "table" and pr.get("TABLE_TYPE") == "VIEW":
                 continue
             kind = {"routine": pr.get("ROUTINE_TYPE", "").lower()}.get(p["kind"], p["kind"])
-            schema = pr.get("TABLE_SCHEMA") or pr.get("ROUTINE_SCHEMA") or pr.get("TRIGGER_SCHEMA") or pr.get("EVENT_SCHEMA")
-            name = pr.get("TABLE_NAME") or pr.get("ROUTINE_NAME") or pr.get("TRIGGER_NAME") or pr.get("EVENT_NAME")
+            schema = pr.get("TABLE_SCHEMA") or pr.get("ROUTINE_SCHEMA") or pr.get("TRIGGER_SCHEMA") or pr.get("EVENT_SCHEMA") or pr.get("LIBRARY_SCHEMA")
+            name = pr.get("TABLE_NAME") or pr.get("ROUTINE_NAME") or pr.get("TRIGGER_NAME") or pr.get("EVENT_NAME") or pr.get("LIBRARY_NAME")
             if (schema, name) in broken:
                 continue
             n[kind] += 1
@@ -492,7 +512,7 @@ def main():
             exact[kind] += got.get((kind, schema, name)) == pr["__show_create"]
         print(f"{'pass' if exact == n else 'FAIL'}  mysql {version}: one design, {sum(len(v) for k, v in rows.items() if k not in ('cortex.object_kinds', 'cortex.designs', 'cortex.engine_versions'))} rows in the locked design, "
               f"loaded as sf_service, every foreign key held, in {t_load:.1f}s, {size}; written from it: "
-              + ", ".join(f"{exact[k]}/{n[k]} {k}s" for k in sorted(n)) + (f"; {len(broken)} broken views not stored" if broken else ""))
+              + ", ".join(f"{exact[k]}/{n[k]} {'libraries' if k == 'library' else k + 's'}" for k in sorted(n)) + (f"; {len(broken)} broken views not stored" if broken else ""))
         if roundtrip:
             name = C.fresh_mysql(version)
             try:

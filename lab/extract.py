@@ -16,7 +16,7 @@ ROOT = os.path.dirname(HERE)
 PW = next(l.split('"')[1] for l in open(os.path.join(ROOT, "engines/mysql/tests/live.rs")) if l.startswith("const ROOT"))
 MYSQL = [("5.7", "sf-mysql-5.7"), ("8.0", "sf-mysql-8.0"), ("8.4", "sf-mysql-8.4"), ("9.7", "sf-mysql-9.7")]
 POSTGRES = [(v, f"sf-pg-{v}") for v in ("15", "16", "17", "18")]
-SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,features,audit").split(","))  # the schemas a run reads
+SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,features,features_js,audit").split(","))  # the schemas a run reads
 OUT = os.path.expanduser(os.environ.get("LAB_OUT", os.path.join(HERE, "out")))  # private schemas go outside the repository
 
 # MySQL: information_schema tables by the part they describe, the columns that name the part, and the volatile ones.
@@ -40,6 +40,11 @@ MY_TABLES = [
      ["CREATED", "LAST_ALTERED"]),
     ("parameter", "PARAMETERS", "SPECIFIC_SCHEMA IN ({s})", ["SPECIFIC_SCHEMA", "SPECIFIC_NAME", "ROUTINE_TYPE", "ORDINAL_POSITION"],
      ["SPECIFIC_SCHEMA", "SPECIFIC_NAME"], []),
+    # MySQL 9.7's libraries, and which a routine uses; the order and the alias of each are in SHOW CREATE alone
+    ("library", "LIBRARIES", "LIBRARY_SCHEMA IN ({s})", ["LIBRARY_SCHEMA", "LIBRARY_NAME"], ["LIBRARY_SCHEMA"],
+     ["CREATED", "LAST_ALTERED", "CREATOR"]),  # CREATOR: the account that ran CREATE LIBRARY, which no statement writes
+    ("routine_library", "ROUTINE_LIBRARIES", "ROUTINE_SCHEMA IN ({s})",
+     ["ROUTINE_SCHEMA", "ROUTINE_NAME", "ROUTINE_TYPE", "LIBRARY_SCHEMA", "LIBRARY_NAME"], ["ROUTINE_SCHEMA", "ROUTINE_NAME"], []),
     ("trigger", "TRIGGERS", "TRIGGER_SCHEMA IN ({s})", ["TRIGGER_SCHEMA", "TRIGGER_NAME"], ["EVENT_OBJECT_SCHEMA", "EVENT_OBJECT_TABLE"],
      ["CREATED"]),
     ("event", "EVENTS", "EVENT_SCHEMA IN ({s})", ["EVENT_SCHEMA", "EVENT_NAME"], ["EVENT_SCHEMA"],
@@ -141,6 +146,8 @@ def extract_mysql(version, container):
             what, sch, name = "TRIGGER", pr["TRIGGER_SCHEMA"], pr["TRIGGER_NAME"]
         elif p["kind"] == "event":
             what, sch, name = "EVENT", pr["EVENT_SCHEMA"], pr["EVENT_NAME"]
+        elif p["kind"] == "library":
+            what, sch, name = "LIBRARY", pr["LIBRARY_SCHEMA"], pr["LIBRARY_NAME"]
         else:
             continue
         q = lambda n: "`" + n.replace("`", "``") + "`"
@@ -152,12 +159,12 @@ def extract_mysql(version, container):
             at = int(r[0][1:])
             continue
         p = wants[at][0]
-        cell = {"table": 1, "view": 1, "routine": 2, "trigger": 2, "event": 3}[p["kind"]]
+        cell = {"table": 1, "view": 1, "routine": 2, "trigger": 2, "event": 3, "library": 2}[p["kind"]]
         if len(r) > cell:
             p["props"]["__show_create"] = r[cell]
             if p["kind"] == "table":
                 table_facts(p["props"])
-        if p["kind"] in ("routine", "trigger", "event") and len(r) > 1:
+        if p["kind"] in ("routine", "trigger", "event", "library") and len(r) > 1:
             # the sql_mode the program runs under, as SHOW CREATE gives it: 5.7's ROUTINES.SQL_MODE writes
             # ALLOW_INVALID_DATES as INVALID_DATES, which no server accepts back
             p["props"]["__sql_mode"] = r[1]
