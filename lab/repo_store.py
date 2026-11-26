@@ -62,14 +62,30 @@ def rows_of(snap, name=None):
     def add_object(key, schema, kind, name, comment=None, parent=None):
         i = obj[key] = nid()
         out["cortex.objects"].append({"id": i, "namespace": None if schema is None else ns[schema], "kind": kind, "name": name, "signature": "", "parent": parent,
+                                      "owner": None, "owner_name": None,
                                       "position": next_place(), "comment": comment, "notes": None})
         return i
 
+    def owned(i, who):
+        """An object's owner, MySQL's DEFINER: the account the design holds, or its name where it holds none."""
+        row = next(o for o in out["cortex.objects"] if o["id"] == i)
+        acc = obj.get(("account", who))
+        row["owner"], row["owner_name"] = (acc, None) if acc else (None, who)
+
     def program(i, r, sql_mode):
-        out["engine_mysql.programs"].append({"id": i, "definer": r["DEFINER"], "sql_mode": sql_mode, "character_set_client": r["CHARACTER_SET_CLIENT"],
+        owned(i, r["DEFINER"])
+        out["engine_mysql.programs"].append({"id": i, "sql_mode": sql_mode, "character_set_client": r["CHARACTER_SET_CLIENT"],
                                              "collation_connection": r["COLLATION_CONNECTION"], "database_collation": r.get("DATABASE_COLLATION"),
                                              "time_zone": r.get("TIME_ZONE")})
-    # what the server holds beside its namespaces (scope server): in no namespace
+    # what the server holds beside its namespaces (scope server): in no namespace. Accounts first: everything else names them
+    roles = {p["ROLE"] for p in by["membership"]}
+    for r in by["account"]:
+        key = f"{r['USER']}@{r['HOST']}"
+        i = add_object(("account", key), None, "account", key, (json.loads(r["ATTRIBUTE"]) or {}).get("comment") if r.get("ATTRIBUTE") else None)
+        out["engine_mysql.accounts"].append({"id": i, "auth_plugin": r["PLUGIN"], "locked": r["LOCKED"] == "Y", "require": {"": "NONE", "ANY": "SSL"}.get(r["SSL_TYPE"], r["SSL_TYPE"]),
+                                             "max_queries_per_hour": r["MAX_QUESTIONS"], "max_updates_per_hour": r["MAX_UPDATES"],
+                                             "max_connections_per_hour": r["MAX_CONNECTIONS"], "max_user_connections": r["MAX_USER_CONNECTIONS"],
+                                             **({"role": key in roles} if D.mysql8(version) else {})})
     for r in by["tablespace"]:
         i = add_object(("tablespace", r["NAME"]), None, "tablespace", r["NAME"])
         out["engine_mysql.tablespaces"].append({"id": i, "datafile": r["FILE_NAME"], "file_block_size": r["ZIP_PAGE_SIZE"] or None,
@@ -266,6 +282,27 @@ def rows_of(snap, name=None):
         key = (t["TABLE_SCHEMA"], t["TABLE_NAME"])
         for u in t.get("__merge_union") or []:
             depends(obj[key], obj.get((key[0], u)))  # a MERGE table's tables, in their UNION order
+    gplace = Counter()
+    for r in by["privilege"]:
+        who = obj.get(("account", r["GRANTEE"]))
+        on_ns = ns.get(r["TABLE_SCHEMA"]) if "TABLE_SCHEMA" in r and "TABLE_NAME" not in r and "ROUTINE_NAME" not in r else None
+        on_obj = obj.get((r["TABLE_SCHEMA"], r["TABLE_NAME"])) if "TABLE_NAME" in r and "COLUMN_NAME" not in r else \
+            obj.get((r["TABLE_SCHEMA"], r["ROUTINE_TYPE"], r["ROUTINE_NAME"])) if "ROUTINE_NAME" in r else None
+        on_col = col.get((r["TABLE_SCHEMA"], r["TABLE_NAME"], r["COLUMN_NAME"])) if "COLUMN_NAME" in r else None
+        target = (on_ns, on_obj, on_col)
+        if any(k in r for k in ("TABLE_SCHEMA",)) and not any(target):
+            continue   # on something the design does not hold
+        gplace[(who, target)] += 1
+        out["cortex.privileges"].append({"id": nid(), "grantee": who, "grantee_name": None if who else r["GRANTEE"], "namespace": on_ns, "object": on_obj,
+                                         "column": on_col, "privilege": r["PRIVILEGE_TYPE"], "grantable": r.get("IS_GRANTABLE") == "YES",
+                                         "position": gplace[(who, target)]})
+    mplace = Counter()
+    for r in by["membership"]:
+        i = nid()
+        mplace[r["MEMBER"]] += 1
+        out["cortex.memberships"].append({"id": i, "role": obj[("account", r["ROLE"])], "member": obj[("account", r["MEMBER"])],
+                                          "admin_option": r["ADMIN"] == "Y", "position": mplace[r["MEMBER"]]})
+        out["engine_mysql.memberships"].append({"id": i, "default_role": bool(r["DEFAULT"])})
     # every table of a design carries its design (decision database-per-schema): the column first after id
     for k, rows in out.items():
         if k not in ("cortex.designs", "cortex.engine_versions", "cortex.object_kinds"):
@@ -279,7 +316,8 @@ ORDER = ["cortex.designs", "cortex.namespaces", "cortex.objects", "cortex.column
          "engine_mysql.databases", "engine_mysql.tables", "engine_mysql.columns", "engine_mysql.indexes", "engine_mysql.index_parts",
          "engine_mysql.subpartitionings", "engine_mysql.subpartitions", "engine_mysql.programs", "engine_mysql.routines",
          "engine_mysql.views", "engine_mysql.events", "engine_mysql.libraries", "engine_mysql.dependencies", "engine_mysql.tablespaces",
-         "engine_mysql.spatial_reference_systems", "engine_mysql.loadable_functions"]
+         "engine_mysql.spatial_reference_systems", "engine_mysql.loadable_functions", "engine_mysql.accounts",
+         "cortex.privileges", "cortex.memberships", "engine_mysql.memberships"]
 UDF_RETURNS = {0: "STRING", 1: "REAL", 2: "INTEGER", 4: "DECIMAL"}   # mysql.func.ret
 
 
@@ -361,6 +399,8 @@ def write(st, version):
         schema = ns[o["namespace"]]["name"] if o["namespace"] else None
         key = (o["kind"], schema, o["name"])
         pr = st["engine_mysql.programs"].get(o["id"])
+        if pr is not None:   # its DEFINER: the account it is owned by, or the name of one the design does not hold
+            pr = dict(pr, definer=objs[o["owner"]]["name"] if o.get("owner") else o.get("owner_name"))
         if o["kind"] == "table":
             mt = st["engine_mysql.tables"][o["id"]]
             uses = [objs[d["uses"]] for d in sorted(by["cortex.dependencies"][o["id"]], key=lambda d: d["position"])]
@@ -425,6 +465,16 @@ def write(st, version):
             r.update(LANGUAGE=ro["language"], USING=[(ns[objs[d["uses"]]["namespace"]]["name"], objs[d["uses"]]["name"],
                                                        st["engine_mysql.dependencies"].get(d["id"], {}).get("alias")) for d in libs])
             out[key] = P.routine(r, mr["parameter_text"], ro["body"], version)
+        elif o["kind"] == "account":
+            a = st["engine_mysql.accounts"][o["id"]]
+            user, _, host = o["name"].rpartition("@")
+            who = f"{D.q(user)}@{D.q(host)}".replace("`", "'")
+            if a.get("role"):
+                out[key] = f"CREATE ROLE IF NOT EXISTS {who}"
+            else:
+                limits = " ".join(f"{k.upper()} {a[k]}" for k in ("max_queries_per_hour", "max_updates_per_hour", "max_connections_per_hour", "max_user_connections") if a.get(k))
+                out[key] = (f"CREATE USER IF NOT EXISTS {who} IDENTIFIED WITH {a['auth_plugin']} REQUIRE {'SSL' if a['require'] == 'SSL' else a['require']}"
+                            + (f" WITH {limits}" if limits else "") + (" ACCOUNT LOCK" if a["locked"] else " ACCOUNT UNLOCK"))
         elif o["kind"] == "tablespace":
             ts = st["engine_mysql.tablespaces"][o["id"]]
             out[key] = (f"CREATE TABLESPACE {D.q(o['name'])} ADD DATAFILE {C.lit(ts['datafile'])}"
@@ -460,6 +510,40 @@ def write(st, version):
     return out
 
 
+def grants(st):
+    """Every privilege and role membership, as GRANT and SET DEFAULT ROLE statements, once everything they name exists."""
+    objs, ns, cols = st["cortex.objects"], st["cortex.namespaces"], st["cortex.columns"]
+    who = lambda i, name: "{}@{}".format(*(f"'{x}'" for x in (objs[i]["name"] if i else name).rpartition("@")[::2]))  # noqa: E731
+    groups = {}
+    for g in sorted(st["cortex.privileges"].values(), key=lambda g: g["position"]):
+        if g["namespace"]:
+            on = f"{D.q(ns[g['namespace']]['name'])}.*"
+        elif g["object"]:
+            o = objs[g["object"]]
+            on = (f"{o['kind'].upper()} " if o["kind"] in ("procedure", "function") else "") + f"{D.q(ns[o['namespace']]['name'])}.{D.q(o['name'])}"
+        elif g["column"]:
+            c = cols[g["column"]]; o = objs[c["object"]]
+            on = f"{D.q(ns[o['namespace']]['name'])}.{D.q(o['name'])}"
+        else:
+            on = "*.*"
+        k = (who(g["grantee"], g["grantee_name"]), on)
+        e = groups.setdefault(k, {"privs": [], "grant": False})
+        if g["privilege"] == "GRANT OPTION":
+            e["grant"] = True
+            continue
+        e["grant"] |= g["grantable"]
+        e["privs"].append(g["privilege"] + (f" ({D.q(cols[g['column']]['name'])})" if g["column"] else ""))
+    out = "".join(f"GRANT {', '.join(e['privs'])} ON {on} TO {grantee}{' WITH GRANT OPTION' if e['grant'] else ''};\n"
+                  for (grantee, on), e in groups.items() if e["privs"])
+    defaults = {}
+    for m in sorted(st["cortex.memberships"].values(), key=lambda m: m["position"]):
+        out += f"GRANT {who(m['role'], None)} TO {who(m['member'], None)}{' WITH ADMIN OPTION' if m['admin_option'] else ''};\n"
+        if st["engine_mysql.memberships"].get(m["id"], {}).get("default_role"):
+            defaults.setdefault(m["member"], []).append(who(m["role"], None))
+    out += "".join(f"SET DEFAULT ROLE {', '.join(r)} TO {who(m, None)};\n" for m, r in defaults.items())
+    return out
+
+
 def script(st, version):
     """The whole schema as SQL bytes, written from the design's rows: each program under the context it was made in."""
     text = write(st, version)
@@ -470,7 +554,7 @@ def script(st, version):
         enc = C.PY.get(charset.split("_")[0], "utf-8")
         chunks.append(sql.encode(enc, errors="mysql_latin1" if enc == "cp1252" else "strict"))
     say("SET NAMES utf8mb4;\nSET SESSION innodb_strict_mode = 0;\nSET FOREIGN_KEY_CHECKS = 0;\n")
-    for kind in ("tablespace", "spatial_reference_system", "loadable_function"):   # the server's, before any database
+    for kind in ("account", "tablespace", "spatial_reference_system", "loadable_function"):   # the server's, before any database
         for o in sorted((o for o in objs.values() if o["kind"] == kind), key=lambda o: o["position"]):
             say(text[(kind, None, o["name"])] + ";\n")
     coll = {}
@@ -515,7 +599,7 @@ def script(st, version):
         say("DELIMITER ;\nSET NAMES utf8mb4;\n")
     for h in sorted(helpers):
         say(f"DROP DATABASE {D.q('sf_context_' + h)};\n")
-    say("SET FOREIGN_KEY_CHECKS = 1;\n")
+    say(grants(st) + "SET FOREIGN_KEY_CHECKS = 1;\n")
     return b"".join(chunks)
 
 
@@ -574,6 +658,11 @@ def main():
                             pr.pop("__show_create", None)  # 5.7 shows a trigger as it was typed
                         out.append(dict(p, props=pr))
                     return out
+                had = {p["kind"] for p in snap["parts"]}   # a capture taken before a kind was read is compared on what it holds
+                newer = sorted({p["kind"] for p in again} - had)
+                again = [p for p in again if p["kind"] in had]
+                if newer:
+                    print(f"      note: the capture predates reading {', '.join(newer)}; compared on what it holds")
                 diffs, m = C.compare(settled(snap["parts"]), settled(again), {f"{s}.{v}" for s, v in broken})
                 ok = not refused and not diffs
                 print(f"      {'pass' if ok else 'FAIL'}  round trip: {len(sql) // 1024} KB of SQL from the design, {len(refused)} refused, "

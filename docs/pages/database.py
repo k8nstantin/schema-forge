@@ -171,6 +171,7 @@ GROUPS = [("cortex", "The model", ["designs", "namespaces", "objects", "columns"
                                     "required_extensions"]),
           ("cortex", "What an object holds", ["indexes", "index_parts", "partitionings", "partitions", "views", "sequences",
                                               "enum_values", "domains", "routines", "routine_parameters", "triggers"]),
+          ("cortex", "Who may do what", ["privileges", "memberships", "namespace_owners"]),
           ("cortex", "The log", ["branches", "turns", "operations", "row_changes", "savepoints", "locked_versions"]),
           ("cortex", "What each engine declares", ["engine_versions", "engine_features", "object_kinds", "option_declarations", "catalog_sources", "engine_flavors", "flavor_limits"]),
           ("cortex", "The live source", ["read_scopes", "read_scope_kinds", "read_scope_objects", "source_reads"]),

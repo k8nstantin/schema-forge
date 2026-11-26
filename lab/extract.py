@@ -17,7 +17,7 @@ PW = next(l.split('"')[1] for l in open(os.path.join(ROOT, "engines/mysql/tests/
 MYSQL = [("5.7", "sf-mysql-5.7"), ("8.0", "sf-mysql-8.0"), ("8.4", "sf-mysql-8.4"), ("9.7", "sf-mysql-9.7")]
 POSTGRES = [(v, f"sf-pg-{v}") for v in ("15", "16", "17", "18")]
 SOURCE_DB = "engine_postgresql"  # where a PostgreSQL target's schemas are read from: never postgres, the server's own
-SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,features,features_js,audit").split(","))  # the schemas a run reads
+SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,features,features_js,audit,every").split(","))  # the schemas a run reads
 OUT = os.path.expanduser(os.environ.get("LAB_OUT", os.path.join(HERE, "out")))  # private schemas go outside the repository
 
 # MySQL: information_schema tables by the part they describe, the columns that name the part, and the volatile ones.
@@ -136,6 +136,49 @@ def server_parts(container, have):
     for (row,) in mysql(container, "SELECT JSON_OBJECT('NAME',name,'RET',ret,'DL',dl,'TYPE',type) FROM mysql.func"):
         p = json.loads(row)
         out.append({"kind": "loadable_function", "key": p["NAME"], "parent": None, "props": p})
+    # accounts, never their passwords; the server's own (mysql.sys, mysql.session, mysql.infoschema) are not people's
+    ucols = {c[0] for c in mysql(container, "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mysql' AND TABLE_NAME='user'")}
+    attr = ",'ATTRIBUTE',(SELECT ATTRIBUTE FROM information_schema.USER_ATTRIBUTES a WHERE a.USER = u.User AND a.HOST = u.Host)" if "USER_ATTRIBUTES" in have else ""
+    for (row,) in mysql(container, "SELECT JSON_OBJECT('USER',User,'HOST',Host,'PLUGIN',plugin,'LOCKED',account_locked,'SSL_TYPE',ssl_type,"
+                                   "'MAX_QUESTIONS',max_questions,'MAX_UPDATES',max_updates,'MAX_CONNECTIONS',max_connections,"
+                                   f"'MAX_USER_CONNECTIONS',max_user_connections,'NO_PASSWORD',authentication_string = ''{attr}) "
+                                   "FROM mysql.user u WHERE User NOT IN ('mysql.sys', 'mysql.session', 'mysql.infoschema')"):
+        p = json.loads(row)
+        out.append({"kind": "account", "key": f"{p['USER']}@{p['HOST']}", "parent": None, "props": p})
+    accounts = {x["key"] for x in out if x["kind"] == "account"}
+    s = ",".join("'" + x.replace("'", "''") + "'" for x in SCHEMAS)
+    def grantee(g):  # 'u'@'h' as information_schema writes it
+        m = re.match(r"^'(.*)'@'(.*)'$", g)
+        return f"{m.group(1)}@{m.group(2)}"
+    for table, where, keys in (("USER_PRIVILEGES", "PRIVILEGE_TYPE <> 'USAGE'", []),
+                               ("SCHEMA_PRIVILEGES", f"TABLE_SCHEMA IN ({s})", ["TABLE_SCHEMA"]),
+                               ("TABLE_PRIVILEGES", f"TABLE_SCHEMA IN ({s})", ["TABLE_SCHEMA", "TABLE_NAME"]),
+                               ("COLUMN_PRIVILEGES", f"TABLE_SCHEMA IN ({s})", ["TABLE_SCHEMA", "TABLE_NAME", "COLUMN_NAME"])):
+        obj = "JSON_OBJECT('GRANTEE',GRANTEE,'PRIVILEGE_TYPE',PRIVILEGE_TYPE,'IS_GRANTABLE',IS_GRANTABLE" + "".join(f",'{k}',{k}" for k in keys) + ")"
+        for (row,) in mysql(container, f"SELECT {obj} FROM information_schema.{table} WHERE {where}"):
+            p = json.loads(row)
+            who = grantee(p["GRANTEE"])
+            if who.split("@")[0] in ("mysql.sys", "mysql.session", "mysql.infoschema"):
+                continue
+            p["GRANTEE"] = who
+            on = ".".join(p[k] for k in keys) or "*"
+            out.append({"kind": "privilege", "key": f"{who} {p['PRIVILEGE_TYPE']} {table[:-11].lower()} {on}", "parent": None, "props": p})
+    for (row,) in mysql(container, "SELECT JSON_OBJECT('USER',User,'HOST',Host,'DB',Db,'ROUTINE_NAME',Routine_name,'ROUTINE_TYPE',Routine_type,"
+                                   f"'PROC_PRIV',Proc_priv) FROM mysql.procs_priv WHERE Db IN ({s})"):
+        p = json.loads(row)
+        who = f"{p['USER']}@{p['HOST']}"
+        for priv in (p["PROC_PRIV"] or "").split(","):
+            if priv:
+                q = {"GRANTEE": who, "PRIVILEGE_TYPE": priv.upper() if priv != "Grant" else "GRANT OPTION", "TABLE_SCHEMA": p["DB"],
+                     "ROUTINE_NAME": p["ROUTINE_NAME"], "ROUTINE_TYPE": p["ROUTINE_TYPE"]}
+                out.append({"kind": "privilege", "key": f"{who} {q['PRIVILEGE_TYPE']} routine {p['DB']}.{p['ROUTINE_NAME']}", "parent": None, "props": q})
+    if "role_edges" in {r[0] for r in mysql(container, "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='mysql'")}:
+        for (row,) in mysql(container, "SELECT JSON_OBJECT('ROLE',CONCAT(FROM_USER,'@',FROM_HOST),'MEMBER',CONCAT(TO_USER,'@',TO_HOST),"
+                                       "'ADMIN',WITH_ADMIN_OPTION,'DEFAULT',EXISTS (SELECT 1 FROM mysql.default_roles d WHERE d.USER = e.TO_USER "
+                                       "AND d.HOST = e.TO_HOST AND d.DEFAULT_ROLE_USER = e.FROM_USER AND d.DEFAULT_ROLE_HOST = e.FROM_HOST)) "
+                                       "FROM mysql.role_edges e"):
+            p = json.loads(row)
+            out.append({"kind": "membership", "key": f"{p['ROLE']} to {p['MEMBER']}", "parent": None, "props": p})
     if "ST_SPATIAL_REFERENCE_SYSTEMS" in have:
         for (row,) in mysql(container, "SELECT JSON_OBJECT('SRS_NAME',SRS_NAME,'SRS_ID',SRS_ID,'ORGANIZATION',ORGANIZATION,"
                                        "'ORGANIZATION_COORDSYS_ID',ORGANIZATION_COORDSYS_ID,'DEFINITION',DEFINITION,'DESCRIPTION',DESCRIPTION) "

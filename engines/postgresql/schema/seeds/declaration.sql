@@ -34,10 +34,20 @@ INSERT INTO cortex.object_kinds (id, engine, kind, name, position, scope, flavor
   ('postgresql/change_stream', 'postgresql', 'change_stream', 'Change stream', 12, 'database', 'postgresql/spanner'),
   ('postgresql/locality_group', 'postgresql', 'locality_group', 'Locality group', 13, 'database', 'postgresql/spanner'),
   ('postgresql/placement', 'postgresql', 'placement', 'Placement', 14, 'database', 'postgresql/spanner'),
-  ('postgresql/queue', 'postgresql', 'queue', 'Queue', 15, 'namespace', 'postgresql/spanner')
+  ('postgresql/queue', 'postgresql', 'queue', 'Queue', 15, 'namespace', 'postgresql/spanner'),
+  ('postgresql/role', 'postgresql', 'role', 'Role', 16, 'server', NULL)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, about) VALUES
+  ('postgresql/objects/login', 'postgresql', 'objects', 'login', 'boolean', false, NULL, 'a role that may sign in (LOGIN): a user'),
+  ('postgresql/objects/superuser', 'postgresql', 'objects', 'superuser', 'boolean', false, NULL, 'a role that passes every check (SUPERUSER)'),
+  ('postgresql/objects/createdb', 'postgresql', 'objects', 'createdb', 'boolean', false, NULL, 'a role that may make databases (CREATEDB)'),
+  ('postgresql/objects/createrole', 'postgresql', 'objects', 'createrole', 'boolean', false, NULL, 'a role that may make roles (CREATEROLE)'),
+  ('postgresql/objects/inherit', 'postgresql', 'objects', 'inherit', 'boolean', false, NULL, 'a role that has the privileges of the roles it is a member of (INHERIT)'),
+  ('postgresql/objects/replication', 'postgresql', 'objects', 'replication', 'boolean', false, NULL, 'a role that may stream replication (REPLICATION)'),
+  ('postgresql/objects/bypassrls', 'postgresql', 'objects', 'bypassrls', 'boolean', false, NULL, 'a role that row security does not bind (BYPASSRLS)'),
+  ('postgresql/objects/connection_limit', 'postgresql', 'objects', 'connection_limit', 'number', false, NULL, 'how many connections a role may hold at once; -1 for no limit'),
+  ('postgresql/objects/valid_until', 'postgresql', 'objects', 'valid_until', 'string', true, NULL, 'when a role''s password stops working, as PostgreSQL writes it; NULL for never'),
   ('postgresql/columns/is_local', 'postgresql', 'columns', 'is_local', 'boolean', false, NULL, 'false when it comes from a parent table only'),
   ('postgresql/columns/inherit_count', 'postgresql', 'columns', 'inherit_count', 'number', false, NULL, 'how many parents it comes from'),
   ('postgresql/columns/options', 'postgresql', 'columns', 'options', 'json', true, NULL, 'its options as the server writes them; NULL for none'),
@@ -88,6 +98,11 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('postgresql/triggers/initially_deferred', 'postgresql', 'triggers', 'initially_deferred', 'boolean', false, NULL, 'a deferrable one that waits for the commit unless told otherwise (INITIALLY DEFERRED)'),
   ('postgresql/objects/range_subtype', 'postgresql', 'objects', 'range_subtype', 'string', true, NULL, 'a range type''s element type; NULL otherwise'),
   ('postgresql/objects/multirange', 'postgresql', 'objects', 'multirange', 'string', true, NULL, 'a range type''s multirange type name; NULL otherwise')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, since, about) VALUES
+  ('postgresql/memberships/inherit_option', 'postgresql', 'memberships', 'inherit_option', 'boolean', false, NULL, 'postgresql/16', 'true when the member has the role''s privileges without SET ROLE (WITH INHERIT)'),
+  ('postgresql/memberships/set_option', 'postgresql', 'memberships', 'set_option', 'boolean', false, NULL, 'postgresql/16', 'true when the member may SET ROLE to it (WITH SET)')
 ON CONFLICT (id) DO NOTHING;
 
 -- what each flavor lacks

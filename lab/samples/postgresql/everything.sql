@@ -1,6 +1,7 @@
 -- PostgreSQL sample: one of every kind of object pg_dump --schema-only writes, and the cluster's own (a tablespace, a
 -- role), so the design is measured against PostgreSQL's own idea of a database's structure, not against a list of
--- ours. PostgreSQL 15 and later. Roles are made without passwords: no capture ever holds one.
+-- ours. PostgreSQL 15 and later. Roles are made without passwords: no capture ever holds one. The tablespace every_space
+-- is made by lab/setup.py, which makes its folder first.
 CREATE ROLE every_owner NOLOGIN;
 CREATE ROLE every_reader NOLOGIN;
 CREATE SCHEMA every AUTHORIZATION every_owner;
@@ -75,3 +76,4 @@ CREATE RULE no_delete AS ON DELETE TO every.happy DO INSTEAD NOTHING;
 CREATE SEQUENCE every.ticket AS bigint START 100 INCREMENT 5 CACHE 10;
 CREATE ACCESS METHOD every_heap TYPE TABLE HANDLER heap_tableam_handler;
 COMMENT ON TABLE every.parent IS 'the parent';
+CREATE TABLE every.spaced (id int PRIMARY KEY) TABLESPACE every_space;

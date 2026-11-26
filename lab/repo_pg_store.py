@@ -388,6 +388,15 @@ def main():
                     print(f"            refused: {e[:160]}")
                 for k, c in sorted(diffs.items(), key=lambda x: -x[1])[:10]:
                     print(f"            differs: {k} in {c} parts")
+                # PostgreSQL's own measure of the structure: pg_dump of the source and of the rebuilt, statement by statement
+                schemas = [n["name"] for n in S.ns.values() if n["parent_id"]]
+                lost, gained = C.dump_diff(snap.get("source", f"sf-pg-{version}"), name, schemas)
+                print(f"      {'pass' if not lost and not gained else 'FAIL'}  pg_dump --schema-only: {len(lost)} statements the source has and "
+                      f"the rebuilt does not, {len(gained)} the other way")
+                for st in lost[:int(os.environ.get("LAB_SHOW_LOST", "6"))]:
+                    print("            lost:   " + " ".join(st.split())[:170])
+                for st in gained[:3]:
+                    print("            gained: " + " ".join(st.split())[:170])
             finally:
                 C.S.remove(name)
 

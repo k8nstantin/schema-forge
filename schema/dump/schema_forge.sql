@@ -1965,6 +1965,133 @@ COMMENT ON COLUMN cortex.locked_versions.git_tag IS 'the tag of that commit; NUL
 
 
 --
+-- Name: memberships; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.memberships (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    role uuid NOT NULL,
+    member uuid NOT NULL,
+    admin_option boolean DEFAULT false NOT NULL,
+    "position" numeric NOT NULL,
+    options jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT memberships_check CHECK ((role <> member)),
+    CONSTRAINT memberships_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT memberships_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE cortex.memberships OWNER TO sf_owner;
+
+--
+-- Name: TABLE memberships; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.memberships IS 'which roles a role or an account is a member of (PostgreSQL''s GRANT role TO member; MySQL 8''s roles), each with whether the member may grant it on.';
+
+
+--
+-- Name: COLUMN memberships.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.memberships.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN memberships.design; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.memberships.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN memberships.role; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.memberships.role IS 'the role granted';
+
+
+--
+-- Name: COLUMN memberships.member; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.memberships.member IS 'the role or account it is granted to';
+
+
+--
+-- Name: COLUMN memberships.admin_option; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.memberships.admin_option IS 'true when the member may grant the role on (WITH ADMIN OPTION)';
+
+
+--
+-- Name: COLUMN memberships."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.memberships."position" IS 'its place among the member''s roles, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
+-- Name: COLUMN memberships.options; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.memberships.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written';
+
+
+--
+-- Name: namespace_owners; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.namespace_owners (
+    id uuid NOT NULL,
+    design uuid NOT NULL,
+    owner uuid,
+    owner_name text,
+    CONSTRAINT namespace_owners_check CHECK ((num_nonnulls(owner, owner_name) = 1)),
+    CONSTRAINT namespace_owners_owner_name_check CHECK ((length(owner_name) >= 1))
+);
+
+
+ALTER TABLE cortex.namespace_owners OWNER TO sf_owner;
+
+--
+-- Name: TABLE namespace_owners; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.namespace_owners IS 'the role a namespace belongs to (a PostgreSQL schema''s owner), one row a namespace that has one: apart from cortex.namespaces, which every object refers to, so a namespace and its owner''s role never refer to each other.';
+
+
+--
+-- Name: COLUMN namespace_owners.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.namespace_owners.id IS 'the namespace';
+
+
+--
+-- Name: COLUMN namespace_owners.design; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.namespace_owners.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN namespace_owners.owner; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.namespace_owners.owner IS 'the role it belongs to; NULL when named instead';
+
+
+--
+-- Name: COLUMN namespace_owners.owner_name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.namespace_owners.owner_name IS 'its owner by name, where the design holds no role of that name; NULL when owner is set';
+
+
+--
 -- Name: namespaces; Type: TABLE; Schema: cortex; Owner: sf_owner
 --
 
@@ -2211,10 +2338,14 @@ CREATE TABLE cortex.objects (
     "position" numeric NOT NULL,
     comment text,
     notes text,
+    owner uuid,
+    owner_name text,
     options jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT objects_check CHECK (((owner IS NULL) OR (owner_name IS NULL))),
     CONSTRAINT objects_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT objects_kind_check CHECK ((kind ~ '^[a-z0-9_]+$'::text)),
     CONSTRAINT objects_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT objects_owner_name_check CHECK ((length(owner_name) >= 1)),
     CONSTRAINT objects_position_check CHECK (("position" > (0)::numeric))
 );
 
@@ -2296,6 +2427,20 @@ COMMENT ON COLUMN cortex.objects.comment IS 'what it holds, in a sentence or two
 --
 
 COMMENT ON COLUMN cortex.objects.notes IS 'longer notes for people and the agent: never written into SQL';
+
+
+--
+-- Name: COLUMN objects.owner; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.objects.owner IS 'the role or account it belongs to and runs as: PostgreSQL''s owner, MySQL''s DEFINER; NULL when named instead, or for none';
+
+
+--
+-- Name: COLUMN objects.owner_name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.objects.owner_name IS 'its owner by name, where the design holds no role or account of that name (a MySQL definer whose account is gone); NULL otherwise';
 
 
 --
@@ -2395,7 +2540,7 @@ CREATE TABLE cortex.option_declarations (
     CONSTRAINT option_declarations_choices_check CHECK (((choices IS NULL) OR (jsonb_typeof(choices) = 'array'::text))),
     CONSTRAINT option_declarations_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
     CONSTRAINT option_declarations_name_check CHECK ((name ~ '^[a-z0-9_]+$'::text)),
-    CONSTRAINT option_declarations_part_check CHECK ((part = ANY (ARRAY['namespaces'::text, 'objects'::text, 'columns'::text, 'column_identities'::text, 'constraints'::text, 'constraint_columns'::text, 'dependencies'::text, 'domains'::text, 'enum_values'::text, 'indexes'::text, 'index_parts'::text, 'partitionings'::text, 'partitions'::text, 'routines'::text, 'routine_parameters'::text, 'sequences'::text, 'triggers'::text, 'views'::text]))),
+    CONSTRAINT option_declarations_part_check CHECK ((part = ANY (ARRAY['namespaces'::text, 'objects'::text, 'columns'::text, 'column_identities'::text, 'constraints'::text, 'constraint_columns'::text, 'dependencies'::text, 'domains'::text, 'enum_values'::text, 'indexes'::text, 'index_parts'::text, 'memberships'::text, 'partitionings'::text, 'partitions'::text, 'privileges'::text, 'routines'::text, 'routine_parameters'::text, 'sequences'::text, 'triggers'::text, 'views'::text]))),
     CONSTRAINT option_declarations_value_type_check CHECK ((value_type = ANY (ARRAY['string'::text, 'number'::text, 'boolean'::text, 'json'::text])))
 );
 
@@ -2633,6 +2778,117 @@ COMMENT ON COLUMN cortex.partitions.comment IS 'what it holds; NULL for none';
 --
 
 COMMENT ON COLUMN cortex.partitions.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';
+
+
+--
+-- Name: privileges; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.privileges (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    grantee uuid,
+    grantee_name text,
+    namespace uuid,
+    object uuid,
+    "column" uuid,
+    privilege text NOT NULL,
+    grantable boolean DEFAULT false NOT NULL,
+    "position" numeric NOT NULL,
+    options jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT privileges_check CHECK ((num_nonnulls(grantee, grantee_name) = 1)),
+    CONSTRAINT privileges_check1 CHECK ((num_nonnulls(namespace, object, "column") <= 1)),
+    CONSTRAINT privileges_grantee_name_check CHECK ((length(grantee_name) >= 1)),
+    CONSTRAINT privileges_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT privileges_position_check CHECK (("position" > (0)::numeric)),
+    CONSTRAINT privileges_privilege_check CHECK ((privilege ~ '^[A-Z][A-Z_ ]*$'::text))
+);
+
+
+ALTER TABLE cortex.privileges OWNER TO sf_owner;
+
+--
+-- Name: TABLE privileges; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.privileges IS 'what a role or an account may do, one privilege a row: on the whole server (MySQL''s *.*), on a namespace, on an object or on one column, given to a role or account the design holds or, by name, to one it does not (PUBLIC). An engine''s grant statements are written from these rows.';
+
+
+--
+-- Name: COLUMN privileges.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN privileges.design; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN privileges.grantee; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges.grantee IS 'the role or account given it; NULL when it is named instead';
+
+
+--
+-- Name: COLUMN privileges.grantee_name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges.grantee_name IS 'the grantee by name, where the design holds no object for it: PUBLIC, or an account another server has; NULL when grantee is set';
+
+
+--
+-- Name: COLUMN privileges.namespace; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges.namespace IS 'the namespace it is on (MySQL''s db.*, a PostgreSQL schema); NULL otherwise';
+
+
+--
+-- Name: COLUMN privileges.object; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges.object IS 'the object it is on (a table, a view, a routine, a sequence, a type); NULL otherwise';
+
+
+--
+-- Name: COLUMN privileges."column"; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges."column" IS 'the one column it is on; NULL otherwise. With namespace and object NULL too, it is on the whole server';
+
+
+--
+-- Name: COLUMN privileges.privilege; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges.privilege IS 'as the engine names it (SELECT, CREATE ROUTINE, USAGE)';
+
+
+--
+-- Name: COLUMN privileges.grantable; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges.grantable IS 'true when the grantee may give it on (WITH GRANT OPTION)';
+
+
+--
+-- Name: COLUMN privileges."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges."position" IS 'its place among the grants of its target, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
+-- Name: COLUMN privileges.options; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privileges.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written';
 
 
 --
@@ -4428,6 +4684,109 @@ COMMENT ON COLUMN engine_postgresql.collations.comment IS 'what it is for; NULL 
 
 
 --
+-- Name: default_privileges; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TABLE engine_postgresql.default_privileges (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    role uuid NOT NULL,
+    namespace uuid,
+    object_type text NOT NULL,
+    grantee uuid,
+    grantee_name text,
+    privilege text NOT NULL,
+    grantable boolean DEFAULT false NOT NULL,
+    "position" numeric NOT NULL,
+    CONSTRAINT default_privileges_check CHECK ((num_nonnulls(grantee, grantee_name) = 1)),
+    CONSTRAINT default_privileges_grantee_name_check CHECK ((length(grantee_name) >= 1)),
+    CONSTRAINT default_privileges_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT default_privileges_object_type_check CHECK ((object_type = ANY (ARRAY['tables'::text, 'sequences'::text, 'functions'::text, 'types'::text, 'schemas'::text, 'large_objects'::text]))),
+    CONSTRAINT default_privileges_position_check CHECK (("position" > (0)::numeric)),
+    CONSTRAINT default_privileges_privilege_check CHECK ((privilege ~ '^[A-Z][A-Z_ ]*$'::text))
+);
+
+
+ALTER TABLE engine_postgresql.default_privileges OWNER TO sf_owner;
+
+--
+-- Name: TABLE default_privileges; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.default_privileges IS 'what a role''s future objects grant as they are made (ALTER DEFAULT PRIVILEGES FOR ROLE ... IN SCHEMA ... GRANT ... ON TABLES TO ...), one privilege a row.';
+
+
+--
+-- Name: COLUMN default_privileges.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.default_privileges.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN default_privileges.design; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.default_privileges.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN default_privileges.role; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.default_privileges.role IS 'the role whose future objects it is for (FOR ROLE)';
+
+
+--
+-- Name: COLUMN default_privileges.namespace; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.default_privileges.namespace IS 'the schema it is in (IN SCHEMA); NULL for every schema';
+
+
+--
+-- Name: COLUMN default_privileges.object_type; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.default_privileges.object_type IS 'the kind of object it is for, as the statement names it (ON TABLES)';
+
+
+--
+-- Name: COLUMN default_privileges.grantee; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.default_privileges.grantee IS 'the role given it; NULL when it is named instead';
+
+
+--
+-- Name: COLUMN default_privileges.grantee_name; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.default_privileges.grantee_name IS 'the grantee by name: PUBLIC; NULL when grantee is set';
+
+
+--
+-- Name: COLUMN default_privileges.privilege; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.default_privileges.privilege IS 'as PostgreSQL names it (SELECT, EXECUTE)';
+
+
+--
+-- Name: COLUMN default_privileges.grantable; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.default_privileges.grantable IS 'true when the grantee may give it on (WITH GRANT OPTION)';
+
+
+--
+-- Name: COLUMN default_privileges."position"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.default_privileges."position" IS 'its place among the role''s defaults, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
 -- Name: inheritance; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -5573,6 +5932,46 @@ ALTER TABLE ONLY cortex.locked_versions
 
 
 --
+-- Name: memberships memberships_design_id_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.memberships
+    ADD CONSTRAINT memberships_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: memberships memberships_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.memberships
+    ADD CONSTRAINT memberships_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: memberships memberships_role_member_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.memberships
+    ADD CONSTRAINT memberships_role_member_key UNIQUE (role, member) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: namespace_owners namespace_owners_design_id_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.namespace_owners
+    ADD CONSTRAINT namespace_owners_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: namespace_owners namespace_owners_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.namespace_owners
+    ADD CONSTRAINT namespace_owners_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: namespaces namespaces_design_id_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
@@ -5762,6 +6161,30 @@ ALTER TABLE ONLY cortex.partitions
 
 ALTER TABLE ONLY cortex.partitions
     ADD CONSTRAINT partitions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: privileges privileges_design_grantee_grantee_name_namespace_object_col_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privileges
+    ADD CONSTRAINT privileges_design_grantee_grantee_name_namespace_object_col_key UNIQUE NULLS NOT DISTINCT (design, grantee, grantee_name, namespace, object, "column", privilege) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: privileges privileges_design_id_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privileges
+    ADD CONSTRAINT privileges_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: privileges privileges_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privileges
+    ADD CONSTRAINT privileges_pkey PRIMARY KEY (id);
 
 
 --
@@ -6221,6 +6644,30 @@ ALTER TABLE ONLY engine_postgresql.collations
 
 
 --
+-- Name: default_privileges default_privileges_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.default_privileges
+    ADD CONSTRAINT default_privileges_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: default_privileges default_privileges_design_role_namespace_object_type_grante_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.default_privileges
+    ADD CONSTRAINT default_privileges_design_role_namespace_object_type_grante_key UNIQUE NULLS NOT DISTINCT (design, role, namespace, object_type, grantee, grantee_name, privilege) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: default_privileges default_privileges_pkey; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.default_privileges
+    ADD CONSTRAINT default_privileges_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: inheritance inheritance_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -6604,6 +7051,27 @@ CREATE INDEX locked_versions_turn ON cortex.locked_versions USING btree (design,
 
 
 --
+-- Name: memberships_member; Type: INDEX; Schema: cortex; Owner: sf_owner
+--
+
+CREATE INDEX memberships_member ON cortex.memberships USING btree (design, member);
+
+
+--
+-- Name: memberships_role; Type: INDEX; Schema: cortex; Owner: sf_owner
+--
+
+CREATE INDEX memberships_role ON cortex.memberships USING btree (design, role);
+
+
+--
+-- Name: namespace_owners_owner; Type: INDEX; Schema: cortex; Owner: sf_owner
+--
+
+CREATE INDEX namespace_owners_owner ON cortex.namespace_owners USING btree (design, owner);
+
+
+--
 -- Name: namespaces_parent; Type: INDEX; Schema: cortex; Owner: sf_owner
 --
 
@@ -6622,6 +7090,13 @@ CREATE INDEX object_tags_object ON cortex.object_tags USING btree (design, objec
 --
 
 CREATE INDEX objects_namespace ON cortex.objects USING btree (design, namespace);
+
+
+--
+-- Name: objects_owner; Type: INDEX; Schema: cortex; Owner: sf_owner
+--
+
+CREATE INDEX objects_owner ON cortex.objects USING btree (design, owner);
 
 
 --
@@ -6650,6 +7125,34 @@ CREATE INDEX partitions_partitioning ON cortex.partitions USING btree (design, p
 --
 
 CREATE INDEX partitions_table_object ON cortex.partitions USING btree (design, table_object);
+
+
+--
+-- Name: privileges_column; Type: INDEX; Schema: cortex; Owner: sf_owner
+--
+
+CREATE INDEX privileges_column ON cortex.privileges USING btree (design, "column");
+
+
+--
+-- Name: privileges_grantee; Type: INDEX; Schema: cortex; Owner: sf_owner
+--
+
+CREATE INDEX privileges_grantee ON cortex.privileges USING btree (design, grantee);
+
+
+--
+-- Name: privileges_namespace; Type: INDEX; Schema: cortex; Owner: sf_owner
+--
+
+CREATE INDEX privileges_namespace ON cortex.privileges USING btree (design, namespace);
+
+
+--
+-- Name: privileges_object; Type: INDEX; Schema: cortex; Owner: sf_owner
+--
+
+CREATE INDEX privileges_object ON cortex.privileges USING btree (design, object);
 
 
 --
@@ -6762,6 +7265,27 @@ CREATE INDEX subpartitions_partition ON engine_mysql.subpartitions USING btree (
 --
 
 CREATE INDEX collations_namespace ON engine_postgresql.collations USING btree (design, namespace);
+
+
+--
+-- Name: default_privileges_grantee; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX default_privileges_grantee ON engine_postgresql.default_privileges USING btree (design, grantee);
+
+
+--
+-- Name: default_privileges_namespace; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX default_privileges_namespace ON engine_postgresql.default_privileges USING btree (design, namespace);
+
+
+--
+-- Name: default_privileges_role; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX default_privileges_role ON engine_postgresql.default_privileges USING btree (design, role);
 
 
 --
@@ -6989,6 +7513,13 @@ CREATE TRIGGER options AFTER INSERT ON cortex.indexes REFERENCING NEW TABLE AS n
 
 
 --
+-- Name: memberships options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options AFTER INSERT ON cortex.memberships REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
 -- Name: namespaces options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
@@ -7014,6 +7545,13 @@ CREATE TRIGGER options AFTER INSERT ON cortex.partitionings REFERENCING NEW TABL
 --
 
 CREATE TRIGGER options AFTER INSERT ON cortex.partitions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: privileges options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options AFTER INSERT ON cortex.privileges REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
@@ -7115,6 +7653,13 @@ CREATE TRIGGER options_changed AFTER UPDATE ON cortex.indexes REFERENCING NEW TA
 
 
 --
+-- Name: memberships options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.memberships REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
 -- Name: namespaces options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
@@ -7140,6 +7685,13 @@ CREATE TRIGGER options_changed AFTER UPDATE ON cortex.partitionings REFERENCING 
 --
 
 CREATE TRIGGER options_changed AFTER UPDATE ON cortex.partitions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: privileges options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.privileges REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
@@ -7497,6 +8049,54 @@ ALTER TABLE ONLY cortex.locked_versions
 
 
 --
+-- Name: memberships memberships_design_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.memberships
+    ADD CONSTRAINT memberships_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: memberships memberships_design_member_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.memberships
+    ADD CONSTRAINT memberships_design_member_fkey FOREIGN KEY (design, member) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: memberships memberships_design_role_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.memberships
+    ADD CONSTRAINT memberships_design_role_fkey FOREIGN KEY (design, role) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: namespace_owners namespace_owners_design_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.namespace_owners
+    ADD CONSTRAINT namespace_owners_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: namespace_owners namespace_owners_design_id_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.namespace_owners
+    ADD CONSTRAINT namespace_owners_design_id_fkey FOREIGN KEY (design, id) REFERENCES cortex.namespaces(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: namespace_owners namespace_owners_design_owner_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.namespace_owners
+    ADD CONSTRAINT namespace_owners_design_owner_fkey FOREIGN KEY (design, owner) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: namespaces namespaces_design_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
@@ -7566,6 +8166,14 @@ ALTER TABLE ONLY cortex.objects
 
 ALTER TABLE ONLY cortex.objects
     ADD CONSTRAINT objects_design_namespace_fkey FOREIGN KEY (design, namespace) REFERENCES cortex.namespaces(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: objects objects_design_owner_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.objects
+    ADD CONSTRAINT objects_design_owner_fkey FOREIGN KEY (design, owner) REFERENCES cortex.objects(design, id) ON DELETE SET NULL (owner) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7654,6 +8262,46 @@ ALTER TABLE ONLY cortex.partitions
 
 ALTER TABLE ONLY cortex.partitions
     ADD CONSTRAINT partitions_design_table_object_fkey FOREIGN KEY (design, table_object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: privileges privileges_design_column_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privileges
+    ADD CONSTRAINT privileges_design_column_fkey FOREIGN KEY (design, "column") REFERENCES cortex.columns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: privileges privileges_design_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privileges
+    ADD CONSTRAINT privileges_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: privileges privileges_design_grantee_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privileges
+    ADD CONSTRAINT privileges_design_grantee_fkey FOREIGN KEY (design, grantee) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: privileges privileges_design_namespace_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privileges
+    ADD CONSTRAINT privileges_design_namespace_fkey FOREIGN KEY (design, namespace) REFERENCES cortex.namespaces(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: privileges privileges_design_object_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privileges
+    ADD CONSTRAINT privileges_design_object_fkey FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7990,6 +8638,38 @@ ALTER TABLE ONLY engine_postgresql.collations
 
 ALTER TABLE ONLY engine_postgresql.collations
     ADD CONSTRAINT collations_design_namespace_fkey FOREIGN KEY (design, namespace) REFERENCES cortex.namespaces(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: default_privileges default_privileges_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.default_privileges
+    ADD CONSTRAINT default_privileges_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: default_privileges default_privileges_design_grantee_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.default_privileges
+    ADD CONSTRAINT default_privileges_design_grantee_fkey FOREIGN KEY (design, grantee) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: default_privileges default_privileges_design_namespace_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.default_privileges
+    ADD CONSTRAINT default_privileges_design_namespace_fkey FOREIGN KEY (design, namespace) REFERENCES cortex.namespaces(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: default_privileges default_privileges_design_role_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.default_privileges
+    ADD CONSTRAINT default_privileges_design_role_fkey FOREIGN KEY (design, role) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -8510,6 +9190,24 @@ GRANT SELECT ON TABLE cortex.locked_versions TO sf_reader;
 
 
 --
+-- Name: TABLE memberships; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.memberships TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.memberships TO sf_agent;
+GRANT SELECT ON TABLE cortex.memberships TO sf_reader;
+
+
+--
+-- Name: TABLE namespace_owners; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.namespace_owners TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.namespace_owners TO sf_agent;
+GRANT SELECT ON TABLE cortex.namespace_owners TO sf_reader;
+
+
+--
 -- Name: TABLE namespaces; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
@@ -8579,6 +9277,15 @@ GRANT SELECT ON TABLE cortex.partitionings TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.partitions TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.partitions TO sf_agent;
 GRANT SELECT ON TABLE cortex.partitions TO sf_reader;
+
+
+--
+-- Name: TABLE privileges; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.privileges TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.privileges TO sf_agent;
+GRANT SELECT ON TABLE cortex.privileges TO sf_reader;
 
 
 --
@@ -8795,6 +9502,15 @@ GRANT SELECT ON TABLE engine_mysql.subpartitions TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.collations TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.collations TO sf_agent;
 GRANT SELECT ON TABLE engine_postgresql.collations TO sf_reader;
+
+
+--
+-- Name: TABLE default_privileges; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.default_privileges TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.default_privileges TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.default_privileges TO sf_reader;
 
 
 --

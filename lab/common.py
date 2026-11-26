@@ -67,6 +67,22 @@ def ready_mysql(name):
     raise SystemExit(f"{name} did not answer")
 
 
+def schema_dump(container, schemas):
+    """PostgreSQL's own word on a database's structure: pg_dump --schema-only of the schemas named, as statements,
+    without the lines that differ between any two dumps (comments, SET, the restrict key)."""
+    args = ["docker", "exec", container, "pg_dump", "-U", "postgres", "-d", SOURCE_DB, "--schema-only", "--no-owner"] + [f"--schema={n}" for n in schemas]
+    out = subprocess.run(args, capture_output=True, text=True).stdout
+    keep = "\n".join(l for l in out.split("\n") if l and not l.startswith(("--", "SET ", "SELECT pg_catalog.set_config", "\\restrict", "\\unrestrict")))
+    return sorted(st.strip() for st in keep.split(";\n") if st.strip())
+
+
+def dump_diff(source, rebuilt, schemas):
+    """The statements pg_dump writes for one database and not the other: (only the source's, only the rebuilt's)."""
+    from collections import Counter
+    a, b = Counter(schema_dump(source, schemas)), Counter(schema_dump(rebuilt, schemas))
+    return sorted((a - b).elements()), sorted((b - a).elements())
+
+
 def fresh_pg(version):
     name = f"sf-pg-{version}-roundtrip"
     S.remove(name)

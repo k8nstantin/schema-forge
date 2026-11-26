@@ -38,12 +38,15 @@ INSERT INTO cortex.object_kinds (id, engine, kind, name, position, scope, since)
   ('mysql/trigger', 'mysql', 'trigger', 'Trigger', 7, 'namespace', NULL),
   ('mysql/event', 'mysql', 'event', 'Event', 8, 'namespace', NULL),
   ('mysql/tablespace', 'mysql', 'tablespace', 'Tablespace', 9, 'server', NULL),
-  ('mysql/spatial_reference_system', 'mysql', 'spatial_reference_system', 'Spatial reference system', 10, 'server', 'mysql/8.0')
+  ('mysql/spatial_reference_system', 'mysql', 'spatial_reference_system', 'Spatial reference system', 10, 'server', 'mysql/8.0'),
+  ('mysql/account', 'mysql', 'account', 'Account', 11, 'server', NULL)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, since, about) VALUES
   ('mysql/objects/language', 'mysql', 'objects', 'language', 'string', false, NULL, 'mysql/9.7', 'a library''s language, as SHOW CREATE LIBRARY writes it (JAVASCRIPT)'),
   ('mysql/dependencies/alias', 'mysql', 'dependencies', 'alias', 'string', true, NULL, 'mysql/9.7', 'the name a routine''s code calls a library it uses by (USING (lib AS util)); NULL for the library''s own name'),
+  ('mysql/objects/role', 'mysql', 'objects', 'role', 'boolean', false, NULL, 'mysql/8.0', 'true for an account made as a role (CREATE ROLE): locked, with no password'),
+  ('mysql/memberships/default_role', 'mysql', 'memberships', 'default_role', 'boolean', false, NULL, 'mysql/8.0', 'true when the role is one of the member''s default roles, active as it signs in'),
   ('mysql/objects/autoextend_size', 'mysql', 'objects', 'autoextend_size', 'number', true, NULL, 'mysql/8.0', 'a tablespace''s AUTOEXTEND_SIZE in bytes, where written (8.0.23 and later); NULL for none'),
   ('mysql/objects/srs_id', 'mysql', 'objects', 'srs_id', 'number', false, NULL, 'mysql/8.0', 'a spatial reference system''s number, the SRID a column names it by (outside the ranges MySQL reserves for its own)'),
   ('mysql/objects/organization', 'mysql', 'objects', 'organization', 'string', true, NULL, 'mysql/8.0', 'the organization that defines a spatial reference system; NULL for none'),
@@ -68,7 +71,6 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('mysql/index_parts/length', 'mysql', 'index_parts', 'length', 'number', false, NULL, 'how many characters or bytes of the column it indexes'),
   ('mysql/indexes/invisible', 'mysql', 'indexes', 'invisible', 'boolean', false, NULL, 'true when the optimizer ignores it (8.0 and later)'),
   ('mysql/indexes/parser', 'mysql', 'indexes', 'parser', 'string', true, NULL, 'the full-text parser it uses (ngram); NULL for none'),
-  ('mysql/objects/definer', 'mysql', 'objects', 'definer', 'string', false, NULL, 'the account whose rights it runs with, as the server gives it (app@%)'),
   ('mysql/objects/sql_mode', 'mysql', 'objects', 'sql_mode', 'string', true, NULL, 'the SQL mode it was made under, from SHOW CREATE (5.7''s ROUTINES misnames one mode); NULL for a view'),
   ('mysql/objects/character_set_client', 'mysql', 'objects', 'character_set_client', 'string', false, NULL, 'the character set its text was written in: it is sent back in that character set'),
   ('mysql/objects/collation_connection', 'mysql', 'objects', 'collation_connection', 'string', false, NULL, 'the collation it was made under'),
@@ -97,6 +99,13 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('mysql/objects/compression', 'mysql', 'objects', 'compression', 'string', true, NULL, 'COMPRESSION, where written'),
   ('mysql/objects/encryption', 'mysql', 'objects', 'encryption', 'string', true, NULL, 'ENCRYPTION, where written'),
   ('mysql/objects/tablespace', 'mysql', 'objects', 'tablespace', 'string', true, NULL, 'the tablespace a table is stored in, by name, where it is one the design does not hold (innodb_system); one it holds is a dependency'),
+  ('mysql/objects/auth_plugin', 'mysql', 'objects', 'auth_plugin', 'string', false, NULL, 'an account''s authentication plugin (caching_sha2_password, mysql_native_password); never its password'),
+  ('mysql/objects/locked', 'mysql', 'objects', 'locked', 'boolean', false, NULL, 'true when an account may not sign in (ACCOUNT LOCK)'),
+  ('mysql/objects/require', 'mysql', 'objects', 'require', 'string', false, '["NONE", "SSL", "X509", "SPECIFIED"]', 'the TLS an account must sign in with (REQUIRE)'),
+  ('mysql/objects/max_queries_per_hour', 'mysql', 'objects', 'max_queries_per_hour', 'number', false, NULL, 'an account''s queries an hour; 0 for no limit'),
+  ('mysql/objects/max_updates_per_hour', 'mysql', 'objects', 'max_updates_per_hour', 'number', false, NULL, 'an account''s updates an hour; 0 for no limit'),
+  ('mysql/objects/max_connections_per_hour', 'mysql', 'objects', 'max_connections_per_hour', 'number', false, NULL, 'an account''s connections an hour; 0 for no limit'),
+  ('mysql/objects/max_user_connections', 'mysql', 'objects', 'max_user_connections', 'number', false, NULL, 'an account''s connections at once; 0 for the server''s limit'),
   ('mysql/objects/datafile', 'mysql', 'objects', 'datafile', 'string', false, NULL, 'a tablespace''s data file, as the server gives it (./ts_shared.ibd)'),
   ('mysql/objects/file_block_size', 'mysql', 'objects', 'file_block_size', 'number', true, NULL, 'a compressed tablespace''s FILE_BLOCK_SIZE in bytes; NULL for an uncompressed one'),
   ('mysql/objects/soname', 'mysql', 'objects', 'soname', 'string', false, NULL, 'the shared library a loadable function is in (SONAME), as registered'),

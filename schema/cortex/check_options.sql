@@ -152,3 +152,13 @@ CREATE TRIGGER options AFTER INSERT ON cortex.views
   REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 CREATE TRIGGER options_changed AFTER UPDATE ON cortex.views
   REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+CREATE TRIGGER options AFTER INSERT ON cortex.memberships
+  REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.memberships
+  REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+CREATE TRIGGER options AFTER INSERT ON cortex.privileges
+  REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.privileges
+  REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();

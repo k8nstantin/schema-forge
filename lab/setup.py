@@ -77,9 +77,10 @@ def pg_up(name, version, port):
 def samples(engine, version):
     d = os.path.join(HERE, "samples", engine)
     mysql = engine == "mysql"
-    files = ["shop.sql", "features.sql"] + (["features_replica.sql"] if mysql else []) \
+    files = ["shop.sql", "features.sql"] + (["everything.sql"] if engine == "postgresql" else []) + (["features_replica.sql"] if mysql else []) \
         + (["servers.sql"] if mysql else []) + (["servers80.sql"] if mysql and version != "5.7" else []) \
         + (["features57.sql"] if mysql and version == "5.7" else []) \
+        + (["accounts.sql"] if mysql else []) + (["accounts80.sql"] if mysql and version != "5.7" else []) \
         + (["features80.sql"] if mysql and version != "5.7" else []) + (["features97.sql"] if mysql and version == "9.7" else []) + ["quoted_names.sql"]
     sql = "".join(open(os.path.join(d, f)).read() + "\n" for f in files)
     if mysql and version in ("5.7", "8.0"):
@@ -103,7 +104,8 @@ def main():
            "DROP DATABASE IF EXISTS shop; DROP DATABASE IF EXISTS features; DROP DATABASE IF EXISTS features_js; DROP DATABASE IF EXISTS `Quoted Names`")
         # the server's own objects the samples made, once no table is in them (--force: a server that lacks one moves on)
         sh("docker", "exec", "-i", name, "mysql", "-uroot", f"-p{PW}", "--force", check=False,
-           stdin="DROP FUNCTION IF EXISTS keyring_key_fetch;\nDROP TABLESPACE ts_shared;\nDROP TABLESPACE ts_small;\nDROP TABLESPACE ts_grow;\n"
+           stdin="DROP USER IF EXISTS 'lab_app'@'%', 'lab_ro'@'10.%', 'lab_reader'@'%';\n"
+                 "DROP FUNCTION IF EXISTS keyring_key_fetch;\nDROP TABLESPACE ts_shared;\nDROP TABLESPACE ts_small;\nDROP TABLESPACE ts_grow;\n"
                  "DROP SPATIAL REFERENCE SYSTEM IF EXISTS 1000001;\n")
         sh("docker", "exec", "-i", name, "mysql", "-uroot", f"-p{PW}", "--comments", stdin=samples("mysql", v))
         note = ""
@@ -128,6 +130,12 @@ def main():
         sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", 'DROP SCHEMA IF EXISTS shop, features, audit, "Quoted Names" CASCADE')
         sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", f"DROP DATABASE IF EXISTS {SOURCE_DB} WITH (FORCE)")
         sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "DROP ROLE IF EXISTS features_reader")
+        # what the every-object sample makes in the cluster, beside its database: its roles and its tablespace
+        sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "DROP TABLESPACE IF EXISTS every_space")
+        for role in ("every_owner", "every_reader"):
+            sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", f"DROP ROLE IF EXISTS {role}")
+        sh("docker", "exec", name, "sh", "-c", "mkdir -p /var/lib/postgresql/every_space && chown postgres /var/lib/postgresql/every_space")
+        sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "CREATE TABLESPACE every_space LOCATION '/var/lib/postgresql/every_space'")
         sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", f"CREATE DATABASE {SOURCE_DB}")
         sh("docker", "exec", "-i", name, "psql", "-U", "postgres", "-d", SOURCE_DB, "-q", "-v", "ON_ERROR_STOP=1", stdin=samples("postgresql", v))
         print(f"{name}: 127.0.0.1:{port}, lab samples loaded{', every statistic counted' if v == '18' else ', default statistics'}")

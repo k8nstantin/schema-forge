@@ -77,7 +77,6 @@
   },
   "engine_mysql.programs": {
    "keys": [
-    "definer",
     "sql_mode",
     "character_set_client",
     "collation_connection",
@@ -89,7 +88,6 @@
     "character_set_client": "string",
     "collation_connection": "string",
     "database_collation": "string",
-    "definer": "string",
     "sql_mode": "string",
     "time_zone": "string"
    }
@@ -411,6 +409,38 @@
     "soname": "string",
     "returns": "string",
     "aggregate": "boolean"
+   }
+  },
+  "engine_mysql.accounts": {
+   "keys": [
+    "auth_plugin",
+    "locked",
+    "require",
+    "max_queries_per_hour",
+    "max_updates_per_hour",
+    "max_connections_per_hour",
+    "max_user_connections",
+    "role"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "auth_plugin": "string",
+    "locked": "boolean",
+    "require": "string",
+    "max_queries_per_hour": "number",
+    "max_updates_per_hour": "number",
+    "max_connections_per_hour": "number",
+    "max_user_connections": "number",
+    "role": "boolean"
+   }
+  },
+  "engine_mysql.memberships": {
+   "keys": [
+    "default_role"
+   ],
+   "target": "cortex.memberships",
+   "types": {
+    "default_role": "boolean"
    }
   }
  }

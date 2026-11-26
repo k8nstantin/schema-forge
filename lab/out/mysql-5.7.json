@@ -315,6 +315,23 @@
    }
   },
   {
+   "key": "features.v_by_app",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": null,
+    "ENGINE": null,
+    "ROW_FORMAT": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": null,
+    "TABLE_COMMENT": "VIEW",
+    "TABLE_NAME": "v_by_app",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "VIEW",
+    "VERSION": null
+   }
+  },
+  {
    "key": "features.v_by_status",
    "kind": "table",
    "parent": "features",
@@ -1666,6 +1683,62 @@
     "PRIVILEGES": "select,insert,update,references",
     "TABLE_CATALOG": "def",
     "TABLE_NAME": "ranks",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.v_by_app.id",
+   "kind": "column",
+   "parent": "features.v_by_app",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": null,
+    "COLUMN_KEY": "",
+    "COLUMN_NAME": "id",
+    "COLUMN_TYPE": "int(11)",
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "NO",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 1,
+    "PRIVILEGES": "select,insert,update,references",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "v_by_app",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.v_by_app.code",
+   "kind": "column",
+   "parent": "features.v_by_app",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": 3,
+    "CHARACTER_OCTET_LENGTH": 12,
+    "CHARACTER_SET_NAME": "utf8mb4",
+    "COLLATION_NAME": "utf8mb4_unicode_ci",
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": null,
+    "COLUMN_KEY": "",
+    "COLUMN_NAME": "code",
+    "COLUMN_TYPE": "char(3)",
+    "DATA_TYPE": "char",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "NO",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "ORDINAL_POSITION": 2,
+    "PRIVILEGES": "select,insert,update,references",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "v_by_app",
     "TABLE_SCHEMA": "features"
    }
   },
@@ -4126,6 +4199,24 @@
    }
   },
   {
+   "key": "features.v_by_app",
+   "kind": "view",
+   "parent": "features",
+   "props": {
+    "CHARACTER_SET_CLIENT": "latin1",
+    "CHECK_OPTION": "NONE",
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "DEFINER": "lab_app@%",
+    "IS_UPDATABLE": "YES",
+    "SECURITY_TYPE": "DEFINER",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "v_by_app",
+    "TABLE_SCHEMA": "features",
+    "VIEW_DEFINITION": "select `features`.`parent`.`id` AS `id`,`features`.`parent`.`code` AS `code` from `features`.`parent`",
+    "__show_create": "CREATE ALGORITHM=UNDEFINED DEFINER=`lab_app`@`%` SQL SECURITY DEFINER VIEW `features`.`v_by_app` AS select `features`.`parent`.`id` AS `id`,`features`.`parent`.`code` AS `code` from `features`.`parent`"
+   }
+  },
+  {
    "key": "features.v_by_status",
    "kind": "view",
    "parent": "features",
@@ -4292,6 +4383,44 @@
    }
   },
   {
+   "key": "features.p_as_app.PROCEDURE",
+   "kind": "routine",
+   "parent": "features",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_CLIENT": "latin1",
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "COLLATION_NAME": null,
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DATA_TYPE": "",
+    "DATETIME_PRECISION": null,
+    "DEFINER": "lab_app@%",
+    "DTD_IDENTIFIER": null,
+    "EXTERNAL_LANGUAGE": null,
+    "EXTERNAL_NAME": null,
+    "IS_DETERMINISTIC": "NO",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "PARAMETER_STYLE": "SQL",
+    "ROUTINE_BODY": "SQL",
+    "ROUTINE_CATALOG": "def",
+    "ROUTINE_COMMENT": "",
+    "ROUTINE_DEFINITION": "SELECT COUNT(*) FROM features.parent",
+    "ROUTINE_NAME": "p_as_app",
+    "ROUTINE_SCHEMA": "features",
+    "ROUTINE_TYPE": "PROCEDURE",
+    "SECURITY_TYPE": "DEFINER",
+    "SPECIFIC_NAME": "p_as_app",
+    "SQL_DATA_ACCESS": "READS SQL DATA",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+    "SQL_PATH": null,
+    "__show_create": "CREATE DEFINER=`lab_app`@`%` PROCEDURE `p_as_app`()\n    READS SQL DATA\nSELECT COUNT(*) FROM features.parent",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
    "key": "features.p_cached.PROCEDURE",
    "kind": "routine",
    "parent": "features",
@@ -4364,6 +4493,44 @@
     "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
     "SQL_PATH": null,
     "__show_create": "CREATE DEFINER=`root`@`localhost` PROCEDURE `p_count`(IN p_status VARCHAR(10), OUT p_n INT, INOUT p_seen INT)\n    READS SQL DATA\n    SQL SECURITY INVOKER\n    COMMENT 'counts rows'\nBEGIN\n  SELECT COUNT(*) INTO p_n FROM features.kinds WHERE status = p_status;\n  SET p_seen = p_seen + 1;\nEND",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
+   "key": "features.p_orphan.PROCEDURE",
+   "kind": "routine",
+   "parent": "features",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_CLIENT": "latin1",
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "COLLATION_NAME": null,
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DATA_TYPE": "",
+    "DATETIME_PRECISION": null,
+    "DEFINER": "lab_gone@%",
+    "DTD_IDENTIFIER": null,
+    "EXTERNAL_LANGUAGE": null,
+    "EXTERNAL_NAME": null,
+    "IS_DETERMINISTIC": "NO",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "PARAMETER_STYLE": "SQL",
+    "ROUTINE_BODY": "SQL",
+    "ROUTINE_CATALOG": "def",
+    "ROUTINE_COMMENT": "",
+    "ROUTINE_DEFINITION": "SELECT 1",
+    "ROUTINE_NAME": "p_orphan",
+    "ROUTINE_SCHEMA": "features",
+    "ROUTINE_TYPE": "PROCEDURE",
+    "SECURITY_TYPE": "DEFINER",
+    "SPECIFIC_NAME": "p_orphan",
+    "SQL_DATA_ACCESS": "READS SQL DATA",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+    "SQL_PATH": null,
+    "__show_create": "CREATE DEFINER=`lab_gone`@`%` PROCEDURE `p_orphan`()\n    READS SQL DATA\nSELECT 1",
     "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
    }
   },
@@ -4806,10 +4973,10 @@
     "INTERVAL_VALUE": "1",
     "ON_COMPLETION": "NOT PRESERVE",
     "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
-    "STARTS": "2026-11-26 17:53:41.000000",
+    "STARTS": "2026-11-26 18:35:56.000000",
     "STATUS": "ENABLED",
     "TIME_ZONE": "SYSTEM",
-    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `nightly` ON SCHEDULE EVERY 1 DAY STARTS '2026-11-26 17:53:41' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM shop.order_items WHERE qty = 0",
+    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `nightly` ON SCHEDULE EVERY 1 DAY STARTS '2026-11-26 18:35:56' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM shop.order_items WHERE qty = 0",
     "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
    }
   },
@@ -5159,6 +5326,715 @@
     "NAME": "keyring_key_fetch",
     "RET": 0,
     "TYPE": "function"
+   }
+  },
+  {
+   "key": "root@localhost",
+   "kind": "account",
+   "parent": null,
+   "props": {
+    "HOST": "localhost",
+    "LOCKED": "N",
+    "MAX_CONNECTIONS": 0,
+    "MAX_QUESTIONS": 0,
+    "MAX_UPDATES": 0,
+    "MAX_USER_CONNECTIONS": 0,
+    "NO_PASSWORD": false,
+    "PLUGIN": "mysql_native_password",
+    "SSL_TYPE": "",
+    "USER": "root"
+   }
+  },
+  {
+   "key": "root@%",
+   "kind": "account",
+   "parent": null,
+   "props": {
+    "HOST": "%",
+    "LOCKED": "N",
+    "MAX_CONNECTIONS": 0,
+    "MAX_QUESTIONS": 0,
+    "MAX_UPDATES": 0,
+    "MAX_USER_CONNECTIONS": 0,
+    "NO_PASSWORD": false,
+    "PLUGIN": "mysql_native_password",
+    "SSL_TYPE": "",
+    "USER": "root"
+   }
+  },
+  {
+   "key": "lab_ro@10.%",
+   "kind": "account",
+   "parent": null,
+   "props": {
+    "HOST": "10.%",
+    "LOCKED": "Y",
+    "MAX_CONNECTIONS": 0,
+    "MAX_QUESTIONS": 0,
+    "MAX_UPDATES": 0,
+    "MAX_USER_CONNECTIONS": 0,
+    "NO_PASSWORD": true,
+    "PLUGIN": "mysql_native_password",
+    "SSL_TYPE": "",
+    "USER": "lab_ro"
+   }
+  },
+  {
+   "key": "lab_app@%",
+   "kind": "account",
+   "parent": null,
+   "props": {
+    "HOST": "%",
+    "LOCKED": "N",
+    "MAX_CONNECTIONS": 0,
+    "MAX_QUESTIONS": 1000,
+    "MAX_UPDATES": 0,
+    "MAX_USER_CONNECTIONS": 5,
+    "NO_PASSWORD": true,
+    "PLUGIN": "mysql_native_password",
+    "SSL_TYPE": "",
+    "USER": "lab_app"
+   }
+  },
+  {
+   "key": "root@localhost SELECT user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SELECT"
+   }
+  },
+  {
+   "key": "root@localhost INSERT user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "INSERT"
+   }
+  },
+  {
+   "key": "root@localhost UPDATE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "UPDATE"
+   }
+  },
+  {
+   "key": "root@localhost DELETE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "DELETE"
+   }
+  },
+  {
+   "key": "root@localhost CREATE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE"
+   }
+  },
+  {
+   "key": "root@localhost DROP user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "DROP"
+   }
+  },
+  {
+   "key": "root@localhost RELOAD user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "RELOAD"
+   }
+  },
+  {
+   "key": "root@localhost SHUTDOWN user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SHUTDOWN"
+   }
+  },
+  {
+   "key": "root@localhost PROCESS user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "PROCESS"
+   }
+  },
+  {
+   "key": "root@localhost FILE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "FILE"
+   }
+  },
+  {
+   "key": "root@localhost REFERENCES user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "REFERENCES"
+   }
+  },
+  {
+   "key": "root@localhost INDEX user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "INDEX"
+   }
+  },
+  {
+   "key": "root@localhost ALTER user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "ALTER"
+   }
+  },
+  {
+   "key": "root@localhost SHOW DATABASES user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SHOW DATABASES"
+   }
+  },
+  {
+   "key": "root@localhost SUPER user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SUPER"
+   }
+  },
+  {
+   "key": "root@localhost CREATE TEMPORARY TABLES user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE TEMPORARY TABLES"
+   }
+  },
+  {
+   "key": "root@localhost LOCK TABLES user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "LOCK TABLES"
+   }
+  },
+  {
+   "key": "root@localhost EXECUTE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "EXECUTE"
+   }
+  },
+  {
+   "key": "root@localhost REPLICATION SLAVE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "REPLICATION SLAVE"
+   }
+  },
+  {
+   "key": "root@localhost REPLICATION CLIENT user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "REPLICATION CLIENT"
+   }
+  },
+  {
+   "key": "root@localhost CREATE VIEW user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE VIEW"
+   }
+  },
+  {
+   "key": "root@localhost SHOW VIEW user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SHOW VIEW"
+   }
+  },
+  {
+   "key": "root@localhost CREATE ROUTINE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE ROUTINE"
+   }
+  },
+  {
+   "key": "root@localhost ALTER ROUTINE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "ALTER ROUTINE"
+   }
+  },
+  {
+   "key": "root@localhost CREATE USER user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE USER"
+   }
+  },
+  {
+   "key": "root@localhost EVENT user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "EVENT"
+   }
+  },
+  {
+   "key": "root@localhost TRIGGER user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "TRIGGER"
+   }
+  },
+  {
+   "key": "root@localhost CREATE TABLESPACE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@localhost",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE TABLESPACE"
+   }
+  },
+  {
+   "key": "root@% SELECT user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SELECT"
+   }
+  },
+  {
+   "key": "root@% INSERT user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "INSERT"
+   }
+  },
+  {
+   "key": "root@% UPDATE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "UPDATE"
+   }
+  },
+  {
+   "key": "root@% DELETE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "DELETE"
+   }
+  },
+  {
+   "key": "root@% CREATE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE"
+   }
+  },
+  {
+   "key": "root@% DROP user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "DROP"
+   }
+  },
+  {
+   "key": "root@% RELOAD user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "RELOAD"
+   }
+  },
+  {
+   "key": "root@% SHUTDOWN user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SHUTDOWN"
+   }
+  },
+  {
+   "key": "root@% PROCESS user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "PROCESS"
+   }
+  },
+  {
+   "key": "root@% FILE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "FILE"
+   }
+  },
+  {
+   "key": "root@% REFERENCES user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "REFERENCES"
+   }
+  },
+  {
+   "key": "root@% INDEX user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "INDEX"
+   }
+  },
+  {
+   "key": "root@% ALTER user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "ALTER"
+   }
+  },
+  {
+   "key": "root@% SHOW DATABASES user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SHOW DATABASES"
+   }
+  },
+  {
+   "key": "root@% SUPER user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SUPER"
+   }
+  },
+  {
+   "key": "root@% CREATE TEMPORARY TABLES user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE TEMPORARY TABLES"
+   }
+  },
+  {
+   "key": "root@% LOCK TABLES user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "LOCK TABLES"
+   }
+  },
+  {
+   "key": "root@% EXECUTE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "EXECUTE"
+   }
+  },
+  {
+   "key": "root@% REPLICATION SLAVE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "REPLICATION SLAVE"
+   }
+  },
+  {
+   "key": "root@% REPLICATION CLIENT user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "REPLICATION CLIENT"
+   }
+  },
+  {
+   "key": "root@% CREATE VIEW user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE VIEW"
+   }
+  },
+  {
+   "key": "root@% SHOW VIEW user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SHOW VIEW"
+   }
+  },
+  {
+   "key": "root@% CREATE ROUTINE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE ROUTINE"
+   }
+  },
+  {
+   "key": "root@% ALTER ROUTINE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "ALTER ROUTINE"
+   }
+  },
+  {
+   "key": "root@% CREATE USER user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE USER"
+   }
+  },
+  {
+   "key": "root@% EVENT user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "EVENT"
+   }
+  },
+  {
+   "key": "root@% TRIGGER user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "TRIGGER"
+   }
+  },
+  {
+   "key": "root@% CREATE TABLESPACE user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "root@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "CREATE TABLESPACE"
+   }
+  },
+  {
+   "key": "lab_app@% PROCESS user *",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "lab_app@%",
+    "IS_GRANTABLE": "NO",
+    "PRIVILEGE_TYPE": "PROCESS"
+   }
+  },
+  {
+   "key": "lab_ro@10.% SELECT schema features",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "lab_ro@10.%",
+    "IS_GRANTABLE": "NO",
+    "PRIVILEGE_TYPE": "SELECT",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "lab_ro@10.% SHOW VIEW schema features",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "lab_ro@10.%",
+    "IS_GRANTABLE": "NO",
+    "PRIVILEGE_TYPE": "SHOW VIEW",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "lab_app@% SELECT table features.parent",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "lab_app@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "SELECT",
+    "TABLE_NAME": "parent",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "lab_app@% INSERT table features.parent",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "lab_app@%",
+    "IS_GRANTABLE": "YES",
+    "PRIVILEGE_TYPE": "INSERT",
+    "TABLE_NAME": "parent",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "lab_app@% UPDATE column features.kinds.name",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "COLUMN_NAME": "name",
+    "GRANTEE": "lab_app@%",
+    "IS_GRANTABLE": "NO",
+    "PRIVILEGE_TYPE": "UPDATE",
+    "TABLE_NAME": "kinds",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "lab_app@% EXECUTE routine features.p_count",
+   "kind": "privilege",
+   "parent": null,
+   "props": {
+    "GRANTEE": "lab_app@%",
+    "PRIVILEGE_TYPE": "EXECUTE",
+    "ROUTINE_NAME": "p_count",
+    "ROUTINE_TYPE": "PROCEDURE",
+    "TABLE_SCHEMA": "features"
    }
   }
  ],
