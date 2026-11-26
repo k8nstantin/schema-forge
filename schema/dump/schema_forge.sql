@@ -280,6 +280,12 @@ BEGIN
                              'schema_migrations', 'source_reads', 'locked_versions'] LOOP
       EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_agent', t);
     END LOOP;
+    -- what the engines declare (their versions, features, kinds, options, catalog sources, flavors and what each flavor
+    -- lacks) is the seeds' alone, changed by installing a version as the DBA: the app reads it, as the agent does
+    FOREACH t IN ARRAY ARRAY['engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors',
+                             'flavor_limits'] LOOP
+      EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_service', t);
+    END LOOP;
     -- the log: the agent adds to it with its work and never rewrites it
     FOREACH t IN ARRAY ARRAY['turns', 'operations', 'row_changes'] LOOP
       EXECUTE format('REVOKE UPDATE, DELETE ON cortex.%I FROM sf_agent', t);
@@ -9085,7 +9091,7 @@ GRANT SELECT ON TABLE cortex.branches TO sf_reader;
 -- Name: TABLE catalog_sources; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.catalog_sources TO sf_service;
+GRANT SELECT ON TABLE cortex.catalog_sources TO sf_service;
 GRANT SELECT ON TABLE cortex.catalog_sources TO sf_agent;
 GRANT SELECT ON TABLE cortex.catalog_sources TO sf_reader;
 
@@ -9157,7 +9163,7 @@ GRANT SELECT ON TABLE cortex.domains TO sf_reader;
 -- Name: TABLE engine_features; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.engine_features TO sf_service;
+GRANT SELECT ON TABLE cortex.engine_features TO sf_service;
 GRANT SELECT ON TABLE cortex.engine_features TO sf_agent;
 GRANT SELECT ON TABLE cortex.engine_features TO sf_reader;
 
@@ -9166,7 +9172,7 @@ GRANT SELECT ON TABLE cortex.engine_features TO sf_reader;
 -- Name: TABLE engine_flavors; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.engine_flavors TO sf_service;
+GRANT SELECT ON TABLE cortex.engine_flavors TO sf_service;
 GRANT SELECT ON TABLE cortex.engine_flavors TO sf_agent;
 GRANT SELECT ON TABLE cortex.engine_flavors TO sf_reader;
 
@@ -9175,7 +9181,7 @@ GRANT SELECT ON TABLE cortex.engine_flavors TO sf_reader;
 -- Name: TABLE engine_versions; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.engine_versions TO sf_service;
+GRANT SELECT ON TABLE cortex.engine_versions TO sf_service;
 GRANT SELECT ON TABLE cortex.engine_versions TO sf_agent;
 GRANT SELECT ON TABLE cortex.engine_versions TO sf_reader;
 
@@ -9193,7 +9199,7 @@ GRANT SELECT ON TABLE cortex.enum_values TO sf_reader;
 -- Name: TABLE flavor_limits; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.flavor_limits TO sf_service;
+GRANT SELECT ON TABLE cortex.flavor_limits TO sf_service;
 GRANT SELECT ON TABLE cortex.flavor_limits TO sf_agent;
 GRANT SELECT ON TABLE cortex.flavor_limits TO sf_reader;
 
@@ -9256,7 +9262,7 @@ GRANT SELECT ON TABLE cortex.namespaces TO sf_reader;
 -- Name: TABLE object_kinds; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.object_kinds TO sf_service;
+GRANT SELECT ON TABLE cortex.object_kinds TO sf_service;
 GRANT SELECT ON TABLE cortex.object_kinds TO sf_agent;
 GRANT SELECT ON TABLE cortex.object_kinds TO sf_reader;
 
@@ -9292,7 +9298,7 @@ GRANT SELECT ON TABLE cortex.operations TO sf_reader;
 -- Name: TABLE option_declarations; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.option_declarations TO sf_service;
+GRANT SELECT ON TABLE cortex.option_declarations TO sf_service;
 GRANT SELECT ON TABLE cortex.option_declarations TO sf_agent;
 GRANT SELECT ON TABLE cortex.option_declarations TO sf_reader;
 

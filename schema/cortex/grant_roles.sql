@@ -31,6 +31,12 @@ BEGIN
                              'schema_migrations', 'source_reads', 'locked_versions'] LOOP
       EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_agent', t);
     END LOOP;
+    -- what the engines declare (their versions, features, kinds, options, catalog sources, flavors and what each flavor
+    -- lacks) is the seeds' alone, changed by installing a version as the DBA: the app reads it, as the agent does
+    FOREACH t IN ARRAY ARRAY['engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors',
+                             'flavor_limits'] LOOP
+      EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_service', t);
+    END LOOP;
     -- the log: the agent adds to it with its work and never rewrites it
     FOREACH t IN ARRAY ARRAY['turns', 'operations', 'row_changes'] LOOP
       EXECUTE format('REVOKE UPDATE, DELETE ON cortex.%I FROM sf_agent', t);
