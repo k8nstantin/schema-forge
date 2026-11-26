@@ -173,6 +173,9 @@ def main():
         ("changes a locked version", False, "BEGIN; SET LOCAL ROLE sf_agent; UPDATE cortex.locked_versions SET message = 'x'; COMMIT;"),
         ("changes what the engine declares", False, "BEGIN; SET LOCAL ROLE sf_agent; DELETE FROM cortex.object_kinds WHERE id = 'mysql/event'; COMMIT;"),
         ("makes or deletes a design", False, "BEGIN; SET LOCAL ROLE sf_agent; DELETE FROM cortex.designs; COMMIT;"),
+        ("changes what a person chose to read", False,
+         "BEGIN; SET LOCAL ROLE sf_agent; INSERT INTO cortex.read_scopes (design, everything, made_by) "
+         "SELECT id, true, 'agent' FROM cortex.designs LIMIT 1; COMMIT;"),
     ]
     for label, want, sql in agent:
         ok, why = attempt(sql, db)

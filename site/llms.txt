@@ -9,7 +9,7 @@ Start with the brief for coding agents: https://k8nstantin.github.io/schema-forg
 - [specs/root.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/root.xml): identity and purpose, authority (which files decide), method (how every task is built), the sequence of tasks and every decision with its date
 - [specs/rules.xml](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/rules.xml): every rule, where it comes from, and what catches a breach
 - [t01 · spec check: every spec file and owner folder checked, and loaded on PostgreSQL 18](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-93-spec-check.xml)
-- [t05 · mysql live: every MySQL from 5.7 read live, version first and gently, with its usage](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-121-mysql-live.xml)
+- [t05 · mysql live: every MySQL from 5.7 read live, version first and gently: the chosen definitions](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-121-mysql-live.xml)
 - [t06 · postgres: PostgreSQL 18 with pgvector, built by our CI for five platforms](https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/t06-postgres.xml)
 
 ## Authority

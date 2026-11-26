@@ -168,7 +168,7 @@ GROUPS = [("cortex", "The model", ["designs", "object_kinds", "namespaces", "obj
                                               "enum_values", "domains", "routines", "routine_parameters", "triggers"]),
           ("cortex", "The log", ["branches", "turns", "operations", "row_changes", "savepoints", "locked_versions"]),
           ("cortex", "The engine's versions", ["engine_versions", "engine_features", "catalog_sources"]),
-          ("cortex", "The live source", ["source_reads"]),
+          ("cortex", "The live source", ["read_scopes", "read_scope_kinds", "read_scope_objects", "source_reads"]),
           ("cortex", "The workspace", ["workspace_identity", "workspace_parameters", "workspace_connections", "workspace_connection_values",
                                        "workspace_connection_tests", "workspace_connection_test_steps", "workspace_design_connections"]),
           ("cortex", "The database", ["schema_migrations"])]
@@ -308,6 +308,32 @@ legend = ('<div class="legend"><span><i class="sw" style="background:var(--accen
           '<span>→ a foreign key, labelled with its columns</span><span>boxes show a table\'s name without its namespace</span></div>')
 eng_figs = "".join(f'<h3>{e(o)}\'s tables <span class="path">{e(db[o]["folder"])}</span></h3><figure>{s}<figcaption>Every table of {e(o)}, on the right, and the cortex table each refers to, on the left; a table that refers to another of {e(o)}\'s is joined to it on the right. Each lives in the same database as the cortex rows it refers to, so PostgreSQL enforces every reference.</figcaption></figure>' for o, s in engine_svgs.items())
 undrawn_note = ", ".join(f"<code>{e(a)}.{e(c)}</code>" for a, c, b in undrawn)
+# --- the service accounts: every grant, read from the locked dump (schema/dump), so the page is what PostgreSQL holds ---
+ROLES = [("sf_owner", "no login", "Owns every namespace, table, view and function; the only role that changes the schema, every version of every owner running as it. No password: nobody signs in as it."),
+         ("sf_service", "the app", "The account the app runs as: reads and writes every design's rows, the log and the workspace; creates, alters and drops nothing."),
+         ("sf_agent", "a coding agent", "A coding agent's own account: reads everything; writes a design's rows inside a turn, and adds to the log without ever rewriting it; only reads the designs themselves, the engines' declarations, the workspace, what a person chose to read, what was applied, read and locked; creates, alters and drops nothing."),
+         ("sf_reader", "reading only", "Reads every table and changes nothing: the MCP's sql tool and every query sent for reading.")]
+WORDS = {"SELECT": "read", "INSERT": "add", "UPDATE": "change", "DELETE": "remove"}
+grants = {}
+for g in re.finditer(r"^GRANT ([A-Z,]+) ON TABLE ([\w.]+) TO (sf_\w+);$", open(f"{REPO}/schema/dump/schema_forge.sql").read(), re.M):
+    grants.setdefault(g.group(2), {})[g.group(3)] = [WORDS[x] for x in ("SELECT", "INSERT", "UPDATE", "DELETE") if x in g.group(1).split(",")]
+def said(ws):
+    return ", ".join(ws) if ws else "nothing"
+agent_less = sorted(t for t, r in grants.items() if r.get("sf_agent") != r.get("sf_service"))
+rows = "".join(f'<tr><td><a href="#t-{e(t)}"><code>{e(t)}</code></a></td>' + "".join(f"<td>{e(said(grants[t].get(r, [])))}</td>" for r in ("sf_service", "sf_agent", "sf_reader")) + "</tr>"
+               for t in sorted(grants))
+cards = "".join(f'<div class="card"><p class="kicker">{e(k)}</p><h3><code>{e(r)}</code></h3><p>{e(t)}</p></div>' for r, k, t in ROLES)
+accounts_html = (f'<section id="accounts"><h2>The service accounts</h2><p class="lede">Four roles, made by <code>schema/install.py</code> '
+    '(<code>schema/accounts.py</code>) when it installs <code>schema_forge</code>, each login account given a strong password written only to its '
+    'accounts file (mode 600); <code>cortex.grant_roles</code> gives every owner\'s namespace to them as its version 1 ends (decision database-roles). '
+    'No account but <code>sf_owner</code> can create, alter or drop anything, and the install proves it for each.</p>'
+    f'<div class="cards">{cards}</div>'
+    f'<h3>Every grant, table by table</h3><p class="lede">Read from the locked dump, so this is what PostgreSQL holds: {len(grants)} tables. '
+    f'The coding agent\'s account differs from the app\'s on {len(agent_less)} of them. Every account may also use each namespace and run its functions '
+    '(the app and the agent); none may create in it.</p>'
+    '<details><summary>All grants</summary><div class="scroll"><table class="t"><thead><tr><th>Table</th><th>sf_service · the app</th>'
+    f'<th>sf_agent · a coding agent</th><th>sf_reader</th></tr></thead><tbody>{rows}</tbody></table></div></details></section>')
+
 body = f"""
 <div class="tb" role="group" aria-label="Title block">
   <div><span>Engine</span><b>PostgreSQL 18, bundled</b></div><div><span>Database</span><b>schema_forge</b></div>
@@ -336,13 +362,14 @@ foreign key cannot state is a view the database enforces at every commit. Everyt
 <section id="workspace"><h2>The workspace</h2><p class="lede">In the cortex, as <code>workspace_*</code> tables: the saved connections, the value of each field their engine declares (never a secret), their tests, and the connection each design is read from.</p>
 <figure>{ws_svg}</figure></section>
 
+{accounts_html}
 <section id="engines"><h2>Each engine's tables</h2><p class="lede">What one engine alone says (MySQL's charset and row format) lives in that engine's namespace, <code>engine_&lt;engine&gt;</code>: a table named for the cortex table it extends (<code>engine_mysql.tables</code>, <code>engine_mysql.columns</code>) or for what only it has (<code>engine_postgresql.policies</code>). Every option is a typed column; there is no table of keys and values.</p>{eng_figs}</section>
 
 <section id="tables"><h2>Every table</h2><p class="lede">Grouped as above. Each with what it holds, how its row is named, its columns, what refers to it, its constraints, the rules that read it, and its file whole.</p>{toc}</section>
 {body_tables}
 
 <section id="rules"><h2>Rules</h2><p class="lede">What a foreign key cannot say. Each rule is a view of the rows breaking it, one file each; <code>cortex.enforce_rules</code> reads which tables the view depends on and puts the triggers on them, so PostgreSQL itself refuses any commit that breaks a rule, whatever wrote it. No list of tables is kept by hand.</p>
-<p class="lede"><b>On ice since 2026-11-26.</b> Every rule view waits in <code>lab/rules-on-ice</code> until the rules are their own owner and schema (decision rules-tables), each checking only the designs a commit changed; the machinery below stays. Until then the foreign keys hold every design apart by themselves.</p>
+<p class="lede"><b>On ice since 2026-11-26.</b> Every rule view waits in <code>lab/on-ice/rules</code> until the rules are their own owner and schema (decision rules-tables), each checking only the designs a commit changed; the machinery below stays. Until then the foreign keys hold every design apart by themselves.</p>
 <figure>{rules_svg}<figcaption>Tested on PostgreSQL 18: a key on a view, a number its counter never gave, a nullable primary key column and a MySQL table option on a view are each refused at commit; 3,000 rows commit in about 30 ms.</figcaption></figure>
 {rules_html}</section>
 
@@ -354,5 +381,5 @@ foreign key cannot state is a view the database enforces at every commit. Everyt
 <div class="scroll"><table class="t"><thead><tr><th>Decision</th><th>What</th><th>Date</th></tr></thead><tbody>{dec}</tbody></table></div>
 <h3>Still open</h3><ul class="small">{opend}</ul></section>
 """
-sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("files", "Databases"), ("model", "Model"), ("parts", "Object parts"), ("log", "Log"), ("workspace", "Workspace"), ("engines", "Engines"), ("tables", "Every table"), ("rules", "Rules"), ("ahead", "Talking to a design"), ("decisions", "Decisions")])
+sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("files", "Databases"), ("model", "Model"), ("parts", "Object parts"), ("log", "Log"), ("workspace", "Workspace"), ("accounts", "Accounts"), ("engines", "Engines"), ("tables", "Every table"), ("rules", "Rules"), ("ahead", "Talking to a design"), ("decisions", "Decisions")])
 HTML = page("database", "%PRODUCT% Database", CSS, body, sub)

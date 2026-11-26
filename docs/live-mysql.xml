@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <doc id="live-mysql" title="Reading a live MySQL: what to extract, and how">
-  <p>Research for the first feature of every engine, MySQL first: <b>open a schema from a saved connection and fill it from the database's own catalogs</b>, its structure from <c>information_schema</c> and, when it is on, its usage from <c>performance_schema</c>. Reading a dump comes next, as its own feature; every other engine follows the same order with its own catalogs. Measured on MySQL 5.7.44, 8.0.46 and 8.4.13 in Docker (2026-11-24), checked against the manuals. Decided from it: the order and the versions (decisions live-first and mysql-versions), the version facts as data (version-facts) and where usage is kept (usage-apart).</p>
+  <p>Research for the first feature of every engine, MySQL first: <b>open a schema from a saved connection and fill it from the database's own catalogs</b>, its structure from <c>information_schema</c> and, when it is on, its usage from <c>performance_schema</c>. Reading a dump comes next, as its own feature; every other engine follows the same order with its own catalogs. Measured on MySQL 5.7.44, 8.0.46 and 8.4.13 in Docker (2026-11-24), checked against the manuals. Decided from it: the order and the versions (decisions live-first and mysql-versions), the version facts as data (version-facts) and where usage is kept (usage-apart). <b>1.0 reads the structure alone</b> (decision definitions-first): the statistics and the usage below are the research 2.0 starts from.</p>
 
   <section title="The flow">
     <steps>
       <item><b>The saved connection.</b> A profile in the workspace (host, port, user, database, TLS), its secret in the operating system's keychain, never in the workspace, never seen by the agent (<a href="connections.xml">connections.xml</a>). Tested in the five steps before anything is read.</item>
       <item><b>Which databases.</b> <c>information_schema.SCHEMATA</c>, the system ones (<c>mysql</c>, <c>information_schema</c>, <c>performance_schema</c>, <c>sys</c>) left out; the person picks.</item>
       <item><b>The structure</b>, per database: the catalog for names and attributes, <c>SHOW CREATE</c> for each object's exact DDL, read by the same reader as a dump, so a live read and a dump of the same database give the same schema (the engine does this today, <c>engines/mysql/src/live.rs</c>).</item>
-      <item><b>The statistics</b>: rows, data and index size per table, as estimates, with their age.</item>
-      <item><b>The usage</b>, when <c>performance_schema</c> is on: per table and per index reads and writes, and the queries by digest. Off, the schema is read without it and says so.</item>
+      <item><b>The statistics</b> (2.0): rows, data and index size per table, as estimates, with their age.</item>
+      <item><b>The usage</b> (2.0), when <c>performance_schema</c> is on: per table and per index reads and writes, and the queries by digest. Off, the schema is read without it and says so.</item>
       <item><b>One import turn</b>: everything read lands in the cortex and the engine's tables as one logged operation, undoable, with what was read, from where, when, and as which user.</item>
     </steps>
   </section>
@@ -30,7 +30,7 @@
   <section title="What to read: the person chooses">
     <p>Once connected, the first choice is simple: <b>everything</b>, all the server can give, or <b>choose</b>. Choosing opens three finer choices, each set to all until changed, so nobody faces a wall of options:</p>
     <list>
-      <item><b>The parts</b>: definitions only; with metadata (sizes and statistics); with usage, when the server keeps it.</item>
+      <item><b>The parts</b> (2.0; 1.0 reads definitions only): definitions only; with metadata (sizes and statistics); with usage, when the server keeps it.</item>
       <item><b>The kinds of object</b>, as the engine declares them for this version: tables, views, procedures, functions, triggers, events.</item>
       <item><b>The objects</b>: picked from the list the catalog gives, or by a name pattern.</item>
     </list>
@@ -46,11 +46,11 @@
     </list>
   </section>
 
-  <section title="The statistics: estimates, with their age">
+  <section title="The statistics: estimates, with their age (2.0)">
     <p><c>TABLE_ROWS</c>, <c>DATA_LENGTH</c>, <c>INDEX_LENGTH</c> and <c>CARDINALITY</c> are InnoDB's estimates. On 8.0 and 8.4 they are also cached, for <c>information_schema_stats_expiry</c> seconds (one day by default), and a table never analysed can show NULL (<a href="https://dev.mysql.com/doc/refman/8.0/en/information-schema-optimization.html">8.0 manual</a>, <a href="https://bugs.mysql.com/bug.php?id=86170">bug 86170</a>). The read takes them as the server has them, never forcing a fresh count (an expiry of 0 makes the server ask InnoDB for every table: work on the source for numbers that are estimates anyway), and keeps each as an estimate with the time it was read; 5.7 asks InnoDB every time.</p>
   </section>
 
-  <section title="The usage: performance_schema">
+  <section title="The usage: performance_schema (2.0)">
     <p>On by default in 5.7, 8.0 and 8.4 (<c>SELECT @@performance_schema</c>). On Amazon RDS it is on when Performance Insights manages it, and turning it on or off needs a reboot (<a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PerfInsights.EnableMySQL.RDS.html">AWS</a>); a managed server may have it off, and the read never changes it.</p>
     <table>
       <head><cell>What</cell><cell>Where</cell><cell>Gives</cell></head>
@@ -95,7 +95,7 @@
   <section title="What was decided, and what is left">
     <list>
       <item><b>Versions</b>: decided (decision mysql-versions): 5.7, 8.0, 8.4 and 9.7; the engine work that adds 5.7, and its live read the 5.7 way, is a task to write.</item>
-      <item><b>Where the usage is kept</b>: snapshots per table, index and digest, each with the server's uptime and the time read, in the cortex (shared by every engine: rows, reads, writes, size) and the engine's tables (what only MySQL measures); decision insight-layer.</item>
+      <item><b>Where the usage is kept</b> (2.0, its tables on ice in <c>lab/on-ice/usage</c>): snapshots per table, index and digest, each with the server's uptime and the time read, in the cortex (shared by every engine: rows, reads, writes, size) and the engine's tables (what only MySQL measures); decision insight-layer.</item>
       <item><b>The version facts, as data</b>: what each version has and lacks (its types, kinds of object, options, catalog tables and grants, the facts this research measured), kept as rows of the engine's tables, one per version and feature, so the agent can ask them: design for a target version, plan an upgrade (what changes from 5.7 to 8.0 or 8.4 for this schema), check a schema meant for several versions, and read usage beside them. The engine's code holds these facts today (engines/mysql/src/versions.rs); the session decides their tables and how they stay one source.</item>
       <item><b>When it is read</b>: on opening, on demand, and on a schedule while the app runs, each a snapshot, never a reset.</item>
       <item><b>The other engines</b>: each declares its catalog for the structure and its source for the usage (PostgreSQL: <c>pg_catalog</c> and <c>pg_stat_user_tables</c>, <c>pg_stat_user_indexes</c>, <c>pg_stat_statements</c>; Iceberg: its catalog and metadata files), so the shared part of the flow names none of them.</item>

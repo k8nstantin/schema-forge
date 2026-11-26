@@ -10,7 +10,8 @@ CREATE FUNCTION sf_log.versioned() RETURNS TABLE (tab text) LANGUAGE sql STABLE 
   SELECT n.nspname || '.' || c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind = 'r' AND (n.nspname LIKE 'engine\_%' OR n.nspname = 'ui' OR (n.nspname = 'cortex' AND c.relname NOT IN
     ('designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'schema_migrations',
-     'source_reads', 'branches', 'turns', 'operations', 'row_changes', 'savepoints', 'locked_versions')
+     'source_reads', 'read_scopes', 'read_scope_kinds', 'read_scope_objects',
+     'branches', 'turns', 'operations', 'row_changes', 'savepoints', 'locked_versions')
     AND c.relname NOT LIKE 'workspace\_%'))
   ORDER BY 1
 $$;
