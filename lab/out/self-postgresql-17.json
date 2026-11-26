@@ -123,7 +123,7 @@
    "props": {
     "acl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -132,7 +132,7 @@
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -154,7 +154,7 @@
    "props": {
     "acl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -163,7 +163,7 @@
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -309,7 +309,7 @@
    "props": {
     "acl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -318,7 +318,7 @@
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -371,16 +371,16 @@
    "props": {
     "acl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "what a flavor lacks of its engine, one fact a row, each with where it was read: a kind of object, an option, one value of an option, a function a routine may call, an extension, or a version. The guard refuses what a design's flavor lacks (severity refused); cortex.misfits lists both kinds for a design and a target.",
+    "comment": "what a flavor lacks of its engine, one fact a row, each with where it was read: a kind of object, an option, one value of an option, one value of a cortex column (CockroachDB's deferrable constraints), a function a routine may call, an extension, or a version. The guard refuses what a design's flavor lacks (severity refused); cortex.misfits lists both kinds for a design and a target.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -557,7 +557,7 @@
    "props": {
     "acl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -566,7 +566,7 @@
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -1456,7 +1456,7 @@
    "props": {
     "acl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -1465,7 +1465,7 @@
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -1611,7 +1611,7 @@
    "props": {
     "acl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -1620,7 +1620,7 @@
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
+     "sf_service=r/sf_owner",
      "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
@@ -4001,8 +4001,44 @@
     "attnotnull": false,
     "attnum": 6,
     "attstorage": "x",
-    "comment": "the option's value it lacks (what value): \"MyISAM\"; NULL otherwise",
+    "comment": "the option's value it lacks (what value): \"MyISAM\", or the column's (what field): true; NULL otherwise",
     "type": "jsonb"
+   }
+  },
+  {
+   "key": "cortex.flavor_limits.part",
+   "kind": "column",
+   "parent": "cortex.flavor_limits",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "part",
+    "attnotnull": false,
+    "attnum": 7,
+    "attstorage": "x",
+    "comment": "the part of the model whose column it lacks a value of (what field): constraints; NULL otherwise",
+    "type": "text"
+   }
+  },
+  {
+   "key": "cortex.flavor_limits.field",
+   "kind": "column",
+   "parent": "cortex.flavor_limits",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "field",
+    "attnotnull": false,
+    "attnum": 8,
+    "attstorage": "x",
+    "comment": "the column of that part (what field): deferrable; its value is value; NULL otherwise",
+    "type": "text"
    }
   },
   {
@@ -4017,7 +4053,7 @@
     "attislocal": true,
     "attname": "name",
     "attnotnull": false,
-    "attnum": 7,
+    "attnum": 9,
     "attstorage": "x",
     "comment": "the function or extension it lacks, as SQL names it (LOAD_FILE, plpython3u); NULL otherwise",
     "type": "text"
@@ -4035,7 +4071,7 @@
     "attislocal": true,
     "attname": "version",
     "attnotnull": false,
-    "attnum": 8,
+    "attnum": 10,
     "attstorage": "x",
     "comment": "the engine version it does not offer (what version); NULL otherwise",
     "type": "text"
@@ -4053,7 +4089,7 @@
     "attislocal": true,
     "attname": "since",
     "attnotnull": false,
-    "attnum": 9,
+    "attnum": 11,
     "attstorage": "x",
     "comment": "the first engine version it lacks it in; NULL for every one",
     "type": "text"
@@ -4071,7 +4107,7 @@
     "attislocal": true,
     "attname": "until",
     "attnotnull": false,
-    "attnum": 10,
+    "attnum": 12,
     "attstorage": "x",
     "comment": "the last engine version it lacks it in; NULL for every later one",
     "type": "text"
@@ -4089,7 +4125,7 @@
     "attislocal": true,
     "attname": "about",
     "attnotnull": true,
-    "attnum": 12,
+    "attnum": 14,
     "attstorage": "x",
     "comment": "what it means for a design, in a sentence",
     "type": "text"
@@ -4107,7 +4143,7 @@
     "attislocal": true,
     "attname": "source",
     "attnotnull": true,
-    "attnum": 13,
+    "attnum": 15,
     "attstorage": "x",
     "comment": "the page of the flavor's documentation that says so",
     "type": "text"
@@ -4125,7 +4161,7 @@
     "attislocal": true,
     "attname": "severity",
     "attnotnull": true,
-    "attnum": 11,
+    "attnum": 13,
     "attstorage": "x",
     "comment": "refused: the flavor will not take it, and the guard refuses it; warned: it takes it with a cost the about states",
     "default": "'refused'::text",
@@ -21510,12 +21546,11 @@
    }
   },
   {
-   "key": "cortex.namespaces.namespaces_design_id_key",
+   "key": "cortex.enum_values.enum_values_pkey",
    "kind": "constraint",
-   "parent": "cortex.namespaces",
+   "parent": "cortex.enum_values",
    "props": {
     "columns": [
-     "design",
      "id"
     ],
     "condeferrable": false,
@@ -21525,12 +21560,12 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "namespaces_design_id_key",
+    "conname": "enum_values_pkey",
     "connoinherit": true,
-    "contype": "u",
+    "contype": "p",
     "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "namespaces_design_id_key"
+    "definition": "PRIMARY KEY (id)",
+    "index": "enum_values_pkey"
    }
   },
   {
@@ -21699,28 +21734,26 @@
    }
   },
   {
-   "key": "cortex.namespaces.namespaces_design_parent_name_key",
+   "key": "cortex.flavor_limits.flavor_limits_pkey",
    "kind": "constraint",
-   "parent": "cortex.namespaces",
+   "parent": "cortex.flavor_limits",
    "props": {
     "columns": [
-     "design",
-     "parent",
-     "name"
+     "id"
     ],
-    "condeferrable": true,
-    "condeferred": true,
+    "condeferrable": false,
+    "condeferred": false,
     "confdeltype": " ",
     "confmatchtype": " ",
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "namespaces_design_parent_name_key",
+    "conname": "flavor_limits_pkey",
     "connoinherit": true,
-    "contype": "u",
+    "contype": "p",
     "convalidated": true,
-    "definition": "UNIQUE NULLS NOT DISTINCT (design, parent, name) DEFERRABLE INITIALLY DEFERRED",
-    "index": "namespaces_design_parent_name_key"
+    "definition": "PRIMARY KEY (id)",
+    "index": "flavor_limits_pkey"
    }
   },
   {
@@ -21933,35 +21966,12 @@
    }
   },
   {
-   "key": "cortex.namespaces.namespaces_design_position_key",
+   "key": "cortex.index_parts.index_parts_design_id_key",
    "kind": "constraint",
-   "parent": "cortex.namespaces",
+   "parent": "cortex.index_parts",
    "props": {
     "columns": [
      "design",
-     "position"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "namespaces_design_position_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, \"position\") DEFERRABLE INITIALLY DEFERRED",
-    "index": "namespaces_design_position_key"
-   }
-  },
-  {
-   "key": "cortex.namespaces.namespaces_pkey",
-   "kind": "constraint",
-   "parent": "cortex.namespaces",
-   "props": {
-    "columns": [
      "id"
     ],
     "condeferrable": false,
@@ -21971,12 +21981,36 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "namespaces_pkey",
+    "conname": "index_parts_design_id_key",
     "connoinherit": true,
-    "contype": "p",
+    "contype": "u",
     "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "namespaces_pkey"
+    "definition": "UNIQUE (design, id)",
+    "index": "index_parts_design_id_key"
+   }
+  },
+  {
+   "key": "cortex.index_parts.index_parts_index_position_key",
+   "kind": "constraint",
+   "parent": "cortex.index_parts",
+   "props": {
+    "columns": [
+     "index",
+     "position"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "index_parts_index_position_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (index, \"position\") DEFERRABLE INITIALLY DEFERRED",
+    "index": "index_parts_index_position_key"
    }
   },
   {
@@ -22423,6 +22457,76 @@
    }
   },
   {
+   "key": "cortex.locked_versions.locked_versions_id_check",
+   "kind": "constraint",
+   "parent": "cortex.locked_versions",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "locked_versions_id_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((uuid_extract_version(id) = 7))",
+    "expression": "(uuid_extract_version(id) = 7)"
+   }
+  },
+  {
+   "key": "cortex.index_parts.index_parts_pkey",
+   "kind": "constraint",
+   "parent": "cortex.index_parts",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "index_parts_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "index_parts_pkey"
+   }
+  },
+  {
+   "key": "cortex.indexes.indexes_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.indexes",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "indexes_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "indexes_design_id_key"
+   }
+  },
+  {
    "key": "cortex.flavor_limits.flavor_limits_check2",
    "kind": "constraint",
    "parent": "cortex.flavor_limits",
@@ -22442,18 +22546,19 @@
     "connoinherit": false,
     "contype": "c",
     "convalidated": true,
-    "definition": "CHECK (((what = 'value'::text) = (value IS NOT NULL)))",
-    "expression": "((what = 'value'::text) = (value IS NOT NULL))"
+    "definition": "CHECK (((what = ANY (ARRAY['value'::text, 'field'::text])) = (value IS NOT NULL)))",
+    "expression": "((what = ANY (ARRAY['value'::text, 'field'::text])) = (value IS NOT NULL))"
    }
   },
   {
-   "key": "cortex.object_kinds.object_kinds_engine_kind_key",
+   "key": "cortex.flavor_limits.flavor_limits_check3",
    "kind": "constraint",
-   "parent": "cortex.object_kinds",
+   "parent": "cortex.flavor_limits",
    "props": {
     "columns": [
-     "engine",
-     "kind"
+     "what",
+     "part",
+     "field"
     ],
     "condeferrable": false,
     "condeferred": false,
@@ -22462,16 +22567,16 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "object_kinds_engine_kind_key",
-    "connoinherit": true,
-    "contype": "u",
+    "conname": "flavor_limits_check3",
+    "connoinherit": false,
+    "contype": "c",
     "convalidated": true,
-    "definition": "UNIQUE (engine, kind)",
-    "index": "object_kinds_engine_kind_key"
+    "definition": "CHECK (((what = 'field'::text) = ((part IS NOT NULL) AND (field IS NOT NULL))))",
+    "expression": "((what = 'field'::text) = ((part IS NOT NULL) AND (field IS NOT NULL)))"
    }
   },
   {
-   "key": "cortex.flavor_limits.flavor_limits_check3",
+   "key": "cortex.flavor_limits.flavor_limits_check4",
    "kind": "constraint",
    "parent": "cortex.flavor_limits",
    "props": {
@@ -22486,7 +22591,7 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "flavor_limits_check3",
+    "conname": "flavor_limits_check4",
     "connoinherit": false,
     "contype": "c",
     "convalidated": true,
@@ -22495,7 +22600,7 @@
    }
   },
   {
-   "key": "cortex.flavor_limits.flavor_limits_check4",
+   "key": "cortex.flavor_limits.flavor_limits_check5",
    "kind": "constraint",
    "parent": "cortex.flavor_limits",
    "props": {
@@ -22510,12 +22615,35 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "flavor_limits_check4",
+    "conname": "flavor_limits_check5",
     "connoinherit": false,
     "contype": "c",
     "convalidated": true,
     "definition": "CHECK (((what = 'version'::text) = (version IS NOT NULL)))",
     "expression": "((what = 'version'::text) = (version IS NOT NULL))"
+   }
+  },
+  {
+   "key": "cortex.flavor_limits.flavor_limits_field_check",
+   "kind": "constraint",
+   "parent": "cortex.flavor_limits",
+   "props": {
+    "columns": [
+     "field"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "flavor_limits_field_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((field ~ '^[a-z_]+$'::text))",
+    "expression": "(field ~ '^[a-z_]+$'::text)"
    }
   },
   {
@@ -22588,6 +22716,29 @@
    }
   },
   {
+   "key": "cortex.locked_versions.locked_versions_message_check",
+   "kind": "constraint",
+   "parent": "cortex.locked_versions",
+   "props": {
+    "columns": [
+     "message"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "locked_versions_message_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((length(message) >= 1))",
+    "expression": "(length(message) >= 1)"
+   }
+  },
+  {
    "key": "cortex.flavor_limits.flavor_limits_what_check",
    "kind": "constraint",
    "parent": "cortex.flavor_limits",
@@ -22606,8 +22757,8 @@
     "connoinherit": false,
     "contype": "c",
     "convalidated": true,
-    "definition": "CHECK ((what = ANY (ARRAY['kind'::text, 'option'::text, 'value'::text, 'function'::text, 'extension'::text, 'version'::text])))",
-    "expression": "(what = ANY (ARRAY['kind'::text, 'option'::text, 'value'::text, 'function'::text, 'extension'::text, 'version'::text]))"
+    "definition": "CHECK ((what = ANY (ARRAY['kind'::text, 'option'::text, 'value'::text, 'field'::text, 'function'::text, 'extension'::text, 'version'::text])))",
+    "expression": "(what = ANY (ARRAY['kind'::text, 'option'::text, 'value'::text, 'field'::text, 'function'::text, 'extension'::text, 'version'::text]))"
    }
   },
   {
@@ -22796,49 +22947,27 @@
    }
   },
   {
-   "key": "cortex.locked_versions.locked_versions_id_check",
+   "key": "cortex.indexes.indexes_object_name_key",
    "kind": "constraint",
-   "parent": "cortex.locked_versions",
+   "parent": "cortex.indexes",
    "props": {
     "columns": [
-     "id"
+     "object",
+     "name"
     ],
-    "condeferrable": false,
-    "condeferred": false,
+    "condeferrable": true,
+    "condeferred": true,
     "confdeltype": " ",
     "confmatchtype": " ",
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "locked_versions_id_check",
-    "connoinherit": false,
-    "contype": "c",
+    "conname": "indexes_object_name_key",
+    "connoinherit": true,
+    "contype": "u",
     "convalidated": true,
-    "definition": "CHECK ((uuid_extract_version(id) = 7))",
-    "expression": "(uuid_extract_version(id) = 7)"
-   }
-  },
-  {
-   "key": "cortex.locked_versions.locked_versions_message_check",
-   "kind": "constraint",
-   "parent": "cortex.locked_versions",
-   "props": {
-    "columns": [
-     "message"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "locked_versions_message_check",
-    "connoinherit": false,
-    "contype": "c",
-    "convalidated": true,
-    "definition": "CHECK ((length(message) >= 1))",
-    "expression": "(length(message) >= 1)"
+    "definition": "UNIQUE (object, name) DEFERRABLE INITIALLY DEFERRED",
+    "index": "indexes_object_name_key"
    }
   },
   {
@@ -23075,6 +23204,53 @@
    }
   },
   {
+   "key": "cortex.objects.objects_id_check",
+   "kind": "constraint",
+   "parent": "cortex.objects",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "objects_id_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((uuid_extract_version(id) = 7))",
+    "expression": "(uuid_extract_version(id) = 7)"
+   }
+  },
+  {
+   "key": "cortex.indexes.indexes_object_position_key",
+   "kind": "constraint",
+   "parent": "cortex.indexes",
+   "props": {
+    "columns": [
+     "object",
+     "position"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "indexes_object_position_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (object, \"position\") DEFERRABLE INITIALLY DEFERRED",
+    "index": "indexes_object_position_key"
+   }
+  },
+  {
    "key": "cortex.object_kinds.object_kinds_check1",
    "kind": "constraint",
    "parent": "cortex.object_kinds",
@@ -23166,77 +23342,6 @@
     "convalidated": true,
     "definition": "CHECK ((length(name) >= 1))",
     "expression": "(length(name) >= 1)"
-   }
-  },
-  {
-   "key": "cortex.object_kinds.object_kinds_engine_position_key",
-   "kind": "constraint",
-   "parent": "cortex.object_kinds",
-   "props": {
-    "columns": [
-     "engine",
-     "position"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_kinds_engine_position_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (engine, \"position\")",
-    "index": "object_kinds_engine_position_key"
-   }
-  },
-  {
-   "key": "cortex.object_kinds.object_kinds_pkey",
-   "kind": "constraint",
-   "parent": "cortex.object_kinds",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_kinds_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "object_kinds_pkey"
-   }
-  },
-  {
-   "key": "cortex.object_tags.object_tags_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.object_tags",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_tags_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "object_tags_design_id_key"
    }
   },
   {
@@ -23379,9 +23484,9 @@
    }
   },
   {
-   "key": "cortex.objects.objects_id_check",
+   "key": "cortex.indexes.indexes_pkey",
    "kind": "constraint",
-   "parent": "cortex.objects",
+   "parent": "cortex.indexes",
    "props": {
     "columns": [
      "id"
@@ -23393,12 +23498,60 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "objects_id_check",
-    "connoinherit": false,
-    "contype": "c",
+    "conname": "indexes_pkey",
+    "connoinherit": true,
+    "contype": "p",
     "convalidated": true,
-    "definition": "CHECK ((uuid_extract_version(id) = 7))",
-    "expression": "(uuid_extract_version(id) = 7)"
+    "definition": "PRIMARY KEY (id)",
+    "index": "indexes_pkey"
+   }
+  },
+  {
+   "key": "cortex.locked_versions.locked_versions_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.locked_versions",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "locked_versions_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "locked_versions_design_id_key"
+   }
+  },
+  {
+   "key": "cortex.locked_versions.locked_versions_design_number_key",
+   "kind": "constraint",
+   "parent": "cortex.locked_versions",
+   "props": {
+    "columns": [
+     "design",
+     "number"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "locked_versions_design_number_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, number) DEFERRABLE INITIALLY DEFERRED",
+    "index": "locked_versions_design_number_key"
    }
   },
   {
@@ -23705,29 +23858,6 @@
    }
   },
   {
-   "key": "cortex.schema_migrations.schema_migrations_version_check",
-   "kind": "constraint",
-   "parent": "cortex.schema_migrations",
-   "props": {
-    "columns": [
-     "version"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "schema_migrations_version_check",
-    "connoinherit": false,
-    "contype": "c",
-    "convalidated": true,
-    "definition": "CHECK ((version >= 1))",
-    "expression": "(version >= 1)"
-   }
-  },
-  {
    "key": "cortex.option_declarations.option_declarations_part_check",
    "kind": "constraint",
    "parent": "cortex.option_declarations",
@@ -23867,6 +23997,29 @@
    }
   },
   {
+   "key": "cortex.read_scopes.read_scopes_id_check",
+   "kind": "constraint",
+   "parent": "cortex.read_scopes",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "read_scopes_id_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((uuid_extract_version(id) = 7))",
+    "expression": "(uuid_extract_version(id) = 7)"
+   }
+  },
+  {
    "key": "cortex.privileges.privileges_check1",
    "kind": "constraint",
    "parent": "cortex.privileges",
@@ -23935,77 +24088,6 @@
     "convalidated": true,
     "definition": "CHECK ((uuid_extract_version(id) = 7))",
     "expression": "(uuid_extract_version(id) = 7)"
-   }
-  },
-  {
-   "key": "cortex.object_tags.object_tags_object_tag_key",
-   "kind": "constraint",
-   "parent": "cortex.object_tags",
-   "props": {
-    "columns": [
-     "object",
-     "tag"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_tags_object_tag_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (object, tag) DEFERRABLE INITIALLY DEFERRED",
-    "index": "object_tags_object_tag_key"
-   }
-  },
-  {
-   "key": "cortex.object_tags.object_tags_pkey",
-   "kind": "constraint",
-   "parent": "cortex.object_tags",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_tags_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "object_tags_pkey"
-   }
-  },
-  {
-   "key": "cortex.objects.objects_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.objects",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "objects_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "objects_design_id_key"
    }
   },
   {
@@ -24193,29 +24275,6 @@
    }
   },
   {
-   "key": "cortex.read_scopes.read_scopes_id_check",
-   "kind": "constraint",
-   "parent": "cortex.read_scopes",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "read_scopes_id_check",
-    "connoinherit": false,
-    "contype": "c",
-    "convalidated": true,
-    "definition": "CHECK ((uuid_extract_version(id) = 7))",
-    "expression": "(uuid_extract_version(id) = 7)"
-   }
-  },
-  {
    "key": "cortex.read_scopes.read_scopes_made_by_check",
    "kind": "constraint",
    "parent": "cortex.read_scopes",
@@ -24259,59 +24318,6 @@
     "convalidated": true,
     "definition": "CHECK ((uuid_extract_version(id) = 7))",
     "expression": "(uuid_extract_version(id) = 7)"
-   }
-  },
-  {
-   "key": "cortex.objects.objects_design_namespace_parent_kind_name_signature_key",
-   "kind": "constraint",
-   "parent": "cortex.objects",
-   "props": {
-    "columns": [
-     "design",
-     "namespace",
-     "parent",
-     "kind",
-     "name",
-     "signature"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "objects_design_namespace_parent_kind_name_signature_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE NULLS NOT DISTINCT (design, namespace, parent, kind, name, signature) DEFERRABLE INITIALLY DEFERRED",
-    "index": "objects_design_namespace_parent_kind_name_signature_key"
-   }
-  },
-  {
-   "key": "cortex.objects.objects_design_namespace_position_key",
-   "kind": "constraint",
-   "parent": "cortex.objects",
-   "props": {
-    "columns": [
-     "design",
-     "namespace",
-     "position"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "objects_design_namespace_position_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE NULLS NOT DISTINCT (design, namespace, \"position\") DEFERRABLE INITIALLY DEFERRED",
-    "index": "objects_design_namespace_position_key"
    }
   },
   {
@@ -24522,76 +24528,6 @@
    }
   },
   {
-   "key": "cortex.objects.objects_pkey",
-   "kind": "constraint",
-   "parent": "cortex.objects",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "objects_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "objects_pkey"
-   }
-  },
-  {
-   "key": "cortex.operations.operations_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.operations",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "operations_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "operations_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.operations.operations_pkey",
-   "kind": "constraint",
-   "parent": "cortex.operations",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "operations_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "operations_pkey"
-   }
-  },
-  {
    "key": "cortex.row_changes.row_changes_check",
    "kind": "constraint",
    "parent": "cortex.row_changes",
@@ -24780,6 +24716,29 @@
    }
   },
   {
+   "key": "cortex.triggers.triggers_action_order_check",
+   "kind": "constraint",
+   "parent": "cortex.triggers",
+   "props": {
+    "columns": [
+     "action_order"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "triggers_action_order_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((action_order >= 1))",
+    "expression": "(action_order >= 1)"
+   }
+  },
+  {
    "key": "cortex.schema_migrations.schema_migrations_checksum_check",
    "kind": "constraint",
    "parent": "cortex.schema_migrations",
@@ -24826,14 +24785,12 @@
    }
   },
   {
-   "key": "cortex.option_declarations.option_declarations_engine_part_name_key",
+   "key": "cortex.schema_migrations.schema_migrations_version_check",
    "kind": "constraint",
-   "parent": "cortex.option_declarations",
+   "parent": "cortex.schema_migrations",
    "props": {
     "columns": [
-     "engine",
-     "part",
-     "name"
+     "version"
     ],
     "condeferrable": false,
     "condeferred": false,
@@ -24842,12 +24799,12 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "option_declarations_engine_part_name_key",
-    "connoinherit": true,
-    "contype": "u",
+    "conname": "schema_migrations_version_check",
+    "connoinherit": false,
+    "contype": "c",
     "convalidated": true,
-    "definition": "UNIQUE (engine, part, name)",
-    "index": "option_declarations_engine_part_name_key"
+    "definition": "CHECK ((version >= 1))",
+    "expression": "(version >= 1)"
    }
   },
   {
@@ -25036,12 +24993,12 @@
    }
   },
   {
-   "key": "cortex.triggers.triggers_action_order_check",
+   "key": "cortex.locked_versions.locked_versions_pkey",
    "kind": "constraint",
-   "parent": "cortex.triggers",
+   "parent": "cortex.locked_versions",
    "props": {
     "columns": [
-     "action_order"
+     "id"
     ],
     "condeferrable": false,
     "condeferred": false,
@@ -25050,12 +25007,59 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "triggers_action_order_check",
-    "connoinherit": false,
-    "contype": "c",
+    "conname": "locked_versions_pkey",
+    "connoinherit": true,
+    "contype": "p",
     "convalidated": true,
-    "definition": "CHECK ((action_order >= 1))",
-    "expression": "(action_order >= 1)"
+    "definition": "PRIMARY KEY (id)",
+    "index": "locked_versions_pkey"
+   }
+  },
+  {
+   "key": "cortex.locked_versions.locked_versions_turn_key",
+   "kind": "constraint",
+   "parent": "cortex.locked_versions",
+   "props": {
+    "columns": [
+     "turn"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "locked_versions_turn_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (turn)",
+    "index": "locked_versions_turn_key"
+   }
+  },
+  {
+   "key": "cortex.memberships.memberships_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.memberships",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "memberships_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "memberships_design_id_key"
    }
   },
   {
@@ -25079,52 +25083,6 @@
     "convalidated": true,
     "definition": "CHECK ((level = ANY (ARRAY['row'::text, 'statement'::text])))",
     "expression": "(level = ANY (ARRAY['row'::text, 'statement'::text]))"
-   }
-  },
-  {
-   "key": "cortex.turns.turns_summary_check",
-   "kind": "constraint",
-   "parent": "cortex.turns",
-   "props": {
-    "columns": [
-     "summary"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "turns_summary_check",
-    "connoinherit": false,
-    "contype": "c",
-    "convalidated": true,
-    "definition": "CHECK ((length(summary) >= 1))",
-    "expression": "(length(summary) >= 1)"
-   }
-  },
-  {
-   "key": "cortex.option_declarations.option_declarations_pkey",
-   "kind": "constraint",
-   "parent": "cortex.option_declarations",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "option_declarations_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "option_declarations_pkey"
    }
   },
   {
@@ -25316,6 +25274,77 @@
    }
   },
   {
+   "key": "cortex.memberships.memberships_pkey",
+   "kind": "constraint",
+   "parent": "cortex.memberships",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "memberships_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "memberships_pkey"
+   }
+  },
+  {
+   "key": "cortex.memberships.memberships_role_member_key",
+   "kind": "constraint",
+   "parent": "cortex.memberships",
+   "props": {
+    "columns": [
+     "role",
+     "member"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "memberships_role_member_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (role, member) DEFERRABLE INITIALLY DEFERRED",
+    "index": "memberships_role_member_key"
+   }
+  },
+  {
+   "key": "cortex.namespace_owners.namespace_owners_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.namespace_owners",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "namespace_owners_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "namespace_owners_design_id_key"
+   }
+  },
+  {
    "key": "cortex.turns.turns_state_check",
    "kind": "constraint",
    "parent": "cortex.turns",
@@ -25339,13 +25368,12 @@
    }
   },
   {
-   "key": "cortex.partitionings.partitionings_design_id_key",
+   "key": "cortex.turns.turns_summary_check",
    "kind": "constraint",
-   "parent": "cortex.partitionings",
+   "parent": "cortex.turns",
    "props": {
     "columns": [
-     "design",
-     "id"
+     "summary"
     ],
     "condeferrable": false,
     "condeferred": false,
@@ -25354,12 +25382,12 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "partitionings_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
+    "conname": "turns_summary_check",
+    "connoinherit": false,
+    "contype": "c",
     "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "partitionings_design_id_key"
+    "definition": "CHECK ((length(summary) >= 1))",
+    "expression": "(length(summary) >= 1)"
    }
   },
   {
@@ -25548,6 +25576,53 @@
    }
   },
   {
+   "key": "cortex.namespace_owners.namespace_owners_pkey",
+   "kind": "constraint",
+   "parent": "cortex.namespace_owners",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "namespace_owners_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "namespace_owners_pkey"
+   }
+  },
+  {
+   "key": "cortex.namespaces.namespaces_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.namespaces",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "namespaces_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "namespaces_design_id_key"
+   }
+  },
+  {
    "key": "cortex.workspace_connection_test_steps.workspace_connection_test_steps_outcome_check",
    "kind": "constraint",
    "parent": "cortex.workspace_connection_test_steps",
@@ -25568,76 +25643,6 @@
     "convalidated": true,
     "definition": "CHECK ((outcome = ANY (ARRAY['passed'::text, 'warning'::text, 'failed'::text, 'skipped'::text])))",
     "expression": "(outcome = ANY (ARRAY['passed'::text, 'warning'::text, 'failed'::text, 'skipped'::text]))"
-   }
-  },
-  {
-   "key": "cortex.workspace_design_connections.workspace_design_connections_database_name_check",
-   "kind": "constraint",
-   "parent": "cortex.workspace_design_connections",
-   "props": {
-    "columns": [
-     "database_name"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "workspace_design_connections_database_name_check",
-    "connoinherit": false,
-    "contype": "c",
-    "convalidated": true,
-    "definition": "CHECK ((length(database_name) >= 1))",
-    "expression": "(length(database_name) >= 1)"
-   }
-  },
-  {
-   "key": "cortex.partitionings.partitionings_pkey",
-   "kind": "constraint",
-   "parent": "cortex.partitionings",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "partitionings_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "partitionings_pkey"
-   }
-  },
-  {
-   "key": "cortex.partitions.partitions_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.partitions",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "partitions_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "partitions_design_id_key"
    }
   },
   {
@@ -25802,6 +25807,29 @@
    }
   },
   {
+   "key": "engine_mysql.subpartitions.subpartitions_id_check",
+   "kind": "constraint",
+   "parent": "engine_mysql.subpartitions",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "subpartitions_id_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((uuid_extract_version(id) = 7))",
+    "expression": "(uuid_extract_version(id) = 7)"
+   }
+  },
+  {
    "key": "cortex.workspace_connections.workspace_connections_name_check",
    "kind": "constraint",
    "parent": "cortex.workspace_connections",
@@ -25825,13 +25853,12 @@
    }
   },
   {
-   "key": "cortex.locked_versions.locked_versions_design_id_key",
+   "key": "cortex.workspace_design_connections.workspace_design_connections_database_name_check",
    "kind": "constraint",
-   "parent": "cortex.locked_versions",
+   "parent": "cortex.workspace_design_connections",
    "props": {
     "columns": [
-     "design",
-     "id"
+     "database_name"
     ],
     "condeferrable": false,
     "condeferred": false,
@@ -25840,12 +25867,12 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "locked_versions_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
+    "conname": "workspace_design_connections_database_name_check",
+    "connoinherit": false,
+    "contype": "c",
     "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "locked_versions_design_id_key"
+    "definition": "CHECK ((length(database_name) >= 1))",
+    "expression": "(length(database_name) >= 1)"
    }
   },
   {
@@ -26011,26 +26038,52 @@
    }
   },
   {
-   "key": "engine_mysql.subpartitions.subpartitions_id_check",
+   "key": "cortex.namespaces.namespaces_design_parent_name_key",
    "kind": "constraint",
-   "parent": "engine_mysql.subpartitions",
+   "parent": "cortex.namespaces",
    "props": {
     "columns": [
-     "id"
+     "design",
+     "parent",
+     "name"
     ],
-    "condeferrable": false,
-    "condeferred": false,
+    "condeferrable": true,
+    "condeferred": true,
     "confdeltype": " ",
     "confmatchtype": " ",
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "subpartitions_id_check",
-    "connoinherit": false,
-    "contype": "c",
+    "conname": "namespaces_design_parent_name_key",
+    "connoinherit": true,
+    "contype": "u",
     "convalidated": true,
-    "definition": "CHECK ((uuid_extract_version(id) = 7))",
-    "expression": "(uuid_extract_version(id) = 7)"
+    "definition": "UNIQUE NULLS NOT DISTINCT (design, parent, name) DEFERRABLE INITIALLY DEFERRED",
+    "index": "namespaces_design_parent_name_key"
+   }
+  },
+  {
+   "key": "cortex.namespaces.namespaces_design_position_key",
+   "kind": "constraint",
+   "parent": "cortex.namespaces",
+   "props": {
+    "columns": [
+     "design",
+     "position"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "namespaces_design_position_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, \"position\") DEFERRABLE INITIALLY DEFERRED",
+    "index": "namespaces_design_position_key"
    }
   },
   {
@@ -26242,6 +26295,53 @@
    }
   },
   {
+   "key": "cortex.namespaces.namespaces_pkey",
+   "kind": "constraint",
+   "parent": "cortex.namespaces",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "namespaces_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "namespaces_pkey"
+   }
+  },
+  {
+   "key": "cortex.object_kinds.object_kinds_engine_kind_key",
+   "kind": "constraint",
+   "parent": "cortex.object_kinds",
+   "props": {
+    "columns": [
+     "engine",
+     "kind"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_kinds_engine_kind_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (engine, kind)",
+    "index": "object_kinds_engine_kind_key"
+   }
+  },
+  {
    "key": "engine_postgresql.default_privileges.default_privileges_position_check",
    "kind": "constraint",
    "parent": "engine_postgresql.default_privileges",
@@ -26308,53 +26408,6 @@
     "convalidated": true,
     "definition": "CHECK ((uuid_extract_version(id) = 7))",
     "expression": "(uuid_extract_version(id) = 7)"
-   }
-  },
-  {
-   "key": "cortex.locked_versions.locked_versions_design_number_key",
-   "kind": "constraint",
-   "parent": "cortex.locked_versions",
-   "props": {
-    "columns": [
-     "design",
-     "number"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "locked_versions_design_number_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, number) DEFERRABLE INITIALLY DEFERRED",
-    "index": "locked_versions_design_number_key"
-   }
-  },
-  {
-   "key": "cortex.locked_versions.locked_versions_pkey",
-   "kind": "constraint",
-   "parent": "cortex.locked_versions",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "locked_versions_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "locked_versions_pkey"
    }
   },
   {
@@ -26519,6 +26572,53 @@
    }
   },
   {
+   "key": "cortex.object_kinds.object_kinds_engine_position_key",
+   "kind": "constraint",
+   "parent": "cortex.object_kinds",
+   "props": {
+    "columns": [
+     "engine",
+     "position"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_kinds_engine_position_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (engine, \"position\")",
+    "index": "object_kinds_engine_position_key"
+   }
+  },
+  {
+   "key": "cortex.object_kinds.object_kinds_pkey",
+   "kind": "constraint",
+   "parent": "cortex.object_kinds",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_kinds_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "object_kinds_pkey"
+   }
+  },
+  {
    "key": "engine_postgresql.trigger_columns.trigger_columns_position_check",
    "kind": "constraint",
    "parent": "engine_postgresql.trigger_columns",
@@ -26562,76 +26662,6 @@
     "convalidated": true,
     "definition": "CHECK ((colour_by = ANY (ARRAY['namespace'::text, 'family'::text, 'area'::text, 'none'::text])))",
     "expression": "(colour_by = ANY (ARRAY['namespace'::text, 'family'::text, 'area'::text, 'none'::text]))"
-   }
-  },
-  {
-   "key": "cortex.locked_versions.locked_versions_turn_key",
-   "kind": "constraint",
-   "parent": "cortex.locked_versions",
-   "props": {
-    "columns": [
-     "turn"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "locked_versions_turn_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (turn)",
-    "index": "locked_versions_turn_key"
-   }
-  },
-  {
-   "key": "cortex.memberships.memberships_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.memberships",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "memberships_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "memberships_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.memberships.memberships_pkey",
-   "kind": "constraint",
-   "parent": "cortex.memberships",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "memberships_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "memberships_pkey"
    }
   },
   {
@@ -26797,6 +26827,29 @@
    }
   },
   {
+   "key": "ui.subject_areas.subject_areas_colour_check",
+   "kind": "constraint",
+   "parent": "ui.subject_areas",
+   "props": {
+    "columns": [
+     "colour"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "subject_areas_colour_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((colour ~ '^#[0-9a-f]{6}$'::text))",
+    "expression": "(colour ~ '^#[0-9a-f]{6}$'::text)"
+   }
+  },
+  {
    "key": "ui.layout_pins.layout_pins_view_check",
    "kind": "constraint",
    "parent": "ui.layout_pins",
@@ -26863,77 +26916,6 @@
     "convalidated": true,
     "definition": "CHECK ((colour ~ '^#[0-9a-f]{6}$'::text))",
     "expression": "(colour ~ '^#[0-9a-f]{6}$'::text)"
-   }
-  },
-  {
-   "key": "cortex.memberships.memberships_role_member_key",
-   "kind": "constraint",
-   "parent": "cortex.memberships",
-   "props": {
-    "columns": [
-     "role",
-     "member"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "memberships_role_member_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (role, member) DEFERRABLE INITIALLY DEFERRED",
-    "index": "memberships_role_member_key"
-   }
-  },
-  {
-   "key": "cortex.namespace_owners.namespace_owners_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.namespace_owners",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "namespace_owners_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "namespace_owners_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.namespace_owners.namespace_owners_pkey",
-   "kind": "constraint",
-   "parent": "cortex.namespace_owners",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "namespace_owners_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "namespace_owners_pkey"
    }
   },
   {
@@ -27102,29 +27084,6 @@
     "convalidated": true,
     "definition": "CHECK ((length(written_by) >= 1))",
     "expression": "(length(written_by) >= 1)"
-   }
-  },
-  {
-   "key": "ui.subject_areas.subject_areas_colour_check",
-   "kind": "constraint",
-   "parent": "ui.subject_areas",
-   "props": {
-    "columns": [
-     "colour"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "subject_areas_colour_check",
-    "connoinherit": false,
-    "contype": "c",
-    "convalidated": true,
-    "definition": "CHECK ((colour ~ '^#[0-9a-f]{6}$'::text))",
-    "expression": "(colour ~ '^#[0-9a-f]{6}$'::text)"
    }
   },
   {
@@ -28048,55 +28007,9 @@
    }
   },
   {
-   "key": "cortex.enum_values.enum_values_pkey",
+   "key": "cortex.object_tags.object_tags_design_id_key",
    "kind": "constraint",
-   "parent": "cortex.enum_values",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "enum_values_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "enum_values_pkey"
-   }
-  },
-  {
-   "key": "cortex.flavor_limits.flavor_limits_pkey",
-   "kind": "constraint",
-   "parent": "cortex.flavor_limits",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "flavor_limits_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "flavor_limits_pkey"
-   }
-  },
-  {
-   "key": "cortex.index_parts.index_parts_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.index_parts",
+   "parent": "cortex.object_tags",
    "props": {
     "columns": [
      "design",
@@ -28109,21 +28022,121 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "index_parts_design_id_key",
+    "conname": "object_tags_design_id_key",
     "connoinherit": true,
     "contype": "u",
     "convalidated": true,
     "definition": "UNIQUE (design, id)",
-    "index": "index_parts_design_id_key"
+    "index": "object_tags_design_id_key"
    }
   },
   {
-   "key": "cortex.index_parts.index_parts_index_position_key",
+   "key": "cortex.object_tags.object_tags_object_tag_key",
    "kind": "constraint",
-   "parent": "cortex.index_parts",
+   "parent": "cortex.object_tags",
    "props": {
     "columns": [
-     "index",
+     "object",
+     "tag"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_tags_object_tag_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (object, tag) DEFERRABLE INITIALLY DEFERRED",
+    "index": "object_tags_object_tag_key"
+   }
+  },
+  {
+   "key": "cortex.object_tags.object_tags_pkey",
+   "kind": "constraint",
+   "parent": "cortex.object_tags",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_tags_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "object_tags_pkey"
+   }
+  },
+  {
+   "key": "cortex.objects.objects_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.objects",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "objects_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "objects_design_id_key"
+   }
+  },
+  {
+   "key": "cortex.objects.objects_design_namespace_parent_kind_name_signature_key",
+   "kind": "constraint",
+   "parent": "cortex.objects",
+   "props": {
+    "columns": [
+     "design",
+     "namespace",
+     "parent",
+     "kind",
+     "name",
+     "signature"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "objects_design_namespace_parent_kind_name_signature_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE NULLS NOT DISTINCT (design, namespace, parent, kind, name, signature) DEFERRABLE INITIALLY DEFERRED",
+    "index": "objects_design_namespace_parent_kind_name_signature_key"
+   }
+  },
+  {
+   "key": "cortex.objects.objects_design_namespace_position_key",
+   "kind": "constraint",
+   "parent": "cortex.objects",
+   "props": {
+    "columns": [
+     "design",
+     "namespace",
      "position"
     ],
     "condeferrable": true,
@@ -28133,18 +28146,18 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "index_parts_index_position_key",
+    "conname": "objects_design_namespace_position_key",
     "connoinherit": true,
     "contype": "u",
     "convalidated": true,
-    "definition": "UNIQUE (index, \"position\") DEFERRABLE INITIALLY DEFERRED",
-    "index": "index_parts_index_position_key"
+    "definition": "UNIQUE NULLS NOT DISTINCT (design, namespace, \"position\") DEFERRABLE INITIALLY DEFERRED",
+    "index": "objects_design_namespace_position_key"
    }
   },
   {
-   "key": "cortex.index_parts.index_parts_pkey",
+   "key": "cortex.objects.objects_pkey",
    "kind": "constraint",
-   "parent": "cortex.index_parts",
+   "parent": "cortex.objects",
    "props": {
     "columns": [
      "id"
@@ -28156,18 +28169,18 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "index_parts_pkey",
+    "conname": "objects_pkey",
     "connoinherit": true,
     "contype": "p",
     "convalidated": true,
     "definition": "PRIMARY KEY (id)",
-    "index": "index_parts_pkey"
+    "index": "objects_pkey"
    }
   },
   {
-   "key": "cortex.indexes.indexes_design_id_key",
+   "key": "cortex.operations.operations_design_id_key",
    "kind": "constraint",
-   "parent": "cortex.indexes",
+   "parent": "cortex.operations",
    "props": {
     "columns": [
      "design",
@@ -28180,66 +28193,66 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "indexes_design_id_key",
+    "conname": "operations_design_id_key",
     "connoinherit": true,
     "contype": "u",
     "convalidated": true,
     "definition": "UNIQUE (design, id)",
-    "index": "indexes_design_id_key"
+    "index": "operations_design_id_key"
    }
   },
   {
-   "key": "cortex.indexes.indexes_object_name_key",
+   "key": "cortex.operations.operations_pkey",
    "kind": "constraint",
-   "parent": "cortex.indexes",
+   "parent": "cortex.operations",
    "props": {
     "columns": [
-     "object",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "operations_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "operations_pkey"
+   }
+  },
+  {
+   "key": "cortex.option_declarations.option_declarations_engine_part_name_key",
+   "kind": "constraint",
+   "parent": "cortex.option_declarations",
+   "props": {
+    "columns": [
+     "engine",
+     "part",
      "name"
     ],
-    "condeferrable": true,
-    "condeferred": true,
+    "condeferrable": false,
+    "condeferred": false,
     "confdeltype": " ",
     "confmatchtype": " ",
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "indexes_object_name_key",
+    "conname": "option_declarations_engine_part_name_key",
     "connoinherit": true,
     "contype": "u",
     "convalidated": true,
-    "definition": "UNIQUE (object, name) DEFERRABLE INITIALLY DEFERRED",
-    "index": "indexes_object_name_key"
+    "definition": "UNIQUE (engine, part, name)",
+    "index": "option_declarations_engine_part_name_key"
    }
   },
   {
-   "key": "cortex.indexes.indexes_object_position_key",
+   "key": "cortex.option_declarations.option_declarations_pkey",
    "kind": "constraint",
-   "parent": "cortex.indexes",
-   "props": {
-    "columns": [
-     "object",
-     "position"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "indexes_object_position_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (object, \"position\") DEFERRABLE INITIALLY DEFERRED",
-    "index": "indexes_object_position_key"
-   }
-  },
-  {
-   "key": "cortex.indexes.indexes_pkey",
-   "kind": "constraint",
-   "parent": "cortex.indexes",
+   "parent": "cortex.option_declarations",
    "props": {
     "columns": [
      "id"
@@ -28251,12 +28264,83 @@
     "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "indexes_pkey",
+    "conname": "option_declarations_pkey",
     "connoinherit": true,
     "contype": "p",
     "convalidated": true,
     "definition": "PRIMARY KEY (id)",
-    "index": "indexes_pkey"
+    "index": "option_declarations_pkey"
+   }
+  },
+  {
+   "key": "cortex.partitionings.partitionings_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.partitionings",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "partitionings_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "partitionings_design_id_key"
+   }
+  },
+  {
+   "key": "cortex.partitionings.partitionings_pkey",
+   "kind": "constraint",
+   "parent": "cortex.partitionings",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "partitionings_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "partitionings_pkey"
+   }
+  },
+  {
+   "key": "cortex.partitions.partitions_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.partitions",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "partitions_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "partitions_design_id_key"
    }
   },
   {
@@ -34811,7 +34895,46 @@
     "prosecdef": false,
     "prosrc": "\nDECLARE\n  lim cortex.flavor_limits;\nBEGIN\n  IF NEW.flavor IS NULL THEN RETURN NEW; END IF;\n  SELECT * INTO lim FROM cortex.flavor_limits\n   WHERE flavor = NEW.flavor AND what = 'version' AND version = NEW.engine || '/' || NEW.engine_version AND severity = 'refused' LIMIT 1;\n  IF lim.id IS NOT NULL THEN\n    RAISE EXCEPTION '% does not offer % %: %', NEW.flavor, NEW.engine, NEW.engine_version, lim.about USING ERRCODE = 'check_violation';\n  END IF;\n  RETURN NEW;\nEND ",
     "provolatile": "s",
-    "returns": "trigger"
+    "returns": "trigger",
+    "sql_body": false
+   }
+  },
+  {
+   "key": "cortex.check_options()",
+   "kind": "routine",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "=X/sf_owner",
+     "sf_owner=X/sf_owner",
+     "sf_service=X/sf_owner",
+     "sf_agent=X/sf_owner"
+    ],
+    "arguments": "",
+    "create": "CREATE OR REPLACE FUNCTION cortex.check_options()\n RETURNS trigger\n LANGUAGE plpgsql\n STABLE\nAS $function$\nDECLARE\n  bad record;\nBEGIN\n  SELECT jsonb_typeof(r.options) AS shape, x.key, x.value, d.engine, d.engine_version, d.flavor,\n         dec.id AS did, dec.flavor AS dflavor, dec.nullable, dec.value_type, dec.choices,\n         (dec.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = dec.since)\n          OR dec.\"until\" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec.\"until\")) AS out_of_version,\n         l.about AS lacks\n    INTO bad\n    FROM new_rows r\n    JOIN cortex.designs d ON d.id = r.design\n    LEFT JOIN cortex.engine_versions v ON v.engine = d.engine AND v.version = d.engine_version\n    LEFT JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(r.options) = 'object' THEN r.options END) x ON true\n    LEFT JOIN cortex.option_declarations dec ON dec.engine = d.engine AND dec.part = TG_TABLE_NAME AND dec.name = x.key\n    LEFT JOIN LATERAL (\n      SELECT l.about FROM cortex.flavor_limits l\n       WHERE l.flavor = d.flavor AND l.severity = 'refused' AND l.option = dec.id\n         AND (l.what = 'option' OR l.what = 'value' AND l.value = x.value)\n         AND (l.since IS NULL OR v.position >= (SELECT s.position FROM cortex.engine_versions s WHERE s.id = l.since))\n         AND (l.\"until\" IS NULL OR v.position <= (SELECT u.position FROM cortex.engine_versions u WHERE u.id = l.\"until\"))\n       LIMIT 1) l ON true\n   WHERE r.options <> '{}'::jsonb AND (\n         jsonb_typeof(r.options) <> 'object'\n      OR dec.id IS NULL\n      OR dec.flavor IS NOT NULL AND dec.flavor IS DISTINCT FROM d.flavor\n      OR jsonb_typeof(x.value) = 'null' AND NOT dec.nullable\n      OR jsonb_typeof(x.value) <> 'null' AND (\n           dec.value_type = 'json' AND jsonb_typeof(x.value) NOT IN ('array', 'object')\n        OR dec.value_type <> 'json' AND jsonb_typeof(x.value) <> dec.value_type\n        OR dec.choices IS NOT NULL AND NOT dec.choices @> jsonb_build_array(x.value)\n        OR dec.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = dec.since)\n        OR dec.\"until\" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec.\"until\")\n        OR l.about IS NOT NULL))\n   LIMIT 1;\n  IF NOT FOUND THEN\n    -- a value of one of the part's own columns the design's flavor lacks (CockroachDB's deferrable constraints)\n    SELECT d.flavor, l.field, l.value, l.about INTO bad\n      FROM new_rows r JOIN cortex.designs d ON d.id = r.design\n      JOIN cortex.flavor_limits l ON l.flavor = d.flavor AND l.what = 'field' AND l.severity = 'refused' AND l.part = TG_TABLE_NAME\n     WHERE to_jsonb(r) -> l.field = l.value\n     LIMIT 1;\n    IF FOUND THEN\n      RAISE EXCEPTION '% lacks % = %: %', bad.flavor, bad.field, bad.value, bad.about USING ERRCODE = 'check_violation';\n    END IF;\n    RETURN NULL;\n  END IF;\n  IF bad.shape <> 'object' THEN\n    RAISE EXCEPTION 'options must be an object, not %', bad.shape USING ERRCODE = 'check_violation';\n  ELSIF bad.did IS NULL THEN\n    RAISE EXCEPTION 'option % is not declared for % %', bad.key, bad.engine, TG_TABLE_NAME USING ERRCODE = 'check_violation';\n  ELSIF bad.dflavor IS NOT NULL AND bad.dflavor IS DISTINCT FROM bad.flavor THEN\n    RAISE EXCEPTION 'option % is %''s alone', bad.key, bad.dflavor USING ERRCODE = 'check_violation';\n  ELSIF jsonb_typeof(bad.value) = 'null' THEN\n    RAISE EXCEPTION 'option % may not be null', bad.key USING ERRCODE = 'check_violation';\n  ELSIF bad.value_type = 'json' AND jsonb_typeof(bad.value) NOT IN ('array', 'object')\n     OR bad.value_type <> 'json' AND jsonb_typeof(bad.value) <> bad.value_type THEN\n    RAISE EXCEPTION 'option % is a %, not a %', bad.key, bad.value_type, jsonb_typeof(bad.value) USING ERRCODE = 'check_violation';\n  ELSIF bad.choices IS NOT NULL AND NOT bad.choices @> jsonb_build_array(bad.value) THEN\n    RAISE EXCEPTION 'option % may be one of %, not %', bad.key, bad.choices, bad.value USING ERRCODE = 'check_violation';\n  ELSIF bad.out_of_version THEN\n    RAISE EXCEPTION 'option % is not in % %', bad.key, bad.engine, bad.engine_version USING ERRCODE = 'check_violation';\n  ELSE\n    RAISE EXCEPTION '% lacks option % = %: %', bad.flavor, bad.key, bad.value, bad.lacks USING ERRCODE = 'check_violation';\n  END IF;\nEND $function$\n",
+    "language": "plpgsql",
+    "owner": "sf_owner",
+    "proacl": [
+     "=X/sf_owner",
+     "sf_owner=X/sf_owner",
+     "sf_service=X/sf_owner",
+     "sf_agent=X/sf_owner"
+    ],
+    "procost": 100,
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "check_options",
+    "pronargdefaults": 0,
+    "pronargs": 0,
+    "proparallel": "u",
+    "proretset": false,
+    "prorows": 0,
+    "prosecdef": false,
+    "prosrc": "\nDECLARE\n  bad record;\nBEGIN\n  SELECT jsonb_typeof(r.options) AS shape, x.key, x.value, d.engine, d.engine_version, d.flavor,\n         dec.id AS did, dec.flavor AS dflavor, dec.nullable, dec.value_type, dec.choices,\n         (dec.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = dec.since)\n          OR dec.\"until\" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec.\"until\")) AS out_of_version,\n         l.about AS lacks\n    INTO bad\n    FROM new_rows r\n    JOIN cortex.designs d ON d.id = r.design\n    LEFT JOIN cortex.engine_versions v ON v.engine = d.engine AND v.version = d.engine_version\n    LEFT JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(r.options) = 'object' THEN r.options END) x ON true\n    LEFT JOIN cortex.option_declarations dec ON dec.engine = d.engine AND dec.part = TG_TABLE_NAME AND dec.name = x.key\n    LEFT JOIN LATERAL (\n      SELECT l.about FROM cortex.flavor_limits l\n       WHERE l.flavor = d.flavor AND l.severity = 'refused' AND l.option = dec.id\n         AND (l.what = 'option' OR l.what = 'value' AND l.value = x.value)\n         AND (l.since IS NULL OR v.position >= (SELECT s.position FROM cortex.engine_versions s WHERE s.id = l.since))\n         AND (l.\"until\" IS NULL OR v.position <= (SELECT u.position FROM cortex.engine_versions u WHERE u.id = l.\"until\"))\n       LIMIT 1) l ON true\n   WHERE r.options <> '{}'::jsonb AND (\n         jsonb_typeof(r.options) <> 'object'\n      OR dec.id IS NULL\n      OR dec.flavor IS NOT NULL AND dec.flavor IS DISTINCT FROM d.flavor\n      OR jsonb_typeof(x.value) = 'null' AND NOT dec.nullable\n      OR jsonb_typeof(x.value) <> 'null' AND (\n           dec.value_type = 'json' AND jsonb_typeof(x.value) NOT IN ('array', 'object')\n        OR dec.value_type <> 'json' AND jsonb_typeof(x.value) <> dec.value_type\n        OR dec.choices IS NOT NULL AND NOT dec.choices @> jsonb_build_array(x.value)\n        OR dec.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = dec.since)\n        OR dec.\"until\" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec.\"until\")\n        OR l.about IS NOT NULL))\n   LIMIT 1;\n  IF NOT FOUND THEN\n    -- a value of one of the part's own columns the design's flavor lacks (CockroachDB's deferrable constraints)\n    SELECT d.flavor, l.field, l.value, l.about INTO bad\n      FROM new_rows r JOIN cortex.designs d ON d.id = r.design\n      JOIN cortex.flavor_limits l ON l.flavor = d.flavor AND l.what = 'field' AND l.severity = 'refused' AND l.part = TG_TABLE_NAME\n     WHERE to_jsonb(r) -> l.field = l.value\n     LIMIT 1;\n    IF FOUND THEN\n      RAISE EXCEPTION '% lacks % = %: %', bad.flavor, bad.field, bad.value, bad.about USING ERRCODE = 'check_violation';\n    END IF;\n    RETURN NULL;\n  END IF;\n  IF bad.shape <> 'object' THEN\n    RAISE EXCEPTION 'options must be an object, not %', bad.shape USING ERRCODE = 'check_violation';\n  ELSIF bad.did IS NULL THEN\n    RAISE EXCEPTION 'option % is not declared for % %', bad.key, bad.engine, TG_TABLE_NAME USING ERRCODE = 'check_violation';\n  ELSIF bad.dflavor IS NOT NULL AND bad.dflavor IS DISTINCT FROM bad.flavor THEN\n    RAISE EXCEPTION 'option % is %''s alone', bad.key, bad.dflavor USING ERRCODE = 'check_violation';\n  ELSIF jsonb_typeof(bad.value) = 'null' THEN\n    RAISE EXCEPTION 'option % may not be null', bad.key USING ERRCODE = 'check_violation';\n  ELSIF bad.value_type = 'json' AND jsonb_typeof(bad.value) NOT IN ('array', 'object')\n     OR bad.value_type <> 'json' AND jsonb_typeof(bad.value) <> bad.value_type THEN\n    RAISE EXCEPTION 'option % is a %, not a %', bad.key, bad.value_type, jsonb_typeof(bad.value) USING ERRCODE = 'check_violation';\n  ELSIF bad.choices IS NOT NULL AND NOT bad.choices @> jsonb_build_array(bad.value) THEN\n    RAISE EXCEPTION 'option % may be one of %, not %', bad.key, bad.choices, bad.value USING ERRCODE = 'check_violation';\n  ELSIF bad.out_of_version THEN\n    RAISE EXCEPTION 'option % is not in % %', bad.key, bad.engine, bad.engine_version USING ERRCODE = 'check_violation';\n  ELSE\n    RAISE EXCEPTION '% lacks option % = %: %', bad.flavor, bad.key, bad.value, bad.lacks USING ERRCODE = 'check_violation';\n  END IF;\nEND ",
+    "provolatile": "s",
+    "returns": "trigger",
+    "sql_body": false
    }
   },
   {
@@ -34848,7 +34971,8 @@
     "prosecdef": false,
     "prosrc": "\nDECLARE\n  bad record;\nBEGIN\n  SELECT n.kind, n.namespace, d.engine, d.engine_version, d.flavor, k.id AS kid, k.scope, k.flavor AS kflavor, l.about AS lacks,\n         (k.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = k.since)\n          OR k.\"until\" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = k.\"until\")) AS out_of_version\n    INTO bad\n    FROM new_objects n\n    JOIN cortex.designs d ON d.id = n.design\n    LEFT JOIN cortex.object_kinds k ON k.engine = d.engine AND k.kind = n.kind\n    LEFT JOIN cortex.engine_versions v ON v.engine = d.engine AND v.version = d.engine_version\n    LEFT JOIN LATERAL (\n      SELECT l.about FROM cortex.flavor_limits l\n       WHERE l.flavor = d.flavor AND l.severity = 'refused' AND l.what = 'kind' AND l.kind = k.id\n         AND (l.since IS NULL OR v.position >= (SELECT s.position FROM cortex.engine_versions s WHERE s.id = l.since))\n         AND (l.\"until\" IS NULL OR v.position <= (SELECT u.position FROM cortex.engine_versions u WHERE u.id = l.\"until\"))\n       LIMIT 1) l ON true\n   WHERE k.id IS NULL\n      OR k.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = k.since)\n      OR k.\"until\" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = k.\"until\")\n      OR k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM d.flavor\n      OR l.about IS NOT NULL\n      OR (k.scope = 'namespace') = (n.namespace IS NULL)\n   LIMIT 1;\n  IF NOT FOUND THEN RETURN NULL; END IF;\n  IF bad.kid IS NULL THEN\n    RAISE EXCEPTION 'kind % is not declared for %', bad.kind, bad.engine USING ERRCODE = 'check_violation';\n  ELSIF bad.out_of_version THEN\n    RAISE EXCEPTION 'a % is not in % %', bad.kind, bad.engine, bad.engine_version USING ERRCODE = 'check_violation';\n  ELSIF bad.kflavor IS NOT NULL AND bad.kflavor IS DISTINCT FROM bad.flavor THEN\n    RAISE EXCEPTION 'a % is %''s alone', bad.kind, bad.kflavor USING ERRCODE = 'check_violation';\n  ELSIF bad.lacks IS NOT NULL THEN\n    RAISE EXCEPTION '% has no %: %', bad.flavor, bad.kind, bad.lacks USING ERRCODE = 'check_violation';\n  ELSIF bad.scope = 'namespace' THEN\n    RAISE EXCEPTION 'a % lives in a namespace', bad.kind USING ERRCODE = 'check_violation';\n  ELSE\n    RAISE EXCEPTION 'a % lives in the %, in no namespace', bad.kind, bad.scope USING ERRCODE = 'check_violation';\n  END IF;\nEND ",
     "provolatile": "s",
-    "returns": "trigger"
+    "returns": "trigger",
+    "sql_body": false
    }
   },
   {
@@ -34889,122 +35013,8 @@
     "prosecdef": true,
     "prosrc": "\nDECLARE\n  rule   text := TG_ARGV[0];\n  broken text;\nBEGIN\n  PERFORM cortex.rule_marks();\n  IF EXISTS (SELECT 1 FROM pg_temp.rule_marks m WHERE m.rule = TG_ARGV[0]) THEN\n    RETURN NULL;\n  END IF;\n  EXECUTE format('SELECT string_agg(id, '', '') FROM (SELECT id FROM %s ORDER BY id LIMIT 5) b', rule) INTO broken;\n  IF broken IS NOT NULL THEN\n    RAISE EXCEPTION 'rule % is broken by %', rule, broken\n      USING ERRCODE = 'check_violation', HINT = format('SELECT * FROM %s lists every row breaking it', rule);\n  END IF;\n  INSERT INTO pg_temp.rule_marks (rule) VALUES (TG_ARGV[0]) ON CONFLICT DO NOTHING;\n  RETURN NULL;\nEND ",
     "provolatile": "v",
-    "returns": "trigger"
-   }
-  },
-  {
-   "key": "cortex.misfits(p_design uuid, p_version text, p_flavor text)",
-   "kind": "routine",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "=X/sf_owner",
-     "sf_owner=X/sf_owner",
-     "sf_service=X/sf_owner",
-     "sf_agent=X/sf_owner"
-    ],
-    "argument_defaults": "NULL::text",
-    "argument_types": [
-     "uuid",
-     "text",
-     "text",
-     "text",
-     "uuid",
-     "text",
-     "text",
-     "text",
-     "text",
-     "text"
-    ],
-    "arguments": "p_design uuid, p_version text, p_flavor text DEFAULT NULL::text",
-    "create": "CREATE OR REPLACE FUNCTION cortex.misfits(p_design uuid, p_version text, p_flavor text DEFAULT NULL::text)\n RETURNS TABLE(part text, row_id uuid, what text, name text, severity text, about text, source text)\n LANGUAGE plpgsql\n STABLE\nAS $function$\nDECLARE\n  e text;\n  at numeric;\n  p text;\nBEGIN\n  SELECT engine INTO e FROM cortex.designs WHERE id = p_design;\n  SELECT position INTO at FROM cortex.engine_versions WHERE engine = e AND version = p_version;\n  IF at IS NULL THEN\n    RAISE EXCEPTION '% has no version %', e, p_version USING ERRCODE = 'check_violation';\n  END IF;\n  -- the target itself: a flavor that does not offer the version\n  RETURN QUERY SELECT 'designs'::text, p_design, 'version'::text, p_version, l.severity, l.about, l.source\n    FROM cortex.flavor_limits l WHERE l.flavor = p_flavor AND l.what = 'version' AND l.version = e || '/' || p_version;\n  -- objects of a kind the target lacks, or another flavor's alone\n  RETURN QUERY SELECT 'objects'::text, o.id, 'kind'::text, o.kind, coalesce(l.severity, 'refused'),\n      coalesce(l.about, CASE WHEN k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor THEN k.flavor || '''s alone'\n                             ELSE 'not in ' || e || ' ' || p_version END), l.source\n    FROM cortex.objects o JOIN cortex.object_kinds k ON k.engine = e AND k.kind = o.kind\n    LEFT JOIN cortex.flavor_limits l ON l.flavor = p_flavor AND l.what = 'kind' AND l.kind = k.id\n      AND (l.since IS NULL OR at >= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.since))\n      AND (l.\"until\" IS NULL OR at <= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.\"until\"))\n    WHERE o.design = p_design AND (l.id IS NOT NULL OR k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor\n       OR k.since IS NOT NULL AND at < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.since)\n       OR k.\"until\" IS NOT NULL AND at > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.\"until\"));\n  -- every option of every part: one the target version does not have, another flavor's alone, or one the flavor lacks\n  FOR p IN SELECT DISTINCT d.part FROM cortex.option_declarations d WHERE d.engine = e LOOP\n    RETURN QUERY EXECUTE format($q$\n      SELECT %1$L::text, r.id, CASE WHEN l.what = 'value' THEN 'value' ELSE 'option' END, x.key || CASE WHEN l.what = 'value' THEN ' = ' || x.value::text ELSE '' END,\n             coalesce(l.severity, 'refused'),\n             coalesce(l.about, CASE WHEN d.id IS NULL THEN 'not declared'\n                                    WHEN d.flavor IS NOT NULL AND d.flavor IS DISTINCT FROM $3 THEN d.flavor || '''s alone'\n                                    ELSE 'not in ' || $4 || ' ' || $2 END), l.source\n        FROM cortex.%1$I r CROSS JOIN LATERAL jsonb_each(r.options) x\n        LEFT JOIN cortex.option_declarations d ON d.engine = $4 AND d.part = %1$L AND d.name = x.key\n        LEFT JOIN cortex.flavor_limits l ON l.flavor = $3 AND l.option = d.id AND (l.what = 'option' OR l.what = 'value' AND l.value = x.value)\n          AND (l.since IS NULL OR $5 >= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.since))\n          AND (l.\"until\" IS NULL OR $5 <= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.\"until\"))\n       WHERE r.design = $1 AND (d.id IS NULL OR l.id IS NOT NULL\n          OR d.flavor IS NOT NULL AND d.flavor IS DISTINCT FROM $3\n          OR d.since IS NOT NULL AND $5 < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = d.since)\n          OR d.\"until\" IS NOT NULL AND $5 > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = d.\"until\"))$q$, p)\n      USING p_design, p_version, p_flavor, e, at;\n  END LOOP;\nEND $function$\n",
-    "language": "plpgsql",
-    "owner": "sf_owner",
-    "proacl": [
-     "=X/sf_owner",
-     "sf_owner=X/sf_owner",
-     "sf_service=X/sf_owner",
-     "sf_agent=X/sf_owner"
-    ],
-    "proargmodes": [
-     "i",
-     "i",
-     "i",
-     "t",
-     "t",
-     "t",
-     "t",
-     "t",
-     "t",
-     "t"
-    ],
-    "proargnames": [
-     "p_design",
-     "p_version",
-     "p_flavor",
-     "part",
-     "row_id",
-     "what",
-     "name",
-     "severity",
-     "about",
-     "source"
-    ],
-    "procost": 100,
-    "proisstrict": false,
-    "prokind": "f",
-    "proleakproof": false,
-    "proname": "misfits",
-    "pronargdefaults": 1,
-    "pronargs": 3,
-    "proparallel": "u",
-    "proretset": true,
-    "prorows": 1000,
-    "prosecdef": false,
-    "prosrc": "\nDECLARE\n  e text;\n  at numeric;\n  p text;\nBEGIN\n  SELECT engine INTO e FROM cortex.designs WHERE id = p_design;\n  SELECT position INTO at FROM cortex.engine_versions WHERE engine = e AND version = p_version;\n  IF at IS NULL THEN\n    RAISE EXCEPTION '% has no version %', e, p_version USING ERRCODE = 'check_violation';\n  END IF;\n  -- the target itself: a flavor that does not offer the version\n  RETURN QUERY SELECT 'designs'::text, p_design, 'version'::text, p_version, l.severity, l.about, l.source\n    FROM cortex.flavor_limits l WHERE l.flavor = p_flavor AND l.what = 'version' AND l.version = e || '/' || p_version;\n  -- objects of a kind the target lacks, or another flavor's alone\n  RETURN QUERY SELECT 'objects'::text, o.id, 'kind'::text, o.kind, coalesce(l.severity, 'refused'),\n      coalesce(l.about, CASE WHEN k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor THEN k.flavor || '''s alone'\n                             ELSE 'not in ' || e || ' ' || p_version END), l.source\n    FROM cortex.objects o JOIN cortex.object_kinds k ON k.engine = e AND k.kind = o.kind\n    LEFT JOIN cortex.flavor_limits l ON l.flavor = p_flavor AND l.what = 'kind' AND l.kind = k.id\n      AND (l.since IS NULL OR at >= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.since))\n      AND (l.\"until\" IS NULL OR at <= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.\"until\"))\n    WHERE o.design = p_design AND (l.id IS NOT NULL OR k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor\n       OR k.since IS NOT NULL AND at < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.since)\n       OR k.\"until\" IS NOT NULL AND at > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.\"until\"));\n  -- every option of every part: one the target version does not have, another flavor's alone, or one the flavor lacks\n  FOR p IN SELECT DISTINCT d.part FROM cortex.option_declarations d WHERE d.engine = e LOOP\n    RETURN QUERY EXECUTE format($q$\n      SELECT %1$L::text, r.id, CASE WHEN l.what = 'value' THEN 'value' ELSE 'option' END, x.key || CASE WHEN l.what = 'value' THEN ' = ' || x.value::text ELSE '' END,\n             coalesce(l.severity, 'refused'),\n             coalesce(l.about, CASE WHEN d.id IS NULL THEN 'not declared'\n                                    WHEN d.flavor IS NOT NULL AND d.flavor IS DISTINCT FROM $3 THEN d.flavor || '''s alone'\n                                    ELSE 'not in ' || $4 || ' ' || $2 END), l.source\n        FROM cortex.%1$I r CROSS JOIN LATERAL jsonb_each(r.options) x\n        LEFT JOIN cortex.option_declarations d ON d.engine = $4 AND d.part = %1$L AND d.name = x.key\n        LEFT JOIN cortex.flavor_limits l ON l.flavor = $3 AND l.option = d.id AND (l.what = 'option' OR l.what = 'value' AND l.value = x.value)\n          AND (l.since IS NULL OR $5 >= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.since))\n          AND (l.\"until\" IS NULL OR $5 <= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.\"until\"))\n       WHERE r.design = $1 AND (d.id IS NULL OR l.id IS NOT NULL\n          OR d.flavor IS NOT NULL AND d.flavor IS DISTINCT FROM $3\n          OR d.since IS NOT NULL AND $5 < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = d.since)\n          OR d.\"until\" IS NOT NULL AND $5 > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = d.\"until\"))$q$, p)\n      USING p_design, p_version, p_flavor, e, at;\n  END LOOP;\nEND ",
-    "provolatile": "s",
-    "returns": "TABLE(part text, row_id uuid, what text, name text, severity text, about text, source text)"
-   }
-  },
-  {
-   "key": "cortex.rule_marks()",
-   "kind": "routine",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "=X/sf_owner",
-     "sf_owner=X/sf_owner",
-     "sf_service=X/sf_owner",
-     "sf_agent=X/sf_owner"
-    ],
-    "arguments": "",
-    "comment": "makes, or checks, the session's table of rules held in this transaction, which only sf_owner writes",
-    "create": "CREATE OR REPLACE FUNCTION cortex.rule_marks()\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n  -- The marks of the rules read and held in this transaction: a temporary table this function's owner (sf_owner) makes\n  -- and alone may write, emptied at every commit. A table of that name another role made first is refused, so no\n  -- writer can mark a rule held that was not read.\n  CREATE TEMPORARY TABLE IF NOT EXISTS rule_marks (rule text PRIMARY KEY) ON COMMIT DELETE ROWS;\n  IF (SELECT c.relowner FROM pg_class c WHERE c.oid = 'pg_temp.rule_marks'::regclass) <> (SELECT oid FROM pg_roles WHERE rolname = current_user) THEN\n    RAISE EXCEPTION 'pg_temp.rule_marks was made by another role: the rules cannot be held' USING ERRCODE = 'insufficient_privilege';\n  END IF;\nEND $function$\n",
-    "language": "plpgsql",
-    "owner": "sf_owner",
-    "proacl": [
-     "=X/sf_owner",
-     "sf_owner=X/sf_owner",
-     "sf_service=X/sf_owner",
-     "sf_agent=X/sf_owner"
-    ],
-    "proconfig": [
-     "search_path=pg_catalog"
-    ],
-    "procost": 100,
-    "proisstrict": false,
-    "prokind": "f",
-    "proleakproof": false,
-    "proname": "rule_marks",
-    "pronargdefaults": 0,
-    "pronargs": 0,
-    "proparallel": "u",
-    "proretset": false,
-    "prorows": 0,
-    "prosecdef": true,
-    "prosrc": "\nBEGIN\n  -- The marks of the rules read and held in this transaction: a temporary table this function's owner (sf_owner) makes\n  -- and alone may write, emptied at every commit. A table of that name another role made first is refused, so no\n  -- writer can mark a rule held that was not read.\n  CREATE TEMPORARY TABLE IF NOT EXISTS rule_marks (rule text PRIMARY KEY) ON COMMIT DELETE ROWS;\n  IF (SELECT c.relowner FROM pg_class c WHERE c.oid = 'pg_temp.rule_marks'::regclass) <> (SELECT oid FROM pg_roles WHERE rolname = current_user) THEN\n    RAISE EXCEPTION 'pg_temp.rule_marks was made by another role: the rules cannot be held' USING ERRCODE = 'insufficient_privilege';\n  END IF;\nEND ",
-    "provolatile": "v",
-    "returns": "void"
+    "returns": "trigger",
+    "sql_body": false
    }
   },
   {
@@ -35041,7 +35051,8 @@
     "prosecdef": false,
     "prosrc": "\nBEGIN\n  PERFORM pg_notify('schema_forge_turns', NEW.design::text || ' ' || NEW.seq::text);\n  RETURN NULL;\nEND ",
     "provolatile": "v",
-    "returns": "trigger"
+    "returns": "trigger",
+    "sql_body": false
    }
   },
   {
@@ -35060,7 +35071,7 @@
     ],
     "arguments": "owner text",
     "comment": "gives an owner's namespace to sf_service (rows, the rules), sf_agent (the design's rows) and sf_reader (reading), so the schema changes only as sf_owner",
-    "create": "CREATE OR REPLACE FUNCTION cortex.grant_roles(owner text)\n RETURNS void\n LANGUAGE plpgsql\nAS $function$\nDECLARE\n  t text;\nBEGIN\n  EXECUTE format('REVOKE ALL ON SCHEMA %I FROM PUBLIC', owner);\n  EXECUTE format('GRANT USAGE ON SCHEMA %I TO sf_service, sf_agent, sf_reader', owner);\n  EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO sf_service, sf_agent', owner);\n  EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO sf_reader', owner);\n  EXECUTE format('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO sf_service, sf_agent', owner);\n  -- and the same for every table and function a later version makes (they are made as sf_owner)\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO sf_service, sf_agent', owner);\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT ON TABLES TO sf_reader', owner);\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT EXECUTE ON FUNCTIONS TO sf_service, sf_agent', owner);\n  IF owner = 'cortex' THEN\n    -- what the agent reads only: the designs themselves, the engines' declarations, the workspace, what a person chose\n    -- to read, what was applied, read and locked\n    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors', 'flavor_limits',\n                             'workspace_identity', 'workspace_parameters', 'workspace_connections', 'workspace_connection_values',\n                             'workspace_connection_tests', 'workspace_connection_test_steps', 'workspace_design_connections',\n                             'read_scopes', 'read_scope_kinds', 'read_scope_objects',\n                             'schema_migrations', 'source_reads', 'locked_versions'] LOOP\n      EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_agent', t);\n    END LOOP;\n    -- the log: the agent adds to it with its work and never rewrites it\n    FOREACH t IN ARRAY ARRAY['turns', 'operations', 'row_changes'] LOOP\n      EXECUTE format('REVOKE UPDATE, DELETE ON cortex.%I FROM sf_agent', t);\n    END LOOP;\n  END IF;\nEND $function$\n",
+    "create": "CREATE OR REPLACE FUNCTION cortex.grant_roles(owner text)\n RETURNS void\n LANGUAGE plpgsql\nAS $function$\nDECLARE\n  t text;\nBEGIN\n  EXECUTE format('REVOKE ALL ON SCHEMA %I FROM PUBLIC', owner);\n  EXECUTE format('GRANT USAGE ON SCHEMA %I TO sf_service, sf_agent, sf_reader', owner);\n  EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO sf_service, sf_agent', owner);\n  EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO sf_reader', owner);\n  EXECUTE format('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO sf_service, sf_agent', owner);\n  -- and the same for every table and function a later version makes (they are made as sf_owner)\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO sf_service, sf_agent', owner);\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT ON TABLES TO sf_reader', owner);\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT EXECUTE ON FUNCTIONS TO sf_service, sf_agent', owner);\n  IF owner = 'cortex' THEN\n    -- what the agent reads only: the designs themselves, the engines' declarations, the workspace, what a person chose\n    -- to read, what was applied, read and locked\n    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors', 'flavor_limits',\n                             'workspace_identity', 'workspace_parameters', 'workspace_connections', 'workspace_connection_values',\n                             'workspace_connection_tests', 'workspace_connection_test_steps', 'workspace_design_connections',\n                             'read_scopes', 'read_scope_kinds', 'read_scope_objects',\n                             'schema_migrations', 'source_reads', 'locked_versions'] LOOP\n      EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_agent', t);\n    END LOOP;\n    -- what the engines declare (their versions, features, kinds, options, catalog sources, flavors and what each flavor\n    -- lacks) is the seeds' alone, changed by installing a version as the DBA: the app reads it, as the agent does\n    FOREACH t IN ARRAY ARRAY['engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors',\n                             'flavor_limits'] LOOP\n      EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_service', t);\n    END LOOP;\n    -- the log: the agent adds to it with its work and never rewrites it\n    FOREACH t IN ARRAY ARRAY['turns', 'operations', 'row_changes'] LOOP\n      EXECUTE format('REVOKE UPDATE, DELETE ON cortex.%I FROM sf_agent', t);\n    END LOOP;\n  END IF;\nEND $function$\n",
     "language": "plpgsql",
     "owner": "sf_owner",
     "proacl": [
@@ -35083,9 +35094,10 @@
     "proretset": false,
     "prorows": 0,
     "prosecdef": false,
-    "prosrc": "\nDECLARE\n  t text;\nBEGIN\n  EXECUTE format('REVOKE ALL ON SCHEMA %I FROM PUBLIC', owner);\n  EXECUTE format('GRANT USAGE ON SCHEMA %I TO sf_service, sf_agent, sf_reader', owner);\n  EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO sf_service, sf_agent', owner);\n  EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO sf_reader', owner);\n  EXECUTE format('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO sf_service, sf_agent', owner);\n  -- and the same for every table and function a later version makes (they are made as sf_owner)\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO sf_service, sf_agent', owner);\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT ON TABLES TO sf_reader', owner);\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT EXECUTE ON FUNCTIONS TO sf_service, sf_agent', owner);\n  IF owner = 'cortex' THEN\n    -- what the agent reads only: the designs themselves, the engines' declarations, the workspace, what a person chose\n    -- to read, what was applied, read and locked\n    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors', 'flavor_limits',\n                             'workspace_identity', 'workspace_parameters', 'workspace_connections', 'workspace_connection_values',\n                             'workspace_connection_tests', 'workspace_connection_test_steps', 'workspace_design_connections',\n                             'read_scopes', 'read_scope_kinds', 'read_scope_objects',\n                             'schema_migrations', 'source_reads', 'locked_versions'] LOOP\n      EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_agent', t);\n    END LOOP;\n    -- the log: the agent adds to it with its work and never rewrites it\n    FOREACH t IN ARRAY ARRAY['turns', 'operations', 'row_changes'] LOOP\n      EXECUTE format('REVOKE UPDATE, DELETE ON cortex.%I FROM sf_agent', t);\n    END LOOP;\n  END IF;\nEND ",
+    "prosrc": "\nDECLARE\n  t text;\nBEGIN\n  EXECUTE format('REVOKE ALL ON SCHEMA %I FROM PUBLIC', owner);\n  EXECUTE format('GRANT USAGE ON SCHEMA %I TO sf_service, sf_agent, sf_reader', owner);\n  EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO sf_service, sf_agent', owner);\n  EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO sf_reader', owner);\n  EXECUTE format('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO sf_service, sf_agent', owner);\n  -- and the same for every table and function a later version makes (they are made as sf_owner)\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO sf_service, sf_agent', owner);\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT ON TABLES TO sf_reader', owner);\n  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT EXECUTE ON FUNCTIONS TO sf_service, sf_agent', owner);\n  IF owner = 'cortex' THEN\n    -- what the agent reads only: the designs themselves, the engines' declarations, the workspace, what a person chose\n    -- to read, what was applied, read and locked\n    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors', 'flavor_limits',\n                             'workspace_identity', 'workspace_parameters', 'workspace_connections', 'workspace_connection_values',\n                             'workspace_connection_tests', 'workspace_connection_test_steps', 'workspace_design_connections',\n                             'read_scopes', 'read_scope_kinds', 'read_scope_objects',\n                             'schema_migrations', 'source_reads', 'locked_versions'] LOOP\n      EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_agent', t);\n    END LOOP;\n    -- what the engines declare (their versions, features, kinds, options, catalog sources, flavors and what each flavor\n    -- lacks) is the seeds' alone, changed by installing a version as the DBA: the app reads it, as the agent does\n    FOREACH t IN ARRAY ARRAY['engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors',\n                             'flavor_limits'] LOOP\n      EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_service', t);\n    END LOOP;\n    -- the log: the agent adds to it with its work and never rewrites it\n    FOREACH t IN ARRAY ARRAY['turns', 'operations', 'row_changes'] LOOP\n      EXECUTE format('REVOKE UPDATE, DELETE ON cortex.%I FROM sf_agent', t);\n    END LOOP;\n  END IF;\nEND ",
     "provolatile": "v",
-    "returns": "void"
+    "returns": "void",
+    "sql_body": false
    }
   },
   {
@@ -35126,44 +35138,8 @@
     "prosecdef": true,
     "prosrc": "\nBEGIN\n  PERFORM cortex.rule_marks();\n  DELETE FROM pg_temp.rule_marks m WHERE m.rule = TG_ARGV[0];\n  RETURN NULL;\nEND ",
     "provolatile": "v",
-    "returns": "trigger"
-   }
-  },
-  {
-   "key": "cortex.check_options()",
-   "kind": "routine",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "=X/sf_owner",
-     "sf_owner=X/sf_owner",
-     "sf_service=X/sf_owner",
-     "sf_agent=X/sf_owner"
-    ],
-    "arguments": "",
-    "create": "CREATE OR REPLACE FUNCTION cortex.check_options()\n RETURNS trigger\n LANGUAGE plpgsql\n STABLE\nAS $function$\nDECLARE\n  bad record;\nBEGIN\n  SELECT jsonb_typeof(r.options) AS shape, x.key, x.value, d.engine, d.engine_version, d.flavor,\n         dec.id AS did, dec.flavor AS dflavor, dec.nullable, dec.value_type, dec.choices,\n         (dec.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = dec.since)\n          OR dec.\"until\" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec.\"until\")) AS out_of_version,\n         l.about AS lacks\n    INTO bad\n    FROM new_rows r\n    JOIN cortex.designs d ON d.id = r.design\n    LEFT JOIN cortex.engine_versions v ON v.engine = d.engine AND v.version = d.engine_version\n    LEFT JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(r.options) = 'object' THEN r.options END) x ON true\n    LEFT JOIN cortex.option_declarations dec ON dec.engine = d.engine AND dec.part = TG_TABLE_NAME AND dec.name = x.key\n    LEFT JOIN LATERAL (\n      SELECT l.about FROM cortex.flavor_limits l\n       WHERE l.flavor = d.flavor AND l.severity = 'refused' AND l.option = dec.id\n         AND (l.what = 'option' OR l.what = 'value' AND l.value = x.value)\n         AND (l.since IS NULL OR v.position >= (SELECT s.position FROM cortex.engine_versions s WHERE s.id = l.since))\n         AND (l.\"until\" IS NULL OR v.position <= (SELECT u.position FROM cortex.engine_versions u WHERE u.id = l.\"until\"))\n       LIMIT 1) l ON true\n   WHERE r.options <> '{}'::jsonb AND (\n         jsonb_typeof(r.options) <> 'object'\n      OR dec.id IS NULL\n      OR dec.flavor IS NOT NULL AND dec.flavor IS DISTINCT FROM d.flavor\n      OR jsonb_typeof(x.value) = 'null' AND NOT dec.nullable\n      OR jsonb_typeof(x.value) <> 'null' AND (\n           dec.value_type = 'json' AND jsonb_typeof(x.value) NOT IN ('array', 'object')\n        OR dec.value_type <> 'json' AND jsonb_typeof(x.value) <> dec.value_type\n        OR dec.choices IS NOT NULL AND NOT dec.choices @> jsonb_build_array(x.value)\n        OR dec.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = dec.since)\n        OR dec.\"until\" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec.\"until\")\n        OR l.about IS NOT NULL))\n   LIMIT 1;\n  IF NOT FOUND THEN RETURN NULL; END IF;\n  IF bad.shape <> 'object' THEN\n    RAISE EXCEPTION 'options must be an object, not %', bad.shape USING ERRCODE = 'check_violation';\n  ELSIF bad.did IS NULL THEN\n    RAISE EXCEPTION 'option % is not declared for % %', bad.key, bad.engine, TG_TABLE_NAME USING ERRCODE = 'check_violation';\n  ELSIF bad.dflavor IS NOT NULL AND bad.dflavor IS DISTINCT FROM bad.flavor THEN\n    RAISE EXCEPTION 'option % is %''s alone', bad.key, bad.dflavor USING ERRCODE = 'check_violation';\n  ELSIF jsonb_typeof(bad.value) = 'null' THEN\n    RAISE EXCEPTION 'option % may not be null', bad.key USING ERRCODE = 'check_violation';\n  ELSIF bad.value_type = 'json' AND jsonb_typeof(bad.value) NOT IN ('array', 'object')\n     OR bad.value_type <> 'json' AND jsonb_typeof(bad.value) <> bad.value_type THEN\n    RAISE EXCEPTION 'option % is a %, not a %', bad.key, bad.value_type, jsonb_typeof(bad.value) USING ERRCODE = 'check_violation';\n  ELSIF bad.choices IS NOT NULL AND NOT bad.choices @> jsonb_build_array(bad.value) THEN\n    RAISE EXCEPTION 'option % may be one of %, not %', bad.key, bad.choices, bad.value USING ERRCODE = 'check_violation';\n  ELSIF bad.out_of_version THEN\n    RAISE EXCEPTION 'option % is not in % %', bad.key, bad.engine, bad.engine_version USING ERRCODE = 'check_violation';\n  ELSE\n    RAISE EXCEPTION '% lacks option % = %: %', bad.flavor, bad.key, bad.value, bad.lacks USING ERRCODE = 'check_violation';\n  END IF;\nEND $function$\n",
-    "language": "plpgsql",
-    "owner": "sf_owner",
-    "proacl": [
-     "=X/sf_owner",
-     "sf_owner=X/sf_owner",
-     "sf_service=X/sf_owner",
-     "sf_agent=X/sf_owner"
-    ],
-    "procost": 100,
-    "proisstrict": false,
-    "prokind": "f",
-    "proleakproof": false,
-    "proname": "check_options",
-    "pronargdefaults": 0,
-    "pronargs": 0,
-    "proparallel": "u",
-    "proretset": false,
-    "prorows": 0,
-    "prosecdef": false,
-    "prosrc": "\nDECLARE\n  bad record;\nBEGIN\n  SELECT jsonb_typeof(r.options) AS shape, x.key, x.value, d.engine, d.engine_version, d.flavor,\n         dec.id AS did, dec.flavor AS dflavor, dec.nullable, dec.value_type, dec.choices,\n         (dec.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = dec.since)\n          OR dec.\"until\" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec.\"until\")) AS out_of_version,\n         l.about AS lacks\n    INTO bad\n    FROM new_rows r\n    JOIN cortex.designs d ON d.id = r.design\n    LEFT JOIN cortex.engine_versions v ON v.engine = d.engine AND v.version = d.engine_version\n    LEFT JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(r.options) = 'object' THEN r.options END) x ON true\n    LEFT JOIN cortex.option_declarations dec ON dec.engine = d.engine AND dec.part = TG_TABLE_NAME AND dec.name = x.key\n    LEFT JOIN LATERAL (\n      SELECT l.about FROM cortex.flavor_limits l\n       WHERE l.flavor = d.flavor AND l.severity = 'refused' AND l.option = dec.id\n         AND (l.what = 'option' OR l.what = 'value' AND l.value = x.value)\n         AND (l.since IS NULL OR v.position >= (SELECT s.position FROM cortex.engine_versions s WHERE s.id = l.since))\n         AND (l.\"until\" IS NULL OR v.position <= (SELECT u.position FROM cortex.engine_versions u WHERE u.id = l.\"until\"))\n       LIMIT 1) l ON true\n   WHERE r.options <> '{}'::jsonb AND (\n         jsonb_typeof(r.options) <> 'object'\n      OR dec.id IS NULL\n      OR dec.flavor IS NOT NULL AND dec.flavor IS DISTINCT FROM d.flavor\n      OR jsonb_typeof(x.value) = 'null' AND NOT dec.nullable\n      OR jsonb_typeof(x.value) <> 'null' AND (\n           dec.value_type = 'json' AND jsonb_typeof(x.value) NOT IN ('array', 'object')\n        OR dec.value_type <> 'json' AND jsonb_typeof(x.value) <> dec.value_type\n        OR dec.choices IS NOT NULL AND NOT dec.choices @> jsonb_build_array(x.value)\n        OR dec.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = dec.since)\n        OR dec.\"until\" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec.\"until\")\n        OR l.about IS NOT NULL))\n   LIMIT 1;\n  IF NOT FOUND THEN RETURN NULL; END IF;\n  IF bad.shape <> 'object' THEN\n    RAISE EXCEPTION 'options must be an object, not %', bad.shape USING ERRCODE = 'check_violation';\n  ELSIF bad.did IS NULL THEN\n    RAISE EXCEPTION 'option % is not declared for % %', bad.key, bad.engine, TG_TABLE_NAME USING ERRCODE = 'check_violation';\n  ELSIF bad.dflavor IS NOT NULL AND bad.dflavor IS DISTINCT FROM bad.flavor THEN\n    RAISE EXCEPTION 'option % is %''s alone', bad.key, bad.dflavor USING ERRCODE = 'check_violation';\n  ELSIF jsonb_typeof(bad.value) = 'null' THEN\n    RAISE EXCEPTION 'option % may not be null', bad.key USING ERRCODE = 'check_violation';\n  ELSIF bad.value_type = 'json' AND jsonb_typeof(bad.value) NOT IN ('array', 'object')\n     OR bad.value_type <> 'json' AND jsonb_typeof(bad.value) <> bad.value_type THEN\n    RAISE EXCEPTION 'option % is a %, not a %', bad.key, bad.value_type, jsonb_typeof(bad.value) USING ERRCODE = 'check_violation';\n  ELSIF bad.choices IS NOT NULL AND NOT bad.choices @> jsonb_build_array(bad.value) THEN\n    RAISE EXCEPTION 'option % may be one of %, not %', bad.key, bad.choices, bad.value USING ERRCODE = 'check_violation';\n  ELSIF bad.out_of_version THEN\n    RAISE EXCEPTION 'option % is not in % %', bad.key, bad.engine, bad.engine_version USING ERRCODE = 'check_violation';\n  ELSE\n    RAISE EXCEPTION '% lacks option % = %: %', bad.flavor, bad.key, bad.value, bad.lacks USING ERRCODE = 'check_violation';\n  END IF;\nEND ",
-    "provolatile": "s",
-    "returns": "trigger"
+    "returns": "trigger",
+    "sql_body": false
    }
   },
   {
@@ -35207,7 +35183,125 @@
     "prosecdef": false,
     "prosrc": "\nDECLARE\n  v     record;\n  t     record;\n  name  text;\n  count integer := 0;\nBEGIN\n  FOR v IN\n    SELECT c.oid, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n    WHERE n.nspname = owner AND c.relkind = 'v' AND c.relname LIKE 'broken\\_%' ORDER BY c.relname\n  LOOP\n    name := 'rule:' || owner || '.' || substr(v.relname, 8);\n    IF length(name || ':again') > 63 THEN\n      RAISE EXCEPTION 'rule name % is too long for its triggers (63 bytes with :again)', name;\n    END IF;\n    FOR t IN\n      SELECT DISTINCT d.refobjid::regclass AS tab\n      FROM pg_rewrite r JOIN pg_depend d ON d.classid = 'pg_rewrite'::regclass AND d.objid = r.oid\n      JOIN pg_class rc ON rc.oid = d.refobjid\n      WHERE r.ev_class = v.oid AND d.refclassid = 'pg_class'::regclass AND rc.relkind IN ('r', 'p')\n    LOOP\n      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s', name, t.tab);\n      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s', name || ':again', t.tab);\n      EXECUTE format('CREATE CONSTRAINT TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON %s DEFERRABLE INITIALLY DEFERRED '\n                     'FOR EACH ROW EXECUTE FUNCTION cortex.rule_check(%L)', name, t.tab, owner || '.' || v.relname);\n      EXECUTE format('CREATE TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON %s '\n                     'FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again(%L)', name || ':again', t.tab, owner || '.' || v.relname);\n      count := count + 1;\n    END LOOP;\n  END LOOP;\n  RETURN count;\nEND ",
     "provolatile": "v",
-    "returns": "integer"
+    "returns": "integer",
+    "sql_body": false
+   }
+  },
+  {
+   "key": "cortex.misfits(p_design uuid, p_version text, p_flavor text)",
+   "kind": "routine",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "=X/sf_owner",
+     "sf_owner=X/sf_owner",
+     "sf_service=X/sf_owner",
+     "sf_agent=X/sf_owner"
+    ],
+    "argument_defaults": "NULL::text",
+    "argument_types": [
+     "uuid",
+     "text",
+     "text",
+     "text",
+     "uuid",
+     "text",
+     "text",
+     "text",
+     "text",
+     "text"
+    ],
+    "arguments": "p_design uuid, p_version text, p_flavor text DEFAULT NULL::text",
+    "create": "CREATE OR REPLACE FUNCTION cortex.misfits(p_design uuid, p_version text, p_flavor text DEFAULT NULL::text)\n RETURNS TABLE(part text, row_id uuid, what text, name text, severity text, about text, source text)\n LANGUAGE plpgsql\n STABLE\nAS $function$\nDECLARE\n  e text;\n  at numeric;\n  p text;\nBEGIN\n  SELECT engine INTO e FROM cortex.designs WHERE id = p_design;\n  SELECT position INTO at FROM cortex.engine_versions WHERE engine = e AND version = p_version;\n  IF at IS NULL THEN\n    RAISE EXCEPTION '% has no version %', e, p_version USING ERRCODE = 'check_violation';\n  END IF;\n  -- the target itself: a flavor that does not offer the version\n  RETURN QUERY SELECT 'designs'::text, p_design, 'version'::text, p_version, l.severity, l.about, l.source\n    FROM cortex.flavor_limits l WHERE l.flavor = p_flavor AND l.what = 'version' AND l.version = e || '/' || p_version;\n  -- objects of a kind the target lacks, or another flavor's alone\n  RETURN QUERY SELECT 'objects'::text, o.id, 'kind'::text, o.kind, coalesce(l.severity, 'refused'),\n      coalesce(l.about, CASE WHEN k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor THEN k.flavor || '''s alone'\n                             ELSE 'not in ' || e || ' ' || p_version END), l.source\n    FROM cortex.objects o JOIN cortex.object_kinds k ON k.engine = e AND k.kind = o.kind\n    LEFT JOIN cortex.flavor_limits l ON l.flavor = p_flavor AND l.what = 'kind' AND l.kind = k.id\n      AND (l.since IS NULL OR at >= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.since))\n      AND (l.\"until\" IS NULL OR at <= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.\"until\"))\n    WHERE o.design = p_design AND (l.id IS NOT NULL OR k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor\n       OR k.since IS NOT NULL AND at < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.since)\n       OR k.\"until\" IS NOT NULL AND at > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.\"until\"));\n  -- a value of a part's own column the flavor lacks (CockroachDB's deferrable constraints)\n  FOR p IN SELECT DISTINCT l.part FROM cortex.flavor_limits l WHERE l.flavor = p_flavor AND l.what = 'field' LOOP\n    RETURN QUERY EXECUTE format($q$\n      SELECT %1$L::text, r.id, 'field'::text, l.field || ' = ' || l.value::text, l.severity, l.about, l.source\n        FROM cortex.%1$I r JOIN cortex.flavor_limits l ON l.flavor = $2 AND l.what = 'field' AND l.part = %1$L\n       WHERE r.design = $1 AND to_jsonb(r) -> l.field = l.value$q$, p) USING p_design, p_flavor;\n  END LOOP;\n  -- every option of every part: one the target version does not have, another flavor's alone, or one the flavor lacks\n  FOR p IN SELECT DISTINCT d.part FROM cortex.option_declarations d WHERE d.engine = e LOOP\n    RETURN QUERY EXECUTE format($q$\n      SELECT %1$L::text, r.id, CASE WHEN l.what = 'value' THEN 'value' ELSE 'option' END, x.key || CASE WHEN l.what = 'value' THEN ' = ' || x.value::text ELSE '' END,\n             coalesce(l.severity, 'refused'),\n             coalesce(l.about, CASE WHEN d.id IS NULL THEN 'not declared'\n                                    WHEN d.flavor IS NOT NULL AND d.flavor IS DISTINCT FROM $3 THEN d.flavor || '''s alone'\n                                    ELSE 'not in ' || $4 || ' ' || $2 END), l.source\n        FROM cortex.%1$I r CROSS JOIN LATERAL jsonb_each(r.options) x\n        LEFT JOIN cortex.option_declarations d ON d.engine = $4 AND d.part = %1$L AND d.name = x.key\n        LEFT JOIN cortex.flavor_limits l ON l.flavor = $3 AND l.option = d.id AND (l.what = 'option' OR l.what = 'value' AND l.value = x.value)\n          AND (l.since IS NULL OR $5 >= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.since))\n          AND (l.\"until\" IS NULL OR $5 <= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.\"until\"))\n       WHERE r.design = $1 AND (d.id IS NULL OR l.id IS NOT NULL\n          OR d.flavor IS NOT NULL AND d.flavor IS DISTINCT FROM $3\n          OR d.since IS NOT NULL AND $5 < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = d.since)\n          OR d.\"until\" IS NOT NULL AND $5 > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = d.\"until\"))$q$, p)\n      USING p_design, p_version, p_flavor, e, at;\n  END LOOP;\nEND $function$\n",
+    "language": "plpgsql",
+    "owner": "sf_owner",
+    "proacl": [
+     "=X/sf_owner",
+     "sf_owner=X/sf_owner",
+     "sf_service=X/sf_owner",
+     "sf_agent=X/sf_owner"
+    ],
+    "proargmodes": [
+     "i",
+     "i",
+     "i",
+     "t",
+     "t",
+     "t",
+     "t",
+     "t",
+     "t",
+     "t"
+    ],
+    "proargnames": [
+     "p_design",
+     "p_version",
+     "p_flavor",
+     "part",
+     "row_id",
+     "what",
+     "name",
+     "severity",
+     "about",
+     "source"
+    ],
+    "procost": 100,
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "misfits",
+    "pronargdefaults": 1,
+    "pronargs": 3,
+    "proparallel": "u",
+    "proretset": true,
+    "prorows": 1000,
+    "prosecdef": false,
+    "prosrc": "\nDECLARE\n  e text;\n  at numeric;\n  p text;\nBEGIN\n  SELECT engine INTO e FROM cortex.designs WHERE id = p_design;\n  SELECT position INTO at FROM cortex.engine_versions WHERE engine = e AND version = p_version;\n  IF at IS NULL THEN\n    RAISE EXCEPTION '% has no version %', e, p_version USING ERRCODE = 'check_violation';\n  END IF;\n  -- the target itself: a flavor that does not offer the version\n  RETURN QUERY SELECT 'designs'::text, p_design, 'version'::text, p_version, l.severity, l.about, l.source\n    FROM cortex.flavor_limits l WHERE l.flavor = p_flavor AND l.what = 'version' AND l.version = e || '/' || p_version;\n  -- objects of a kind the target lacks, or another flavor's alone\n  RETURN QUERY SELECT 'objects'::text, o.id, 'kind'::text, o.kind, coalesce(l.severity, 'refused'),\n      coalesce(l.about, CASE WHEN k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor THEN k.flavor || '''s alone'\n                             ELSE 'not in ' || e || ' ' || p_version END), l.source\n    FROM cortex.objects o JOIN cortex.object_kinds k ON k.engine = e AND k.kind = o.kind\n    LEFT JOIN cortex.flavor_limits l ON l.flavor = p_flavor AND l.what = 'kind' AND l.kind = k.id\n      AND (l.since IS NULL OR at >= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.since))\n      AND (l.\"until\" IS NULL OR at <= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.\"until\"))\n    WHERE o.design = p_design AND (l.id IS NOT NULL OR k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor\n       OR k.since IS NOT NULL AND at < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.since)\n       OR k.\"until\" IS NOT NULL AND at > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.\"until\"));\n  -- a value of a part's own column the flavor lacks (CockroachDB's deferrable constraints)\n  FOR p IN SELECT DISTINCT l.part FROM cortex.flavor_limits l WHERE l.flavor = p_flavor AND l.what = 'field' LOOP\n    RETURN QUERY EXECUTE format($q$\n      SELECT %1$L::text, r.id, 'field'::text, l.field || ' = ' || l.value::text, l.severity, l.about, l.source\n        FROM cortex.%1$I r JOIN cortex.flavor_limits l ON l.flavor = $2 AND l.what = 'field' AND l.part = %1$L\n       WHERE r.design = $1 AND to_jsonb(r) -> l.field = l.value$q$, p) USING p_design, p_flavor;\n  END LOOP;\n  -- every option of every part: one the target version does not have, another flavor's alone, or one the flavor lacks\n  FOR p IN SELECT DISTINCT d.part FROM cortex.option_declarations d WHERE d.engine = e LOOP\n    RETURN QUERY EXECUTE format($q$\n      SELECT %1$L::text, r.id, CASE WHEN l.what = 'value' THEN 'value' ELSE 'option' END, x.key || CASE WHEN l.what = 'value' THEN ' = ' || x.value::text ELSE '' END,\n             coalesce(l.severity, 'refused'),\n             coalesce(l.about, CASE WHEN d.id IS NULL THEN 'not declared'\n                                    WHEN d.flavor IS NOT NULL AND d.flavor IS DISTINCT FROM $3 THEN d.flavor || '''s alone'\n                                    ELSE 'not in ' || $4 || ' ' || $2 END), l.source\n        FROM cortex.%1$I r CROSS JOIN LATERAL jsonb_each(r.options) x\n        LEFT JOIN cortex.option_declarations d ON d.engine = $4 AND d.part = %1$L AND d.name = x.key\n        LEFT JOIN cortex.flavor_limits l ON l.flavor = $3 AND l.option = d.id AND (l.what = 'option' OR l.what = 'value' AND l.value = x.value)\n          AND (l.since IS NULL OR $5 >= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.since))\n          AND (l.\"until\" IS NULL OR $5 <= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.\"until\"))\n       WHERE r.design = $1 AND (d.id IS NULL OR l.id IS NOT NULL\n          OR d.flavor IS NOT NULL AND d.flavor IS DISTINCT FROM $3\n          OR d.since IS NOT NULL AND $5 < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = d.since)\n          OR d.\"until\" IS NOT NULL AND $5 > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = d.\"until\"))$q$, p)\n      USING p_design, p_version, p_flavor, e, at;\n  END LOOP;\nEND ",
+    "provolatile": "s",
+    "returns": "TABLE(part text, row_id uuid, what text, name text, severity text, about text, source text)",
+    "sql_body": false
+   }
+  },
+  {
+   "key": "cortex.rule_marks()",
+   "kind": "routine",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "=X/sf_owner",
+     "sf_owner=X/sf_owner",
+     "sf_service=X/sf_owner",
+     "sf_agent=X/sf_owner"
+    ],
+    "arguments": "",
+    "comment": "makes, or checks, the session's table of rules held in this transaction, which only sf_owner writes",
+    "create": "CREATE OR REPLACE FUNCTION cortex.rule_marks()\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n  -- The marks of the rules read and held in this transaction: a temporary table this function's owner (sf_owner) makes\n  -- and alone may write, emptied at every commit. A table of that name another role made first is refused, so no\n  -- writer can mark a rule held that was not read.\n  CREATE TEMPORARY TABLE IF NOT EXISTS rule_marks (rule text PRIMARY KEY) ON COMMIT DELETE ROWS;\n  IF (SELECT c.relowner FROM pg_class c WHERE c.oid = 'pg_temp.rule_marks'::regclass) <> (SELECT oid FROM pg_roles WHERE rolname = current_user) THEN\n    RAISE EXCEPTION 'pg_temp.rule_marks was made by another role: the rules cannot be held' USING ERRCODE = 'insufficient_privilege';\n  END IF;\nEND $function$\n",
+    "language": "plpgsql",
+    "owner": "sf_owner",
+    "proacl": [
+     "=X/sf_owner",
+     "sf_owner=X/sf_owner",
+     "sf_service=X/sf_owner",
+     "sf_agent=X/sf_owner"
+    ],
+    "proconfig": [
+     "search_path=pg_catalog"
+    ],
+    "procost": 100,
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "rule_marks",
+    "pronargdefaults": 0,
+    "pronargs": 0,
+    "proparallel": "u",
+    "proretset": false,
+    "prorows": 0,
+    "prosecdef": true,
+    "prosrc": "\nBEGIN\n  -- The marks of the rules read and held in this transaction: a temporary table this function's owner (sf_owner) makes\n  -- and alone may write, emptied at every commit. A table of that name another role made first is refused, so no\n  -- writer can mark a rule held that was not read.\n  CREATE TEMPORARY TABLE IF NOT EXISTS rule_marks (rule text PRIMARY KEY) ON COMMIT DELETE ROWS;\n  IF (SELECT c.relowner FROM pg_class c WHERE c.oid = 'pg_temp.rule_marks'::regclass) <> (SELECT oid FROM pg_roles WHERE rolname = current_user) THEN\n    RAISE EXCEPTION 'pg_temp.rule_marks was made by another role: the rules cannot be held' USING ERRCODE = 'insufficient_privilege';\n  END IF;\nEND ",
+    "provolatile": "v",
+    "returns": "void",
+    "sql_body": false
    }
   },
   {

@@ -61,7 +61,10 @@ Q = {
     "statistics": ("namespace", "stx", """SELECT n.nspname || '.' || s.stxname AS key, n.nspname AS schema, s.stxname AS name, '' AS signature,
         pg_get_userbyid(s.stxowner) AS owner, NULL::text[] AS acl, obj_description(s.oid, 'pg_statistic_ext') AS comment,
         jsonb_build_object('kinds', (SELECT jsonb_agg(k ORDER BY k) FROM unnest(s.stxkind::text[]) k),
-          'target', s.stxstattarget, 'definition', pg_get_statisticsobjdef(s.oid)) AS opts,
+          'target', s.stxstattarget,
+          'columns', (SELECT jsonb_agg(a.attname ORDER BY k) FROM unnest(s.stxkeys) WITH ORDINALITY u(attnum, k)
+                      JOIN pg_attribute a ON a.attrelid = s.stxrelid AND a.attnum = u.attnum),
+          'expressions', to_jsonb(pg_get_statisticsobjdef_expressions(s.oid))) AS opts,
         jsonb_build_object('table', tn.nspname || '.' || t.relname) AS refs
       FROM pg_statistic_ext s JOIN pg_namespace n ON n.oid = s.stxnamespace JOIN pg_class t ON t.oid = s.stxrelid
       JOIN pg_namespace tn ON tn.oid = t.relnamespace WHERE n.nspname = ANY(%(s)s)"""),
@@ -96,9 +99,10 @@ Q = {
       FROM pg_foreign_data_wrapper w WHERE NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = w.oid AND d.deptype = 'e')"""),
     "foreign_server": ("database", "srv", """SELECT s.srvname AS key, NULL AS schema, s.srvname AS name, '' AS signature,
         pg_get_userbyid(s.srvowner) AS owner, s.srvacl::text[] AS acl, obj_description(s.oid, 'pg_foreign_server') AS comment,
-        jsonb_build_object('type', s.srvtype, 'version', s.srvversion, 'server_options', s.srvoptions, 'wrapper', w.fdwname,
+        jsonb_build_object('type', s.srvtype, 'version', s.srvversion, 'server_options', s.srvoptions,
           'user_mappings', (SELECT jsonb_agg(jsonb_build_object('role', CASE WHEN m.umuser = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(m.umuser) END,
-              'options', m.umoptions) ORDER BY 1) FROM pg_user_mapping m WHERE m.umserver = s.oid)) AS opts, '{}'::jsonb AS refs
+              'options', (SELECT array_agg(o) FROM unnest(m.umoptions) o WHERE o !~* '^password='))
+              ORDER BY 1) FROM pg_user_mapping m WHERE m.umserver = s.oid)) AS opts, jsonb_build_object('wrapper', w.fdwname) AS refs
       FROM pg_foreign_server s JOIN pg_foreign_data_wrapper w ON w.oid = s.srvfdw"""),
     "foreign_table": ("namespace", "ft", """SELECT n.nspname || '.' || c.relname AS key, n.nspname AS schema, c.relname AS name, '' AS signature,
         pg_get_userbyid(c.relowner) AS owner, c.relacl::text[] AS acl, obj_description(c.oid, 'pg_class') AS comment,
@@ -209,10 +213,8 @@ TYPES = {
     ('foreign_server', 'role'): 'string',
     ('foreign_server', 'server_options'): 'json',
     ('foreign_server', 'type'): 'string',
-    ('foreign_server', 'user_mappings'): 'json',
     ('foreign_server', 'version'): 'string',
     ('foreign_server', 'wrapper'): 'string',
-    ('foreign_table', 'columns'): 'json',
     ('foreign_table', 'default'): 'string',
     ('foreign_table', 'not_null'): 'string',
     ('foreign_table', 'options'): 'string',
@@ -233,7 +235,6 @@ TYPES = {
     ('operator_class', 'function'): 'string',
     ('operator_class', 'i'): 'string',
     ('operator_class', 'is_default'): 'boolean',
-    ('operator_class', 'items'): 'json',
     ('operator_class', 'method'): 'string',
     ('operator_class', 'number'): 'string',
     ('operator_class', 'operator'): 'string',
@@ -245,17 +246,13 @@ TYPES = {
     ('publication', 'delete'): 'boolean',
     ('publication', 'insert'): 'boolean',
     ('publication', 'table'): 'string',
-    ('publication', 'schemas'): 'json',
-    ('publication', 'tables'): 'json',
     ('publication', 'truncate'): 'boolean',
     ('publication', 'update'): 'boolean',
     ('publication', 'via_root'): 'boolean',
     ('publication', 'where'): 'string',
-    ('statistics', 'definition'): 'string',
     ('statistics', 'kinds'): 'json',
     ('statistics', 'table'): 'string',
     ('statistics', 'target'): 'number',
-    ('ts_configuration', 'mappings'): 'json',
     ('ts_configuration', 'parser'): 'string',
     ('ts_configuration', 'token'): 'string',
     ('ts_dictionary', 'init_options'): 'string',
@@ -268,7 +265,7 @@ TYPES = {
     ('ts_template', 'init'): 'string',
     ('ts_template', 'lexize'): 'string',
 }
-ROLES = {"of_type", "tablespace", "sfunc", "finalfunc", "combinefunc", "serialfunc", "deserialfunc", "sortop", "function", "family", "table", "template", "parser", "server"}
+ROLES = {"of_type", "tablespace", "wrapper", "sfunc", "finalfunc", "combinefunc", "serialfunc", "deserialfunc", "sortop", "function", "family", "table", "template", "parser", "server"}
 
 
 def capture(pg, container, schemas):
@@ -317,18 +314,109 @@ def to_design(out, parts, add, role, grant, objects_by_key):
                                    "position": len(out["cortex.objects"]) + 1, "comment": pr.get("comment"), "notes": None,
                                    "owner": role.get(owner), "owner_name": None if not owner or owner in role else owner})
             opts = {f"{prefix}_{k}": v for k, v in (pr.get("opts") or {}).items()}
+            used_as = {}
             for r, target in (pr.get("refs") or {}).items():
                 used = objects_by_key.get(target) or made.get(next((k for k in made if k[1] == target), None))
+                used_as[r] = used
                 if used:
                     d = str(uuid.uuid7())
                     add("cortex.dependencies", {"id": d, "object": i, "uses": used, "position": len(out["cortex.dependencies"]) + 1})
                     add("engine_postgresql.dependency_options", {"id": d, "as": r})
                 else:
                     opts[f"{prefix}_{r}"] = target   # what the design does not hold (pg_catalog's), by name
+            lists_in(kind, i, opts, add, out, role, objects_by_key, made, ns, used_as)
             add(f"engine_postgresql.{kind}_options", {"id": i, **opts})
             if pr.get("acl"):
                 grant(pr["acl"], object=i)
     return made
+
+
+LISTS = {"publication": ("tables", "schemas"), "foreign_server": ("user_mappings",), "ts_configuration": ("mappings",),
+         "statistics": ("columns", "expressions"), "operator_class": ("items",), "foreign_table": ("columns",)}
+
+
+def lists_in(kind, i, opts, add, out, role, by_key, made, ns, used_as):
+    """What an object lists, as rows of its engine's tables: a reference where the design holds the thing, its name where not."""
+    prefix = Q[kind][1]
+    take = lambda k: opts.pop(f"{prefix}_{k}", None) or []  # noqa: E731
+    col = {(c["object"], c["name"]): c["id"] for c in out["cortex.columns"]}
+    any_made = lambda key: by_key.get(key) or next((v for (kk, kkey), v in made.items() if kkey == key), None)  # noqa: E731
+    if kind == "publication":
+        for k, t in enumerate(take("tables")):
+            tid, pt = by_key.get(t["table"]), str(uuid.uuid7())
+            add("engine_postgresql.publication_tables", {"id": pt, "publication": i, "table": tid, "table_name": None if tid else t["table"],
+                                                         "row_filter": t.get("where"), "position": k + 1})
+            for n, c in enumerate(t.get("columns") or []):
+                add("engine_postgresql.publication_table_columns", {"id": str(uuid.uuid7()), "publication_table": pt, "column": col[(tid, c)], "position": n + 1})
+        for k, sch in enumerate(take("schemas")):
+            add("engine_postgresql.publication_schemas", {"id": str(uuid.uuid7()), "publication": i, "namespace": ns[sch], "position": k + 1})
+    elif kind == "foreign_server":
+        for k, m in enumerate(take("user_mappings")):
+            add("engine_postgresql.user_mappings", {"id": str(uuid.uuid7()), "server": i, "role": role.get(m["role"]),
+                                                    "role_name": None if m["role"] in role else m["role"],
+                                                    "mapping_options": json.dumps(m["options"]) if m.get("options") else None, "position": k + 1})
+    elif kind == "ts_configuration":
+        place = 0
+        for m in take("mappings"):
+            for d in m["dictionaries"]:
+                place += 1
+                did = any_made(d)
+                add("engine_postgresql.ts_config_mappings", {"id": str(uuid.uuid7()), "configuration": i, "token": m["token"], "dictionary": did,
+                                                             "dictionary_name": None if did else d, "position": place})
+    elif kind == "statistics":
+        tid = used_as.get("table")   # the statistics object's table: its columns are what it counts over
+        parts = [("c", c) for c in take("columns")] + [("e", e) for e in take("expressions")]
+        for k, (what, v) in enumerate(parts):
+            add("engine_postgresql.statistics_parts", {"id": str(uuid.uuid7()), "statistics": i, "column": col[(tid, v)] if what == "c" else None,
+                                                       "expression": v if what == "e" else None, "position": k + 1})
+    elif kind == "operator_class":
+        for k, m in enumerate(take("items")):
+            mid = any_made(m["name"])
+            add("engine_postgresql.operator_class_members", {"id": str(uuid.uuid7()), "operator_class": i, "what": m["what"], "number": m["number"],
+                                                             "member": mid, "member_name": None if mid else m["name"], "position": k + 1})
+    elif kind == "foreign_table":
+        for k, c in enumerate(take("columns")):
+            cid = str(uuid.uuid7())
+            add("cortex.columns", {"id": cid, "object": i, "position": k + 1, "name": c["name"], "type": c["type"], "nullable": not c["not_null"],
+                                   "default_value": c.get("default"), "generated_expression": None, "generated_stored": None, "collation": None, "comment": None})
+            if c.get("options"):
+                add("engine_postgresql.column_fdw", {"id": cid, "fdw_options": c["options"]})
+
+
+def lists_out(st, o, kind, opts):
+    """An object's lists from its engine's tables, by name, for the writer."""
+    objs, ns, cols = st["cortex.objects"], st["cortex.namespaces"], st["cortex.columns"]
+    rows = lambda t, k: sorted((r for r in st.get(f"engine_postgresql.{t}", {}).values() if r[k] == o["id"]), key=lambda r: r["position"])  # noqa: E731
+    if kind == "publication":
+        opts["tables"] = [{"table": key_of(objs[t["table"]], ns) if t["table"] else t["table_name"], "where": t["row_filter"],
+                           "columns": [cols[c["column"]]["name"] for c in rows("publication_table_columns", "publication_table") if c["publication_table"] == t["id"]] or None}
+                          for t in rows("publication_tables", "publication")]
+        opts["schemas"] = [ns[x["namespace"]]["name"] for x in rows("publication_schemas", "publication")]
+    elif kind == "foreign_server":
+        opts["user_mappings"] = [{"role": objs[m["role"]]["name"] if m["role"] else m["role_name"],
+                                  "options": m["mapping_options"] if isinstance(m["mapping_options"], list) else json.loads(m["mapping_options"]) if m["mapping_options"] else None}
+                                 for m in rows("user_mappings", "server")]
+    elif kind == "ts_configuration":
+        maps = []
+        for m in rows("ts_config_mappings", "configuration"):
+            d = key_of(objs[m["dictionary"]], ns) if m["dictionary"] else m["dictionary_name"]
+            if maps and maps[-1]["token"] == m["token"]:
+                maps[-1]["dictionaries"].append(d)
+            else:
+                maps.append({"token": m["token"], "dictionaries": [d]})
+        opts["mappings"] = maps
+    elif kind == "statistics":
+        parts = rows("statistics_parts", "statistics")
+        opts["columns"] = [cols[x["column"]]["name"] for x in parts if x["column"]]
+        opts["expressions"] = [x["expression"] for x in parts if x["expression"]]
+    elif kind == "operator_class":
+        opts["items"] = [{"what": m["what"], "number": m["number"], "name": key_of(objs[m["member"]], ns) if m["member"] else m["member_name"]}
+                         for m in rows("operator_class_members", "operator_class")]
+    elif kind == "foreign_table":
+        fdw = st.get("engine_postgresql.column_fdw", {})
+        opts["columns"] = [{"name": c["name"], "type": c["type"], "not_null": not c["nullable"], "default": c["default_value"],
+                            "options": (fdw.get(c["id"]) or {}).get("fdw_options")}
+                           for c in sorted((c for c in cols.values() if c["object"] == o["id"]), key=lambda c: c["position"])]
 
 
 def back(st):
@@ -349,6 +437,7 @@ def back(st):
             pr = {k[len(prefix) + 1:]: v for k, v in opts.items() if k.startswith(prefix + "_")}
             refs = {k: v for k, v in pr.items() if k in ROLES and v}
             refs.update(uses[o["id"]])
+            lists_out(st, o, kind, pr)
             out.append({"kind": kind, "id": o["id"], "schema": ns[o["namespace"]]["name"] if o["namespace"] else None, "name": o["name"],
                         "signature": o["signature"], "owner": objs[o["owner"]]["name"] if o.get("owner") else o.get("owner_name"),
                         "comment": o["comment"], "opts": {k: v for k, v in pr.items() if k not in ROLES}, "refs": refs})
@@ -400,7 +489,7 @@ def write(items):
                        + (f" VALIDATOR {p['validator']}" if p.get("validator") else " NO VALIDATOR") + (" " + options_clause(p.get("fdw_options")) if p.get("fdw_options") else "") + ";")
         elif k == "foreign_server":
             sql.append(f"CREATE SERVER {qi(o['name'])}" + (f" TYPE {lit(p['type'])}" if p.get("type") else "") + (f" VERSION {lit(p['version'])}" if p.get("version") else "")
-                       + f" FOREIGN DATA WRAPPER {qi(p['wrapper'])}" + (" " + options_clause(p.get("server_options")) if p.get("server_options") else "") + ";")
+                       + f" FOREIGN DATA WRAPPER {qi(r['wrapper'])}" + (" " + options_clause(p.get("server_options")) if p.get("server_options") else "") + ";")
             for m in p.get("user_mappings") or []:
                 sql.append(f"CREATE USER MAPPING FOR {'PUBLIC' if m['role'] == 'PUBLIC' else qi(m['role'])} SERVER {qi(o['name'])}"
                            + (" " + options_clause(m["options"]) if m.get("options") else "") + ";")
@@ -455,7 +544,10 @@ def write(items):
             for m in p.get("mappings") or []:
                 sql.append(f"ALTER TEXT SEARCH CONFIGURATION {f} ADD MAPPING FOR {m['token']} WITH {', '.join(m['dictionaries'])};")
         elif k == "statistics":
-            sql.append(p["definition"] + ";")
+            kinds = [w for c, w in (("d", "ndistinct"), ("f", "dependencies"), ("m", "mcv")) if c in (p.get("kinds") or [])]
+            on = [qi(c) for c in p.get("columns") or []] + [f"({e})" for e in p.get("expressions") or []]
+            named = f" ({', '.join(kinds)})" if kinds and len(kinds) < 3 and len(on) > 1 else ""
+            sql.append(f"CREATE STATISTICS {f}{named} ON {', '.join(on)} FROM {r['table']};")
             if p.get("target") not in (None, -1):
                 sql.append(f"ALTER STATISTICS {f} SET STATISTICS {p['target']};")
         elif k == "publication":
@@ -506,6 +598,9 @@ def write(items):
 
 
 register(TYPES)
+OL.MOVED["engine_postgresql.column_fdw"] = "cortex.columns"
+OL.KEYS["engine_postgresql.column_fdw"] = ["fdw_options"]
+OL.TYPES[("engine_postgresql.column_fdw", "fdw_options")] = "json"
 OL.MOVED["engine_postgresql.dependency_options"] = "cortex.dependencies"
 OL.KEYS["engine_postgresql.dependency_options"] = ["as"]
 OL.TYPES[("engine_postgresql.dependency_options", "as")] = "string"

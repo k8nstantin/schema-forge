@@ -3,7 +3,7 @@
   The schema lock: the SHA-256 of every file that makes up the database's design. Written only in a design
   session, by tools/schema_lock.py with its write option; tools/check.sh refuses any locked file that differs.
 -->
-<lock product="SchemaForge" files="91">
+<lock product="SchemaForge" files="98">
   <file path="docs/owner-template/README.xml" sha256="7daabf9ae31530ae4bd2f9257916b71e89957caeb99894b8d391f24c74c7af7b"/>
   <file path="docs/owner-template/owner.toml" sha256="006db9feb2ec0ce9ce677ef25ef6d20c4b0bab77162fbef0c7bde27e4b4a0d8a"/>
   <file path="docs/owner-template/schema/column_codecs.sql" sha256="223529ca1dd21d9d7486f7481183ee4b8d4b8bae86b8eaf2b7119bd74c353ec5"/>
@@ -22,10 +22,17 @@
   <file path="engines/postgresql/schema/collations.sql" sha256="10999eb0d1516b620d05c6ed751d540f727bc567b9a8e9ffb76f9cb83eed5745"/>
   <file path="engines/postgresql/schema/default_privileges.sql" sha256="d6790d9b395fac8529531badde4610d67cdbcbef516fe19b01d6bb03d9b221c2"/>
   <file path="engines/postgresql/schema/inheritance.sql" sha256="e0b38d27ce46015f03ccc03a0de90e0648adfc33fd667fd028f868d9785b9758"/>
+  <file path="engines/postgresql/schema/operator_class_members.sql" sha256="5a29f9c271cf8425a0ee5cd011e4dd60ce5655798d843a37e9d98942bbf74a6a"/>
   <file path="engines/postgresql/schema/policies.sql" sha256="2bab5ceffe6fc2987f0e9a8359af74668ad64c15eb532fd5e81faed827967ee1"/>
+  <file path="engines/postgresql/schema/publication_schemas.sql" sha256="bbbad596f767a8eddffc529ef9acbef0130fa60e2388d459f17778f789432b3e"/>
+  <file path="engines/postgresql/schema/publication_table_columns.sql" sha256="3f31086aea6110feded56905cefc5ad1fc1a11413c48fb668a8afbd460fdc163"/>
+  <file path="engines/postgresql/schema/publication_tables.sql" sha256="399b948b99db18869dbcbd193661ab79df0e89805257fe5994b33855d20e3685"/>
   <file path="engines/postgresql/schema/rules.sql" sha256="bd548b50f1105370bd97fd50e94082c112149ce896f85704e1c9a4bb32ab829b"/>
-  <file path="engines/postgresql/schema/seeds/declaration.sql" sha256="10fed0050290457b474e59430d83173075b9c4f569b0af04d807433a30c2d8be"/>
+  <file path="engines/postgresql/schema/seeds/declaration.sql" sha256="2e29f6cada93f31f56522133315af4c87902630a4782ac83f2e8532ec80678b4"/>
+  <file path="engines/postgresql/schema/statistics_parts.sql" sha256="83ed2be56d9fc1fb954c45220b4262a8befde4f26c5af08021fd596f683bdaab"/>
   <file path="engines/postgresql/schema/trigger_columns.sql" sha256="bb82e06930a67fca38415ead0e939b6be6efd9fb16826546a2374c253a25b55b"/>
+  <file path="engines/postgresql/schema/ts_config_mappings.sql" sha256="042253e6f8eef9d3bcd7e8f8f1cec3fd0a86fe98944bc0f7454f3022e83494d8"/>
+  <file path="engines/postgresql/schema/user_mappings.sql" sha256="3045c98055841374ba86cc51c2a1c7c7b7de78ed88a1c1d3b4e21fe8dd58005a"/>
   <file path="postgres/manifest.toml" sha256="d8e75bb68508d4aa724ca0d43c7b8a50a6d70c449e620f8d0c01cd0db634aad1"/>
   <file path="schema/accounts.py" sha256="56a019aaabee5f23ee9dffb45b589dc9f5233716fed2df59664ebf8e05367190"/>
   <file path="schema/cortex/branches.sql" sha256="fe622417f13f88f108c7e7f4c0baa9df1934a733394e52d256344d11c3c6a8c5"/>
@@ -86,7 +93,7 @@
   <file path="schema/cortex/workspace_design_connections.sql" sha256="68194448bab649f03526deb72bbbd125a340160d7e430bc2a9067cd4d5da7358"/>
   <file path="schema/cortex/workspace_identity.sql" sha256="54c4f0cdf87499196055275d9da3827fde725d8991ff1f96225d4e353bc2e564"/>
   <file path="schema/cortex/workspace_parameters.sql" sha256="c71f1706cfaa5a9d7e0b108c043e9991b0b057d4d60fe95803dce98de9e02646"/>
-  <file path="schema/dump/schema_forge.sql" sha256="71faa2c0c4de8f2b747337cf9c950a8e040e5ed8b841e808e208289beee85a56"/>
+  <file path="schema/dump/schema_forge.sql" sha256="5c31aca1973e2624566d64a8a1e8e9adac9c24e6dbcea01432e60e7a54ec73e0"/>
   <file path="schema/install.py" sha256="691c5014e74e9691df3386b0ffe6a74d477507510f1d607844759bc48baa51c2"/>
   <file path="schema/ui/custom_perspectives.sql" sha256="0e976f07be723fc306540c6cd3e995f190b606b1b20bd44a1e8b884e9175a6bd"/>
   <file path="schema/ui/layout_pins.sql" sha256="9401c5bd57e962d459ea806d3b7b98bc56b276356f70e1d9a62406dfdfd3f4a7"/>

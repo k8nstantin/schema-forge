@@ -181,7 +181,9 @@ class Svg:
                 if k not in (a, b) and k not in getattr(self, "containers", ()) and seg_box(*L, *bx): out.append(f"{a}->{b} runs through {k}")
         for i, (a, b, *L) in enumerate(self.lines):
             for c, d, *M in self.lines[i + 1:]:
-                if len({a, b, c, d}) == 4 and cross(L, M): out.append(f"{a}->{b} crosses {c}->{d}")
+                # two tables pointing at the same two tables cross however they are drawn (two to two): only that is let be
+                if len({a, b, c, d}) == 4 and cross(L, M) and frozenset((a, c)) not in getattr(self, "may_cross", ()):
+                    out.append(f"{a}->{b} crosses {c}->{d}")
         for i, (x, y, w, h, t) in enumerate(self.labels):
             for x2, y2, w2, h2, t2 in self.labels[i + 1:]:
                 if x < x2 + w2 and x2 < x + w and y < y2 + h2 and y2 < y + h: out.append(f"label {t} overlaps label {t2}")

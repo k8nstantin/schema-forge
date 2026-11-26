@@ -45,7 +45,10 @@ ORDER = ["cortex.designs", "cortex.namespaces", "cortex.required_extensions",
          "engine_postgresql.columns", "engine_postgresql.indexes", "engine_postgresql.index_parts", "engine_postgresql.constraints",
          "engine_postgresql.routines", "engine_postgresql.types", "engine_postgresql.sequences", "engine_postgresql.triggers", "engine_postgresql.trigger_columns",
          "engine_postgresql.policies", "engine_postgresql.rules", "engine_postgresql.roles", "cortex.namespace_owners", "cortex.privileges",
-         "cortex.memberships", "engine_postgresql.memberships", "engine_postgresql.default_privileges"]
+         "cortex.memberships", "engine_postgresql.memberships", "engine_postgresql.default_privileges",
+         "engine_postgresql.publication_tables", "engine_postgresql.publication_table_columns", "engine_postgresql.publication_schemas",
+         "engine_postgresql.user_mappings", "engine_postgresql.ts_config_mappings", "engine_postgresql.statistics_parts",
+         "engine_postgresql.operator_class_members"]
 
 
 def to_locked(old, version, parts=()):

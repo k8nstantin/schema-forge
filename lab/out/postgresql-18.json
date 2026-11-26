@@ -8089,11 +8089,12 @@
        "role": "every_owner"
       }
      ],
-     "version": null,
-     "wrapper": "postgres_fdw"
+     "version": null
     },
     "owner": "postgres",
-    "refs": {},
+    "refs": {
+     "wrapper": "postgres_fdw"
+    },
     "signature": ""
    }
   },
@@ -8500,7 +8501,11 @@
     "key": "every.parent_stats",
     "name": "parent_stats",
     "opts": {
-     "definition": "CREATE STATISTICS every.parent_stats (ndistinct, dependencies) ON id, size FROM every.parent",
+     "columns": [
+      "id",
+      "size"
+     ],
+     "expressions": null,
      "kinds": [
       "d",
       "f"

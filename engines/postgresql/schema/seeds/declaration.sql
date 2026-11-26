@@ -67,6 +67,7 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('postgresql/objects/inherit', 'postgresql', 'objects', 'inherit', 'boolean', false, NULL, 'a role that has the privileges of the roles it is a member of (INHERIT)'),
   ('postgresql/objects/replication', 'postgresql', 'objects', 'replication', 'boolean', false, NULL, 'a role that may stream replication (REPLICATION)'),
   ('postgresql/objects/bypassrls', 'postgresql', 'objects', 'bypassrls', 'boolean', false, NULL, 'a role that row security does not bind (BYPASSRLS)'),
+  ('postgresql/columns/fdw_options', 'postgresql', 'columns', 'fdw_options', 'json', true, NULL, 'a foreign table column''s options, as its wrapper takes them (column_name=remote); NULL for none'),
   ('postgresql/columns/statistics_target', 'postgresql', 'columns', 'statistics_target', 'number', true, NULL, 'how many values ANALYZE samples for the column (SET STATISTICS); NULL for the server''s default'),
   ('postgresql/objects/connection_limit', 'postgresql', 'objects', 'connection_limit', 'number', false, NULL, 'how many connections a role may hold at once; -1 for no limit'),
   ('postgresql/objects/valid_until', 'postgresql', 'objects', 'valid_until', 'string', true, NULL, 'when a role''s password stops working, as PostgreSQL writes it; NULL for never'),
@@ -158,10 +159,8 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('postgresql/objects/srv_role', 'postgresql', 'objects', 'srv_role', 'string', true, NULL, 'a foreign server''s role (pg_catalog)'),
   ('postgresql/objects/srv_server_options', 'postgresql', 'objects', 'srv_server_options', 'json', true, NULL, 'a foreign server''s server options (pg_catalog)'),
   ('postgresql/objects/srv_type', 'postgresql', 'objects', 'srv_type', 'string', true, NULL, 'a foreign server''s type (pg_catalog)'),
-  ('postgresql/objects/srv_user_mappings', 'postgresql', 'objects', 'srv_user_mappings', 'json', true, NULL, 'a foreign server''s user mappings (pg_catalog)'),
   ('postgresql/objects/srv_version', 'postgresql', 'objects', 'srv_version', 'string', true, NULL, 'a foreign server''s version (pg_catalog)'),
   ('postgresql/objects/srv_wrapper', 'postgresql', 'objects', 'srv_wrapper', 'string', true, NULL, 'a foreign server''s wrapper (pg_catalog)'),
-  ('postgresql/objects/ft_columns', 'postgresql', 'objects', 'ft_columns', 'json', true, NULL, 'a foreign table''s columns (pg_catalog)'),
   ('postgresql/objects/ft_default', 'postgresql', 'objects', 'ft_default', 'string', true, NULL, 'a foreign table''s default (pg_catalog)'),
   ('postgresql/objects/ft_not_null', 'postgresql', 'objects', 'ft_not_null', 'string', true, NULL, 'a foreign table''s not null (pg_catalog)'),
   ('postgresql/objects/ft_options', 'postgresql', 'objects', 'ft_options', 'string', true, NULL, 'a foreign table''s options (pg_catalog)'),
@@ -182,7 +181,6 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('postgresql/objects/opc_function', 'postgresql', 'objects', 'opc_function', 'string', true, NULL, 'a operator class''s function, by name, where the design does not hold it (pg_catalog)'),
   ('postgresql/objects/opc_i', 'postgresql', 'objects', 'opc_i', 'string', true, NULL, 'a operator class''s i (pg_catalog)'),
   ('postgresql/objects/opc_is_default', 'postgresql', 'objects', 'opc_is_default', 'boolean', true, NULL, 'a operator class''s is default (pg_catalog)'),
-  ('postgresql/objects/opc_items', 'postgresql', 'objects', 'opc_items', 'json', true, NULL, 'a operator class''s items (pg_catalog)'),
   ('postgresql/objects/opc_method', 'postgresql', 'objects', 'opc_method', 'string', true, NULL, 'a operator class''s method (pg_catalog)'),
   ('postgresql/objects/opc_number', 'postgresql', 'objects', 'opc_number', 'string', true, NULL, 'a operator class''s number (pg_catalog)'),
   ('postgresql/objects/opc_operator', 'postgresql', 'objects', 'opc_operator', 'string', true, NULL, 'a operator class''s operator (pg_catalog)'),
@@ -209,17 +207,13 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('postgresql/objects/sub_stream', 'postgresql', 'objects', 'sub_stream', 'string', true, NULL, 'how it takes transactions in progress (f off, t on, p parallel)'),
   ('postgresql/objects/sub_two_phase', 'postgresql', 'objects', 'sub_two_phase', 'string', true, NULL, 'its two-phase commit state (d, p, e)'),
   ('postgresql/objects/sub_disable_on_error', 'postgresql', 'objects', 'sub_disable_on_error', 'boolean', true, NULL, 'true when an error disables it'),
-  ('postgresql/objects/pub_schemas', 'postgresql', 'objects', 'pub_schemas', 'json', true, NULL, 'a publication''s schemas (FOR TABLES IN SCHEMA) (pg_catalog)'),
-  ('postgresql/objects/pub_tables', 'postgresql', 'objects', 'pub_tables', 'json', true, NULL, 'a publication''s tables (pg_catalog)'),
   ('postgresql/objects/pub_truncate', 'postgresql', 'objects', 'pub_truncate', 'boolean', true, NULL, 'a publication''s truncate (pg_catalog)'),
   ('postgresql/objects/pub_update', 'postgresql', 'objects', 'pub_update', 'boolean', true, NULL, 'a publication''s update (pg_catalog)'),
   ('postgresql/objects/pub_via_root', 'postgresql', 'objects', 'pub_via_root', 'boolean', true, NULL, 'a publication''s via root (pg_catalog)'),
   ('postgresql/objects/pub_where', 'postgresql', 'objects', 'pub_where', 'string', true, NULL, 'a publication''s where (pg_catalog)'),
-  ('postgresql/objects/stx_definition', 'postgresql', 'objects', 'stx_definition', 'string', true, NULL, 'a statistics''s definition (pg_catalog)'),
   ('postgresql/objects/stx_kinds', 'postgresql', 'objects', 'stx_kinds', 'json', true, NULL, 'a statistics''s kinds (pg_catalog)'),
   ('postgresql/objects/stx_table', 'postgresql', 'objects', 'stx_table', 'string', true, NULL, 'a statistics''s table, by name, where the design does not hold it (pg_catalog)'),
   ('postgresql/objects/stx_target', 'postgresql', 'objects', 'stx_target', 'number', true, NULL, 'a statistics''s target (pg_catalog)'),
-  ('postgresql/objects/tsc_mappings', 'postgresql', 'objects', 'tsc_mappings', 'json', true, NULL, 'a ts configuration''s mappings (pg_catalog)'),
   ('postgresql/objects/tsc_parser', 'postgresql', 'objects', 'tsc_parser', 'string', true, NULL, 'a ts configuration''s parser, by name, where the design does not hold it (pg_catalog)'),
   ('postgresql/objects/tsc_token', 'postgresql', 'objects', 'tsc_token', 'string', true, NULL, 'a ts configuration''s token (pg_catalog)'),
   ('postgresql/objects/tsd_init_options', 'postgresql', 'objects', 'tsd_init_options', 'string', true, NULL, 'a ts dictionary''s init options (pg_catalog)'),
@@ -234,7 +228,7 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, about) VALUES
-  ('postgresql/dependencies/as', 'postgresql', 'dependencies', 'as', 'string', false, '["combinefunc", "deserialfunc", "family", "of_type", "finalfunc", "function", "parser", "serialfunc", "server", "sfunc", "sortop", "table", "tablespace", "template"]', 'the part the used object plays (an aggregate''s sfunc, an operator''s function, a foreign table''s server)')
+  ('postgresql/dependencies/as', 'postgresql', 'dependencies', 'as', 'string', false, '["combinefunc", "deserialfunc", "family", "of_type", "finalfunc", "function", "parser", "serialfunc", "server", "sfunc", "sortop", "table", "tablespace", "template", "wrapper"]', 'the part the used object plays (an aggregate''s sfunc, an operator''s function, a foreign table''s server)')
 ON CONFLICT (id) DO NOTHING;
 
 -- what each flavor lacks

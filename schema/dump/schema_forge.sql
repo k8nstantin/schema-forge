@@ -4888,6 +4888,93 @@ COMMENT ON COLUMN engine_postgresql.inheritance."position" IS 'its place, 1 firs
 
 
 --
+-- Name: operator_class_members; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TABLE engine_postgresql.operator_class_members (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    operator_class uuid NOT NULL,
+    what text NOT NULL,
+    number integer NOT NULL,
+    member uuid,
+    member_name text,
+    "position" numeric NOT NULL,
+    CONSTRAINT operator_class_members_check CHECK ((num_nonnulls(member, member_name) = 1)),
+    CONSTRAINT operator_class_members_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT operator_class_members_member_name_check CHECK ((length(member_name) >= 1)),
+    CONSTRAINT operator_class_members_number_check CHECK ((number > 0)),
+    CONSTRAINT operator_class_members_position_check CHECK (("position" > (0)::numeric)),
+    CONSTRAINT operator_class_members_what_check CHECK ((what = ANY (ARRAY['operator'::text, 'function'::text])))
+);
+
+
+ALTER TABLE engine_postgresql.operator_class_members OWNER TO sf_owner;
+
+--
+-- Name: TABLE operator_class_members; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.operator_class_members IS 'the operators and support functions an operator class lists (OPERATOR 1 <, FUNCTION 1 cmp(int, int)): one the design holds is a reference, a built-in its name.';
+
+
+--
+-- Name: COLUMN operator_class_members.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.operator_class_members.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN operator_class_members.design; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.operator_class_members.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN operator_class_members.operator_class; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.operator_class_members.operator_class IS 'the operator class';
+
+
+--
+-- Name: COLUMN operator_class_members.what; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.operator_class_members.what IS 'an operator or a support function';
+
+
+--
+-- Name: COLUMN operator_class_members.number; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.operator_class_members.number IS 'its strategy or support number, as the access method numbers them';
+
+
+--
+-- Name: COLUMN operator_class_members.member; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.operator_class_members.member IS 'the operator or function; NULL when named instead';
+
+
+--
+-- Name: COLUMN operator_class_members.member_name; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.operator_class_members.member_name IS 'it by signature, a built-in (>(integer,integer)); NULL when member is set';
+
+
+--
+-- Name: COLUMN operator_class_members."position"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.operator_class_members."position" IS 'its place in the list, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
 -- Name: policies; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -4980,6 +5067,201 @@ COMMENT ON COLUMN engine_postgresql.policies.check_expression IS 'the rows that 
 
 
 --
+-- Name: publication_schemas; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TABLE engine_postgresql.publication_schemas (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    publication uuid NOT NULL,
+    namespace uuid NOT NULL,
+    "position" numeric NOT NULL,
+    CONSTRAINT publication_schemas_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT publication_schemas_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_postgresql.publication_schemas OWNER TO sf_owner;
+
+--
+-- Name: TABLE publication_schemas; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.publication_schemas IS 'the schemas a publication publishes every table of (FOR TABLES IN SCHEMA), PostgreSQL 15 and later.';
+
+
+--
+-- Name: COLUMN publication_schemas.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_schemas.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN publication_schemas.design; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_schemas.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN publication_schemas.publication; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_schemas.publication IS 'the publication';
+
+
+--
+-- Name: COLUMN publication_schemas.namespace; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_schemas.namespace IS 'the schema';
+
+
+--
+-- Name: COLUMN publication_schemas."position"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_schemas."position" IS 'its place in the list, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
+-- Name: publication_table_columns; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TABLE engine_postgresql.publication_table_columns (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    publication_table uuid NOT NULL,
+    "column" uuid NOT NULL,
+    "position" numeric NOT NULL,
+    CONSTRAINT publication_table_columns_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT publication_table_columns_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_postgresql.publication_table_columns OWNER TO sf_owner;
+
+--
+-- Name: TABLE publication_table_columns; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.publication_table_columns IS 'the columns a published table publishes, where it names some (FOR TABLE t (a, b)), in their order.';
+
+
+--
+-- Name: COLUMN publication_table_columns.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_table_columns.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN publication_table_columns.design; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_table_columns.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN publication_table_columns.publication_table; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_table_columns.publication_table IS 'the published table';
+
+
+--
+-- Name: COLUMN publication_table_columns."column"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_table_columns."column" IS 'the column published';
+
+
+--
+-- Name: COLUMN publication_table_columns."position"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_table_columns."position" IS 'its place in the list, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
+-- Name: publication_tables; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TABLE engine_postgresql.publication_tables (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    publication uuid NOT NULL,
+    "table" uuid,
+    table_name text,
+    row_filter text,
+    "position" numeric NOT NULL,
+    CONSTRAINT publication_tables_check CHECK ((num_nonnulls("table", table_name) = 1)),
+    CONSTRAINT publication_tables_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT publication_tables_position_check CHECK (("position" > (0)::numeric)),
+    CONSTRAINT publication_tables_table_name_check CHECK ((length(table_name) >= 1))
+);
+
+
+ALTER TABLE engine_postgresql.publication_tables OWNER TO sf_owner;
+
+--
+-- Name: TABLE publication_tables; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.publication_tables IS 'the tables a publication publishes (CREATE PUBLICATION ... FOR TABLE), each with its row filter; a table the design holds is a reference, one it does not its name.';
+
+
+--
+-- Name: COLUMN publication_tables.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_tables.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN publication_tables.design; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_tables.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN publication_tables.publication; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_tables.publication IS 'the publication';
+
+
+--
+-- Name: COLUMN publication_tables."table"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_tables."table" IS 'the table published; NULL when named instead';
+
+
+--
+-- Name: COLUMN publication_tables.table_name; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_tables.table_name IS 'the table by schema.name, where the design does not hold it; NULL when table is set';
+
+
+--
+-- Name: COLUMN publication_tables.row_filter; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_tables.row_filter IS 'its WHERE, as PostgreSQL writes it; NULL for every row';
+
+
+--
+-- Name: COLUMN publication_tables."position"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.publication_tables."position" IS 'its place in the list, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
 -- Name: rules; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -5039,6 +5321,74 @@ COMMENT ON COLUMN engine_postgresql.rules.definition IS 'the rule as the server 
 
 
 --
+-- Name: statistics_parts; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TABLE engine_postgresql.statistics_parts (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    statistics uuid NOT NULL,
+    "column" uuid,
+    expression text,
+    "position" numeric NOT NULL,
+    CONSTRAINT statistics_parts_check CHECK ((num_nonnulls("column", expression) = 1)),
+    CONSTRAINT statistics_parts_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT statistics_parts_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_postgresql.statistics_parts OWNER TO sf_owner;
+
+--
+-- Name: TABLE statistics_parts; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.statistics_parts IS 'what a statistics object counts over (CREATE STATISTICS ... ON a, b, (expr) FROM t), in order: a column the design holds, or an expression.';
+
+
+--
+-- Name: COLUMN statistics_parts.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.statistics_parts.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN statistics_parts.design; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.statistics_parts.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN statistics_parts.statistics; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.statistics_parts.statistics IS 'the statistics object';
+
+
+--
+-- Name: COLUMN statistics_parts."column"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.statistics_parts."column" IS 'the column; NULL for an expression';
+
+
+--
+-- Name: COLUMN statistics_parts.expression; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.statistics_parts.expression IS 'the expression, as PostgreSQL writes it; NULL for a column';
+
+
+--
+-- Name: COLUMN statistics_parts."position"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.statistics_parts."position" IS 'its place in the list, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
 -- Name: trigger_columns; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -5095,6 +5445,161 @@ COMMENT ON COLUMN engine_postgresql.trigger_columns."column" IS 'a column of its
 --
 
 COMMENT ON COLUMN engine_postgresql.trigger_columns."position" IS 'its place in UPDATE OF; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
+-- Name: ts_config_mappings; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TABLE engine_postgresql.ts_config_mappings (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    configuration uuid NOT NULL,
+    token text NOT NULL,
+    dictionary uuid,
+    dictionary_name text,
+    "position" numeric NOT NULL,
+    CONSTRAINT ts_config_mappings_check CHECK ((num_nonnulls(dictionary, dictionary_name) = 1)),
+    CONSTRAINT ts_config_mappings_dictionary_name_check CHECK ((length(dictionary_name) >= 1)),
+    CONSTRAINT ts_config_mappings_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT ts_config_mappings_position_check CHECK (("position" > (0)::numeric)),
+    CONSTRAINT ts_config_mappings_token_check CHECK ((length(token) >= 1))
+);
+
+
+ALTER TABLE engine_postgresql.ts_config_mappings OWNER TO sf_owner;
+
+--
+-- Name: TABLE ts_config_mappings; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.ts_config_mappings IS 'which dictionaries a text search configuration consults for a token type, in order (ALTER TEXT SEARCH CONFIGURATION ... ADD MAPPING FOR token WITH d1, d2): a dictionary the design holds is a reference, a built-in its name.';
+
+
+--
+-- Name: COLUMN ts_config_mappings.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.ts_config_mappings.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN ts_config_mappings.design; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.ts_config_mappings.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN ts_config_mappings.configuration; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.ts_config_mappings.configuration IS 'the text search configuration';
+
+
+--
+-- Name: COLUMN ts_config_mappings.token; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.ts_config_mappings.token IS 'the parser''s token type, by its alias (asciiword)';
+
+
+--
+-- Name: COLUMN ts_config_mappings.dictionary; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.ts_config_mappings.dictionary IS 'the dictionary; NULL when named instead';
+
+
+--
+-- Name: COLUMN ts_config_mappings.dictionary_name; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.ts_config_mappings.dictionary_name IS 'the dictionary by schema.name, a built-in (pg_catalog.simple); NULL when dictionary is set';
+
+
+--
+-- Name: COLUMN ts_config_mappings."position"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.ts_config_mappings."position" IS 'its place: the configuration''s token types in the parser''s order, each one''s dictionaries in theirs; an order key';
+
+
+--
+-- Name: user_mappings; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TABLE engine_postgresql.user_mappings (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    server uuid NOT NULL,
+    role uuid,
+    role_name text,
+    mapping_options jsonb,
+    "position" numeric NOT NULL,
+    CONSTRAINT user_mappings_check CHECK ((num_nonnulls(role, role_name) = 1)),
+    CONSTRAINT user_mappings_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT user_mappings_position_check CHECK (("position" > (0)::numeric)),
+    CONSTRAINT user_mappings_role_name_check CHECK ((length(role_name) >= 1))
+);
+
+
+ALTER TABLE engine_postgresql.user_mappings OWNER TO sf_owner;
+
+--
+-- Name: TABLE user_mappings; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.user_mappings IS 'who a foreign server is reached as (CREATE USER MAPPING FOR role SERVER server OPTIONS (...)), never with a password: a password option is cut as it is read.';
+
+
+--
+-- Name: COLUMN user_mappings.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.user_mappings.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN user_mappings.design; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.user_mappings.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN user_mappings.server; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.user_mappings.server IS 'the foreign server';
+
+
+--
+-- Name: COLUMN user_mappings.role; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.user_mappings.role IS 'the role it is for; NULL when named instead';
+
+
+--
+-- Name: COLUMN user_mappings.role_name; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.user_mappings.role_name IS 'the role by name: PUBLIC, or one the design does not hold; NULL when role is set';
+
+
+--
+-- Name: COLUMN user_mappings.mapping_options; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.user_mappings.mapping_options IS 'its options as the wrapper takes them (user=remote), never a password; NULL for none';
+
+
+--
+-- Name: COLUMN user_mappings."position"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.user_mappings."position" IS 'its place in the list, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -6734,6 +7239,22 @@ ALTER TABLE ONLY engine_postgresql.inheritance
 
 
 --
+-- Name: operator_class_members operator_class_members_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.operator_class_members
+    ADD CONSTRAINT operator_class_members_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: operator_class_members operator_class_members_pkey; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.operator_class_members
+    ADD CONSTRAINT operator_class_members_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: policies policies_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -6758,6 +7279,54 @@ ALTER TABLE ONLY engine_postgresql.policies
 
 
 --
+-- Name: publication_schemas publication_schemas_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_schemas
+    ADD CONSTRAINT publication_schemas_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: publication_schemas publication_schemas_pkey; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_schemas
+    ADD CONSTRAINT publication_schemas_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: publication_table_columns publication_table_columns_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_table_columns
+    ADD CONSTRAINT publication_table_columns_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: publication_table_columns publication_table_columns_pkey; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_table_columns
+    ADD CONSTRAINT publication_table_columns_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: publication_tables publication_tables_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_tables
+    ADD CONSTRAINT publication_tables_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: publication_tables publication_tables_pkey; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_tables
+    ADD CONSTRAINT publication_tables_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: rules rules_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -6779,6 +7348,22 @@ ALTER TABLE ONLY engine_postgresql.rules
 
 ALTER TABLE ONLY engine_postgresql.rules
     ADD CONSTRAINT rules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: statistics_parts statistics_parts_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.statistics_parts
+    ADD CONSTRAINT statistics_parts_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: statistics_parts statistics_parts_pkey; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.statistics_parts
+    ADD CONSTRAINT statistics_parts_pkey PRIMARY KEY (id);
 
 
 --
@@ -6811,6 +7396,38 @@ ALTER TABLE ONLY engine_postgresql.trigger_columns
 
 ALTER TABLE ONLY engine_postgresql.trigger_columns
     ADD CONSTRAINT trigger_columns_trigger_position_key UNIQUE (trigger, "position") DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: ts_config_mappings ts_config_mappings_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.ts_config_mappings
+    ADD CONSTRAINT ts_config_mappings_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: ts_config_mappings ts_config_mappings_pkey; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.ts_config_mappings
+    ADD CONSTRAINT ts_config_mappings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_mappings user_mappings_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.user_mappings
+    ADD CONSTRAINT user_mappings_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: user_mappings user_mappings_pkey; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.user_mappings
+    ADD CONSTRAINT user_mappings_pkey PRIMARY KEY (id);
 
 
 --
@@ -7345,6 +7962,20 @@ CREATE INDEX inheritance_parent ON engine_postgresql.inheritance USING btree (de
 
 
 --
+-- Name: operator_class_members_member; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX operator_class_members_member ON engine_postgresql.operator_class_members USING btree (design, member);
+
+
+--
+-- Name: operator_class_members_operator_class; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX operator_class_members_operator_class ON engine_postgresql.operator_class_members USING btree (design, operator_class);
+
+
+--
 -- Name: policies_object; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -7352,10 +7983,66 @@ CREATE INDEX policies_object ON engine_postgresql.policies USING btree (design, 
 
 
 --
+-- Name: publication_schemas_namespace; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX publication_schemas_namespace ON engine_postgresql.publication_schemas USING btree (design, namespace);
+
+
+--
+-- Name: publication_schemas_publication; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX publication_schemas_publication ON engine_postgresql.publication_schemas USING btree (design, publication);
+
+
+--
+-- Name: publication_table_columns_column; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX publication_table_columns_column ON engine_postgresql.publication_table_columns USING btree (design, "column");
+
+
+--
+-- Name: publication_table_columns_publication_table; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX publication_table_columns_publication_table ON engine_postgresql.publication_table_columns USING btree (design, publication_table);
+
+
+--
+-- Name: publication_tables_publication; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX publication_tables_publication ON engine_postgresql.publication_tables USING btree (design, publication);
+
+
+--
+-- Name: publication_tables_table; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX publication_tables_table ON engine_postgresql.publication_tables USING btree (design, "table");
+
+
+--
 -- Name: rules_object; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
 --
 
 CREATE INDEX rules_object ON engine_postgresql.rules USING btree (design, object);
+
+
+--
+-- Name: statistics_parts_column; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX statistics_parts_column ON engine_postgresql.statistics_parts USING btree (design, "column");
+
+
+--
+-- Name: statistics_parts_statistics; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX statistics_parts_statistics ON engine_postgresql.statistics_parts USING btree (design, statistics);
 
 
 --
@@ -7370,6 +8057,34 @@ CREATE INDEX trigger_columns_column ON engine_postgresql.trigger_columns USING b
 --
 
 CREATE INDEX trigger_columns_trigger ON engine_postgresql.trigger_columns USING btree (design, trigger);
+
+
+--
+-- Name: ts_config_mappings_configuration; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX ts_config_mappings_configuration ON engine_postgresql.ts_config_mappings USING btree (design, configuration);
+
+
+--
+-- Name: ts_config_mappings_dictionary; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX ts_config_mappings_dictionary ON engine_postgresql.ts_config_mappings USING btree (design, dictionary);
+
+
+--
+-- Name: user_mappings_role; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX user_mappings_role ON engine_postgresql.user_mappings USING btree (design, role);
+
+
+--
+-- Name: user_mappings_server; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX user_mappings_server ON engine_postgresql.user_mappings USING btree (design, server);
 
 
 --
@@ -8739,6 +9454,30 @@ ALTER TABLE ONLY engine_postgresql.inheritance
 
 
 --
+-- Name: operator_class_members operator_class_members_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.operator_class_members
+    ADD CONSTRAINT operator_class_members_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: operator_class_members operator_class_members_design_member_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.operator_class_members
+    ADD CONSTRAINT operator_class_members_design_member_fkey FOREIGN KEY (design, member) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: operator_class_members operator_class_members_design_operator_class_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.operator_class_members
+    ADD CONSTRAINT operator_class_members_design_operator_class_fkey FOREIGN KEY (design, operator_class) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: policies policies_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -8755,6 +9494,78 @@ ALTER TABLE ONLY engine_postgresql.policies
 
 
 --
+-- Name: publication_schemas publication_schemas_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_schemas
+    ADD CONSTRAINT publication_schemas_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: publication_schemas publication_schemas_design_namespace_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_schemas
+    ADD CONSTRAINT publication_schemas_design_namespace_fkey FOREIGN KEY (design, namespace) REFERENCES cortex.namespaces(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: publication_schemas publication_schemas_design_publication_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_schemas
+    ADD CONSTRAINT publication_schemas_design_publication_fkey FOREIGN KEY (design, publication) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: publication_table_columns publication_table_columns_design_column_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_table_columns
+    ADD CONSTRAINT publication_table_columns_design_column_fkey FOREIGN KEY (design, "column") REFERENCES cortex.columns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: publication_table_columns publication_table_columns_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_table_columns
+    ADD CONSTRAINT publication_table_columns_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: publication_table_columns publication_table_columns_design_publication_table_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_table_columns
+    ADD CONSTRAINT publication_table_columns_design_publication_table_fkey FOREIGN KEY (design, publication_table) REFERENCES engine_postgresql.publication_tables(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: publication_tables publication_tables_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_tables
+    ADD CONSTRAINT publication_tables_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: publication_tables publication_tables_design_publication_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_tables
+    ADD CONSTRAINT publication_tables_design_publication_fkey FOREIGN KEY (design, publication) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: publication_tables publication_tables_design_table_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.publication_tables
+    ADD CONSTRAINT publication_tables_design_table_fkey FOREIGN KEY (design, "table") REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: rules rules_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -8768,6 +9579,30 @@ ALTER TABLE ONLY engine_postgresql.rules
 
 ALTER TABLE ONLY engine_postgresql.rules
     ADD CONSTRAINT rules_design_object_fkey FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: statistics_parts statistics_parts_design_column_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.statistics_parts
+    ADD CONSTRAINT statistics_parts_design_column_fkey FOREIGN KEY (design, "column") REFERENCES cortex.columns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: statistics_parts statistics_parts_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.statistics_parts
+    ADD CONSTRAINT statistics_parts_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: statistics_parts statistics_parts_design_statistics_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.statistics_parts
+    ADD CONSTRAINT statistics_parts_design_statistics_fkey FOREIGN KEY (design, statistics) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -8792,6 +9627,54 @@ ALTER TABLE ONLY engine_postgresql.trigger_columns
 
 ALTER TABLE ONLY engine_postgresql.trigger_columns
     ADD CONSTRAINT trigger_columns_design_trigger_fkey FOREIGN KEY (design, trigger) REFERENCES cortex.triggers(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: ts_config_mappings ts_config_mappings_design_configuration_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.ts_config_mappings
+    ADD CONSTRAINT ts_config_mappings_design_configuration_fkey FOREIGN KEY (design, configuration) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: ts_config_mappings ts_config_mappings_design_dictionary_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.ts_config_mappings
+    ADD CONSTRAINT ts_config_mappings_design_dictionary_fkey FOREIGN KEY (design, dictionary) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: ts_config_mappings ts_config_mappings_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.ts_config_mappings
+    ADD CONSTRAINT ts_config_mappings_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: user_mappings user_mappings_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.user_mappings
+    ADD CONSTRAINT user_mappings_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: user_mappings user_mappings_design_role_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.user_mappings
+    ADD CONSTRAINT user_mappings_design_role_fkey FOREIGN KEY (design, role) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: user_mappings user_mappings_design_server_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.user_mappings
+    ADD CONSTRAINT user_mappings_design_server_fkey FOREIGN KEY (design, server) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -9565,12 +10448,48 @@ GRANT SELECT ON TABLE engine_postgresql.inheritance TO sf_reader;
 
 
 --
+-- Name: TABLE operator_class_members; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.operator_class_members TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.operator_class_members TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.operator_class_members TO sf_reader;
+
+
+--
 -- Name: TABLE policies; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.policies TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.policies TO sf_agent;
 GRANT SELECT ON TABLE engine_postgresql.policies TO sf_reader;
+
+
+--
+-- Name: TABLE publication_schemas; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.publication_schemas TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.publication_schemas TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.publication_schemas TO sf_reader;
+
+
+--
+-- Name: TABLE publication_table_columns; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.publication_table_columns TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.publication_table_columns TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.publication_table_columns TO sf_reader;
+
+
+--
+-- Name: TABLE publication_tables; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.publication_tables TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.publication_tables TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.publication_tables TO sf_reader;
 
 
 --
@@ -9583,12 +10502,39 @@ GRANT SELECT ON TABLE engine_postgresql.rules TO sf_reader;
 
 
 --
+-- Name: TABLE statistics_parts; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.statistics_parts TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.statistics_parts TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.statistics_parts TO sf_reader;
+
+
+--
 -- Name: TABLE trigger_columns; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.trigger_columns TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.trigger_columns TO sf_agent;
 GRANT SELECT ON TABLE engine_postgresql.trigger_columns TO sf_reader;
+
+
+--
+-- Name: TABLE ts_config_mappings; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.ts_config_mappings TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.ts_config_mappings TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.ts_config_mappings TO sf_reader;
+
+
+--
+-- Name: TABLE user_mappings; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.user_mappings TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.user_mappings TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.user_mappings TO sf_reader;
 
 
 --

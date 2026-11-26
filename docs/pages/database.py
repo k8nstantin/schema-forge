@@ -125,14 +125,16 @@ def engine_svg(owner):
     targets.sort(key=lambda b: order.index(b) if b in order else len(order))
     def rank(a):
         ts = [targets.index(b) for c, b in out[a] if b in targets]
-        if ts: return min(ts)
+        if ts: return sum(ts) / len(ts)   # the mean of its targets' places: arrows cross least
         if out[a]:      # refers to another table of the engine: placed just after it
             return rank(out[a][0][1]) + 0.5
         return len(targets)   # refers to nothing by a foreign key: last, a rule checks it
     tabs.sort(key=lambda a: (rank(a), a))
     rows = max(len(tabs), len(targets))
+    aims = {a: frozenset(b for c, b in out[a] if b in targets) for a in tabs}
     h = 40 + rows * 42
     g = Svg(1040, h, f"Every table of {owner} and the cortex table each refers to.")
+    g.may_cross = {frozenset((a, b)) for a in tabs for b in tabs if a != b and len(aims[a]) >= 2 and aims[a] == aims[b]}
     g.text(120, 22, "cortex", "cap", "middle"); g.text(645, 22, owner, "cap", "middle")
     step_t = (rows * 42) / max(1, len(targets))
     for i, b in enumerate(targets): tbox(g, b, 30, 34 + i * step_t + (step_t - 34) / 2, 180, cls="pri")
