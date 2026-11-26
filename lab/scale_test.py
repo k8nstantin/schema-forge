@@ -28,7 +28,7 @@ import common as C  # noqa: E402
 import repo_store as R  # noqa: E402
 
 NOT_A_DESIGN = {"cortex.designs", "cortex.engine_versions", "cortex.engine_features", "cortex.catalog_sources", "cortex.object_kinds",
-                "cortex.schema_migrations", "cortex.option_declarations"}
+                "cortex.schema_migrations", "cortex.option_declarations", "cortex.engine_flavors", "cortex.flavor_limits"}
 HISTORY = {"cortex.branches", "cortex.turns", "cortex.operations", "cortex.row_changes", "cortex.savepoints", "cortex.locked_versions",
            "cortex.source_reads"}
 
