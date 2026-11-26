@@ -111,7 +111,7 @@ def rows_of(snap):
         out["engine_postgresql.relation"].append({
             "id": i, "persistence": pr["relpersistence"], "options": pr.get("reloptions"), "access_method": pr.get("am"), "owner": pr.get("owner"),
             "acl": pr.get("acl"), "row_security": pr["relrowsecurity"], "force_row_security": pr["relforcerowsecurity"],
-            "replica_identity": pr["relreplident"], "populated": pr["relispopulated"]})
+            "replica_identity": pr["relreplident"], "populated": pr["relispopulated"], "of_type": pr.get("of_type")})
         if kind in ("view", "materialized view"):
             opts = pr.get("reloptions") or []
             check = next((o.split("=")[1].upper() for o in opts if o.startswith("check_option=")), None)
@@ -146,9 +146,9 @@ def rows_of(snap):
             "generated": pr.get("default") if gen else None, "generated_stored": {"s": True, "v": False}.get(gen),
             "identity": {"a": "always", "d": "by default"}.get(pr.get("attidentity") or ""), "collation_name": pr.get("collation"),
             "comment": pr.get("comment")})
-        if not pr["attislocal"] or pr["attinhcount"] or pr.get("options") or pr.get("acl"):
+        if not pr["attislocal"] or pr["attinhcount"] or pr.get("options") or pr.get("acl") or pr.get("statistics_target") is not None:
             out["engine_postgresql.column"].append({"id": i, "is_local": pr["attislocal"], "inherit_count": pr["attinhcount"],
-                                                    "options": pr.get("options"), "acl": pr.get("acl")})
+                                                    "options": pr.get("options"), "acl": pr.get("acl"), "statistics_target": pr.get("statistics_target")})
     types = {}
     for p in by["type"]:
         pr = p["props"]
@@ -422,7 +422,8 @@ def function_def(S, o):
         if p["mode"] == "TABLE" or (p["mode"] == "OUT" and o["kind"] == "function"):
             continue
         d = st["engine_postgresql.parameter"].get(p["id"])
-        a = ("" if p["mode"] == "IN" else p["mode"] + " ") + (qi(p["name"]) + " " if p["name"] else "") + p["type"]
+        # a procedure's every parameter is written with its mode (IN p integer); a function's IN is left out
+        a = ("" if p["mode"] == "IN" and o["kind"] == "function" else p["mode"] + " ") + (qi(p["name"]) + " " if p["name"] else "") + p["type"]
         args.append(a + (f" DEFAULT {d['default_value']}" if d else ""))
     head = f"CREATE OR REPLACE {o['kind'].upper()} {S.full(o) if S.schema(o) != 'public' else qi(o['name'])}({', '.join(args)})\n"
     if o["kind"] == "function":
@@ -569,6 +570,7 @@ def script(st):
             if o["id"] not in done and all(p in done for p in parents[o["id"]]):
                 done.add(o["id"])
                 ordered.append(o)
+    stats = []   # a column's statistics target, set once every table is made
     for o in ordered:
         r = st["engine_postgresql.relation"][o["id"]]
         unlogged = "UNLOGGED " if r["persistence"] == "u" else ""
@@ -595,7 +597,15 @@ def script(st):
                 d += (f" GENERATED {c['identity'].upper()} AS IDENTITY (SEQUENCE NAME {S.full(objs[sid])} {seq_options(seqs[sid], False)})")
             defs.append(d)
         inh = [S.full(objs[p]) for p in parents[o["id"]]]
-        sql.append(f"CREATE {unlogged}TABLE {S.full(o)} ({', '.join(defs)})" + (f" INHERITS ({', '.join(inh)})" if inh else "") + tail + ";")
+        if r.get("of_type"):   # a typed table: its columns are its type's; only what it adds to them is written
+            adds = [f"{qi(c['name'])} NOT NULL" for c in sorted(S.by["core.column"][o["id"]], key=lambda c: c["position"]) if not c["nullable"]]
+            sql.append(f"CREATE {unlogged}TABLE {S.full(o)} OF {r['of_type']}" + (f" ({', '.join(adds)})" if adds else "") + tail + ";")
+        else:
+            sql.append(f"CREATE {unlogged}TABLE {S.full(o)} ({', '.join(defs)})" + (f" INHERITS ({', '.join(inh)})" if inh else "") + tail + ";")
+        for c in sorted(S.by["core.column"][o["id"]], key=lambda c: c["position"]):
+            target = st["engine_postgresql.column"].get(c["id"], {}).get("statistics_target")
+            if target is not None:
+                stats.append(f"ALTER TABLE ONLY {S.full(o)} ALTER COLUMN {qi(c['name'])} SET STATISTICS {target};")
     cons = [c for c in st["core.constraint"].values() if objs[c["object_id"]]["kind"] == "table" and c["kind"] != "not null"
             and st["engine_postgresql.constraint"][c["id"]]["is_local"]]
     for c in sorted(cons, key=lambda c: ("primary unique exclusion check foreign".split().index(c["kind"]), c["id"])):
@@ -684,6 +694,7 @@ def script(st):
             sql.append(f"ALTER {o['kind'].upper()} {sig} OWNER TO {qi(pr['owner'])};")
         if pr.get("acl"):
             sql += grants(f"{o['kind'].upper()} {sig}", pr["acl"], pr.get("owner") or owner_default)
+    sql += stats
     return "\n".join(sql) + "\n"
 
 

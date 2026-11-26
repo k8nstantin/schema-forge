@@ -703,6 +703,7 @@
    "parent": "every",
    "props": {
     "am": "heap",
+    "of_type": "every.pair",
     "owner": "postgres",
     "relforcerowsecurity": false,
     "relispartition": false,
@@ -2295,6 +2296,7 @@
     "attnotnull": false,
     "attnum": 2,
     "attstorage": "p",
+    "statistics_target": 500,
     "type": "every.mood"
    }
   },
@@ -2312,6 +2314,7 @@
     "attnotnull": false,
     "attnum": 2,
     "attstorage": "p",
+    "statistics_target": 500,
     "type": "every.mood"
    }
   },
@@ -7310,6 +7313,522 @@
     "objtype": "r",
     "role": "every_owner",
     "schema": "every"
+   }
+  },
+  {
+   "key": "every_heap",
+   "kind": "access_method",
+   "parent": null,
+   "props": {
+    "key": "every_heap",
+    "name": "every_heap",
+    "opts": {
+     "handler": "heap_tableam_handler",
+     "type": "t"
+    },
+    "refs": {},
+    "signature": ""
+   }
+  },
+  {
+   "key": "every_remote",
+   "kind": "foreign_server",
+   "parent": null,
+   "props": {
+    "key": "every_remote",
+    "name": "every_remote",
+    "opts": {
+     "server_options": [
+      "host=localhost",
+      "dbname=engine_postgresql"
+     ],
+     "type": null,
+     "user_mappings": [
+      {
+       "options": [
+        "user=every_owner"
+       ],
+       "role": "every_owner"
+      }
+     ],
+     "version": null,
+     "wrapper": "postgres_fdw"
+    },
+    "owner": "postgres",
+    "refs": {},
+    "signature": ""
+   }
+  },
+  {
+   "key": "every.remote_parent",
+   "kind": "foreign_table",
+   "parent": "every",
+   "props": {
+    "key": "every.remote_parent",
+    "name": "remote_parent",
+    "opts": {
+     "columns": [
+      {
+       "default": null,
+       "name": "id",
+       "not_null": false,
+       "options": null,
+       "type": "integer"
+      },
+      {
+       "default": null,
+       "name": "mood",
+       "not_null": false,
+       "options": null,
+       "type": "text"
+      }
+     ],
+     "table_options": [
+      "schema_name=every",
+      "table_name=parent"
+     ]
+    },
+    "owner": "postgres",
+    "refs": {
+     "server": "every_remote"
+    },
+    "schema": "every",
+    "signature": ""
+   }
+  },
+  {
+   "key": "every.int_reverse btree",
+   "kind": "operator_family",
+   "parent": "every",
+   "props": {
+    "key": "every.int_reverse btree",
+    "name": "int_reverse",
+    "opts": {
+     "method": "btree"
+    },
+    "owner": "postgres",
+    "refs": {},
+    "schema": "every",
+    "signature": " USING btree"
+   }
+  },
+  {
+   "key": "every.mood_family btree",
+   "kind": "operator_family",
+   "parent": "every",
+   "props": {
+    "key": "every.mood_family btree",
+    "name": "mood_family",
+    "opts": {
+     "method": "btree"
+    },
+    "owner": "postgres",
+    "refs": {},
+    "schema": "every",
+    "signature": " USING btree"
+   }
+  },
+  {
+   "key": "every.===(every.mood,every.mood)",
+   "kind": "operator",
+   "parent": "every",
+   "props": {
+    "key": "every.===(every.mood,every.mood)",
+    "name": "===",
+    "opts": {
+     "commutator": "every.===(every.mood,every.mood)",
+     "hashes": false,
+     "join": null,
+     "leftarg": "every.mood",
+     "merges": false,
+     "negator": null,
+     "restrict": null,
+     "rightarg": "every.mood"
+    },
+    "owner": "postgres",
+    "refs": {
+     "function": "every.mood_eq(every.mood,every.mood)"
+    },
+    "schema": "every",
+    "signature": "(every.mood, every.mood)"
+   }
+  },
+  {
+   "key": "every.int_reverse btree",
+   "kind": "operator_class",
+   "parent": "every",
+   "props": {
+    "key": "every.int_reverse btree",
+    "name": "int_reverse",
+    "opts": {
+     "for_type": "integer",
+     "is_default": false,
+     "items": [
+      {
+       "name": "every.int_cmp(integer,integer)",
+       "number": 1,
+       "what": "function"
+      },
+      {
+       "name": ">(integer,integer)",
+       "number": 1,
+       "what": "operator"
+      },
+      {
+       "name": ">=(integer,integer)",
+       "number": 2,
+       "what": "operator"
+      },
+      {
+       "name": "=(integer,integer)",
+       "number": 3,
+       "what": "operator"
+      },
+      {
+       "name": "<=(integer,integer)",
+       "number": 4,
+       "what": "operator"
+      },
+      {
+       "name": "<(integer,integer)",
+       "number": 5,
+       "what": "operator"
+      }
+     ],
+     "method": "btree",
+     "storage": null
+    },
+    "owner": "postgres",
+    "refs": {
+     "family": "every.int_reverse btree"
+    },
+    "schema": "every",
+    "signature": " USING btree"
+   }
+  },
+  {
+   "key": "every.total(integer)",
+   "kind": "aggregate",
+   "parent": "every",
+   "props": {
+    "key": "every.total(integer)",
+    "name": "total",
+    "opts": {
+     "arguments": "integer",
+     "finalfunc_extra": false,
+     "finalfunc_modify": "r",
+     "initcond": "0",
+     "kind": "n",
+     "parallel": "u",
+     "sspace": 0,
+     "stype": "integer"
+    },
+    "owner": "postgres",
+    "refs": {
+     "sfunc": "every.sum_state(integer,integer)"
+    },
+    "schema": "every",
+    "signature": "(integer)"
+   }
+  },
+  {
+   "key": "every.pair AS text",
+   "kind": "cast",
+   "parent": null,
+   "props": {
+    "key": "every.pair AS text",
+    "name": "every.pair AS text",
+    "opts": {
+     "context": "e",
+     "method": "i",
+     "source": "every.pair",
+     "target": "text"
+    },
+    "refs": {},
+    "signature": ""
+   }
+  },
+  {
+   "key": "every.latin_to_utf8",
+   "kind": "conversion",
+   "parent": "every",
+   "props": {
+    "key": "every.latin_to_utf8",
+    "name": "latin_to_utf8",
+    "opts": {
+     "for_encoding": "LATIN1",
+     "is_default": false,
+     "to_encoding": "UTF8"
+    },
+    "owner": "postgres",
+    "refs": {
+     "function": "iso8859_1_to_utf8(integer,integer,cstring,internal,integer,boolean)"
+    },
+    "schema": "every",
+    "signature": ""
+   }
+  },
+  {
+   "key": "every.tmpl",
+   "kind": "ts_template",
+   "parent": "every",
+   "props": {
+    "key": "every.tmpl",
+    "name": "tmpl",
+    "opts": {
+     "init": "dsimple_init",
+     "lexize": "dsimple_lexize"
+    },
+    "refs": {},
+    "schema": "every",
+    "signature": ""
+   }
+  },
+  {
+   "key": "every.prs",
+   "kind": "ts_parser",
+   "parent": "every",
+   "props": {
+    "key": "every.prs",
+    "name": "prs",
+    "opts": {
+     "end": "prsd_end",
+     "gettoken": "prsd_nexttoken",
+     "headline": null,
+     "lextypes": "prsd_lextype",
+     "start": "prsd_start"
+    },
+    "refs": {},
+    "schema": "every",
+    "signature": ""
+   }
+  },
+  {
+   "key": "every.simple_dict",
+   "kind": "ts_dictionary",
+   "parent": "every",
+   "props": {
+    "key": "every.simple_dict",
+    "name": "simple_dict",
+    "opts": {
+     "init_options": "stopwords = 'english'"
+    },
+    "owner": "postgres",
+    "refs": {
+     "template": "pg_catalog.simple"
+    },
+    "schema": "every",
+    "signature": ""
+   }
+  },
+  {
+   "key": "every.plain",
+   "kind": "ts_configuration",
+   "parent": "every",
+   "props": {
+    "key": "every.plain",
+    "name": "plain",
+    "opts": {
+     "mappings": [
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "asciiword"
+      },
+      {
+       "dictionaries": [
+        "every.simple_dict"
+       ],
+       "token": "word"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "numword"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "email"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "url"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "host"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "sfloat"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "version"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "hword_numpart"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "hword_part"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "hword_asciipart"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "numhword"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "asciihword"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "hword"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "url_path"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "file"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "float"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "int"
+      },
+      {
+       "dictionaries": [
+        "pg_catalog.simple"
+       ],
+       "token": "uint"
+      }
+     ]
+    },
+    "owner": "postgres",
+    "refs": {
+     "parser": "pg_catalog.default"
+    },
+    "schema": "every",
+    "signature": ""
+   }
+  },
+  {
+   "key": "every.parent_stats",
+   "kind": "statistics",
+   "parent": "every",
+   "props": {
+    "key": "every.parent_stats",
+    "name": "parent_stats",
+    "opts": {
+     "definition": "CREATE STATISTICS every.parent_stats (ndistinct, dependencies) ON id, size FROM every.parent",
+     "kinds": [
+      "d",
+      "f"
+     ],
+     "target": null
+    },
+    "owner": "postgres",
+    "refs": {
+     "table": "every.parent"
+    },
+    "schema": "every",
+    "signature": ""
+   }
+  },
+  {
+   "key": "every_pub",
+   "kind": "publication",
+   "parent": null,
+   "props": {
+    "key": "every_pub",
+    "name": "every_pub",
+    "opts": {
+     "all_tables": false,
+     "delete": false,
+     "insert": true,
+     "schemas": null,
+     "tables": [
+      {
+       "columns": null,
+       "table": "every.parent",
+       "where": null
+      },
+      {
+       "columns": null,
+       "table": "every.child",
+       "where": null
+      }
+     ],
+     "truncate": false,
+     "update": true,
+     "via_root": false
+    },
+    "owner": "postgres",
+    "refs": {},
+    "signature": ""
+   }
+  },
+  {
+   "key": "every_ddl",
+   "kind": "event_trigger",
+   "parent": null,
+   "props": {
+    "key": "every_ddl",
+    "name": "every_ddl",
+    "opts": {
+     "enabled": "D",
+     "event": "ddl_command_end",
+     "tags": [
+      "CREATE TABLE"
+     ]
+    },
+    "owner": "postgres",
+    "refs": {
+     "function": "every.on_ddl()"
+    },
+    "signature": ""
    }
   }
  ],

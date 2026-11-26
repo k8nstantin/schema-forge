@@ -265,6 +265,7 @@ PG_PARTS = {
         - 'reltuples' - 'relallvisible' - 'relallfrozen' - 'reltoastrelid' - 'relfrozenxid' - 'relminmxid' - 'relam'
         - 'relrewrite' - 'relpartbound' - 'relhasindex' - 'relhastriggers' - 'relhasrules' - 'relhassubclass' - 'relnatts' - 'relchecks'
         || jsonb_build_object('owner', pg_get_userbyid(c.relowner), 'am', am.amname, 'acl', c.relacl::text[],
+        'of_type', CASE WHEN c.reloftype <> 0 THEN format_type(c.reloftype, NULL) END,
         'comment', obj_description(c.oid, 'pg_class'), 'partition_key', pg_get_partkeydef(c.oid),
         'partition_bound', pg_get_expr(c.relpartbound, c.oid),
         'inherits', (SELECT array_agg(pn.nspname || '.' || p.relname ORDER BY i.inhseqno) FROM pg_inherits i JOIN pg_class p ON p.oid = i.inhparent JOIN pg_namespace pn ON pn.oid = p.relnamespace WHERE i.inhrelid = c.oid),
@@ -281,7 +282,8 @@ PG_PARTS = {
         - 'attfdwoptions' - 'atttypmod' - 'attcompression'
         || jsonb_build_object('type', format_type(a.atttypid, a.atttypmod), 'default', pg_get_expr(d.adbin, d.adrelid),
         'collation', CASE WHEN a.attcollation <> t.typcollation THEN quote_ident(cn.nspname) || '.' || quote_ident(co.collname) END, 'comment', col_description(c.oid, a.attnum),
-        'acl', a.attacl::text[], 'options', (SELECT array_agg(o) FROM unnest(a.attoptions) o WHERE NOT starts_with(o, 'pg_attver='))) AS props
+        'acl', a.attacl::text[], 'options', (SELECT array_agg(o) FROM unnest(a.attoptions) o WHERE NOT starts_with(o, 'pg_attver=')),
+        'statistics_target', CASE WHEN a.attstattarget >= 0 THEN a.attstattarget END) AS props
       FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
       JOIN pg_type t ON t.oid = a.atttypid LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
       LEFT JOIN pg_collation co ON co.oid = a.attcollation LEFT JOIN pg_namespace cn ON cn.oid = co.collnamespace
@@ -452,6 +454,8 @@ def extract_pg(version, container):
             props = {k: v for k, v in r["props"].items() if v is not None}
             parts.append({"kind": kind, "key": r["key"], "parent": r["parent"], "props": props})
     expression_parts(container, parts)
+    import pg_more
+    parts += pg_more.capture(pg, container, SCHEMAS)
     for p in parts:
         for part in p["props"].get("parts") or [] if p["kind"] == "index" else []:
             for k in ("opclass_name", "opclass_oid", "index_collation"):

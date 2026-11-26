@@ -21,6 +21,7 @@ sys.path.insert(0, HERE)
 sys.dont_write_bytecode = True
 import common as C  # noqa: E402
 import extract as X  # noqa: E402
+import pg_more as M  # noqa: E402
 import pg_store as P  # noqa: E402
 import repo_store as R  # noqa: E402
 
@@ -146,12 +147,13 @@ def to_locked(old, version, parts=()):
     for r in old["engine_postgresql.relation"]:
         add("engine_postgresql.relations", {"id": U(r["id"]), **{k: r[k] for k in ("options", "access_method", "owner", "acl",
                                                                                      "row_security", "force_row_security", "populated")},
-                                            "persistence": PERSISTENCE[r["persistence"]], "replica_identity": REPLICA[r["replica_identity"]]})
+                                            "persistence": PERSISTENCE[r["persistence"]], "replica_identity": REPLICA[r["replica_identity"]],
+                                            "of_type": r.get("of_type")})
     for i in old["engine_postgresql.inheritance"]:
         add("engine_postgresql.inheritance", {"id": U(i["id"]), "object": U(i["object_id"]), "parent": U(i["parent_id"]), "position": i["position"]})
     for c in old["engine_postgresql.column"]:
         add("engine_postgresql.columns", {"id": U(c["id"]), "is_local": c["is_local"], "inherit_count": c["inherit_count"], "options": c["options"],
-                                          "acl": c["acl"]})
+                                          "acl": c["acl"], "statistics_target": c.get("statistics_target")})
     for i in old["engine_postgresql.index"]:
         add("engine_postgresql.indexes", {"id": U(i["id"]), "nulls_not_distinct": i["nulls_not_distinct"], "options": i["options"],
                                           "replica_identity_index": i["replica_identity_index"], "clustered": i["clustered"]})
@@ -239,6 +241,15 @@ def access(out, parts, design, add):
         add("cortex.memberships", {"id": i, "role": role[pr["role"]], "member": role[pr["member"]], "admin_option": pr["admin_option"], "position": k + 1})
         if "set_option" in pr:
             add("engine_postgresql.memberships", {"id": i, "inherit_option": pr["inherit_option"], "set_option": pr["set_option"]})
+    names = {n["id"]: n["name"] for n in out["cortex.namespaces"]}
+    by_key = {M.key_of(o, {k: {"name": v} for k, v in names.items()}): o["id"] for o in objects if o["kind"] != "role"}
+    M.to_design(out, parts, add, role, grant, by_key)
+    for r in out["engine_postgresql.relations"]:   # a typed table (CREATE TABLE ... OF type) uses its type
+        of = r.pop("of_type", None)
+        if of:
+            d = str(uuid.uuid7())
+            add("cortex.dependencies", {"id": d, "object": r["id"], "uses": by_key[of], "position": len(out["cortex.dependencies"]) + 1})
+            add("engine_postgresql.dependency_options", {"id": d, "as": "of_type"})
     ns = {n["name"]: n["id"] for n in out["cortex.namespaces"] if n["parent"]}
     for p in (p for p in parts if p["kind"] == "default_acl"):
         pr = p["props"]
@@ -399,6 +410,11 @@ def access_back(st, out):
             who = "" if g["grantee_name"] == "PUBLIC" else name(g["grantee"], g["grantee_name"])
             items[who] = items.get(who, "") + letter[g["privilege"]] + ("*" if g["grantable"] else "")
         return [f"{w}={l}/{owner}" for w, l in items.items()] or None
+    roles = st.get("engine_postgresql.dependency_options", {})
+    for d in st["cortex.dependencies"].values():
+        if roles.get(d["id"], {}).get("as") == "of_type":
+            t = objs[d["uses"]]
+            out["engine_postgresql.relation"][d["object"]]["of_type"] = f"{st['cortex.namespaces'][t['namespace']]['name']}.{t['name']}"
     for t in ("engine_postgresql.relation", "engine_postgresql.routine", "engine_postgresql.type"):
         for i, r in out[t].items():
             o = objs[i]
@@ -485,7 +501,7 @@ def main():
             name = C.fresh_pg(version)
             try:
                 C.ready_pg(name)
-                sql = snap.get("prelude", "") + P.script(S.st)  # what the server needs before the schema: its roles, a stand-in
+                sql = snap.get("prelude", "") + P.script(S.st) + M.write(M.back(st))  # the roles a server needs first, a stand-in
                 r = subprocess.run(["docker", "exec", "-i", name, "psql", "-U", "postgres", "-d", C.SOURCE_DB, "-q"], input=sql, capture_output=True, text=True)
                 refused = [line for line in r.stderr.splitlines() if "ERROR:" in line]
                 saved, X.SCHEMAS = X.SCHEMAS, tuple(n["name"] for n in S.ns.values() if n["parent_id"])

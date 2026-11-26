@@ -176,13 +176,15 @@
    "keys": [
     "is_local",
     "inherit_count",
-    "options"
+    "options",
+    "statistics_target"
    ],
    "target": "cortex.columns",
    "types": {
     "inherit_count": "number",
     "is_local": "boolean",
-    "options": "json"
+    "options": "json",
+    "statistics_target": "number"
    }
   },
   "engine_postgresql.constraints": {
