@@ -14,7 +14,11 @@ struct Container(String);
 
 impl Drop for Container {
     fn drop(&mut self) {
-        let _ = Command::new("docker").args(["rm", "-f", "-v", &self.0]).stdout(Stdio::null()).stderr(Stdio::null()).status();
+        let _ = Command::new("docker")
+            .args(["rm", "-f", "-v", &self.0])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
     }
 }
 
