@@ -20,6 +20,7 @@ import getpass
 import os
 import secrets
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
@@ -47,8 +48,13 @@ def ok(r, what):
 
 
 def connection(args):
+    if shutil.which(psql_command()[0]) is None:
+        raise SystemExit(f"{psql_command()[0]} is not installed: install the PostgreSQL client (macOS: brew install libpq && "
+                         "brew link --force libpq), or name another psql command in PSQL")
     password = os.environ.get("SF_ROOT_PASSWORD")
     if password is None:
+        if not sys.stdin.isatty():
+            raise SystemExit("no terminal to ask the superuser's password in: run this in a terminal window, or set SF_ROOT_PASSWORD")
         password = getpass.getpass(f"password of the PostgreSQL superuser {args.user}@{args.host}:{args.port}: ")
     conn = {"host": args.host, "port": args.port, "user": args.user, "password": password}
     version = ok(run(conn, "SHOW server_version_num;"), f"connecting as {args.user}")

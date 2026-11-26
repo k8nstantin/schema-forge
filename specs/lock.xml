@@ -56,7 +56,7 @@
   <file path="features/usage/schema/rules/index-usage-on-its-table.sql" sha256="c35cd97ccd618d52439efeee2482691ff8c1c0a4e4881fcbaf9a78b1571007ff"/>
   <file path="features/usage/schema/snapshots.sql" sha256="424b7dbffdc9d220add988a168876e3f3d536b81c414ea311862fa5005b87bf1"/>
   <file path="postgres/manifest.toml" sha256="d8e75bb68508d4aa724ca0d43c7b8a50a6d70c449e620f8d0c01cd0db634aad1"/>
-  <file path="schema/accounts.py" sha256="9327425d8b86111cef2e7185d532e17d97639331dedf21e15aed9ae6e386acda"/>
+  <file path="schema/accounts.py" sha256="56a019aaabee5f23ee9dffb45b589dc9f5233716fed2df59664ebf8e05367190"/>
   <file path="schema/cortex/branches.sql" sha256="280d31881331692eb43c94d02be7794ab0e6aad7841d65881154649d97dcc0bb"/>
   <file path="schema/cortex/catalog_sources.sql" sha256="efef4061fa645da48dc4c5168633d264a1f98134e1c637a49e6734a38ac9b3fd"/>
   <file path="schema/cortex/column_identities.sql" sha256="9f66b220a324e67856f2c16ffd52d4f81d8d22729086f852fd7811c0d4056407"/>
