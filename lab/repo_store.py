@@ -33,10 +33,11 @@ STATUS = {"ENABLED": "ENABLE", "DISABLED": "DISABLE", "SLAVESIDE_DISABLED": "DIS
 KINDS = ["table", "view", "procedure", "function", "trigger", "event"]
 
 
-def rows_of(snap):
-    """A snapshot as the locked design's rows: {table: [row]}, and the views the server says are broken."""
+def rows_of(snap, first=0, name=None):
+    """A snapshot as the locked design's rows: {table: [row]}, and the views the server says are broken. Its BIGINT ids
+    start after first, so more than one design can be loaded into one database; name names the design."""
     version = snap["version"]
-    n = [0]
+    n = [first]
 
     def nid():
         n[0] += 1
@@ -45,7 +46,9 @@ def rows_of(snap):
     for p in snap["parts"]:
         by[p["kind"]].append(p["props"])
     design = str(uuid.uuid7())
-    out["cortex.designs"] = [{"id": design, "name": f"mysql-{version}", "engine": "mysql", "engine_version": version, "comment": None}]
+    out["cortex.engine_versions"] = [{"id": f"mysql/{version}", "engine": "mysql", "version": version, "name": f"MySQL {version}",
+                                      "position": 1, "support_ends": None}]
+    out["cortex.designs"] = [{"id": design, "name": name or f"mysql-{version}", "engine": "mysql", "engine_version": version, "comment": None}]
     out["cortex.object_kinds"] = [{"id": f"mysql/{k}", "engine": "mysql", "kind": k, "name": k.title(), "position": i + 1}
                                   for i, k in enumerate(KINDS)]
     ns = {}
@@ -238,7 +241,7 @@ def rows_of(snap):
     return out, broken
 
 
-ORDER = ["cortex.designs", "cortex.object_kinds", "cortex.namespaces", "cortex.objects", "cortex.columns", "cortex.column_identities", "cortex.indexes",
+ORDER = ["cortex.engine_versions", "cortex.designs", "cortex.object_kinds", "cortex.namespaces", "cortex.objects", "cortex.columns", "cortex.column_identities", "cortex.indexes",
          "cortex.index_parts", "cortex.constraints", "cortex.constraint_columns", "cortex.dependencies", "cortex.views",
          "cortex.routines", "cortex.routine_parameters", "cortex.triggers", "cortex.partitionings", "cortex.partitions",
          "engine_mysql.databases", "engine_mysql.tables", "engine_mysql.columns", "engine_mysql.indexes", "engine_mysql.index_parts",
@@ -463,7 +466,7 @@ def main():
                 exact[kind] += got.get((kind, schema, name)) is not None
                 continue
             exact[kind] += got.get((kind, schema, name)) == pr["__show_create"]
-        print(f"{'pass' if exact == n else 'FAIL'}  mysql {version}: one design, {sum(len(v) for k, v in rows.items() if k not in ('cortex.object_kinds', 'cortex.designs'))} rows in the locked design, "
+        print(f"{'pass' if exact == n else 'FAIL'}  mysql {version}: one design, {sum(len(v) for k, v in rows.items() if k not in ('cortex.object_kinds', 'cortex.designs', 'cortex.engine_versions'))} rows in the locked design, "
               f"loaded as sf_service with every rule held at commit in {t_load:.1f}s, {size}; written from it: "
               + ", ".join(f"{exact[k]}/{n[k]} {k}s" for k in sorted(n)) + (f"; {len(broken)} broken views not stored" if broken else ""))
         if roundtrip:

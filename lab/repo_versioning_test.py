@@ -94,11 +94,11 @@ def main():
     rows, _ = R.rows_of(snap)
     R.build(db)
     # the design is a row of cortex.designs, made before its first turn; its engine's kinds are the engine's declaration
-    C.psql("BEGIN;\n" + R.copy_sql("cortex.designs", rows["cortex.designs"]) + R.copy_sql("cortex.object_kinds", rows["cortex.object_kinds"]) + "COMMIT;", db)
+    C.psql("BEGIN;\n" + R.copy_sql("cortex.engine_versions", rows["cortex.engine_versions"]) + R.copy_sql("cortex.designs", rows["cortex.designs"]) + R.copy_sql("cortex.object_kinds", rows["cortex.object_kinds"]) + "COMMIT;", db)
     C.psql(open(os.path.join(HERE, "design", "repo_versioning.sql")).read() + f"\nSELECT sf_log.attach('{rows['cortex.designs'][0]['id']}');", db)
     t = time.time()
     C.psql("BEGIN; SELECT sf_log.begin_turn('import');\n"
-           + "".join(R.copy_sql(k, rows[k]) for k in R.ORDER if rows.get(k) and k not in ("cortex.designs", "cortex.object_kinds"))
+           + "".join(R.copy_sql(k, rows[k]) for k in R.ORDER if rows.get(k) and k not in ("cortex.engine_versions", "cortex.designs", "cortex.object_kinds"))
            + "SELECT sf_log.end_turn(); COMMIT;", db)
     # ids the import gave: identities go on after them
     C.psql("DO $$ DECLARE r record; BEGIN FOR r IN SELECT n.nspname || '.' || c.relname AS t, a.attname AS col FROM pg_attribute a "

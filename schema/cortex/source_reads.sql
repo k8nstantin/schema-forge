@@ -1,4 +1,4 @@
--- cortex.source_reads: each read of a live database for this schema: from which saved connection, which server, as whom, and when. Owner: cortex.
+-- cortex.source_reads: each read of a live database for a design: from which saved connection, which server, as whom, and when. Owner: cortex.
 CREATE TABLE cortex.source_reads (
   id               UUID NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),                     -- UUIDv7, issued by the database
   design           UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,        -- the design it was read for
@@ -18,7 +18,7 @@ CREATE TABLE cortex.source_reads (
   CHECK (ended_at IS NULL OR ended_at >= started_at)
 );
 
-COMMENT ON TABLE cortex.source_reads IS 'each read of a live database for this schema: from which saved connection, which server, as whom, and when.';
+COMMENT ON TABLE cortex.source_reads IS 'each read of a live database for a design: from which saved connection, which server, as whom, and when.';
 COMMENT ON COLUMN cortex.source_reads.id IS 'UUIDv7, issued by the database';
 COMMENT ON COLUMN cortex.source_reads.design IS 'the design it was read for';
 COMMENT ON COLUMN cortex.source_reads.turn IS 'the import turn the structure read landed in; NULL for a read of usage alone';

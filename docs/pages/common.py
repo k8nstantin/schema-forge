@@ -95,7 +95,7 @@ class Svg:
         self.w, self.h, self.label, self.parts, self.boxes = w, h, label, [], {}
         self.lines, self.labels = [], []   # for the layout check: (a, b, x1, y1, x2, y2) and (x, y, w, h, text)
 
-    def box(self, key, x, y, w, h, title, sub="", cls="box"):
+    def box(self, key, x, y, w, h, title, sub="", cls="box", href=None):
         self.boxes[key] = (x, y, w, h)
         self.overflow = getattr(self, "overflow", [])
         if 7.4 * len(title) > w - 8 or 5.9 * len(sub) > w - 8:
@@ -103,6 +103,9 @@ class Svg:
         self.parts.append(f'<g class="nd"><rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" class="{cls}"/>'
                           f'<text x="{x + w / 2}" y="{y + (h / 2 + 4 if not sub else 19)}" text-anchor="middle" class="m b6">{e(title)}</text>'
                           + (f'<text x="{x + w / 2}" y="{y + 35}" text-anchor="middle" class="lb">{e(sub)}</text>' if sub else "") + "</g>")
+        if href:  # the box is a link: to the table's own entry on the page
+            self.parts[-1] = f'<a href="{e(href)}"><title>{e(key)}</title>{self.parts[-1]}</a>'
+
 
     def _edge_point(self, key, tx, ty):
         x, y, w, h = self.boxes[key]

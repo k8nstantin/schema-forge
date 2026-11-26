@@ -26,7 +26,7 @@ def arrows(svg, pairs):
 
 def tbox(svg, name, x, y, w=150, h=34, cls="box"):
     """A table's box: keyed by its full name (cortex.objects), titled by its short one."""
-    svg.box(name, x, y, w, h, short(name), cls=cls)
+    svg.box(name, x, y, w, h, short(name), cls=cls, href=f"#t-{name}")
 
 def C(name): return "cortex." + name
 
@@ -88,7 +88,7 @@ parts_svg = g.render()
 g = Svg(1040, 250, "The log: branches of turns, their operations, every row each operation changed, savepoints and the versions locked on it.")
 for name, x, y in [("branches", 40, 180), ("turns", 40, 70), ("operations", 300, 70), ("row_changes", 560, 70), ("savepoints", 300, 180),
                    ("locked_versions", 560, 180)]:
-    g.box(C(name), x, y, 180, 40, name, cls="lg")
+    g.box(C(name), x, y, 180, 40, name, cls="lg", href=f"#t-{C(name)}")
 arrows(g, {(C("turns"), C("branches")): (0, 0), (C("operations"), C("turns")): (0, 0), (C("row_changes"), C("operations")): (0, 0),
            (C("savepoints"), C("turns")): (0, 0), (C("locked_versions"), C("turns")): (40, 0)})
 g.loop(C("turns"), "parent"); drawn.add((C("turns"), "parent"))

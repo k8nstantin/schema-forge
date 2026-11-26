@@ -823,6 +823,165 @@ COMMENT ON VIEW cortex.broken_constraint_columns_on_their_tables IS 'Every colum
 
 
 --
+-- Name: designs; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.designs (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    name text NOT NULL,
+    engine text NOT NULL,
+    engine_version text NOT NULL,
+    comment text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT designs_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT designs_name_check CHECK (((length(name) >= 1) AND (length(name) <= 100)))
+);
+
+
+ALTER TABLE cortex.designs OWNER TO sf_owner;
+
+--
+-- Name: TABLE designs; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.designs IS 'every design people work on here, each the rows of these tables that point at it: never a database, a schema or a table of its own.';
+
+
+--
+-- Name: COLUMN designs.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.designs.id IS 'UUIDv7, issued when it is made, never changed: how everything names the design';
+
+
+--
+-- Name: COLUMN designs.name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.designs.name IS 'as people call it (shop); a rename changes this and nothing else';
+
+
+--
+-- Name: COLUMN designs.engine; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.designs.engine IS 'the id of the engine it is designed for, as the registry knows it (mysql)';
+
+
+--
+-- Name: COLUMN designs.engine_version; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.designs.engine_version IS 'one of the engine''s versions; it decides which features the design is offered (8.4)';
+
+
+--
+-- Name: COLUMN designs.comment; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.designs.comment IS 'what the design is for, in a sentence or two';
+
+
+--
+-- Name: COLUMN designs.created_at; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.designs.created_at IS 'when it was made';
+
+
+--
+-- Name: engine_versions; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.engine_versions (
+    id text NOT NULL,
+    engine text NOT NULL,
+    version text NOT NULL,
+    name text NOT NULL,
+    "position" numeric NOT NULL,
+    support_ends timestamp with time zone,
+    CONSTRAINT engine_versions_check CHECK ((id = ((engine || '/'::text) || version))),
+    CONSTRAINT engine_versions_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
+    CONSTRAINT engine_versions_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT engine_versions_position_check CHECK (("position" > (0)::numeric)),
+    CONSTRAINT engine_versions_version_check CHECK (((length(version) >= 1) AND (length(version) <= 40)))
+);
+
+
+ALTER TABLE cortex.engine_versions OWNER TO sf_owner;
+
+--
+-- Name: TABLE engine_versions; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.engine_versions IS 'the versions of their databases the engines support, in order, as each engine declares them.';
+
+
+--
+-- Name: COLUMN engine_versions.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_versions.id IS '<engine>/<version>: mysql/8.4';
+
+
+--
+-- Name: COLUMN engine_versions.engine; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_versions.engine IS 'the engine, as the registry knows it (mysql)';
+
+
+--
+-- Name: COLUMN engine_versions.version; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_versions.version IS 'as the engine names the version (5.7, 8.4)';
+
+
+--
+-- Name: COLUMN engine_versions.name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_versions.name IS 'as people say it (MySQL 8.4)';
+
+
+--
+-- Name: COLUMN engine_versions."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_versions."position" IS 'its place among its engine''s versions, oldest first: a version''s features compare by it';
+
+
+--
+-- Name: COLUMN engine_versions.support_ends; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_versions.support_ends IS 'when its maker stops supporting it; NULL when not announced';
+
+
+--
+-- Name: broken_designs_of_a_declared_version; Type: VIEW; Schema: cortex; Owner: sf_owner
+--
+
+CREATE VIEW cortex.broken_designs_of_a_declared_version AS
+ SELECT 'designs-of-a-declared-version'::text AS rule,
+    (id)::text AS id
+   FROM cortex.designs d
+  WHERE (NOT (EXISTS ( SELECT 1
+           FROM cortex.engine_versions v
+          WHERE ((v.engine = d.engine) AND (v.version = d.engine_version)))));
+
+
+ALTER VIEW cortex.broken_designs_of_a_declared_version OWNER TO sf_owner;
+
+--
+-- Name: VIEW broken_designs_of_a_declared_version; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON VIEW cortex.broken_designs_of_a_declared_version IS 'Every design is of an engine version its engine declares.';
+
+
+--
 -- Name: engine_features; Type: TABLE; Schema: cortex; Owner: sf_owner
 --
 
@@ -897,76 +1056,6 @@ COMMENT ON COLUMN cortex.engine_features.until IS 'the last version that has it;
 --
 
 COMMENT ON COLUMN cortex.engine_features.detail IS 'what a version alone does not say (enforced from 8.0.16); NULL for nothing';
-
-
---
--- Name: engine_versions; Type: TABLE; Schema: cortex; Owner: sf_owner
---
-
-CREATE TABLE cortex.engine_versions (
-    id text NOT NULL,
-    engine text NOT NULL,
-    version text NOT NULL,
-    name text NOT NULL,
-    "position" numeric NOT NULL,
-    support_ends timestamp with time zone,
-    CONSTRAINT engine_versions_check CHECK ((id = ((engine || '/'::text) || version))),
-    CONSTRAINT engine_versions_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
-    CONSTRAINT engine_versions_name_check CHECK ((length(name) >= 1)),
-    CONSTRAINT engine_versions_position_check CHECK (("position" > (0)::numeric)),
-    CONSTRAINT engine_versions_version_check CHECK (((length(version) >= 1) AND (length(version) <= 40)))
-);
-
-
-ALTER TABLE cortex.engine_versions OWNER TO sf_owner;
-
---
--- Name: TABLE engine_versions; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON TABLE cortex.engine_versions IS 'the versions of their databases the engines support, in order, as each engine declares them.';
-
-
---
--- Name: COLUMN engine_versions.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.engine_versions.id IS '<engine>/<version>: mysql/8.4';
-
-
---
--- Name: COLUMN engine_versions.engine; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.engine_versions.engine IS 'the engine, as the registry knows it (mysql)';
-
-
---
--- Name: COLUMN engine_versions.version; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.engine_versions.version IS 'as the engine names the version (5.7, 8.4)';
-
-
---
--- Name: COLUMN engine_versions.name; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.engine_versions.name IS 'as people say it (MySQL 8.4)';
-
-
---
--- Name: COLUMN engine_versions."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.engine_versions."position" IS 'its place among its engine''s versions, oldest first: a version''s features compare by it';
-
-
---
--- Name: COLUMN engine_versions.support_ends; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.engine_versions.support_ends IS 'when its maker stops supporting it; NULL when not announced';
 
 
 --
@@ -1169,73 +1258,6 @@ ALTER VIEW cortex.broken_index_columns_on_their_table OWNER TO sf_owner;
 --
 
 COMMENT ON VIEW cortex.broken_index_columns_on_their_table IS 'Every column an index orders by or carries is a column of the index''s table.';
-
-
---
--- Name: designs; Type: TABLE; Schema: cortex; Owner: sf_owner
---
-
-CREATE TABLE cortex.designs (
-    id uuid DEFAULT uuidv7() NOT NULL,
-    name text NOT NULL,
-    engine text NOT NULL,
-    engine_version text NOT NULL,
-    comment text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT designs_id_check CHECK ((uuid_extract_version(id) = 7)),
-    CONSTRAINT designs_name_check CHECK (((length(name) >= 1) AND (length(name) <= 100)))
-);
-
-
-ALTER TABLE cortex.designs OWNER TO sf_owner;
-
---
--- Name: TABLE designs; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON TABLE cortex.designs IS 'every design people work on here, each the rows of these tables that point at it: never a database, a schema or a table of its own.';
-
-
---
--- Name: COLUMN designs.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.designs.id IS 'UUIDv7, issued when it is made, never changed: how everything names the design';
-
-
---
--- Name: COLUMN designs.name; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.designs.name IS 'as people call it (shop); a rename changes this and nothing else';
-
-
---
--- Name: COLUMN designs.engine; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.designs.engine IS 'the id of the engine it is designed for, as the registry knows it (mysql)';
-
-
---
--- Name: COLUMN designs.engine_version; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.designs.engine_version IS 'one of the engine''s versions; it decides which features the design is offered (8.4)';
-
-
---
--- Name: COLUMN designs.comment; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.designs.comment IS 'what the design is for, in a sentence or two';
-
-
---
--- Name: COLUMN designs.created_at; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.designs.created_at IS 'when it was made';
 
 
 --
@@ -2069,6 +2091,329 @@ COMMENT ON VIEW cortex.broken_primary_key_columns_not_null IS 'Every column of a
 
 
 --
+-- Name: column_identities; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.column_identities (
+    id bigint NOT NULL,
+    always boolean DEFAULT false NOT NULL,
+    sequence bigint
+);
+
+
+ALTER TABLE cortex.column_identities OWNER TO sf_owner;
+
+--
+-- Name: TABLE column_identities; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.column_identities IS 'a column the database numbers itself, and how.';
+
+
+--
+-- Name: COLUMN column_identities.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.column_identities.id IS 'the column numbered';
+
+
+--
+-- Name: COLUMN column_identities.always; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.column_identities.always IS 'true when a value can never be given (ALWAYS); false for BY DEFAULT and for MySQL''s AUTO_INCREMENT';
+
+
+--
+-- Name: COLUMN column_identities.sequence; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.column_identities.sequence IS 'the sequence that numbers it, where the engine makes one; NULL for none';
+
+
+--
+-- Name: dependencies; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.dependencies (
+    id bigint NOT NULL,
+    object bigint NOT NULL,
+    uses bigint NOT NULL,
+    "position" integer NOT NULL,
+    CONSTRAINT dependencies_check CHECK ((object <> uses)),
+    CONSTRAINT dependencies_position_check CHECK (("position" >= 1))
+);
+
+
+ALTER TABLE cortex.dependencies OWNER TO sf_owner;
+
+--
+-- Name: TABLE dependencies; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.dependencies IS 'what an object uses: a view''s tables, a MERGE table''s tables, a routine''s tables where the engine says. A used object cannot be dropped before what uses it, and an edit names what it would break; a body is text, so a rename never reaches into it.';
+
+
+--
+-- Name: COLUMN dependencies.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.dependencies.id IS 'issued by the database';
+
+
+--
+-- Name: COLUMN dependencies.object; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.dependencies.object IS 'the object that uses';
+
+
+--
+-- Name: COLUMN dependencies.uses; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.dependencies.uses IS 'the object used: it cannot go while this row is here';
+
+
+--
+-- Name: COLUMN dependencies."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.dependencies."position" IS 'its place, 1 first';
+
+
+--
+-- Name: partitions; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.partitions (
+    id bigint NOT NULL,
+    partitioning bigint NOT NULL,
+    "position" integer NOT NULL,
+    name text NOT NULL,
+    bounds text,
+    table_object bigint,
+    comment text,
+    CONSTRAINT partitions_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT partitions_position_check CHECK (("position" >= 1))
+);
+
+
+ALTER TABLE cortex.partitions OWNER TO sf_owner;
+
+--
+-- Name: TABLE partitions; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.partitions IS 'the partitions of a table, in order, with their bounds; where the engine makes a partition a table of its own, that table.';
+
+
+--
+-- Name: COLUMN partitions.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.partitions.id IS 'issued by the database';
+
+
+--
+-- Name: COLUMN partitions.partitioning; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.partitions.partitioning IS 'the partitioning';
+
+
+--
+-- Name: COLUMN partitions."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.partitions."position" IS 'its place, 1 first';
+
+
+--
+-- Name: COLUMN partitions.name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.partitions.name IS 'its name';
+
+
+--
+-- Name: COLUMN partitions.bounds; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.partitions.bounds IS 'its bounds as the engine writes them (2025, FOR VALUES IN (''east'')); NULL where the strategy gives none';
+
+
+--
+-- Name: COLUMN partitions.table_object; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.partitions.table_object IS 'the table it is, where the engine makes partitions tables (PostgreSQL); NULL otherwise';
+
+
+--
+-- Name: COLUMN partitions.comment; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.partitions.comment IS 'what it holds; NULL for none';
+
+
+--
+-- Name: verbatim_statements; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.verbatim_statements (
+    id bigint NOT NULL,
+    design uuid NOT NULL,
+    "position" numeric NOT NULL,
+    kind text NOT NULL,
+    text text NOT NULL,
+    after_namespace bigint,
+    after_object bigint,
+    CONSTRAINT verbatim_statements_check CHECK (((after_namespace IS NULL) OR (after_object IS NULL))),
+    CONSTRAINT verbatim_statements_kind_check CHECK ((length(kind) >= 1)),
+    CONSTRAINT verbatim_statements_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE cortex.verbatim_statements OWNER TO sf_owner;
+
+--
+-- Name: TABLE verbatim_statements; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.verbatim_statements IS 'what the schema holds that the model does not describe (an account, a grant, a statement not understood), kept exactly as written and written back in its place.';
+
+
+--
+-- Name: COLUMN verbatim_statements.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.verbatim_statements.id IS 'issued by the database';
+
+
+--
+-- Name: COLUMN verbatim_statements.design; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.verbatim_statements.design IS 'the design it was read with';
+
+
+--
+-- Name: COLUMN verbatim_statements."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.verbatim_statements."position" IS 'its place in the order it was read; an order key';
+
+
+--
+-- Name: COLUMN verbatim_statements.kind; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.verbatim_statements.kind IS 'what it is, in the engine''s words (account, grant, other)';
+
+
+--
+-- Name: COLUMN verbatim_statements.text; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.verbatim_statements.text IS 'the statement, exactly as written';
+
+
+--
+-- Name: COLUMN verbatim_statements.after_namespace; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.verbatim_statements.after_namespace IS 'the namespace it is written after; NULL when it follows an object or the start';
+
+
+--
+-- Name: COLUMN verbatim_statements.after_object; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.verbatim_statements.after_object IS 'the object it is written after; NULL when it follows a namespace or the start';
+
+
+--
+-- Name: broken_references_in_their_design; Type: VIEW; Schema: cortex; Owner: sf_owner
+--
+
+CREATE VIEW cortex.broken_references_in_their_design AS
+ SELECT 'references-in-their-design'::text AS rule,
+    id
+   FROM ( WITH od AS (
+                 SELECT o.id,
+                    n.design
+                   FROM (cortex.objects o
+                     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+                ), cd AS (
+                 SELECT c.id,
+                    od.design
+                   FROM (cortex.columns c
+                     JOIN od ON ((od.id = c.object)))
+                ), id_ AS (
+                 SELECT i.id,
+                    od.design
+                   FROM (cortex.indexes i
+                     JOIN od ON ((od.id = i.object)))
+                )
+         SELECT (o.id)::text AS id
+           FROM ((cortex.objects o
+             JOIN od a ON ((a.id = o.id)))
+             JOIN od b ON ((b.id = o.parent)))
+          WHERE (a.design <> b.design)
+        UNION ALL
+         SELECT (k.id)::text AS id
+           FROM (cortex.constraints k
+             JOIN od a ON ((a.id = k.object)))
+          WHERE ((a.design <> ( SELECT od.design
+                   FROM od
+                  WHERE (od.id = k.to_object))) OR (a.design <> ( SELECT id_.design
+                   FROM id_
+                  WHERE (id_.id = k.index))))
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM ((cortex.dependencies x_1
+             JOIN od a ON ((a.id = x_1.object)))
+             JOIN od b ON ((b.id = x_1.uses)))
+          WHERE (a.design <> b.design)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM ((cortex.column_identities x_1
+             JOIN cd a ON ((a.id = x_1.id)))
+             JOIN od b ON ((b.id = x_1.sequence)))
+          WHERE (a.design <> b.design)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM ((cortex.sequences x_1
+             JOIN od a ON ((a.id = x_1.id)))
+             JOIN cd b ON ((b.id = x_1.owned_by)))
+          WHERE (a.design <> b.design)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM ((cortex.partitions x_1
+             JOIN od a ON ((a.id = x_1.partitioning)))
+             JOIN od b ON ((b.id = x_1.table_object)))
+          WHERE (a.design <> b.design)
+        UNION ALL
+         SELECT (v.id)::text AS id
+           FROM cortex.verbatim_statements v
+          WHERE ((v.design <> ( SELECT namespaces.design
+                   FROM cortex.namespaces
+                  WHERE (namespaces.id = v.after_namespace))) OR (v.design <> ( SELECT od.design
+                   FROM od
+                  WHERE (od.id = v.after_object))))) x;
+
+
+ALTER VIEW cortex.broken_references_in_their_design OWNER TO sf_owner;
+
+--
+-- Name: VIEW broken_references_in_their_design; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON VIEW cortex.broken_references_in_their_design IS 'Every reference from one part of a design to another stays in that design: an object''s parent, a link''s table, a key''s index, a dependency, an identity''s or a sequence''s column, a partition''s table and a verbatim statement''s place.';
+
+
+--
 -- Name: row_changes; Type: TABLE; Schema: cortex; Owner: sf_owner
 --
 
@@ -2622,47 +2967,6 @@ COMMENT ON COLUMN cortex.catalog_sources."position" IS 'its place in the read of
 
 
 --
--- Name: column_identities; Type: TABLE; Schema: cortex; Owner: sf_owner
---
-
-CREATE TABLE cortex.column_identities (
-    id bigint NOT NULL,
-    always boolean DEFAULT false NOT NULL,
-    sequence bigint
-);
-
-
-ALTER TABLE cortex.column_identities OWNER TO sf_owner;
-
---
--- Name: TABLE column_identities; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON TABLE cortex.column_identities IS 'a column the database numbers itself, and how.';
-
-
---
--- Name: COLUMN column_identities.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.column_identities.id IS 'the column numbered';
-
-
---
--- Name: COLUMN column_identities.always; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.column_identities.always IS 'true when a value can never be given (ALWAYS); false for BY DEFAULT and for MySQL''s AUTO_INCREMENT';
-
-
---
--- Name: COLUMN column_identities.sequence; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.column_identities.sequence IS 'the sequence that numbers it, where the engine makes one; NULL for none';
-
-
---
 -- Name: columns_id_seq; Type: SEQUENCE; Schema: cortex; Owner: sf_owner
 --
 
@@ -2702,57 +3006,6 @@ ALTER TABLE cortex.constraints ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENT
     NO MAXVALUE
     CACHE 1
 );
-
-
---
--- Name: dependencies; Type: TABLE; Schema: cortex; Owner: sf_owner
---
-
-CREATE TABLE cortex.dependencies (
-    id bigint NOT NULL,
-    object bigint NOT NULL,
-    uses bigint NOT NULL,
-    "position" integer NOT NULL,
-    CONSTRAINT dependencies_check CHECK ((object <> uses)),
-    CONSTRAINT dependencies_position_check CHECK (("position" >= 1))
-);
-
-
-ALTER TABLE cortex.dependencies OWNER TO sf_owner;
-
---
--- Name: TABLE dependencies; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON TABLE cortex.dependencies IS 'what an object uses: a view''s tables, a MERGE table''s tables, a routine''s tables where the engine says. A used object cannot be dropped before what uses it, and an edit names what it would break; a body is text, so a rename never reaches into it.';
-
-
---
--- Name: COLUMN dependencies.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.dependencies.id IS 'issued by the database';
-
-
---
--- Name: COLUMN dependencies.object; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.dependencies.object IS 'the object that uses';
-
-
---
--- Name: COLUMN dependencies.uses; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.dependencies.uses IS 'the object used: it cannot go while this row is here';
-
-
---
--- Name: COLUMN dependencies."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.dependencies."position" IS 'its place, 1 first';
 
 
 --
@@ -2955,81 +3208,6 @@ ALTER TABLE cortex.objects ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY 
 
 
 --
--- Name: partitions; Type: TABLE; Schema: cortex; Owner: sf_owner
---
-
-CREATE TABLE cortex.partitions (
-    id bigint NOT NULL,
-    partitioning bigint NOT NULL,
-    "position" integer NOT NULL,
-    name text NOT NULL,
-    bounds text,
-    table_object bigint,
-    comment text,
-    CONSTRAINT partitions_name_check CHECK ((length(name) >= 1)),
-    CONSTRAINT partitions_position_check CHECK (("position" >= 1))
-);
-
-
-ALTER TABLE cortex.partitions OWNER TO sf_owner;
-
---
--- Name: TABLE partitions; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON TABLE cortex.partitions IS 'the partitions of a table, in order, with their bounds; where the engine makes a partition a table of its own, that table.';
-
-
---
--- Name: COLUMN partitions.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.partitions.id IS 'issued by the database';
-
-
---
--- Name: COLUMN partitions.partitioning; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.partitions.partitioning IS 'the partitioning';
-
-
---
--- Name: COLUMN partitions."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.partitions."position" IS 'its place, 1 first';
-
-
---
--- Name: COLUMN partitions.name; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.partitions.name IS 'its name';
-
-
---
--- Name: COLUMN partitions.bounds; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.partitions.bounds IS 'its bounds as the engine writes them (2025, FOR VALUES IN (''east'')); NULL where the strategy gives none';
-
-
---
--- Name: COLUMN partitions.table_object; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.partitions.table_object IS 'the table it is, where the engine makes partitions tables (PostgreSQL); NULL otherwise';
-
-
---
--- Name: COLUMN partitions.comment; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.partitions.comment IS 'what it holds; NULL for none';
-
-
---
 -- Name: partitions_id_seq; Type: SEQUENCE; Schema: cortex; Owner: sf_owner
 --
 
@@ -3065,7 +3243,7 @@ ALTER TABLE cortex.required_extensions OWNER TO sf_owner;
 -- Name: TABLE required_extensions; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON TABLE cortex.required_extensions IS 'what the database must have installed for this schema (an extension, a plugin), in order.';
+COMMENT ON TABLE cortex.required_extensions IS 'what the database must have installed for the design (an extension, a plugin), in order.';
 
 
 --
@@ -3265,7 +3443,7 @@ ALTER TABLE cortex.schema_migrations OWNER TO sf_owner;
 -- Name: TABLE schema_migrations; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON TABLE cortex.schema_migrations IS 'every migration applied to this schema''s database, by its owner.';
+COMMENT ON TABLE cortex.schema_migrations IS 'every migration applied to schema_forge, by its owner.';
 
 
 --
@@ -3353,7 +3531,7 @@ ALTER TABLE cortex.source_reads OWNER TO sf_owner;
 -- Name: TABLE source_reads; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON TABLE cortex.source_reads IS 'each read of a live database for this schema: from which saved connection, which server, as whom, and when.';
+COMMENT ON TABLE cortex.source_reads IS 'each read of a live database for a design: from which saved connection, which server, as whom, and when.';
 
 
 --
@@ -3459,82 +3637,6 @@ COMMENT ON COLUMN cortex.source_reads.started_at IS 'when the read began';
 --
 
 COMMENT ON COLUMN cortex.source_reads.ended_at IS 'when it ended; NULL while it runs';
-
-
---
--- Name: verbatim_statements; Type: TABLE; Schema: cortex; Owner: sf_owner
---
-
-CREATE TABLE cortex.verbatim_statements (
-    id bigint NOT NULL,
-    design uuid NOT NULL,
-    "position" numeric NOT NULL,
-    kind text NOT NULL,
-    text text NOT NULL,
-    after_namespace bigint,
-    after_object bigint,
-    CONSTRAINT verbatim_statements_check CHECK (((after_namespace IS NULL) OR (after_object IS NULL))),
-    CONSTRAINT verbatim_statements_kind_check CHECK ((length(kind) >= 1)),
-    CONSTRAINT verbatim_statements_position_check CHECK (("position" > (0)::numeric))
-);
-
-
-ALTER TABLE cortex.verbatim_statements OWNER TO sf_owner;
-
---
--- Name: TABLE verbatim_statements; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON TABLE cortex.verbatim_statements IS 'what the schema holds that the model does not describe (an account, a grant, a statement not understood), kept exactly as written and written back in its place.';
-
-
---
--- Name: COLUMN verbatim_statements.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.verbatim_statements.id IS 'issued by the database';
-
-
---
--- Name: COLUMN verbatim_statements.design; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.verbatim_statements.design IS 'the design it was read with';
-
-
---
--- Name: COLUMN verbatim_statements."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.verbatim_statements."position" IS 'its place in the order it was read; an order key';
-
-
---
--- Name: COLUMN verbatim_statements.kind; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.verbatim_statements.kind IS 'what it is, in the engine''s words (account, grant, other)';
-
-
---
--- Name: COLUMN verbatim_statements.text; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.verbatim_statements.text IS 'the statement, exactly as written';
-
-
---
--- Name: COLUMN verbatim_statements.after_namespace; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.verbatim_statements.after_namespace IS 'the namespace it is written after; NULL when it follows an object or the start';
-
-
---
--- Name: COLUMN verbatim_statements.after_object; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.verbatim_statements.after_object IS 'the object it is written after; NULL when it follows a namespace or the start';
 
 
 --
@@ -3971,6 +4073,97 @@ COMMENT ON COLUMN cortex.workspace_parameters.changed_by IS 'who changed it; NUL
 
 
 --
+-- Name: columns; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.columns (
+    id bigint NOT NULL,
+    on_update text,
+    srid bigint,
+    invisible boolean DEFAULT false NOT NULL,
+    CONSTRAINT columns_srid_check CHECK ((srid >= 0))
+);
+
+
+ALTER TABLE engine_mysql.columns OWNER TO sf_owner;
+
+--
+-- Name: TABLE columns; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.columns IS 'what MySQL says of a column beyond the cortex; a row only where it says something.';
+
+
+--
+-- Name: COLUMN columns.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.columns.id IS 'the column';
+
+
+--
+-- Name: COLUMN columns.on_update; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.columns.on_update IS 'what it becomes whenever its row changes (CURRENT_TIMESTAMP); NULL for none';
+
+
+--
+-- Name: COLUMN columns.srid; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.columns.srid IS 'the spatial reference system of its shapes; NULL for none';
+
+
+--
+-- Name: COLUMN columns.invisible; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.columns.invisible IS 'true when SELECT * leaves it out (8.0.23 and later)';
+
+
+--
+-- Name: databases; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.databases (
+    id bigint NOT NULL,
+    "collation" text NOT NULL,
+    encryption boolean
+);
+
+
+ALTER TABLE engine_mysql.databases OWNER TO sf_owner;
+
+--
+-- Name: TABLE databases; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.databases IS 'what MySQL says of a database (a namespace) beyond the cortex.';
+
+
+--
+-- Name: COLUMN databases.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.databases.id IS 'the database';
+
+
+--
+-- Name: COLUMN databases."collation"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.databases."collation" IS 'its default collation; its character set is the collation''s';
+
+
+--
+-- Name: COLUMN databases.encryption; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.databases.encryption IS 'its default encryption (8.0 and later); NULL before';
+
+
+--
 -- Name: events; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -4062,6 +4255,81 @@ COMMENT ON COLUMN engine_mysql.events.preserve IS 'true when it is kept once its
 
 
 --
+-- Name: index_parts; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.index_parts (
+    id bigint NOT NULL,
+    length integer NOT NULL,
+    CONSTRAINT index_parts_length_check CHECK ((length >= 1))
+);
+
+
+ALTER TABLE engine_mysql.index_parts OWNER TO sf_owner;
+
+--
+-- Name: TABLE index_parts; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.index_parts IS 'how much of a column one part of an index holds.';
+
+
+--
+-- Name: COLUMN index_parts.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.index_parts.id IS 'the index part';
+
+
+--
+-- Name: COLUMN index_parts.length; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.index_parts.length IS 'how many characters or bytes of the column it indexes';
+
+
+--
+-- Name: indexes; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.indexes (
+    id bigint NOT NULL,
+    invisible boolean DEFAULT false NOT NULL,
+    parser text
+);
+
+
+ALTER TABLE engine_mysql.indexes OWNER TO sf_owner;
+
+--
+-- Name: TABLE indexes; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.indexes IS 'what MySQL says of an index beyond the cortex; a row only where it says something.';
+
+
+--
+-- Name: COLUMN indexes.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.indexes.id IS 'the index';
+
+
+--
+-- Name: COLUMN indexes.invisible; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.indexes.invisible IS 'true when the optimizer ignores it (8.0 and later)';
+
+
+--
+-- Name: COLUMN indexes.parser; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.indexes.parser IS 'the full-text parser it uses (ngram); NULL for none';
+
+
+--
 -- Name: programs; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -4132,6 +4400,156 @@ COMMENT ON COLUMN engine_mysql.programs.database_collation IS 'its database''s c
 --
 
 COMMENT ON COLUMN engine_mysql.programs.time_zone IS 'the time zone an event''s schedule is read in; NULL for any other kind';
+
+
+--
+-- Name: routines; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.routines (
+    id bigint NOT NULL,
+    parameter_text text NOT NULL,
+    data_access text DEFAULT 'CONTAINS SQL'::text NOT NULL,
+    returns_charset text,
+    parameter_collation text,
+    CONSTRAINT routines_data_access_check CHECK ((data_access = ANY (ARRAY['CONTAINS SQL'::text, 'NO SQL'::text, 'READS SQL DATA'::text, 'MODIFIES SQL DATA'::text])))
+);
+
+
+ALTER TABLE engine_mysql.routines OWNER TO sf_owner;
+
+--
+-- Name: TABLE routines; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.routines IS 'what MySQL says of a procedure or function beyond the cortex.';
+
+
+--
+-- Name: COLUMN routines.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.routines.id IS 'the routine';
+
+
+--
+-- Name: COLUMN routines.parameter_text; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.routines.parameter_text IS 'its parameter list exactly as written: real code formats it by hand, so it is not rebuilt from the parameters';
+
+
+--
+-- Name: COLUMN routines.data_access; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.routines.data_access IS 'what it does with data';
+
+
+--
+-- Name: COLUMN routines.returns_charset; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.routines.returns_charset IS 'a function''s result character set (RETURNS varchar(10) CHARSET latin1); NULL for none';
+
+
+--
+-- Name: COLUMN routines.parameter_collation; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.routines.parameter_collation IS 'the collation its parameters without a character set took: the current database''s when it was made, not always its own';
+
+
+--
+-- Name: subpartitionings; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.subpartitionings (
+    id bigint NOT NULL,
+    strategy text NOT NULL,
+    expression text NOT NULL
+);
+
+
+ALTER TABLE engine_mysql.subpartitionings OWNER TO sf_owner;
+
+--
+-- Name: TABLE subpartitionings; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.subpartitionings IS 'how each partition of a table is split again (SUBPARTITION BY).';
+
+
+--
+-- Name: COLUMN subpartitionings.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartitionings.id IS 'the partitioning';
+
+
+--
+-- Name: COLUMN subpartitionings.strategy; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartitionings.strategy IS 'how a partition is split again (HASH, KEY, LINEAR HASH)';
+
+
+--
+-- Name: COLUMN subpartitionings.expression; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartitionings.expression IS 'what it is split by, as the server writes it';
+
+
+--
+-- Name: subpartitions; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.subpartitions (
+    id bigint NOT NULL,
+    partition bigint NOT NULL,
+    "position" integer NOT NULL,
+    name text NOT NULL,
+    CONSTRAINT subpartitions_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT subpartitions_position_check CHECK (("position" >= 1))
+);
+
+
+ALTER TABLE engine_mysql.subpartitions OWNER TO sf_owner;
+
+--
+-- Name: TABLE subpartitions; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.subpartitions IS 'the subpartitions of a partition, in order.';
+
+
+--
+-- Name: COLUMN subpartitions.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartitions.id IS 'issued by the database';
+
+
+--
+-- Name: COLUMN subpartitions.partition; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartitions.partition IS 'the partition split';
+
+
+--
+-- Name: COLUMN subpartitions."position"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartitions."position" IS 'its place, 1 first';
+
+
+--
+-- Name: COLUMN subpartitions.name; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.subpartitions.name IS 'its name';
 
 
 --
@@ -4306,13 +4724,160 @@ COMMENT ON COLUMN engine_mysql.tables.insert_method IS 'a MERGE table''s INSERT_
 
 
 --
+-- Name: views; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TABLE engine_mysql.views (
+    id bigint NOT NULL,
+    algorithm text DEFAULT 'UNDEFINED'::text NOT NULL,
+    security text DEFAULT 'DEFINER'::text NOT NULL,
+    CONSTRAINT views_algorithm_check CHECK ((algorithm = ANY (ARRAY['UNDEFINED'::text, 'MERGE'::text, 'TEMPTABLE'::text]))),
+    CONSTRAINT views_security_check CHECK ((security = ANY (ARRAY['DEFINER'::text, 'INVOKER'::text])))
+);
+
+
+ALTER TABLE engine_mysql.views OWNER TO sf_owner;
+
+--
+-- Name: TABLE views; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_mysql.views IS 'what MySQL says of a view beyond its query.';
+
+
+--
+-- Name: COLUMN views.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.views.id IS 'the view';
+
+
+--
+-- Name: COLUMN views.algorithm; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.views.algorithm IS 'how its query is run: SHOW CREATE VIEW alone holds it';
+
+
+--
+-- Name: COLUMN views.security; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_mysql.views.security IS 'whose rights it runs with';
+
+
+--
+-- Name: broken_facts_on_designs_of_the_engine; Type: VIEW; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE VIEW engine_mysql.broken_facts_on_designs_of_the_engine AS
+ SELECT 'facts-on-designs-of-the-engine'::text AS rule,
+    id
+   FROM ( WITH oe AS (
+                 SELECT o.id,
+                    d.engine
+                   FROM ((cortex.objects o
+                     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+                     JOIN cortex.designs d ON ((d.id = n.design)))
+                ), ne AS (
+                 SELECT n.id,
+                    d.engine
+                   FROM (cortex.namespaces n
+                     JOIN cortex.designs d ON ((d.id = n.design)))
+                ), ce AS (
+                 SELECT c.id,
+                    oe.engine
+                   FROM (cortex.columns c
+                     JOIN oe ON ((oe.id = c.object)))
+                ), ie AS (
+                 SELECT i.id,
+                    oe.engine
+                   FROM (cortex.indexes i
+                     JOIN oe ON ((oe.id = i.object)))
+                ), pe AS (
+                 SELECT p.id,
+                    ie.engine
+                   FROM (cortex.index_parts p
+                     JOIN ie ON ((ie.id = p.index)))
+                ), te AS (
+                 SELECT p.id,
+                    oe.engine
+                   FROM (cortex.partitions p
+                     JOIN oe ON ((oe.id = p.partitioning)))
+                )
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.columns x_1
+             JOIN ce ON ((ce.id = x_1.id)))
+          WHERE (ce.engine <> 'mysql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.databases x_1
+             JOIN ne ON ((ne.id = x_1.id)))
+          WHERE (ne.engine <> 'mysql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.events x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'mysql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.index_parts x_1
+             JOIN pe ON ((pe.id = x_1.id)))
+          WHERE (pe.engine <> 'mysql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.indexes x_1
+             JOIN ie ON ((ie.id = x_1.id)))
+          WHERE (ie.engine <> 'mysql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.programs x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'mysql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.routines x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'mysql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.subpartitionings x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'mysql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.subpartitions x_1
+             JOIN te ON ((te.id = x_1.partition)))
+          WHERE (te.engine <> 'mysql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.tables x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'mysql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_mysql.views x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'mysql'::text)) x;
+
+
+ALTER VIEW engine_mysql.broken_facts_on_designs_of_the_engine OWNER TO sf_owner;
+
+--
+-- Name: VIEW broken_facts_on_designs_of_the_engine; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
+--
+
+COMMENT ON VIEW engine_mysql.broken_facts_on_designs_of_the_engine IS 'Every row of MySQL''s own tables belongs to a part of a MySQL design.';
+
+
+--
 -- Name: broken_parts_of_their_kind; Type: VIEW; Schema: engine_mysql; Owner: sf_owner
 --
 
 CREATE VIEW engine_mysql.broken_parts_of_their_kind AS
  SELECT 'parts-of-their-kind'::text AS rule,
     (x.id)::text AS id
-   FROM (((( SELECT tables.id,
+   FROM (( SELECT tables.id,
             ARRAY['table'::text] AS kinds
            FROM engine_mysql.tables
         UNION ALL
@@ -4324,9 +4889,7 @@ CREATE VIEW engine_mysql.broken_parts_of_their_kind AS
             ARRAY['view'::text, 'procedure'::text, 'function'::text, 'trigger'::text, 'event'::text] AS "array"
            FROM engine_mysql.programs) x
      JOIN cortex.objects o ON ((o.id = x.id)))
-     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
-     JOIN cortex.designs d ON ((d.id = n.design)))
-  WHERE ((o.kind <> ALL (x.kinds)) OR (d.engine <> 'mysql'::text));
+  WHERE (o.kind <> ALL (x.kinds));
 
 
 ALTER VIEW engine_mysql.broken_parts_of_their_kind OWNER TO sf_owner;
@@ -4335,7 +4898,7 @@ ALTER VIEW engine_mysql.broken_parts_of_their_kind OWNER TO sf_owner;
 -- Name: VIEW broken_parts_of_their_kind; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON VIEW engine_mysql.broken_parts_of_their_kind IS 'Table options are a table''s, an event''s schedule an event''s, and a program''s context a view''s, a routine''s, a trigger''s or an event''s, each on an object of a MySQL design.';
+COMMENT ON VIEW engine_mysql.broken_parts_of_their_kind IS 'Table options are a table''s, an event''s schedule an event''s, and a program''s context a view''s, a routine''s, a trigger''s or an event''s.';
 
 
 --
@@ -4360,64 +4923,6 @@ ALTER VIEW engine_mysql.broken_programs_have_their_context OWNER TO sf_owner;
 --
 
 COMMENT ON VIEW engine_mysql.broken_programs_have_their_context IS 'Every view, routine, trigger and event of a MySQL design has what MySQL made it under: its definer, sql_mode and character set.';
-
-
---
--- Name: routines; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
---
-
-CREATE TABLE engine_mysql.routines (
-    id bigint NOT NULL,
-    parameter_text text NOT NULL,
-    data_access text DEFAULT 'CONTAINS SQL'::text NOT NULL,
-    returns_charset text,
-    parameter_collation text,
-    CONSTRAINT routines_data_access_check CHECK ((data_access = ANY (ARRAY['CONTAINS SQL'::text, 'NO SQL'::text, 'READS SQL DATA'::text, 'MODIFIES SQL DATA'::text])))
-);
-
-
-ALTER TABLE engine_mysql.routines OWNER TO sf_owner;
-
---
--- Name: TABLE routines; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON TABLE engine_mysql.routines IS 'what MySQL says of a procedure or function beyond the cortex.';
-
-
---
--- Name: COLUMN routines.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.routines.id IS 'the routine';
-
-
---
--- Name: COLUMN routines.parameter_text; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.routines.parameter_text IS 'its parameter list exactly as written: real code formats it by hand, so it is not rebuilt from the parameters';
-
-
---
--- Name: COLUMN routines.data_access; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.routines.data_access IS 'what it does with data';
-
-
---
--- Name: COLUMN routines.returns_charset; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.routines.returns_charset IS 'a function''s result character set (RETURNS varchar(10) CHARSET latin1); NULL for none';
-
-
---
--- Name: COLUMN routines.parameter_collation; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.routines.parameter_collation IS 'the collation its parameters without a character set took: the current database''s when it was made, not always its own';
 
 
 --
@@ -4470,264 +4975,6 @@ COMMENT ON VIEW engine_mysql.broken_tables_have_their_options IS 'Every table of
 
 
 --
--- Name: columns; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
---
-
-CREATE TABLE engine_mysql.columns (
-    id bigint NOT NULL,
-    on_update text,
-    srid bigint,
-    invisible boolean DEFAULT false NOT NULL,
-    CONSTRAINT columns_srid_check CHECK ((srid >= 0))
-);
-
-
-ALTER TABLE engine_mysql.columns OWNER TO sf_owner;
-
---
--- Name: TABLE columns; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON TABLE engine_mysql.columns IS 'what MySQL says of a column beyond the cortex; a row only where it says something.';
-
-
---
--- Name: COLUMN columns.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.columns.id IS 'the column';
-
-
---
--- Name: COLUMN columns.on_update; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.columns.on_update IS 'what it becomes whenever its row changes (CURRENT_TIMESTAMP); NULL for none';
-
-
---
--- Name: COLUMN columns.srid; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.columns.srid IS 'the spatial reference system of its shapes; NULL for none';
-
-
---
--- Name: COLUMN columns.invisible; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.columns.invisible IS 'true when SELECT * leaves it out (8.0.23 and later)';
-
-
---
--- Name: databases; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
---
-
-CREATE TABLE engine_mysql.databases (
-    id bigint NOT NULL,
-    "collation" text NOT NULL,
-    encryption boolean
-);
-
-
-ALTER TABLE engine_mysql.databases OWNER TO sf_owner;
-
---
--- Name: TABLE databases; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON TABLE engine_mysql.databases IS 'what MySQL says of a database (a namespace) beyond the cortex.';
-
-
---
--- Name: COLUMN databases.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.databases.id IS 'the database';
-
-
---
--- Name: COLUMN databases."collation"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.databases."collation" IS 'its default collation; its character set is the collation''s';
-
-
---
--- Name: COLUMN databases.encryption; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.databases.encryption IS 'its default encryption (8.0 and later); NULL before';
-
-
---
--- Name: index_parts; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
---
-
-CREATE TABLE engine_mysql.index_parts (
-    id bigint NOT NULL,
-    length integer NOT NULL,
-    CONSTRAINT index_parts_length_check CHECK ((length >= 1))
-);
-
-
-ALTER TABLE engine_mysql.index_parts OWNER TO sf_owner;
-
---
--- Name: TABLE index_parts; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON TABLE engine_mysql.index_parts IS 'how much of a column one part of an index holds.';
-
-
---
--- Name: COLUMN index_parts.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.index_parts.id IS 'the index part';
-
-
---
--- Name: COLUMN index_parts.length; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.index_parts.length IS 'how many characters or bytes of the column it indexes';
-
-
---
--- Name: indexes; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
---
-
-CREATE TABLE engine_mysql.indexes (
-    id bigint NOT NULL,
-    invisible boolean DEFAULT false NOT NULL,
-    parser text
-);
-
-
-ALTER TABLE engine_mysql.indexes OWNER TO sf_owner;
-
---
--- Name: TABLE indexes; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON TABLE engine_mysql.indexes IS 'what MySQL says of an index beyond the cortex; a row only where it says something.';
-
-
---
--- Name: COLUMN indexes.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.indexes.id IS 'the index';
-
-
---
--- Name: COLUMN indexes.invisible; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.indexes.invisible IS 'true when the optimizer ignores it (8.0 and later)';
-
-
---
--- Name: COLUMN indexes.parser; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.indexes.parser IS 'the full-text parser it uses (ngram); NULL for none';
-
-
---
--- Name: subpartitionings; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
---
-
-CREATE TABLE engine_mysql.subpartitionings (
-    id bigint NOT NULL,
-    strategy text NOT NULL,
-    expression text NOT NULL
-);
-
-
-ALTER TABLE engine_mysql.subpartitionings OWNER TO sf_owner;
-
---
--- Name: TABLE subpartitionings; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON TABLE engine_mysql.subpartitionings IS 'how each partition of a table is split again (SUBPARTITION BY).';
-
-
---
--- Name: COLUMN subpartitionings.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartitionings.id IS 'the partitioning';
-
-
---
--- Name: COLUMN subpartitionings.strategy; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartitionings.strategy IS 'how a partition is split again (HASH, KEY, LINEAR HASH)';
-
-
---
--- Name: COLUMN subpartitionings.expression; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartitionings.expression IS 'what it is split by, as the server writes it';
-
-
---
--- Name: subpartitions; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
---
-
-CREATE TABLE engine_mysql.subpartitions (
-    id bigint NOT NULL,
-    partition bigint NOT NULL,
-    "position" integer NOT NULL,
-    name text NOT NULL,
-    CONSTRAINT subpartitions_name_check CHECK ((length(name) >= 1)),
-    CONSTRAINT subpartitions_position_check CHECK (("position" >= 1))
-);
-
-
-ALTER TABLE engine_mysql.subpartitions OWNER TO sf_owner;
-
---
--- Name: TABLE subpartitions; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON TABLE engine_mysql.subpartitions IS 'the subpartitions of a partition, in order.';
-
-
---
--- Name: COLUMN subpartitions.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartitions.id IS 'issued by the database';
-
-
---
--- Name: COLUMN subpartitions.partition; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartitions.partition IS 'the partition split';
-
-
---
--- Name: COLUMN subpartitions."position"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartitions."position" IS 'its place, 1 first';
-
-
---
--- Name: COLUMN subpartitions.name; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.subpartitions.name IS 'its name';
-
-
---
 -- Name: subpartitions_id_seq; Type: SEQUENCE; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -4739,258 +4986,6 @@ ALTER TABLE engine_mysql.subpartitions ALTER COLUMN id ADD GENERATED BY DEFAULT 
     NO MAXVALUE
     CACHE 1
 );
-
-
---
--- Name: views; Type: TABLE; Schema: engine_mysql; Owner: sf_owner
---
-
-CREATE TABLE engine_mysql.views (
-    id bigint NOT NULL,
-    algorithm text DEFAULT 'UNDEFINED'::text NOT NULL,
-    security text DEFAULT 'DEFINER'::text NOT NULL,
-    CONSTRAINT views_algorithm_check CHECK ((algorithm = ANY (ARRAY['UNDEFINED'::text, 'MERGE'::text, 'TEMPTABLE'::text]))),
-    CONSTRAINT views_security_check CHECK ((security = ANY (ARRAY['DEFINER'::text, 'INVOKER'::text])))
-);
-
-
-ALTER TABLE engine_mysql.views OWNER TO sf_owner;
-
---
--- Name: TABLE views; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON TABLE engine_mysql.views IS 'what MySQL says of a view beyond its query.';
-
-
---
--- Name: COLUMN views.id; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.views.id IS 'the view';
-
-
---
--- Name: COLUMN views.algorithm; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.views.algorithm IS 'how its query is run: SHOW CREATE VIEW alone holds it';
-
-
---
--- Name: COLUMN views.security; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_mysql.views.security IS 'whose rights it runs with';
-
-
---
--- Name: relations; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
---
-
-CREATE TABLE engine_postgresql.relations (
-    id bigint NOT NULL,
-    persistence text DEFAULT 'permanent'::text NOT NULL,
-    options jsonb,
-    access_method text,
-    owner text,
-    acl jsonb,
-    row_security boolean DEFAULT false NOT NULL,
-    force_row_security boolean DEFAULT false NOT NULL,
-    replica_identity text DEFAULT 'default'::text NOT NULL,
-    populated boolean DEFAULT true NOT NULL,
-    CONSTRAINT relations_persistence_check CHECK ((persistence = ANY (ARRAY['permanent'::text, 'unlogged'::text, 'temporary'::text]))),
-    CONSTRAINT relations_replica_identity_check CHECK ((replica_identity = ANY (ARRAY['default'::text, 'nothing'::text, 'full'::text, 'index'::text])))
-);
-
-
-ALTER TABLE engine_postgresql.relations OWNER TO sf_owner;
-
---
--- Name: TABLE relations; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON TABLE engine_postgresql.relations IS 'what PostgreSQL says of a table, view, materialized view or sequence beyond the cortex.';
-
-
---
--- Name: COLUMN relations.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.relations.id IS 'the relation';
-
-
---
--- Name: COLUMN relations.persistence; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.relations.persistence IS 'how it is kept';
-
-
---
--- Name: COLUMN relations.options; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.relations.options IS 'its storage options as the server writes them (["fillfactor=70"]); NULL for none';
-
-
---
--- Name: COLUMN relations.access_method; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.relations.access_method IS 'its table access method (heap); NULL for the default';
-
-
---
--- Name: COLUMN relations.owner; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.relations.owner IS 'its owner, by role name; NULL for the one the schema is written as';
-
-
---
--- Name: COLUMN relations.acl; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.relations.acl IS 'its privileges, as the server writes them; NULL for the defaults';
-
-
---
--- Name: COLUMN relations.row_security; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.relations.row_security IS 'true when its policies apply (ENABLE ROW LEVEL SECURITY)';
-
-
---
--- Name: COLUMN relations.force_row_security; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.relations.force_row_security IS 'true when they apply to its owner too';
-
-
---
--- Name: COLUMN relations.replica_identity; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.relations.replica_identity IS 'what identifies a row to logical replication';
-
-
---
--- Name: COLUMN relations.populated; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.relations.populated IS 'for a materialized view, false when made WITH NO DATA';
-
-
---
--- Name: types; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
---
-
-CREATE TABLE engine_postgresql.types (
-    id bigint NOT NULL,
-    owner text,
-    acl jsonb,
-    range_subtype text,
-    multirange text
-);
-
-
-ALTER TABLE engine_postgresql.types OWNER TO sf_owner;
-
---
--- Name: TABLE types; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON TABLE engine_postgresql.types IS 'an enum, composite, domain or range type''s PostgreSQL facts beyond the cortex.';
-
-
---
--- Name: COLUMN types.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.types.id IS 'the type';
-
-
---
--- Name: COLUMN types.owner; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.types.owner IS 'its owner, by role name; NULL for the one the schema is written as';
-
-
---
--- Name: COLUMN types.acl; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.types.acl IS 'its privileges; NULL for the defaults';
-
-
---
--- Name: COLUMN types.range_subtype; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.types.range_subtype IS 'a range type''s element type; NULL otherwise';
-
-
---
--- Name: COLUMN types.multirange; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON COLUMN engine_postgresql.types.multirange IS 'a range type''s multirange type name; NULL otherwise';
-
-
---
--- Name: broken_parts_of_their_kind; Type: VIEW; Schema: engine_postgresql; Owner: sf_owner
---
-
-CREATE VIEW engine_postgresql.broken_parts_of_their_kind AS
- SELECT 'parts-of-their-kind'::text AS rule,
-    (x.id)::text AS id
-   FROM (((( SELECT relations.id,
-            ARRAY['table'::text, 'view'::text, 'materialized_view'::text, 'sequence'::text] AS kinds
-           FROM engine_postgresql.relations
-        UNION ALL
-         SELECT types.id,
-            ARRAY['enum'::text, 'composite'::text, 'domain'::text, 'range'::text] AS "array"
-           FROM engine_postgresql.types) x
-     JOIN cortex.objects o ON ((o.id = x.id)))
-     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
-     JOIN cortex.designs d ON ((d.id = n.design)))
-  WHERE ((o.kind <> ALL (x.kinds)) OR (d.engine <> 'postgresql'::text));
-
-
-ALTER VIEW engine_postgresql.broken_parts_of_their_kind OWNER TO sf_owner;
-
---
--- Name: VIEW broken_parts_of_their_kind; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON VIEW engine_postgresql.broken_parts_of_their_kind IS 'A relation''s facts are a table''s, a view''s, a materialized view''s or a sequence''s, and a type''s facts a type''s, each on an object of a PostgreSQL design.';
-
-
---
--- Name: broken_relations_have_their_facts; Type: VIEW; Schema: engine_postgresql; Owner: sf_owner
---
-
-CREATE VIEW engine_postgresql.broken_relations_have_their_facts AS
- SELECT 'relations-have-their-facts'::text AS rule,
-    (o.id)::text AS id
-   FROM ((cortex.objects o
-     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
-     JOIN cortex.designs d ON ((d.id = n.design)))
-  WHERE ((d.engine = 'postgresql'::text) AND (o.kind = ANY (ARRAY['table'::text, 'view'::text, 'materialized_view'::text, 'sequence'::text])) AND (NOT (EXISTS ( SELECT 1
-           FROM engine_postgresql.relations r
-          WHERE (r.id = o.id)))));
-
-
-ALTER VIEW engine_postgresql.broken_relations_have_their_facts OWNER TO sf_owner;
-
---
--- Name: VIEW broken_relations_have_their_facts; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
---
-
-COMMENT ON VIEW engine_postgresql.broken_relations_have_their_facts IS 'Every table, view, materialized view and sequence of a PostgreSQL design has its persistence, owner and privileges.';
 
 
 --
@@ -5082,20 +5077,6 @@ COMMENT ON COLUMN engine_postgresql.collations.deterministic IS 'false when stri
 --
 
 COMMENT ON COLUMN engine_postgresql.collations.comment IS 'what it is for; NULL for none';
-
-
---
--- Name: collations_id_seq; Type: SEQUENCE; Schema: engine_postgresql; Owner: sf_owner
---
-
-ALTER TABLE engine_postgresql.collations ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME engine_postgresql.collations_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
 
 
 --
@@ -5371,20 +5352,6 @@ COMMENT ON COLUMN engine_postgresql.inheritance."position" IS 'its place, 1 firs
 
 
 --
--- Name: inheritance_id_seq; Type: SEQUENCE; Schema: engine_postgresql; Owner: sf_owner
---
-
-ALTER TABLE engine_postgresql.inheritance ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME engine_postgresql.inheritance_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
 -- Name: namespaces; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -5509,17 +5476,102 @@ COMMENT ON COLUMN engine_postgresql.policies.check_expression IS 'the rows that 
 
 
 --
--- Name: policies_id_seq; Type: SEQUENCE; Schema: engine_postgresql; Owner: sf_owner
+-- Name: relations; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
 --
 
-ALTER TABLE engine_postgresql.policies ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME engine_postgresql.policies_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
+CREATE TABLE engine_postgresql.relations (
+    id bigint NOT NULL,
+    persistence text DEFAULT 'permanent'::text NOT NULL,
+    options jsonb,
+    access_method text,
+    owner text,
+    acl jsonb,
+    row_security boolean DEFAULT false NOT NULL,
+    force_row_security boolean DEFAULT false NOT NULL,
+    replica_identity text DEFAULT 'default'::text NOT NULL,
+    populated boolean DEFAULT true NOT NULL,
+    CONSTRAINT relations_persistence_check CHECK ((persistence = ANY (ARRAY['permanent'::text, 'unlogged'::text, 'temporary'::text]))),
+    CONSTRAINT relations_replica_identity_check CHECK ((replica_identity = ANY (ARRAY['default'::text, 'nothing'::text, 'full'::text, 'index'::text])))
 );
+
+
+ALTER TABLE engine_postgresql.relations OWNER TO sf_owner;
+
+--
+-- Name: TABLE relations; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.relations IS 'what PostgreSQL says of a table, view, materialized view or sequence beyond the cortex.';
+
+
+--
+-- Name: COLUMN relations.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.relations.id IS 'the relation';
+
+
+--
+-- Name: COLUMN relations.persistence; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.relations.persistence IS 'how it is kept';
+
+
+--
+-- Name: COLUMN relations.options; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.relations.options IS 'its storage options as the server writes them (["fillfactor=70"]); NULL for none';
+
+
+--
+-- Name: COLUMN relations.access_method; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.relations.access_method IS 'its table access method (heap); NULL for the default';
+
+
+--
+-- Name: COLUMN relations.owner; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.relations.owner IS 'its owner, by role name; NULL for the one the schema is written as';
+
+
+--
+-- Name: COLUMN relations.acl; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.relations.acl IS 'its privileges, as the server writes them; NULL for the defaults';
+
+
+--
+-- Name: COLUMN relations.row_security; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.relations.row_security IS 'true when its policies apply (ENABLE ROW LEVEL SECURITY)';
+
+
+--
+-- Name: COLUMN relations.force_row_security; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.relations.force_row_security IS 'true when they apply to its owner too';
+
+
+--
+-- Name: COLUMN relations.replica_identity; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.relations.replica_identity IS 'what identifies a row to logical replication';
+
+
+--
+-- Name: COLUMN relations.populated; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.relations.populated IS 'for a materialized view, false when made WITH NO DATA';
 
 
 --
@@ -5680,20 +5732,6 @@ COMMENT ON COLUMN engine_postgresql.rules.definition IS 'the rule as the server 
 
 
 --
--- Name: rules_id_seq; Type: SEQUENCE; Schema: engine_postgresql; Owner: sf_owner
---
-
-ALTER TABLE engine_postgresql.rules ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME engine_postgresql.rules_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
 -- Name: sequences; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -5798,6 +5836,329 @@ COMMENT ON COLUMN engine_postgresql.triggers.new_table IS 'the transition table 
 --
 
 COMMENT ON COLUMN engine_postgresql.triggers.enabled IS 'when it fires';
+
+
+--
+-- Name: types; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TABLE engine_postgresql.types (
+    id bigint NOT NULL,
+    owner text,
+    acl jsonb,
+    range_subtype text,
+    multirange text
+);
+
+
+ALTER TABLE engine_postgresql.types OWNER TO sf_owner;
+
+--
+-- Name: TABLE types; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.types IS 'an enum, composite, domain or range type''s PostgreSQL facts beyond the cortex.';
+
+
+--
+-- Name: COLUMN types.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.types.id IS 'the type';
+
+
+--
+-- Name: COLUMN types.owner; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.types.owner IS 'its owner, by role name; NULL for the one the schema is written as';
+
+
+--
+-- Name: COLUMN types.acl; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.types.acl IS 'its privileges; NULL for the defaults';
+
+
+--
+-- Name: COLUMN types.range_subtype; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.types.range_subtype IS 'a range type''s element type; NULL otherwise';
+
+
+--
+-- Name: COLUMN types.multirange; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.types.multirange IS 'a range type''s multirange type name; NULL otherwise';
+
+
+--
+-- Name: broken_facts_on_designs_of_the_engine; Type: VIEW; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE VIEW engine_postgresql.broken_facts_on_designs_of_the_engine AS
+ SELECT 'facts-on-designs-of-the-engine'::text AS rule,
+    id
+   FROM ( WITH oe AS (
+                 SELECT o.id,
+                    d.engine
+                   FROM ((cortex.objects o
+                     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+                     JOIN cortex.designs d ON ((d.id = n.design)))
+                ), ne AS (
+                 SELECT n.id,
+                    d.engine
+                   FROM (cortex.namespaces n
+                     JOIN cortex.designs d ON ((d.id = n.design)))
+                ), ce AS (
+                 SELECT c.id,
+                    oe.engine
+                   FROM (cortex.columns c
+                     JOIN oe ON ((oe.id = c.object)))
+                ), ie AS (
+                 SELECT i.id,
+                    oe.engine
+                   FROM (cortex.indexes i
+                     JOIN oe ON ((oe.id = i.object)))
+                ), pe AS (
+                 SELECT p.id,
+                    ie.engine
+                   FROM (cortex.index_parts p
+                     JOIN ie ON ((ie.id = p.index)))
+                ), ke AS (
+                 SELECT k.id,
+                    oe.engine
+                   FROM (cortex.constraints k
+                     JOIN oe ON ((oe.id = k.object)))
+                )
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.collations x_1
+             JOIN ne ON ((ne.id = x_1.namespace)))
+          WHERE (ne.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.columns x_1
+             JOIN ce ON ((ce.id = x_1.id)))
+          WHERE (ce.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.constraints x_1
+             JOIN ke ON ((ke.id = x_1.id)))
+          WHERE (ke.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.index_parts x_1
+             JOIN pe ON ((pe.id = x_1.id)))
+          WHERE (pe.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.indexes x_1
+             JOIN ie ON ((ie.id = x_1.id)))
+          WHERE (ie.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.inheritance x_1
+             JOIN oe ON ((oe.id = x_1.object)))
+          WHERE (oe.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.namespaces x_1
+             JOIN ne ON ((ne.id = x_1.id)))
+          WHERE (ne.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.policies x_1
+             JOIN oe ON ((oe.id = x_1.object)))
+          WHERE (oe.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.relations x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.routines x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.rules x_1
+             JOIN oe ON ((oe.id = x_1.object)))
+          WHERE (oe.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.sequences x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.triggers x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'postgresql'::text)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM (engine_postgresql.types x_1
+             JOIN oe ON ((oe.id = x_1.id)))
+          WHERE (oe.engine <> 'postgresql'::text)) x;
+
+
+ALTER VIEW engine_postgresql.broken_facts_on_designs_of_the_engine OWNER TO sf_owner;
+
+--
+-- Name: VIEW broken_facts_on_designs_of_the_engine; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON VIEW engine_postgresql.broken_facts_on_designs_of_the_engine IS 'Every row of PostgreSQL''s own tables belongs to a part of a PostgreSQL design.';
+
+
+--
+-- Name: broken_parts_of_their_kind; Type: VIEW; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE VIEW engine_postgresql.broken_parts_of_their_kind AS
+ SELECT 'parts-of-their-kind'::text AS rule,
+    (x.id)::text AS id
+   FROM (( SELECT relations.id,
+            ARRAY['table'::text, 'view'::text, 'materialized_view'::text, 'sequence'::text] AS kinds
+           FROM engine_postgresql.relations
+        UNION ALL
+         SELECT types.id,
+            ARRAY['enum'::text, 'composite'::text, 'domain'::text, 'range'::text] AS "array"
+           FROM engine_postgresql.types) x
+     JOIN cortex.objects o ON ((o.id = x.id)))
+  WHERE (o.kind <> ALL (x.kinds));
+
+
+ALTER VIEW engine_postgresql.broken_parts_of_their_kind OWNER TO sf_owner;
+
+--
+-- Name: VIEW broken_parts_of_their_kind; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON VIEW engine_postgresql.broken_parts_of_their_kind IS 'A relation''s facts are a table''s, a view''s, a materialized view''s or a sequence''s, and a type''s facts a type''s.';
+
+
+--
+-- Name: broken_references_in_their_design; Type: VIEW; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE VIEW engine_postgresql.broken_references_in_their_design AS
+ SELECT 'references-in-their-design'::text AS rule,
+    id
+   FROM ( WITH od AS (
+                 SELECT o.id,
+                    n.design
+                   FROM (cortex.objects o
+                     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+                ), id_ AS (
+                 SELECT i.id,
+                    od.design
+                   FROM (cortex.indexes i
+                     JOIN od ON ((od.id = i.object)))
+                )
+         SELECT (x_1.id)::text AS id
+           FROM ((engine_postgresql.indexes x_1
+             JOIN id_ a ON ((a.id = x_1.id)))
+             JOIN id_ b ON ((b.id = x_1.parent)))
+          WHERE (a.design <> b.design)
+        UNION ALL
+         SELECT (x_1.id)::text AS id
+           FROM ((engine_postgresql.inheritance x_1
+             JOIN od a ON ((a.id = x_1.object)))
+             JOIN od b ON ((b.id = x_1.parent)))
+          WHERE (a.design <> b.design)) x;
+
+
+ALTER VIEW engine_postgresql.broken_references_in_their_design OWNER TO sf_owner;
+
+--
+-- Name: VIEW broken_references_in_their_design; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON VIEW engine_postgresql.broken_references_in_their_design IS 'A partition index''s parent index and a table''s inherited parent are in the table''s own design.';
+
+
+--
+-- Name: broken_relations_have_their_facts; Type: VIEW; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE VIEW engine_postgresql.broken_relations_have_their_facts AS
+ SELECT 'relations-have-their-facts'::text AS rule,
+    (o.id)::text AS id
+   FROM ((cortex.objects o
+     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+     JOIN cortex.designs d ON ((d.id = n.design)))
+  WHERE ((d.engine = 'postgresql'::text) AND (o.kind = ANY (ARRAY['table'::text, 'view'::text, 'materialized_view'::text, 'sequence'::text])) AND (NOT (EXISTS ( SELECT 1
+           FROM engine_postgresql.relations r
+          WHERE (r.id = o.id)))));
+
+
+ALTER VIEW engine_postgresql.broken_relations_have_their_facts OWNER TO sf_owner;
+
+--
+-- Name: VIEW broken_relations_have_their_facts; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON VIEW engine_postgresql.broken_relations_have_their_facts IS 'Every table, view, materialized view and sequence of a PostgreSQL design has its persistence, owner and privileges.';
+
+
+--
+-- Name: collations_id_seq; Type: SEQUENCE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE engine_postgresql.collations ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME engine_postgresql.collations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: inheritance_id_seq; Type: SEQUENCE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE engine_postgresql.inheritance ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME engine_postgresql.inheritance_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: policies_id_seq; Type: SEQUENCE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE engine_postgresql.policies ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME engine_postgresql.policies_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: rules_id_seq; Type: SEQUENCE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE engine_postgresql.rules ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME engine_postgresql.rules_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
 
 
 --
@@ -6739,6 +7100,124 @@ COMMENT ON COLUMN usage.object_usage.source_rows IS 'every row the server gave o
 
 
 --
+-- Name: snapshots; Type: TABLE; Schema: usage; Owner: sf_owner
+--
+
+CREATE TABLE usage.snapshots (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    source_read uuid NOT NULL,
+    source text NOT NULL,
+    taken_at timestamp with time zone NOT NULL,
+    server_uptime bigint NOT NULL,
+    digests_lost numeric DEFAULT 0 NOT NULL,
+    settings jsonb,
+    CONSTRAINT snapshots_digests_lost_check CHECK ((digests_lost >= (0)::numeric)),
+    CONSTRAINT snapshots_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT snapshots_server_uptime_check CHECK ((server_uptime >= 0)),
+    CONSTRAINT snapshots_source_check CHECK ((length(source) >= 1))
+);
+
+
+ALTER TABLE usage.snapshots OWNER TO sf_owner;
+
+--
+-- Name: TABLE snapshots; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON TABLE usage.snapshots IS 'one read of a live server''s usage, as the server keeps it, taken whenever it is available (decision usage-apart). Appended, never changed and never part of a turn: usage is measured, not designed. Its counts run from the server''s start, so two snapshots of one server give what happened between them, and a smaller uptime shows a restart.';
+
+
+--
+-- Name: COLUMN snapshots.id; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON COLUMN usage.snapshots.id IS 'UUIDv7, issued by the database';
+
+
+--
+-- Name: COLUMN snapshots.source_read; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON COLUMN usage.snapshots.source_read IS 'the read it was taken in: the connection, the server, the account';
+
+
+--
+-- Name: COLUMN snapshots.source; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON COLUMN usage.snapshots.source IS 'where the server keeps its usage, as the engine names it (performance_schema)';
+
+
+--
+-- Name: COLUMN snapshots.taken_at; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON COLUMN usage.snapshots.taken_at IS 'when it was read';
+
+
+--
+-- Name: COLUMN snapshots.server_uptime; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON COLUMN usage.snapshots.server_uptime IS 'the server''s uptime in seconds when it was read: what every count runs from';
+
+
+--
+-- Name: COLUMN snapshots.digests_lost; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON COLUMN usage.snapshots.digests_lost IS 'statements the server counted with no digest of their own because its digest table was full; 0 when every statement has its row';
+
+
+--
+-- Name: COLUMN snapshots.settings; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON COLUMN usage.snapshots.settings IS 'the server''s settings that shape what it keeps (performance_schema_digests_size, the consumers on), as it gives them; NULL when not read';
+
+
+--
+-- Name: broken_usage_in_its_design; Type: VIEW; Schema: usage; Owner: sf_owner
+--
+
+CREATE VIEW usage.broken_usage_in_its_design AS
+ SELECT 'usage-in-its-design'::text AS rule,
+    id
+   FROM ( WITH od AS (
+                 SELECT o.id,
+                    n.design
+                   FROM (cortex.objects o
+                     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+                ), sd AS (
+                 SELECT s.id,
+                    r.design
+                   FROM (usage.snapshots s
+                     JOIN cortex.source_reads r ON ((r.id = s.source_read)))
+                )
+         SELECT (u.id)::text AS id
+           FROM ((usage.object_usage u
+             JOIN sd ON ((sd.id = u.snapshot)))
+             JOIN od ON ((od.id = u.object)))
+          WHERE (od.design <> sd.design)
+        UNION ALL
+         SELECT (u.id)::text AS id
+           FROM (((usage.index_usage u
+             JOIN sd ON ((sd.id = u.snapshot)))
+             JOIN cortex.indexes i ON ((i.id = u.index)))
+             JOIN od ON ((od.id = i.object)))
+          WHERE (od.design <> sd.design)) x;
+
+
+ALTER VIEW usage.broken_usage_in_its_design OWNER TO sf_owner;
+
+--
+-- Name: VIEW broken_usage_in_its_design; Type: COMMENT; Schema: usage; Owner: sf_owner
+--
+
+COMMENT ON VIEW usage.broken_usage_in_its_design IS 'A snapshot''s usage names objects and indexes of the design it was read for.';
+
+
+--
 -- Name: query_digests; Type: TABLE; Schema: usage; Owner: sf_owner
 --
 
@@ -6998,83 +7477,6 @@ COMMENT ON COLUMN usage.query_digests.last_seen IS 'when it last ran, by the ser
 --
 
 COMMENT ON COLUMN usage.query_digests.source_row IS 'the row the server gave, as it gave it: what the columns above are taken from, and all the rest';
-
-
---
--- Name: snapshots; Type: TABLE; Schema: usage; Owner: sf_owner
---
-
-CREATE TABLE usage.snapshots (
-    id uuid DEFAULT uuidv7() NOT NULL,
-    source_read uuid NOT NULL,
-    source text NOT NULL,
-    taken_at timestamp with time zone NOT NULL,
-    server_uptime bigint NOT NULL,
-    digests_lost numeric DEFAULT 0 NOT NULL,
-    settings jsonb,
-    CONSTRAINT snapshots_digests_lost_check CHECK ((digests_lost >= (0)::numeric)),
-    CONSTRAINT snapshots_id_check CHECK ((uuid_extract_version(id) = 7)),
-    CONSTRAINT snapshots_server_uptime_check CHECK ((server_uptime >= 0)),
-    CONSTRAINT snapshots_source_check CHECK ((length(source) >= 1))
-);
-
-
-ALTER TABLE usage.snapshots OWNER TO sf_owner;
-
---
--- Name: TABLE snapshots; Type: COMMENT; Schema: usage; Owner: sf_owner
---
-
-COMMENT ON TABLE usage.snapshots IS 'one read of a live server''s usage, as the server keeps it, taken whenever it is available (decision usage-apart). Appended, never changed and never part of a turn: usage is measured, not designed. Its counts run from the server''s start, so two snapshots of one server give what happened between them, and a smaller uptime shows a restart.';
-
-
---
--- Name: COLUMN snapshots.id; Type: COMMENT; Schema: usage; Owner: sf_owner
---
-
-COMMENT ON COLUMN usage.snapshots.id IS 'UUIDv7, issued by the database';
-
-
---
--- Name: COLUMN snapshots.source_read; Type: COMMENT; Schema: usage; Owner: sf_owner
---
-
-COMMENT ON COLUMN usage.snapshots.source_read IS 'the read it was taken in: the connection, the server, the account';
-
-
---
--- Name: COLUMN snapshots.source; Type: COMMENT; Schema: usage; Owner: sf_owner
---
-
-COMMENT ON COLUMN usage.snapshots.source IS 'where the server keeps its usage, as the engine names it (performance_schema)';
-
-
---
--- Name: COLUMN snapshots.taken_at; Type: COMMENT; Schema: usage; Owner: sf_owner
---
-
-COMMENT ON COLUMN usage.snapshots.taken_at IS 'when it was read';
-
-
---
--- Name: COLUMN snapshots.server_uptime; Type: COMMENT; Schema: usage; Owner: sf_owner
---
-
-COMMENT ON COLUMN usage.snapshots.server_uptime IS 'the server''s uptime in seconds when it was read: what every count runs from';
-
-
---
--- Name: COLUMN snapshots.digests_lost; Type: COMMENT; Schema: usage; Owner: sf_owner
---
-
-COMMENT ON COLUMN usage.snapshots.digests_lost IS 'statements the server counted with no digest of their own because its digest table was full; 0 when every statement has its row';
-
-
---
--- Name: COLUMN snapshots.settings; Type: COMMENT; Schema: usage; Owner: sf_owner
---
-
-COMMENT ON COLUMN usage.snapshots.settings IS 'the server''s settings that shape what it keeps (performance_schema_digests_size, the consumers on), as it gives them; NULL when not read';
 
 
 --
@@ -8227,6 +8629,34 @@ CREATE TRIGGER "rule:cortex.constraint_columns_on_their_tables:again" AFTER INSE
 
 
 --
+-- Name: designs rule:cortex.designs_of_a_declared_version; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.designs_of_a_declared_version" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_designs_of_a_declared_version');
+
+
+--
+-- Name: engine_versions rule:cortex.designs_of_a_declared_version; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.designs_of_a_declared_version" AFTER INSERT OR DELETE OR UPDATE ON cortex.engine_versions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_designs_of_a_declared_version');
+
+
+--
+-- Name: designs rule:cortex.designs_of_a_declared_version:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.designs_of_a_declared_version:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_designs_of_a_declared_version');
+
+
+--
+-- Name: engine_versions rule:cortex.designs_of_a_declared_version:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.designs_of_a_declared_version:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.engine_versions FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_designs_of_a_declared_version');
+
+
+--
 -- Name: engine_features rule:cortex.features_since_before_until; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
@@ -8577,6 +9007,146 @@ CREATE TRIGGER "rule:cortex.primary_key_columns_not_null:again" AFTER INSERT OR 
 
 
 --
+-- Name: column_identities rule:cortex.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.column_identities DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: columns rule:cortex.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.columns DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: constraints rule:cortex.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.constraints DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: dependencies rule:cortex.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.dependencies DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: indexes rule:cortex.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.indexes DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: namespaces rule:cortex.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: objects rule:cortex.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: partitions rule:cortex.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.partitions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: sequences rule:cortex.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.sequences DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: verbatim_statements rule:cortex.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:cortex.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.verbatim_statements DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: column_identities rule:cortex.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.column_identities FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: columns rule:cortex.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.columns FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: constraints rule:cortex.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.constraints FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: dependencies rule:cortex.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.dependencies FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: indexes rule:cortex.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.indexes FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: namespaces rule:cortex.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: objects rule:cortex.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: partitions rule:cortex.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.partitions FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: sequences rule:cortex.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.sequences FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_references_in_their_design');
+
+
+--
+-- Name: verbatim_statements rule:cortex.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:cortex.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.verbatim_statements FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('cortex.broken_references_in_their_design');
+
+
+--
 -- Name: row_changes rule:cortex.row_changes_name_tables_of_the_database; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
@@ -8731,17 +9301,101 @@ CREATE TRIGGER "rule:cortex.versions_follow_the_log:again" AFTER INSERT OR DELET
 
 
 --
--- Name: designs rule:engine_mysql.parts_of_their_kind; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+-- Name: columns rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE CONSTRAINT TRIGGER "rule:engine_mysql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_parts_of_their_kind');
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.columns DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
 
 
 --
--- Name: namespaces rule:engine_mysql.parts_of_their_kind; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+-- Name: designs rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE CONSTRAINT TRIGGER "rule:engine_mysql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_parts_of_their_kind');
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: index_parts rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.index_parts DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: indexes rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.indexes DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: namespaces rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: objects rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: partitions rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.partitions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: columns rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.columns FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: designs rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: index_parts rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.index_parts FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: indexes rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.indexes FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: namespaces rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: objects rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: partitions rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.partitions FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
 
 
 --
@@ -8749,20 +9403,6 @@ CREATE CONSTRAINT TRIGGER "rule:engine_mysql.parts_of_their_kind" AFTER INSERT O
 --
 
 CREATE CONSTRAINT TRIGGER "rule:engine_mysql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_parts_of_their_kind');
-
-
---
--- Name: designs rule:engine_mysql.parts_of_their_kind:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
---
-
-CREATE TRIGGER "rule:engine_mysql.parts_of_their_kind:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_parts_of_their_kind');
-
-
---
--- Name: namespaces rule:engine_mysql.parts_of_their_kind:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
---
-
-CREATE TRIGGER "rule:engine_mysql.parts_of_their_kind:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_parts_of_their_kind');
 
 
 --
@@ -8913,17 +9553,101 @@ CREATE TRIGGER "rule:engine_mysql.tables_have_their_options:again" AFTER INSERT 
 
 
 --
--- Name: designs rule:engine_postgresql.parts_of_their_kind; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+-- Name: columns rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_parts_of_their_kind');
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.columns DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
 
 
 --
--- Name: namespaces rule:engine_postgresql.parts_of_their_kind; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+-- Name: constraints rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_parts_of_their_kind');
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.constraints DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: designs rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: index_parts rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.index_parts DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: indexes rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.indexes DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: namespaces rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: objects rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: columns rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.columns FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: constraints rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.constraints FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: designs rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: index_parts rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.index_parts FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: indexes rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.indexes FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: namespaces rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: objects rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
 
 
 --
@@ -8934,24 +9658,52 @@ CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.parts_of_their_kind" AFTER INS
 
 
 --
--- Name: designs rule:engine_postgresql.parts_of_their_kind:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
---
-
-CREATE TRIGGER "rule:engine_postgresql.parts_of_their_kind:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_parts_of_their_kind');
-
-
---
--- Name: namespaces rule:engine_postgresql.parts_of_their_kind:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
---
-
-CREATE TRIGGER "rule:engine_postgresql.parts_of_their_kind:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_parts_of_their_kind');
-
-
---
 -- Name: objects rule:engine_postgresql.parts_of_their_kind:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
 CREATE TRIGGER "rule:engine_postgresql.parts_of_their_kind:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_parts_of_their_kind');
+
+
+--
+-- Name: indexes rule:engine_postgresql.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.indexes DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_references_in_their_design');
+
+
+--
+-- Name: namespaces rule:engine_postgresql.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_references_in_their_design');
+
+
+--
+-- Name: objects rule:engine_postgresql.references_in_their_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_references_in_their_design');
+
+
+--
+-- Name: indexes rule:engine_postgresql.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.indexes FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_references_in_their_design');
+
+
+--
+-- Name: namespaces rule:engine_postgresql.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_references_in_their_design');
+
+
+--
+-- Name: objects rule:engine_postgresql.references_in_their_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_references_in_their_design');
 
 
 --
@@ -9067,6 +9819,216 @@ CREATE TRIGGER "rule:usage.index_usage_on_its_table:again" AFTER INSERT OR DELET
 
 
 --
+-- Name: indexes rule:usage.usage_in_its_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:usage.usage_in_its_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.indexes DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: namespaces rule:usage.usage_in_its_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:usage.usage_in_its_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: objects rule:usage.usage_in_its_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:usage.usage_in_its_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: source_reads rule:usage.usage_in_its_design; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:usage.usage_in_its_design" AFTER INSERT OR DELETE OR UPDATE ON cortex.source_reads DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: indexes rule:usage.usage_in_its_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:usage.usage_in_its_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.indexes FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: namespaces rule:usage.usage_in_its_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:usage.usage_in_its_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: objects rule:usage.usage_in_its_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:usage.usage_in_its_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: source_reads rule:usage.usage_in_its_design:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:usage.usage_in_its_design:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.source_reads FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: columns rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.columns DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: databases rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.databases DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: events rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.events DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: index_parts rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.index_parts DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: indexes rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.indexes DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: programs rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.programs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: routines rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.routines DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: subpartitionings rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.subpartitionings DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: subpartitions rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.subpartitions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: tables rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.tables DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: views rule:engine_mysql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.views DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: columns rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.columns FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: databases rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.databases FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: events rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.events FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: index_parts rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.index_parts FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: indexes rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.indexes FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: programs rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.programs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: routines rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.routines FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: subpartitionings rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.subpartitionings FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: subpartitions rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.subpartitions FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: tables rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.tables FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: views rule:engine_mysql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.views FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_facts_on_designs_of_the_engine');
+
+
+--
 -- Name: events rule:engine_mysql.parts_of_their_kind; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -9151,6 +10113,202 @@ CREATE TRIGGER "rule:engine_mysql.tables_have_their_options:again" AFTER INSERT 
 
 
 --
+-- Name: collations rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.collations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: columns rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.columns DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: constraints rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.constraints DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: index_parts rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.index_parts DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: indexes rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.indexes DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: inheritance rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.inheritance DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: namespaces rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: policies rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.policies DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: relations rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.relations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: routines rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.routines DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: rules rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.rules DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: sequences rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.sequences DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: triggers rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.triggers DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: types rule:engine_postgresql.facts_on_designs_of_the_engine; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.types DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: collations rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.collations FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: columns rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.columns FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: constraints rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.constraints FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: index_parts rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.index_parts FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: indexes rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.indexes FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: inheritance rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.inheritance FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: namespaces rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: policies rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.policies FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: relations rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.relations FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: routines rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.routines FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: rules rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.rules FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: sequences rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.sequences FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: triggers rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.triggers FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
+-- Name: types rule:engine_postgresql.facts_on_designs_of_the_engine:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.facts_on_designs_of_the_engine:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.types FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_facts_on_designs_of_the_engine');
+
+
+--
 -- Name: relations rule:engine_postgresql.parts_of_their_kind; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -9176,6 +10334,34 @@ CREATE TRIGGER "rule:engine_postgresql.parts_of_their_kind:again" AFTER INSERT O
 --
 
 CREATE TRIGGER "rule:engine_postgresql.parts_of_their_kind:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.types FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_parts_of_their_kind');
+
+
+--
+-- Name: indexes rule:engine_postgresql.references_in_their_design; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.indexes DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_references_in_their_design');
+
+
+--
+-- Name: inheritance rule:engine_postgresql.references_in_their_design; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.references_in_their_design" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.inheritance DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_references_in_their_design');
+
+
+--
+-- Name: indexes rule:engine_postgresql.references_in_their_design:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.indexes FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_references_in_their_design');
+
+
+--
+-- Name: inheritance rule:engine_postgresql.references_in_their_design:again; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.references_in_their_design:again" AFTER INSERT OR DELETE OR UPDATE ON engine_postgresql.inheritance FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_references_in_their_design');
 
 
 --
@@ -9302,6 +10488,48 @@ CREATE CONSTRAINT TRIGGER "rule:usage.index_usage_on_its_table" AFTER INSERT OR 
 --
 
 CREATE TRIGGER "rule:usage.index_usage_on_its_table:again" AFTER INSERT OR DELETE OR UPDATE ON usage.index_usage FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('usage.broken_index_usage_on_its_table');
+
+
+--
+-- Name: index_usage rule:usage.usage_in_its_design; Type: TRIGGER; Schema: usage; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:usage.usage_in_its_design" AFTER INSERT OR DELETE OR UPDATE ON usage.index_usage DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: object_usage rule:usage.usage_in_its_design; Type: TRIGGER; Schema: usage; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:usage.usage_in_its_design" AFTER INSERT OR DELETE OR UPDATE ON usage.object_usage DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: snapshots rule:usage.usage_in_its_design; Type: TRIGGER; Schema: usage; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:usage.usage_in_its_design" AFTER INSERT OR DELETE OR UPDATE ON usage.snapshots DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: index_usage rule:usage.usage_in_its_design:again; Type: TRIGGER; Schema: usage; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:usage.usage_in_its_design:again" AFTER INSERT OR DELETE OR UPDATE ON usage.index_usage FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: object_usage rule:usage.usage_in_its_design:again; Type: TRIGGER; Schema: usage; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:usage.usage_in_its_design:again" AFTER INSERT OR DELETE OR UPDATE ON usage.object_usage FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('usage.broken_usage_in_its_design');
+
+
+--
+-- Name: snapshots rule:usage.usage_in_its_design:again; Type: TRIGGER; Schema: usage; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:usage.usage_in_its_design:again" AFTER INSERT OR DELETE OR UPDATE ON usage.snapshots FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('usage.broken_usage_in_its_design');
 
 
 --
@@ -10317,12 +11545,12 @@ GRANT SELECT ON TABLE cortex.broken_constraint_columns_on_their_tables TO sf_rea
 
 
 --
--- Name: TABLE engine_features; Type: ACL; Schema: cortex; Owner: sf_owner
+-- Name: TABLE designs; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.engine_features TO sf_service;
-GRANT SELECT ON TABLE cortex.engine_features TO sf_agent;
-GRANT SELECT ON TABLE cortex.engine_features TO sf_reader;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.designs TO sf_service;
+GRANT SELECT ON TABLE cortex.designs TO sf_agent;
+GRANT SELECT ON TABLE cortex.designs TO sf_reader;
 
 
 --
@@ -10332,6 +11560,24 @@ GRANT SELECT ON TABLE cortex.engine_features TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.engine_versions TO sf_service;
 GRANT SELECT ON TABLE cortex.engine_versions TO sf_agent;
 GRANT SELECT ON TABLE cortex.engine_versions TO sf_reader;
+
+
+--
+-- Name: TABLE broken_designs_of_a_declared_version; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.broken_designs_of_a_declared_version TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.broken_designs_of_a_declared_version TO sf_agent;
+GRANT SELECT ON TABLE cortex.broken_designs_of_a_declared_version TO sf_reader;
+
+
+--
+-- Name: TABLE engine_features; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.engine_features TO sf_service;
+GRANT SELECT ON TABLE cortex.engine_features TO sf_agent;
+GRANT SELECT ON TABLE cortex.engine_features TO sf_reader;
 
 
 --
@@ -10368,15 +11614,6 @@ GRANT SELECT ON TABLE cortex.indexes TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.broken_index_columns_on_their_table TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.broken_index_columns_on_their_table TO sf_agent;
 GRANT SELECT ON TABLE cortex.broken_index_columns_on_their_table TO sf_reader;
-
-
---
--- Name: TABLE designs; Type: ACL; Schema: cortex; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.designs TO sf_service;
-GRANT SELECT ON TABLE cortex.designs TO sf_agent;
-GRANT SELECT ON TABLE cortex.designs TO sf_reader;
 
 
 --
@@ -10533,6 +11770,51 @@ GRANT SELECT ON TABLE cortex.broken_primary_key_columns_not_null TO sf_reader;
 
 
 --
+-- Name: TABLE column_identities; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.column_identities TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.column_identities TO sf_agent;
+GRANT SELECT ON TABLE cortex.column_identities TO sf_reader;
+
+
+--
+-- Name: TABLE dependencies; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.dependencies TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.dependencies TO sf_agent;
+GRANT SELECT ON TABLE cortex.dependencies TO sf_reader;
+
+
+--
+-- Name: TABLE partitions; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.partitions TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.partitions TO sf_agent;
+GRANT SELECT ON TABLE cortex.partitions TO sf_reader;
+
+
+--
+-- Name: TABLE verbatim_statements; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.verbatim_statements TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.verbatim_statements TO sf_agent;
+GRANT SELECT ON TABLE cortex.verbatim_statements TO sf_reader;
+
+
+--
+-- Name: TABLE broken_references_in_their_design; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.broken_references_in_their_design TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.broken_references_in_their_design TO sf_agent;
+GRANT SELECT ON TABLE cortex.broken_references_in_their_design TO sf_reader;
+
+
+--
 -- Name: TABLE row_changes; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
@@ -10641,24 +11923,6 @@ GRANT SELECT ON TABLE cortex.catalog_sources TO sf_reader;
 
 
 --
--- Name: TABLE column_identities; Type: ACL; Schema: cortex; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.column_identities TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.column_identities TO sf_agent;
-GRANT SELECT ON TABLE cortex.column_identities TO sf_reader;
-
-
---
--- Name: TABLE dependencies; Type: ACL; Schema: cortex; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.dependencies TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.dependencies TO sf_agent;
-GRANT SELECT ON TABLE cortex.dependencies TO sf_reader;
-
-
---
 -- Name: TABLE enum_values; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
@@ -10674,15 +11938,6 @@ GRANT SELECT ON TABLE cortex.enum_values TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.object_tags TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.object_tags TO sf_agent;
 GRANT SELECT ON TABLE cortex.object_tags TO sf_reader;
-
-
---
--- Name: TABLE partitions; Type: ACL; Schema: cortex; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.partitions TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.partitions TO sf_agent;
-GRANT SELECT ON TABLE cortex.partitions TO sf_reader;
 
 
 --
@@ -10719,15 +11974,6 @@ GRANT SELECT ON TABLE cortex.schema_migrations TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.source_reads TO sf_service;
 GRANT SELECT ON TABLE cortex.source_reads TO sf_agent;
 GRANT SELECT ON TABLE cortex.source_reads TO sf_reader;
-
-
---
--- Name: TABLE verbatim_statements; Type: ACL; Schema: cortex; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.verbatim_statements TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.verbatim_statements TO sf_agent;
-GRANT SELECT ON TABLE cortex.verbatim_statements TO sf_reader;
 
 
 --
@@ -10794,78 +12040,6 @@ GRANT SELECT ON TABLE cortex.workspace_parameters TO sf_reader;
 
 
 --
--- Name: TABLE events; Type: ACL; Schema: engine_mysql; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.events TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.events TO sf_agent;
-GRANT SELECT ON TABLE engine_mysql.events TO sf_reader;
-
-
---
--- Name: TABLE programs; Type: ACL; Schema: engine_mysql; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.programs TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.programs TO sf_agent;
-GRANT SELECT ON TABLE engine_mysql.programs TO sf_reader;
-
-
---
--- Name: TABLE tables; Type: ACL; Schema: engine_mysql; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.tables TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.tables TO sf_agent;
-GRANT SELECT ON TABLE engine_mysql.tables TO sf_reader;
-
-
---
--- Name: TABLE broken_parts_of_their_kind; Type: ACL; Schema: engine_mysql; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_parts_of_their_kind TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_parts_of_their_kind TO sf_agent;
-GRANT SELECT ON TABLE engine_mysql.broken_parts_of_their_kind TO sf_reader;
-
-
---
--- Name: TABLE broken_programs_have_their_context; Type: ACL; Schema: engine_mysql; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_programs_have_their_context TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_programs_have_their_context TO sf_agent;
-GRANT SELECT ON TABLE engine_mysql.broken_programs_have_their_context TO sf_reader;
-
-
---
--- Name: TABLE routines; Type: ACL; Schema: engine_mysql; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.routines TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.routines TO sf_agent;
-GRANT SELECT ON TABLE engine_mysql.routines TO sf_reader;
-
-
---
--- Name: TABLE broken_routines_have_their_parameter_text; Type: ACL; Schema: engine_mysql; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_routines_have_their_parameter_text TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_routines_have_their_parameter_text TO sf_agent;
-GRANT SELECT ON TABLE engine_mysql.broken_routines_have_their_parameter_text TO sf_reader;
-
-
---
--- Name: TABLE broken_tables_have_their_options; Type: ACL; Schema: engine_mysql; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_tables_have_their_options TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_tables_have_their_options TO sf_agent;
-GRANT SELECT ON TABLE engine_mysql.broken_tables_have_their_options TO sf_reader;
-
-
---
 -- Name: TABLE columns; Type: ACL; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -10881,6 +12055,15 @@ GRANT SELECT ON TABLE engine_mysql.columns TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.databases TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.databases TO sf_agent;
 GRANT SELECT ON TABLE engine_mysql.databases TO sf_reader;
+
+
+--
+-- Name: TABLE events; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.events TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.events TO sf_agent;
+GRANT SELECT ON TABLE engine_mysql.events TO sf_reader;
 
 
 --
@@ -10902,6 +12085,24 @@ GRANT SELECT ON TABLE engine_mysql.indexes TO sf_reader;
 
 
 --
+-- Name: TABLE programs; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.programs TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.programs TO sf_agent;
+GRANT SELECT ON TABLE engine_mysql.programs TO sf_reader;
+
+
+--
+-- Name: TABLE routines; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.routines TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.routines TO sf_agent;
+GRANT SELECT ON TABLE engine_mysql.routines TO sf_reader;
+
+
+--
 -- Name: TABLE subpartitionings; Type: ACL; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -10920,6 +12121,15 @@ GRANT SELECT ON TABLE engine_mysql.subpartitions TO sf_reader;
 
 
 --
+-- Name: TABLE tables; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.tables TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.tables TO sf_agent;
+GRANT SELECT ON TABLE engine_mysql.tables TO sf_reader;
+
+
+--
 -- Name: TABLE views; Type: ACL; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -10929,39 +12139,48 @@ GRANT SELECT ON TABLE engine_mysql.views TO sf_reader;
 
 
 --
--- Name: TABLE relations; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+-- Name: TABLE broken_facts_on_designs_of_the_engine; Type: ACL; Schema: engine_mysql; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.relations TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.relations TO sf_agent;
-GRANT SELECT ON TABLE engine_postgresql.relations TO sf_reader;
-
-
---
--- Name: TABLE types; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.types TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.types TO sf_agent;
-GRANT SELECT ON TABLE engine_postgresql.types TO sf_reader;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_facts_on_designs_of_the_engine TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_facts_on_designs_of_the_engine TO sf_agent;
+GRANT SELECT ON TABLE engine_mysql.broken_facts_on_designs_of_the_engine TO sf_reader;
 
 
 --
--- Name: TABLE broken_parts_of_their_kind; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+-- Name: TABLE broken_parts_of_their_kind; Type: ACL; Schema: engine_mysql; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_parts_of_their_kind TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_parts_of_their_kind TO sf_agent;
-GRANT SELECT ON TABLE engine_postgresql.broken_parts_of_their_kind TO sf_reader;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_parts_of_their_kind TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_parts_of_their_kind TO sf_agent;
+GRANT SELECT ON TABLE engine_mysql.broken_parts_of_their_kind TO sf_reader;
 
 
 --
--- Name: TABLE broken_relations_have_their_facts; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+-- Name: TABLE broken_programs_have_their_context; Type: ACL; Schema: engine_mysql; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_relations_have_their_facts TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_relations_have_their_facts TO sf_agent;
-GRANT SELECT ON TABLE engine_postgresql.broken_relations_have_their_facts TO sf_reader;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_programs_have_their_context TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_programs_have_their_context TO sf_agent;
+GRANT SELECT ON TABLE engine_mysql.broken_programs_have_their_context TO sf_reader;
+
+
+--
+-- Name: TABLE broken_routines_have_their_parameter_text; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_routines_have_their_parameter_text TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_routines_have_their_parameter_text TO sf_agent;
+GRANT SELECT ON TABLE engine_mysql.broken_routines_have_their_parameter_text TO sf_reader;
+
+
+--
+-- Name: TABLE broken_tables_have_their_options; Type: ACL; Schema: engine_mysql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_tables_have_their_options TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_mysql.broken_tables_have_their_options TO sf_agent;
+GRANT SELECT ON TABLE engine_mysql.broken_tables_have_their_options TO sf_reader;
 
 
 --
@@ -11037,6 +12256,15 @@ GRANT SELECT ON TABLE engine_postgresql.policies TO sf_reader;
 
 
 --
+-- Name: TABLE relations; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.relations TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.relations TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.relations TO sf_reader;
+
+
+--
 -- Name: TABLE routines; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -11070,6 +12298,51 @@ GRANT SELECT ON TABLE engine_postgresql.sequences TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.triggers TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.triggers TO sf_agent;
 GRANT SELECT ON TABLE engine_postgresql.triggers TO sf_reader;
+
+
+--
+-- Name: TABLE types; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.types TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.types TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.types TO sf_reader;
+
+
+--
+-- Name: TABLE broken_facts_on_designs_of_the_engine; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_facts_on_designs_of_the_engine TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_facts_on_designs_of_the_engine TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.broken_facts_on_designs_of_the_engine TO sf_reader;
+
+
+--
+-- Name: TABLE broken_parts_of_their_kind; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_parts_of_their_kind TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_parts_of_their_kind TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.broken_parts_of_their_kind TO sf_reader;
+
+
+--
+-- Name: TABLE broken_references_in_their_design; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_references_in_their_design TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_references_in_their_design TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.broken_references_in_their_design TO sf_reader;
+
+
+--
+-- Name: TABLE broken_relations_have_their_facts; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_relations_have_their_facts TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.broken_relations_have_their_facts TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.broken_relations_have_their_facts TO sf_reader;
 
 
 --
@@ -11172,21 +12445,30 @@ GRANT SELECT ON TABLE usage.object_usage TO sf_reader;
 
 
 --
--- Name: TABLE query_digests; Type: ACL; Schema: usage; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE usage.query_digests TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE usage.query_digests TO sf_agent;
-GRANT SELECT ON TABLE usage.query_digests TO sf_reader;
-
-
---
 -- Name: TABLE snapshots; Type: ACL; Schema: usage; Owner: sf_owner
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE usage.snapshots TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE usage.snapshots TO sf_agent;
 GRANT SELECT ON TABLE usage.snapshots TO sf_reader;
+
+
+--
+-- Name: TABLE broken_usage_in_its_design; Type: ACL; Schema: usage; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE usage.broken_usage_in_its_design TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE usage.broken_usage_in_its_design TO sf_agent;
+GRANT SELECT ON TABLE usage.broken_usage_in_its_design TO sf_reader;
+
+
+--
+-- Name: TABLE query_digests; Type: ACL; Schema: usage; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE usage.query_digests TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE usage.query_digests TO sf_agent;
+GRANT SELECT ON TABLE usage.query_digests TO sf_reader;
 
 
 --

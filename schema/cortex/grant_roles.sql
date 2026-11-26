@@ -1,11 +1,11 @@
--- grant_roles: how an owner's namespace is given to the roles a schema's database is worked through. Owner: cortex.
+-- grant_roles: how an owner's namespace is given to the roles schema_forge is worked through. Owner: cortex.
 -- sf_owner owns every namespace, table, view and function and is the only role that changes the schema: every version
 -- of every owner runs as it. sf_service is the role the app runs as: it reads and writes rows and the rules run for it,
 -- and it can create, alter or drop nothing. sf_agent is the role of a coding agent's own service account: it reads
 -- everything and writes the design's rows, the log's new rows with them, and can create, alter or drop nothing; what
 -- the engine declares, what was applied, what was read and what was locked it reads only, and the log it never
 -- rewrites. sf_reader reads only: the MCP's sql tool and every query sent for reading. The store makes the four roles
--- when it makes the cluster (decision database-roles); every version 1 of an owner in a schema's database ends with
+-- when it makes the cluster (decision database-roles); every version 1 of an owner in schema_forge ends with
 -- cortex.grant_roles('<its namespace>').
 
 CREATE FUNCTION cortex.grant_roles(owner text) RETURNS void LANGUAGE plpgsql AS $$
