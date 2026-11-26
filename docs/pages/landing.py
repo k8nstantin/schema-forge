@@ -1,5 +1,4 @@
 """The site's front page: the mission, what it does, every database a plugin, how it works, and how to join."""
-import base64
 import common
 from common import REPO, Svg, e, links, page
 from docs import doc_href
@@ -8,12 +7,8 @@ L = links()
 
 
 def shot(name, alt):
-    """A screenshot of the prototype: a file of the site, or the image itself in a private preview."""
-    if common.MODE == "site":
-        src = f"screenshots/{name}"
-    else:
-        src = "data:image/jpeg;base64," + base64.b64encode(open(f"{REPO}/docs/screenshots/{name}", "rb").read()).decode()
-    return f'<img class="shot" src="{src}" alt="{e(alt)}" loading="lazy">'
+    """A screenshot of the prototype, a file of the site."""
+    return f'<img class="shot" src="screenshots/{name}" alt="{e(alt)}" loading="lazy">'
 
 
 def card(title, text):

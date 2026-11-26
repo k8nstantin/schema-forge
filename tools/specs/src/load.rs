@@ -151,27 +151,18 @@ fn version_one(root: &Path, owner: &Owner) -> Vec<(String, String)> {
         parts.push((path, text));
     }
     if owner.id == "cortex" {
-        for f in ["enforce_rules.sql", "grant_roles.sql"] {
+        for f in ["enforce_rules.sql", "notify_turns.sql", "grant_roles.sql"] {
             parts.push((format!("{}/{f}", owner.folder), fs::read_to_string(folder.join(f)).unwrap_or_default()));
         }
     }
     for f in files_in(&folder.join("rules"), ".sql") {
         parts.push((rel(root, &f), fs::read_to_string(&f).unwrap_or_default()));
     }
-    if owner.id != "workspace" {
-        parts.push((format!("{}/rules", owner.folder), format!("SELECT cortex.enforce_rules('{ns}');")));
-    }
+    parts.push((format!("{}/rules", owner.folder), format!("SELECT cortex.enforce_rules('{ns}');")));
     for f in files_in(&folder.join("seeds"), ".sql") {
         parts.push((rel(root, &f), fs::read_to_string(&f).unwrap_or_default()));
     }
-    if owner.id == "workspace" {
-        parts.push((
-            format!("{}/grants.sql", owner.folder),
-            fs::read_to_string(folder.join("grants.sql")).unwrap_or_default(),
-        ));
-    } else {
-        parts.push((format!("{}/owner.toml", owner.root), format!("SELECT cortex.grant_roles('{ns}');")));
-    }
+    parts.push((format!("{}/owner.toml", owner.root), format!("SELECT cortex.grant_roles('{ns}');")));
     parts
 }
 
@@ -215,17 +206,20 @@ pub fn check(root: &Path, found: &mut Vec<Finding>) {
     }
     let all = owners(root);
     let cortex = all[0].clone();
-    let workspace = all[1].clone();
-    let ui = all[2].clone();
-    let others: Vec<Owner> = all[3..].to_vec();
+    let ui = all[1].clone();
+    let others: Vec<Owner> = all[2..].to_vec();
     let file_of: BTreeMap<String, String> =
         all.iter().flat_map(|o| tables_in_order(root, o).into_iter().map(|(p, t, _)| (t, p))).collect();
 
-    // the workspace alone, then every engine (and feature, and the template) beside the cortex and the ui, which every
-    // schema's database holds
-    let mut databases: Vec<(String, Vec<Owner>)> = vec![("specs_workspace".into(), vec![workspace])];
-    for o in &others {
-        databases.push((format!("specs_{}", o.id), vec![cortex.clone(), ui.clone(), o.clone()]));
+    // one database, schema_forge, holding every owner: the cortex (the workspace among it), the ui, every engine and feature;
+    // the owner template apart, beside the cortex and the ui, as an engine a contributor copies would be
+    let (template, owners_of_the_product): (Vec<Owner>, Vec<Owner>) =
+        others.iter().cloned().partition(|o| o.root == "docs/owner-template");
+    let mut product = vec![cortex.clone(), ui.clone()];
+    product.extend(owners_of_the_product);
+    let mut databases: Vec<(String, Vec<Owner>)> = vec![("specs_schema_forge".into(), product)];
+    for t in template {
+        databases.push(("specs_example".into(), vec![cortex.clone(), ui.clone(), t]));
     }
     let mut dumped: BTreeMap<String, String> = BTreeMap::new();
     for (db, its) in &databases {
@@ -241,8 +235,8 @@ pub fn check(root: &Path, found: &mut Vec<Finding>) {
         rules_hold(&c, db, root, its, found);
         seeds_again(&c, db, root, its, found);
         service_cannot_change(&c, db, its, found);
-        if let Some(last) = its.last().filter(|o| o.root != "docs/owner-template") {
-            dumped.insert(last.id.clone(), normal(&c.dump_all(db)));
+        if db == "specs_schema_forge" {
+            dumped.insert("schema_forge".to_string(), normal(&c.dump_all(db)));
         }
     }
     compare_dumps(root, &dumped, found);
@@ -253,6 +247,8 @@ pub fn check(root: &Path, found: &mut Vec<Finding>) {
     }
 }
 
+/// Every foreign key refers to its table's primary key, or, within a design, to the table's UNIQUE (design, id)
+/// (decision database-per-schema).
 fn keys_to_primary(
     c: &Container,
     db: &str,
@@ -267,7 +263,9 @@ fn keys_to_primary(
          FROM pg_constraint k JOIN pg_class t ON t.oid = k.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace \
          JOIN pg_class r ON r.oid = k.confrelid JOIN pg_namespace n2 ON n2.oid = r.relnamespace \
          WHERE k.contype = 'f' AND n.nspname IN ({}) \
-           AND NOT EXISTS (SELECT 1 FROM pg_constraint p WHERE p.conrelid = k.confrelid AND p.contype = 'p' AND p.conkey = k.confkey);",
+           AND NOT EXISTS (SELECT 1 FROM pg_constraint p WHERE p.conrelid = k.confrelid AND p.contype = 'p' AND p.conkey = k.confkey) \
+           AND NOT EXISTS (SELECT 1 FROM pg_constraint u WHERE u.conrelid = k.confrelid AND u.contype = 'u' AND u.conkey = k.confkey \
+             AND (SELECT string_agg(a.attname, ',' ORDER BY a.attnum) FROM pg_attribute a WHERE a.attrelid = r.oid AND a.attnum = ANY (u.conkey)) IN ('id,design', 'design,id'));",
         namespaces.join(", ")
     );
     if let Ok(out) = c.psql(db, &query) {

@@ -9,8 +9,9 @@ CREATE SCHEMA sf_log;
 CREATE FUNCTION sf_log.versioned() RETURNS TABLE (tab text) LANGUAGE sql STABLE AS $$
   SELECT n.nspname || '.' || c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind = 'r' AND (n.nspname LIKE 'engine\_%' OR n.nspname = 'ui' OR (n.nspname = 'cortex' AND c.relname NOT IN
-    ('schema_identity', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'schema_migrations',
-     'source_reads', 'branches', 'turns', 'operations', 'row_changes', 'savepoints', 'locked_versions')))
+    ('designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'schema_migrations',
+     'source_reads', 'branches', 'turns', 'operations', 'row_changes', 'savepoints', 'locked_versions')
+    AND c.relname NOT LIKE 'workspace\_%'))
   ORDER BY 1
 $$;
 
@@ -23,29 +24,29 @@ BEGIN
   IF current_setting('sf.replaying', true) = 'on' THEN RETURN NULL; END IF;
   IF op IS NULL THEN RAISE EXCEPTION 'a change outside a turn: begin one with sf_log.begin_turn'; END IF;
   IF TG_OP = 'INSERT' THEN
-    INSERT INTO cortex.row_changes (operation, table_name, row_id, action, after) VALUES (op, tab, NEW.id, 'insert', to_jsonb(NEW));
+    INSERT INTO cortex.row_changes (design, operation, table_name, row_id, action, after) VALUES (NEW.design, op, tab, NEW.id, 'insert', to_jsonb(NEW));
   ELSIF TG_OP = 'DELETE' THEN
-    INSERT INTO cortex.row_changes (operation, table_name, row_id, action, before) VALUES (op, tab, OLD.id, 'delete', to_jsonb(OLD));
+    INSERT INTO cortex.row_changes (design, operation, table_name, row_id, action, before) VALUES (OLD.design, op, tab, OLD.id, 'delete', to_jsonb(OLD));
   ELSE
     o := to_jsonb(OLD); n := to_jsonb(NEW);
     FOR k IN SELECT jsonb_object_keys(n) LOOP
       IF o -> k IS DISTINCT FROM n -> k THEN b := b || jsonb_build_object(k, o -> k); a := a || jsonb_build_object(k, n -> k); END IF;
     END LOOP;
     IF a <> '{}' THEN
-      INSERT INTO cortex.row_changes (operation, table_name, row_id, action, before, after) VALUES (op, tab, OLD.id, 'update', b, a);
+      INSERT INTO cortex.row_changes (design, operation, table_name, row_id, action, before, after) VALUES (OLD.design, op, tab, OLD.id, 'update', b, a);
     END IF;
   END IF;
   RETURN NULL;
 END $$;
 
-CREATE FUNCTION sf_log.attach() RETURNS integer LANGUAGE plpgsql AS $$
+CREATE FUNCTION sf_log.attach(p_design uuid) RETURNS integer LANGUAGE plpgsql AS $$
 DECLARE r record; n integer := 0;
 BEGIN
   FOR r IN SELECT tab FROM sf_log.versioned() LOOP
     EXECUTE format('CREATE TRIGGER logged AFTER INSERT OR UPDATE OR DELETE ON %s FOR EACH ROW EXECUTE FUNCTION sf_log.record()', r.tab);
     n := n + 1;
   END LOOP;
-  INSERT INTO cortex.branches (name, head, current) VALUES ('main', NULL, true);
+  INSERT INTO cortex.branches (design, name, head, current) VALUES (p_design, 'main', NULL, true);
   RETURN n;
 END $$;
 
@@ -57,9 +58,9 @@ CREATE FUNCTION sf_log.begin_turn(p_summary text, p_who text DEFAULT 'lab') RETU
 DECLARE b cortex.branches := sf_log.current(); t uuid; op uuid;
 BEGIN
   IF EXISTS (SELECT 1 FROM cortex.turns WHERE state = 'open') THEN RAISE EXCEPTION 'a turn is still open'; END IF;
-  INSERT INTO cortex.turns (parent, branch, by, who, summary, state, started_at)
-    VALUES (b.head, b.id, 'person', p_who, p_summary, 'open', clock_timestamp()) RETURNING id INTO t;
-  INSERT INTO cortex.operations (turn, kind, summary, at) VALUES (t, 'edit', p_summary, clock_timestamp()) RETURNING id INTO op;
+  INSERT INTO cortex.turns (design, parent, branch, by, who, summary, state, started_at)
+    VALUES (b.design, b.head, b.id, 'person', p_who, p_summary, 'open', clock_timestamp()) RETURNING id INTO t;
+  INSERT INTO cortex.operations (design, turn, kind, summary, at) VALUES (b.design, t, 'edit', p_summary, clock_timestamp()) RETURNING id INTO op;
   PERFORM set_config('sf.operation', op::text, true);
   RETURN t;
 END $$;
@@ -68,7 +69,10 @@ CREATE FUNCTION sf_log.end_turn() RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE t cortex.turns;
 BEGIN
   SELECT * INTO t FROM cortex.turns WHERE state = 'open';
-  UPDATE cortex.turns SET state = 'accepted', ended_at = clock_timestamp(), decided_at = clock_timestamp(), decided_by = t.who WHERE id = t.id;
+  -- its number in its design's commit order: the next after the design's last, the unique (design, seq) making a
+  -- second writer that took the same number wait for the first and fail, so the numbers follow the commits
+  UPDATE cortex.turns SET state = 'accepted', ended_at = clock_timestamp(), decided_at = clock_timestamp(), decided_by = t.who,
+    seq = (SELECT coalesce(max(seq), 0) + 1 FROM cortex.turns WHERE design = t.design) WHERE id = t.id;
   UPDATE cortex.branches SET head = t.id WHERE id = t.branch;
   PERFORM set_config('sf.operation', '', true);
   RETURN t.id;
@@ -126,7 +130,7 @@ BEGIN
   SELECT * INTO b FROM cortex.branches WHERE name = p_branch;
   IF b.id IS NULL THEN RAISE EXCEPTION 'no branch %', p_branch; END IF;
   n := sf_log.move_to(b.head);
-  UPDATE cortex.branches SET current = (id = b.id);
+  UPDATE cortex.branches SET current = (id = b.id) WHERE design = b.design;
   RETURN n;
 END $$;
 
@@ -134,8 +138,8 @@ CREATE FUNCTION sf_log.branch(p_name text, p_from text DEFAULT NULL) RETURNS int
 DECLARE t uuid := coalesce((SELECT turn FROM cortex.savepoints WHERE name = p_from), (sf_log.current()).head); n integer;
 BEGIN
   n := sf_log.move_to(t);
-  INSERT INTO cortex.branches (name, head, current) VALUES (p_name, t, false);  -- it forks from t
-  UPDATE cortex.branches SET current = (name = p_name);
+  INSERT INTO cortex.branches (design, name, head, current) VALUES ((sf_log.current()).design, p_name, t, false);  -- it forks from t
+  UPDATE cortex.branches SET current = (name = p_name) WHERE design = (SELECT design FROM cortex.branches WHERE name = p_name);
   RETURN n;
 END $$;
 
@@ -151,16 +155,20 @@ END $$;
 CREATE FUNCTION sf_log.savepoint(p_name text) RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE t uuid := (sf_log.current()).head;
 BEGIN
-  INSERT INTO cortex.savepoints (name, turn, made_by, made_at) VALUES (p_name, t, 'lab', clock_timestamp())
-    ON CONFLICT (name) DO UPDATE SET turn = EXCLUDED.turn, made_at = EXCLUDED.made_at;
+  -- the name is unique per design, deferrable, so ON CONFLICT cannot take it: move the savepoint, or make it
+  UPDATE cortex.savepoints SET turn = t, made_at = clock_timestamp() WHERE design = (sf_log.current()).design AND name = p_name;
+  IF NOT FOUND THEN
+    INSERT INTO cortex.savepoints (design, name, turn, made_by, made_at) VALUES ((sf_log.current()).design, p_name, t, 'lab', clock_timestamp());
+  END IF;
   RETURN t;
 END $$;
 
 CREATE FUNCTION sf_log.lock_version(p_message text) RETURNS text LANGUAGE plpgsql AS $$
 DECLARE h text := sf_log.state_hash();
 BEGIN
-  INSERT INTO cortex.locked_versions (number, turn, hash, message, locked_by, locked_at)
-    VALUES (coalesce((SELECT max(number) FROM cortex.locked_versions), 0) + 1, (sf_log.current()).head, h, p_message, 'lab', clock_timestamp());
+  INSERT INTO cortex.locked_versions (design, number, turn, hash, message, locked_by, locked_at)
+    VALUES ((sf_log.current()).design, coalesce((SELECT max(number) FROM cortex.locked_versions WHERE design = (sf_log.current()).design), 0) + 1,
+            (sf_log.current()).head, h, p_message, 'lab', clock_timestamp());
   RETURN h;
 END $$;
 

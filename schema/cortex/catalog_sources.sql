@@ -1,7 +1,7 @@
--- cortex.catalog_sources: what the engine's live read asks a server of each version, what it gives, and the grant it needs. Owner: cortex.
+-- cortex.catalog_sources: what an engine's live read asks a server of each version, what it gives, and the grant it needs. Owner: cortex.
 CREATE TABLE cortex.catalog_sources (
-  id        TEXT NOT NULL PRIMARY KEY,                             -- <version>/<source>: 5.7/information_schema.ROUTINES
-  version   TEXT NOT NULL REFERENCES cortex.engine_versions (id),  -- the version it is asked of
+  id        TEXT NOT NULL PRIMARY KEY,                             -- <engine>/<version>/<source>: mysql/5.7/information_schema.ROUTINES
+  version   TEXT NOT NULL REFERENCES cortex.engine_versions (id),  -- the engine's version it is asked of (mysql/5.7)
   source    TEXT NOT NULL CHECK (length(source) >= 1),             -- the catalog table or statement, as the server names it (SHOW CREATE TABLE)
   gives     TEXT NOT NULL CHECK (length(gives) >= 1),              -- what the read takes from it (routines and their bodies)
   needs     TEXT,                                                  -- the grant it needs, as the server writes it; NULL for none beyond the database's
@@ -12,9 +12,9 @@ CREATE TABLE cortex.catalog_sources (
   CHECK (id = version || '/' || source)
 );
 
-COMMENT ON TABLE cortex.catalog_sources IS 'what the engine''s live read asks a server of each version, what it gives, and the grant it needs.';
-COMMENT ON COLUMN cortex.catalog_sources.id IS '<version>/<source>: 5.7/information_schema.ROUTINES';
-COMMENT ON COLUMN cortex.catalog_sources.version IS 'the version it is asked of';
+COMMENT ON TABLE cortex.catalog_sources IS 'what an engine''s live read asks a server of each version, what it gives, and the grant it needs.';
+COMMENT ON COLUMN cortex.catalog_sources.id IS '<engine>/<version>/<source>: mysql/5.7/information_schema.ROUTINES';
+COMMENT ON COLUMN cortex.catalog_sources.version IS 'the engine''s version it is asked of (mysql/5.7)';
 COMMENT ON COLUMN cortex.catalog_sources.source IS 'the catalog table or statement, as the server names it (SHOW CREATE TABLE)';
 COMMENT ON COLUMN cortex.catalog_sources.gives IS 'what the read takes from it (routines and their bodies)';
 COMMENT ON COLUMN cortex.catalog_sources.needs IS 'the grant it needs, as the server writes it; NULL for none beyond the database''s';

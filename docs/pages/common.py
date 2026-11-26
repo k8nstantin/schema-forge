@@ -4,7 +4,7 @@ import glob, html, json, os, re
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 e = html.escape
-OWNERS = [("cortex", "schema/cortex"), ("ui", "schema/ui"), ("workspace", "schema/workspace")] + [
+OWNERS = [("cortex", "schema/cortex"), ("ui", "schema/ui")] + [
     ("engine_" + os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO))
     for d in sorted(glob.glob(f"{REPO}/engines/*/schema"))] + [
     (os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO)) for d in sorted(glob.glob(f"{REPO}/features/*/schema"))]
@@ -54,6 +54,11 @@ def table_files(folder):
                     "ref": ref.group(1) if ref else None, "ref_col": ref.group(2) if ref else None,
                     "on_delete": ref.group(3) if ref and ref.group(3) else None,
                     "check": chk.group(1) if chk else None, "comment": (c.group(4) or "").strip()})
+            elif in_table and l.strip().startswith("FOREIGN KEY (design, "):
+                # a reference within the design: (design, column) -> (design, id); drawn as the column's own
+                fk = re.match(r'FOREIGN KEY \(design, "?(\w+)"?\) REFERENCES ([\w.]+) \(design, id\)(?: ON DELETE (CASCADE|SET NULL))?', l.strip())
+                col = next(c for c in cols if c["name"] == fk.group(1))
+                col.update({"ref": fk.group(2), "ref_col": "id", "on_delete": fk.group(3)})
             elif in_table and l.strip().startswith(("UNIQUE", "CHECK")):
                 constraints.append(l.split("--")[0].strip().rstrip(","))
             elif l.startswith("CREATE") and "INDEX" in l:
@@ -95,7 +100,7 @@ class Svg:
         self.w, self.h, self.label, self.parts, self.boxes = w, h, label, [], {}
         self.lines, self.labels = [], []   # for the layout check: (a, b, x1, y1, x2, y2) and (x, y, w, h, text)
 
-    def box(self, key, x, y, w, h, title, sub="", cls="box"):
+    def box(self, key, x, y, w, h, title, sub="", cls="box", href=None):
         self.boxes[key] = (x, y, w, h)
         self.overflow = getattr(self, "overflow", [])
         if 7.4 * len(title) > w - 8 or 5.9 * len(sub) > w - 8:
@@ -103,6 +108,9 @@ class Svg:
         self.parts.append(f'<g class="nd"><rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" class="{cls}"/>'
                           f'<text x="{x + w / 2}" y="{y + (h / 2 + 4 if not sub else 19)}" text-anchor="middle" class="m b6">{e(title)}</text>'
                           + (f'<text x="{x + w / 2}" y="{y + 35}" text-anchor="middle" class="lb">{e(sub)}</text>' if sub else "") + "</g>")
+        if href:  # the box is a link: to the table's own entry on the page
+            self.parts[-1] = f'<a href="{e(href)}"><title>{e(key)}</title>{self.parts[-1]}</a>'
+
 
     def _edge_point(self, key, tx, ty):
         x, y, w, h = self.boxes[key]
@@ -193,8 +201,8 @@ PAGES = [("home", "Start here"), ("engines", "Engines"), ("database", "Database"
 
 
 def _parameters():
-    """The product's parameters, read from the workspace's seed: the one place a name or a link is written."""
-    text = open(f"{REPO}/schema/workspace/seeds/parameters.sql", encoding="utf-8").read()
+    """The product's parameters, read from their seed: the one place a name or a link is written."""
+    text = open(f"{REPO}/schema/cortex/seeds/workspace_parameters.sql", encoding="utf-8").read()
     return {k: json.loads(v.replace("''", "'")) for k, v in re.findall(r"\('([a-z_.]+)', '((?:[^']|'')*)', ", text)}
 
 
@@ -212,17 +220,13 @@ def task_title(task):
     return f"{task.get('id')} · {task.get('name')}: {task.get('title')}"
 
 
-MODE = "artifact"   # "artifact": links to the published pages; "site": relative links between the site's files
 FILES = {"site": "index.html", "home": "start.html", "database": "database.html", "template": "template.html",
          "build-spec": "build-spec.html", "engines": "engines.html", "contribute": "contribute.html"}
 
 
 def links():
-    """Where each page is: the published pages' links, or the site's own files (relative, so any domain serves it)."""
-    if MODE == "site":
-        return dict(FILES)
-    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "links.json")
-    return json.load(open(p)) if os.path.exists(p) else {}
+    """Where each page is: the site's own files, relative, so any domain serves it."""
+    return dict(FILES)
 
 
 CSS = r"""
@@ -326,25 +330,24 @@ def page(key, title, css, body, sub=""):
     L = links()
     site = L.get("site", "#")
     nav = (f'<nav class="nav" aria-label="%PRODUCT%"><a class="brand" href="{"#top" if key == "site" else site}"'
-           f'{"" if key == "site" or MODE == "site" else ' target="_blank" rel="noopener"'}>%PRODUCT%</a>')
+           '>%PRODUCT%</a>')
     for k, name in PAGES:
         href = L.get(k, "#")
-        cur = ' aria-current="page"' if k == key else ("" if MODE == "site" else ' target="_blank" rel="noopener"')
+        cur = ' aria-current="page"' if k == key else ""
         nav += f'<a href="{"#top" if k == key else href}"{cur}>{e(name)}</a>'
     nav += '<a href="%REPO%" target="_blank" rel="noopener">GitHub</a>'
     if sub:
         nav += f'<div class="sub">{sub}</div>'
     nav += "</nav>"
-    icon = '<link rel="icon" href="favicon.svg" type="image/svg+xml">\n' if MODE == "site" else ""
+    icon = '<link rel="icon" href="favicon.svg" type="image/svg+xml">\n'
     note = " ".join("".join(_BRIEF.find("page-note").itertext()).split()).replace("%SITE%", SITE_URL).replace("%PRODUCT%", PRODUCT)
     agent = f'<link rel="alternate" type="application/xml" title="{e(note)}" href="{e(SITE_URL)}agents.xml">\n'
     said = " ".join("".join(_BRIEF.find("page-agent").itertext()).split()).replace("%SITE%", SITE_URL).replace("%PRODUCT%", PRODUCT)
     box = (f'<aside class="agents" aria-label="For coding agents"><p class="kicker">For coding agents</p><p>{e(said)}</p>'
            f'<a class="btn btn-outline" href="{e(SITE_URL)}agents.xml">The brief: agents.xml</a></aside>'
            )
-    head = ('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-            if MODE == "site" else "")
-    out = (f'{head}{agent}<title>{e(title)}</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n{icon}{FONTS}\n'
+    head = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    out = (f'{head}{agent}<title>{e(title)}</title>\n{icon}{FONTS}\n'
             f'<style>{CSS}{css}</style>\n<div class="wrap"><span id="top"></span>{nav}{body}{box}'
             '<p class="foot"><span>%PRODUCT% · MIT or Apache-2.0</span><a href="%REPO%">GitHub</a>'
             '<a href="%REPO%/discussions">Discussions</a>'

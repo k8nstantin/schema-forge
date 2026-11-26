@@ -6,6 +6,8 @@ from collections import defaultdict
 from common import REPO, Svg, database, e, page, short
 
 db, edges = database()
+# every table of a design refers to cortex.designs by its column design: said once, in the captions, not drawn on each
+edges = [(a, c, b) for a, c, b in edges if not (c == "design" and not a.startswith("cortex.workspace_"))]
 T = {t["name"]: (o, t) for o, d in db.items() for t in d["tables"]}
 refs = defaultdict(list)      # table -> [(column, target)]
 refd = defaultdict(list)      # target -> [(table, column)]
@@ -26,34 +28,33 @@ def arrows(svg, pairs):
 
 def tbox(svg, name, x, y, w=150, h=34, cls="box"):
     """A table's box: keyed by its full name (cortex.objects), titled by its short one."""
-    svg.box(name, x, y, w, h, short(name), cls=cls)
+    svg.box(name, x, y, w, h, short(name), cls=cls, href=f"#t-{name}")
 
 def C(name): return "cortex." + name
 
-# --- 1. the cluster at a glance --------------------------------------------------------------------------------
+# --- 1. the database at a glance ------------------------------------------------------------------------------
 n = {o: len(d["tables"]) for o, d in db.items()}
-g = Svg(1040, 400, "The workspace folder holds its own PostgreSQL cluster; the cluster holds sf_workspace and one database per schema, each schema's database holding the cortex's namespace and its own engine's only.")
+g = Svg(1040, 400, "The workspace folder holds its own PostgreSQL cluster; the cluster holds one database, schema_forge, with one namespace per owner, and every design is rows of its tables.")
 g.band(10, 10, 1020, 350, "~/.schema-forge/workspaces/<name>/")
 g.box("sock", 40, 60, 250, 50, "Unix socket", "in the folder: no network port", cls="box")
 g.box("app", 40, 150, 250, 50, "the app (the store)", "the one process that opens it", cls="box")
 g.band(330, 40, 690, 310, "pgdata/: PostgreSQL 18, bundled")
-g.box("ws", 360, 80, 200, 110, "sf_workspace", f"workspace · {n['workspace']} tables", cls="file")
-g.box("f1", 360, 210, 300, 120, "sf_<shop's id>", "a MySQL schema", cls="file")
-g.box("c1", 380, 262, 130, 54, "cortex", f"{n['cortex']} tables", cls="pri")
-g.box("e1", 520, 262, 124, 54, "engine_mysql", f"{n['engine_mysql']} tables", cls="eng")
-g.box("f2", 690, 210, 300, 120, "sf_<lake's id>", "another MySQL schema", cls="file")
-g.box("c2", 710, 262, 130, 54, "cortex", f"{n['cortex']} tables", cls="pri")
-g.box("e2", 850, 262, 124, 54, "engine_mysql", f"{n['engine_mysql']} tables", cls="eng")
+g.box("db", 360, 80, 640, 250, "schema_forge", "the one database, installed once", cls="file")
+g.box("c", 380, 140, 190, 60, "cortex", f"{n['cortex']} tables", cls="pri")
+g.box("u", 590, 140, 190, 60, "ui", f"{n['ui']} tables", cls="box")
+engines = [o for o in db if o.startswith("engine_")]
+for i, o in enumerate(engines):
+    g.box(f"e{i}", 380 + i * 210, 230, 190, 60, o, f"{n[o]} tables", cls="eng")
 g.parts.append('<line x1="165" y1="150" x2="165" y2="112" class="es" marker-end="url(#mks)"/>')
-g.parts.append('<line x1="290" y1="85" x2="328" y2="85" class="es" marker-end="url(#mks)"/>')
-g.text(20, 386, "- - -  workspace_schemas.id in sf_workspace = the schema's own schema_identity.id (UUIDv7), and its database is named from it", "lb m")
-g.containers = {"ws", "f1", "f2"}   # boxes drawn to hold others and their text
+g.parts.append('<line x1="290" y1="85" x2="358" y2="100" class="es" marker-end="url(#mks)"/>')
+g.text(20, 386, "- - -  a design is a row of cortex.designs (its UUIDv7) and the rows that point at it: never a database, a schema or a table of its own", "lb m")
+g.containers = {"db"}   # boxes drawn to hold others and their text
 files_svg = g.render()
 
 # --- 2. the model ----------------------------------------------------------------------------------------------
 g = Svg(1060, 540, "The model's tables and every foreign key between them.")
 for name, x, y, w in [("object_kinds", 20, 40, 150), ("namespaces", 300, 40, 150), ("verbatim_statements", 560, 40, 170),
-                      ("schema_identity", 860, 40, 160), ("required_extensions", 860, 110, 160),
+                      ("designs", 860, 40, 160), ("required_extensions", 860, 110, 160),
                       ("objects", 300, 190, 150), ("object_tags", 20, 340, 150), ("dependencies", 190, 340, 150),
                       ("columns", 380, 340, 150), ("constraints", 640, 340, 150),
                       ("column_identities", 380, 460, 160), ("constraint_columns", 640, 460, 180)]:
@@ -89,7 +90,7 @@ parts_svg = g.render()
 g = Svg(1040, 250, "The log: branches of turns, their operations, every row each operation changed, savepoints and the versions locked on it.")
 for name, x, y in [("branches", 40, 180), ("turns", 40, 70), ("operations", 300, 70), ("row_changes", 560, 70), ("savepoints", 300, 180),
                    ("locked_versions", 560, 180)]:
-    g.box(C(name), x, y, 180, 40, name, cls="lg")
+    g.box(C(name), x, y, 180, 40, name, cls="lg", href=f"#t-{C(name)}")
 arrows(g, {(C("turns"), C("branches")): (0, 0), (C("operations"), C("turns")): (0, 0), (C("row_changes"), C("operations")): (0, 0),
            (C("savepoints"), C("turns")): (0, 0), (C("locked_versions"), C("turns")): (40, 0)})
 g.loop(C("turns"), "parent"); drawn.add((C("turns"), "parent"))
@@ -99,15 +100,13 @@ g.text(40, 30, "turns, operations and versions are UUIDv7s the database issues; 
 log_svg = g.render()
 
 # --- 5. the workspace ------------------------------------------------------------------------------------------
-W = lambda nm: "workspace." + nm
-g = Svg(1040, 200, "sf_workspace: its schemas, by stable id, and the saved connections with their values and tests.")
-for name, x, y, w in [("workspace_identity", 20, 30, 170), ("schema_migrations", 20, 120, 170), ("workspace_schemas", 220, 70, 170),
-                      ("connections", 420, 70, 160), ("connection_values", 720, 20, 160), ("connection_tests", 660, 125, 160),
-                      ("connection_test_steps", 850, 125, 180)]:
-    tbox(g, W(name), x, y, w)
-arrows(g, {(W("connection_values"), W("connections")): (0, 0), (W("connection_tests"), W("connections")): (0, 0),
-           (W("connection_test_steps"), W("connection_tests")): (0, 0)})
-g.text(305, 130, "a schema's database, by its id", "lb", "middle")
+g = Svg(1040, 300, "The workspace, in the cortex: the saved connections with their values and tests, and the connection each design is read from.")
+for name, x, y, w in [("workspace_identity", 20, 20, 200), ("workspace_parameters", 20, 100, 200), ("designs", 20, 220, 150),
+                      ("workspace_design_connections", 260, 220, 240), ("workspace_connections", 560, 110, 210),
+                      ("workspace_connection_values", 810, 20, 220), ("workspace_connection_tests", 810, 220, 220)]:
+    tbox(g, C(name), x, y, w)
+arrows(g, {(C("workspace_connection_values"), C("workspace_connections")): (0, 0), (C("workspace_connection_tests"), C("workspace_connections")): (0, 0),
+           (C("workspace_design_connections"), C("workspace_connections")): (0, 0), (C("workspace_design_connections"), C("designs")): (0, 0)})
 ws_svg = g.render()
 
 # --- 6. each engine's tables against the cortex -------------------------------------------------------------------
@@ -162,7 +161,7 @@ engine_svgs = {o: engine_svg(o) for o in db if o.startswith("engine_")}
 undrawn = [(a, c, b) for a, c, b in edges if (a, c) not in drawn]
 
 # --- the tables ------------------------------------------------------------------------------------------------
-GROUPS = [("cortex", "The model", ["schema_identity", "object_kinds", "namespaces", "objects", "columns", "column_identities",
+GROUPS = [("cortex", "The model", ["designs", "object_kinds", "namespaces", "objects", "columns", "column_identities",
                                     "constraints", "constraint_columns", "object_tags", "dependencies", "verbatim_statements",
                                     "required_extensions"]),
           ("cortex", "What an object holds", ["indexes", "index_parts", "partitionings", "partitions", "sort_fields", "views", "sequences",
@@ -170,6 +169,8 @@ GROUPS = [("cortex", "The model", ["schema_identity", "object_kinds", "namespace
           ("cortex", "The log", ["branches", "turns", "operations", "row_changes", "savepoints", "locked_versions"]),
           ("cortex", "The engine's versions", ["engine_versions", "engine_features", "catalog_sources"]),
           ("cortex", "The live source", ["source_reads"]),
+          ("cortex", "The workspace", ["workspace_identity", "workspace_parameters", "workspace_connections", "workspace_connection_values",
+                                       "workspace_connection_tests", "workspace_connection_test_steps", "workspace_design_connections"]),
           ("cortex", "The database", ["schema_migrations"])]
 GROUPS = [(o, title, [f"{o}.{nm}" for nm in names]) for o, title, names in GROUPS]
 grouped = {nm for _, _, l in GROUPS for nm in l}
@@ -177,7 +178,7 @@ missing = [t["name"] for t in db["cortex"]["tables"] if t["name"] not in grouped
 assert not missing, f"cortex tables in no group: {missing}"
 for o in db:
     if o != "cortex":
-        GROUPS.append((o, {"workspace": "sf_workspace", "ui": "ui: what the tool shows and people keep of it, versioned with the design", "usage": "usage: what the live server measured, apart from the design"}.get(o, f"{o}: the engine's own tables"), [t["name"] for t in db[o]["tables"]]))
+        GROUPS.append((o, {"ui": "ui: what the tool shows and people keep of it, versioned with the design", "usage": "usage: what the live server measured, apart from the design"}.get(o, f"{o}: the engine's own tables"), [t["name"] for t in db[o]["tables"]]))
 
 def id_pattern(t):
     idc = next((c for c in t["columns"] if c["name"] == "id"), None)
@@ -264,7 +265,7 @@ rules_svg = g.render()
 ahead_svg = None
 g = Svg(1040, 300, "A proposal, not yet a design: a namespace of what is worked out about the model, kept apart from the model itself, each row naming the model it was worked out from.")
 g.band(10, 10, 480, 270, "cortex: the model, written by turns")
-tbox(g, C("objects"), 40, 60, 150, 40, "pri"); tbox(g, C("columns"), 40, 150, 150); tbox(g, C("locked_versions"), 250, 60, 180); tbox(g, C("object_reads"), 250, 150, 180)
+tbox(g, C("objects"), 40, 60, 150, 40, "pri"); tbox(g, C("columns"), 40, 150, 150); tbox(g, C("locked_versions"), 250, 60, 180); tbox(g, C("dependencies"), 250, 150, 180)
 g.band(540, 10, 490, 270, "insight (proposed): worked out, never typed")
 for key, x, y, w, sub in [("dep", 570, 50, 200, "dependencies"), ("ann", 800, 50, 200, "annotations"), ("emb", 570, 160, 200, "embeddings"), ("fnd", 800, 160, 200, "findings")]:
     g.box(key, x, y, w, 50, sub, {"dep": "calls, reads, writes, on", "ann": "sentences, model, input hash", "emb": "pgvector, per piece", "fnd": "a rule broken, a gap"}[key], cls="eng")
@@ -309,19 +310,19 @@ eng_figs = "".join(f'<h3>{e(o)}\'s tables <span class="path">{e(db[o]["folder"])
 undrawn_note = ", ".join(f"<code>{e(a)}.{e(c)}</code>" for a, c, b in undrawn)
 body = f"""
 <div class="tb" role="group" aria-label="Title block">
-  <div><span>Engine</span><b>PostgreSQL 18, bundled</b></div><div><span>Databases</span><b>sf_workspace · sf_&lt;schema id&gt;</b></div>
-  <div><span>Tables</span><b>{ntab}</b></div><div><span>Rules</span><b>{nq}</b></div><div><span>Date</span><b>2026-11-24</b></div>
+  <div><span>Engine</span><b>PostgreSQL 18, bundled</b></div><div><span>Database</span><b>schema_forge</b></div>
+  <div><span>Tables</span><b>{ntab}</b></div><div><span>Rules</span><b>{nq or "on ice"}</b></div><div><span>Date</span><b>2026-11-26</b></div>
 </div>
-<h1>%PRODUCT% Database <span class="draft">Draft 2</span></h1>
+<h1>%PRODUCT% Database <span class="draft">Draft 3</span></h1>
 <p class="lede">Every table %PRODUCT% keeps its work in, designed first and locked: no build creates or changes one. The cortex is what every
 engine shares; each engine ships its own tables in its plugin, in its own namespace, in the same database as the cortex rows they refer to, so
 PostgreSQL enforces every reference. Every column is typed, checked and documented, in its file and in the database's own comments, and a rule a
 foreign key cannot state is a view the database enforces at every commit. Everything below is read from the schema folders.</p>
 <div class="stats">{''.join(f'<div><b>{len(d["tables"])}</b><span>{e(o)} tables · {e(d["folder"])}</span></div>' for o, d in db.items())}</div>
 
-<section id="files"><h2>The databases</h2>
-<p class="lede">A workspace is a folder with its own PostgreSQL cluster, started when the workspace opens and reached only through a Unix socket in that folder. <code>sf_workspace</code> holds what the workspace shares; each schema is its own database, named from its stable id so a rename never moves it, holding the <code>cortex</code> namespace and its own engine's, and no other engine's.</p>
-<figure>{files_svg}<figcaption>A schema's database names itself by its own stable id; <code>sf_workspace</code> lists each by that id, a reference between databases that the store checks. The same layout runs on a central team server later: only the connection changes.</figcaption></figure></section>
+<section id="files"><h2>The database</h2>
+<p class="lede">A workspace is a folder with its own PostgreSQL cluster, started when the workspace opens and reached only through a Unix socket in that folder. The cluster holds one database, <code>schema_forge</code>, installed once: the cortex, the ui and each engine in its own namespace. Every design people work on is a row of <code>cortex.designs</code> and the rows that point at it; making a design or reading a table into one adds rows, never a database, a namespace or a table. Every table of a design carries its design in a column <code>design</code>, with <code>UNIQUE (design, id)</code>; every reference within a design is <code>(design, column)</code> to <code>(design, id)</code>, with an index on it, so no row can point into another design and opening, changing or deleting one design reads that design's rows only. The diagrams leave each table's <code>design</code> out.</p>
+<figure>{files_svg}<figcaption>The same layout runs on a central team server later: only the connection changes.</figcaption></figure></section>
 
 <section id="model"><h2>The model</h2><p class="lede">Namespaces hold objects (tables, views, routines, whatever kinds the engine declares); objects have columns; constraints are a table's keys and checks and the links from its columns to another's, enforced by the database or only drawn by the design. An object's kind must be one its engine declared, and what it holds must suit its kind (the rule <code>parts-of-their-kind</code>).</p>
 <figure>{model_svg}<figcaption>Every foreign key between these tables. A part's primary key is a <code>BIGINT</code> the database issues, kept when it is renamed: a rename is one row, and every reference follows it by id.</figcaption>{legend}</figure></section>
@@ -332,7 +333,7 @@ foreign key cannot state is a view the database enforces at every commit. Everyt
 <section id="log"><h2>The log</h2><p class="lede">Every change is an operation of a turn, appended and never edited; the design is written in the same transaction. Each operation records every row it inserted, updated or deleted, with its values before and after, so its inverse is worked out from the record. Turns form a tree: a branch is a line of turns, switching branch moves the design through their common turn, opening a savepoint or a version is that move rolled back, and a restore is a new turn of inverses.</p>
 <figure>{log_svg}<figcaption>A turn is the agent's answer to one prompt, a person's edit, an import or a restore; it follows its parent and is accepted or rejected whole. A rejected turn stays, marked, and the turn that takes it back names it in <code>undoes</code>.</figcaption></figure></section>
 
-<section id="workspace"><h2>The workspace</h2><p class="lede"><code>sf_workspace</code>: the schemas by their stable ids, and the saved connections. A connection keeps the value of each field its engine declares, never a secret.</p>
+<section id="workspace"><h2>The workspace</h2><p class="lede">In the cortex, as <code>workspace_*</code> tables: the saved connections, the value of each field their engine declares (never a secret), their tests, and the connection each design is read from.</p>
 <figure>{ws_svg}</figure></section>
 
 <section id="engines"><h2>Each engine's tables</h2><p class="lede">What one engine alone says (MySQL's charset and row format) lives in that engine's namespace, <code>engine_&lt;engine&gt;</code>: a table named for the cortex table it extends (<code>engine_mysql.tables</code>, <code>engine_mysql.columns</code>) or for what only it has (<code>engine_postgresql.policies</code>). Every option is a typed column; there is no table of keys and values.</p>{eng_figs}</section>
@@ -341,11 +342,12 @@ foreign key cannot state is a view the database enforces at every commit. Everyt
 {body_tables}
 
 <section id="rules"><h2>Rules</h2><p class="lede">What a foreign key cannot say. Each rule is a view of the rows breaking it, one file each; <code>cortex.enforce_rules</code> reads which tables the view depends on and puts the triggers on them, so PostgreSQL itself refuses any commit that breaks a rule, whatever wrote it. No list of tables is kept by hand.</p>
+<p class="lede"><b>On ice since 2026-11-26.</b> Every rule view waits in <code>lab/rules-on-ice</code> until the rules are their own owner and schema (decision rules-tables), each checking only the designs a commit changed; the machinery below stays. Until then the foreign keys hold every design apart by themselves.</p>
 <figure>{rules_svg}<figcaption>Tested on PostgreSQL 18: a key on a view, a number its counter never gave, a nullable primary key column and a MySQL table option on a view are each refused at commit; 3,000 rows commit in about 30 ms.</figcaption></figure>
 {rules_html}</section>
 
 <section id="ahead"><h2>Thinking ahead: talking to a design</h2><p class="lede">%PRODUCT% is a canvas and an MCP server: a person draws the design, or chats with an agent that works through the MCP, or both at once. Both do more the more is known about the design: what each object touches, what is said about it, how to find it by meaning, what is known to be wrong. That knowledge and its vectors will live in the same PostgreSQL as the model, for one person or a whole team. A proposal to decide (insight-layer), not yet a design.</p>
-<div class="scroll"><table class="t"><thead><tr><th>Concern</th><th>The idea</th><th>%PRODUCT% today</th><th>What we will build</th></tr></thead><tbody><tr><td><b>What an object touches</b></td><td>Every fact a definition states about another object: it calls, reads, writes, is on, references, creates, drops or alters it, each with the statement as evidence and its line; a name built at run time kept with its pattern (<code>tbl_x{{client}}</code>).</td><td><code>cortex.object_reads</code>: only <em>reads</em>, only resolved targets, no evidence.</td><td><code>insight.dependencies</code>: every kind, the evidence and its line, an unresolved target with its pattern, worked out by the engine from definitions: the graph an impact walk follows.</td></tr><tr><td><b>What is said about an object</b></td><td>A few sentences per object (what it is, what it reads and writes, what calls it, what a change would reach), with the model that wrote them and a hash of what they were written from, so stale ones are found.</td><td><code>comment</code> and <code>notes</code> on objects: typed, with no record of who worked them out or from what.</td><td><code>insight.annotations</code>, at levels object, area and schema; and <code>insight.cards</code>, composed mechanically from the model, needing no language model.</td></tr><tr><td><b>Finding by meaning</b></td><td>An embedding of every piece of text, searched together with full text and exact names, every hit confirmed against the model.</td><td>Nothing yet: the agent finds by name.</td><td><code>insight.embeddings</code> with pgvector, built into the bundled PostgreSQL; later the semantic layer (what a table means to the business, its terms and measures) in the same index. Rich metadata now is what makes that worth having.</td></tr><tr><td><b>What is known to be wrong</b></td><td>Every gap and broken design rule, with its evidence, its impact and the next step.</td><td>The rules refuse what breaks the schema; nothing records a design rule broken (the open decision rules-tables).</td><td><code>findings</code>: what the design rules find, and how the design differs from a live database (pipelines-tables).</td></tr><tr><td><b>Worked out vs. written</b></td><td>What is written is the truth; what is worked out from it is rebuilt, keyed by what it came from.</td><td>The model is written by turns, with its log.</td><td>Insight is worked out from a locked version or an input hash, refreshed from the log after each turn, and can always be dropped and rebuilt: it never needs a log or a migration of its data.</td></tr><tr><td><b>How it is asked</b></td><td>Find candidates by meaning, read one object whole, walk what a change reaches, and count or list exactly with SQL: a search is never a count.</td><td>The prototype's MCP tools read and change the model.</td><td>MCP tools search, object, impact and sql; sql runs as a read-only PostgreSQL role, so a chat can question a design and change it only by operations.</td></tr></tbody></table></div>
+<div class="scroll"><table class="t"><thead><tr><th>Concern</th><th>The idea</th><th>%PRODUCT% today</th><th>What we will build</th></tr></thead><tbody><tr><td><b>What an object touches</b></td><td>Every fact a definition states about another object: it calls, reads, writes, is on, references, creates, drops or alters it, each with the statement as evidence and its line; a name built at run time kept with its pattern (<code>tbl_x{{client}}</code>).</td><td><code>cortex.dependencies</code>: only <em>reads</em>, only resolved targets, no evidence.</td><td><code>insight.dependencies</code>: every kind, the evidence and its line, an unresolved target with its pattern, worked out by the engine from definitions: the graph an impact walk follows.</td></tr><tr><td><b>What is said about an object</b></td><td>A few sentences per object (what it is, what it reads and writes, what calls it, what a change would reach), with the model that wrote them and a hash of what they were written from, so stale ones are found.</td><td><code>comment</code> and <code>notes</code> on objects: typed, with no record of who worked them out or from what.</td><td><code>insight.annotations</code>, at levels object, area and schema; and <code>insight.cards</code>, composed mechanically from the model, needing no language model.</td></tr><tr><td><b>Finding by meaning</b></td><td>An embedding of every piece of text, searched together with full text and exact names, every hit confirmed against the model.</td><td>Nothing yet: the agent finds by name.</td><td><code>insight.embeddings</code> with pgvector, built into the bundled PostgreSQL; later the semantic layer (what a table means to the business, its terms and measures) in the same index. Rich metadata now is what makes that worth having.</td></tr><tr><td><b>What is known to be wrong</b></td><td>Every gap and broken design rule, with its evidence, its impact and the next step.</td><td>The rules refuse what breaks the schema; nothing records a design rule broken (the open decision rules-tables).</td><td><code>findings</code>: what the design rules find, and how the design differs from a live database (pipelines-tables).</td></tr><tr><td><b>Worked out vs. written</b></td><td>What is written is the truth; what is worked out from it is rebuilt, keyed by what it came from.</td><td>The model is written by turns, with its log.</td><td>Insight is worked out from a locked version or an input hash, refreshed from the log after each turn, and can always be dropped and rebuilt: it never needs a log or a migration of its data.</td></tr><tr><td><b>How it is asked</b></td><td>Find candidates by meaning, read one object whole, walk what a change reaches, and count or list exactly with SQL: a search is never a count.</td><td>The prototype's MCP tools read and change the model.</td><td>MCP tools search, object, impact and sql; sql runs as a read-only PostgreSQL role, so a chat can question a design and change it only by operations.</td></tr></tbody></table></div>
 <figure>{ahead_svg}<figcaption>The line drawn: what is written is the truth; what is worked out from it is rebuilt and keyed by what it came from. The model, written by turns, is the truth; an <code>insight</code> namespace would hold what is worked out from a locked version, never edited and never logged, and could be dropped and rebuilt.</figcaption></figure></section>
 
 <section id="decisions"><h2>Decisions</h2><p class="lede">What was decided with the operator, and where it now lives. The open ones close in a design session before the task that needs them.</p>

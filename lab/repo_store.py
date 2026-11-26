@@ -1,5 +1,5 @@
 """The locked design itself on MySQL snapshots: schema/cortex and engines/mysql/schema, loaded exactly as the dumps and
-the lock load them (tools/schema_dump.py, rules enforced at every commit), every object of a snapshot stored in them,
+the lock load them (tools/schema_dump.py, every reference of a design held by its foreign keys), every object of a snapshot stored in them,
 every statement written back from them alone and compared with the server's SHOW CREATE, and with --roundtrip the
 whole schema written as SQL, loaded into a fresh server of the same version, read again and compared, part by part.
 
@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 import time
+import uuid
 from collections import Counter, defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -32,10 +33,11 @@ STATUS = {"ENABLED": "ENABLE", "DISABLED": "DISABLE", "SLAVESIDE_DISABLED": "DIS
 KINDS = ["table", "view", "procedure", "function", "trigger", "event"]
 
 
-def rows_of(snap):
-    """A snapshot as the locked design's rows: {table: [row]}, and the views the server says are broken."""
+def rows_of(snap, first=0, name=None):
+    """A snapshot as the locked design's rows: {table: [row]}, and the views the server says are broken. Its BIGINT ids
+    start after first, so more than one design can be loaded into one database; name names the design."""
     version = snap["version"]
-    n = [0]
+    n = [first]
 
     def nid():
         n[0] += 1
@@ -43,11 +45,16 @@ def rows_of(snap):
     out, by = defaultdict(list), defaultdict(list)
     for p in snap["parts"]:
         by[p["kind"]].append(p["props"])
-    out["cortex.object_kinds"] = [{"id": k, "name": k.title(), "position": i + 1} for i, k in enumerate(KINDS)]
+    design = str(uuid.uuid7())
+    out["cortex.engine_versions"] = [{"id": f"mysql/{version}", "engine": "mysql", "version": version, "name": f"MySQL {version}",
+                                      "position": 1, "support_ends": None}]
+    out["cortex.designs"] = [{"id": design, "name": name or f"mysql-{version}", "engine": "mysql", "engine_version": version, "comment": None}]
+    out["cortex.object_kinds"] = [{"id": f"mysql/{k}", "engine": "mysql", "kind": k, "name": k.title(), "position": i + 1}
+                                  for i, k in enumerate(KINDS)]
     ns = {}
     for s in by["namespace"]:
         i = ns[s["SCHEMA_NAME"]] = nid()
-        out["cortex.namespaces"].append({"id": i, "parent": None, "name": s["SCHEMA_NAME"], "position": i, "comment": None})
+        out["cortex.namespaces"].append({"id": i, "design": design, "parent": None, "name": s["SCHEMA_NAME"], "position": i, "comment": None})
         out["engine_mysql.databases"].append({"id": i, "collation": s["DEFAULT_COLLATION_NAME"],
                                               "encryption": {"YES": True, "NO": False}.get(s.get("DEFAULT_ENCRYPTION"))})
     obj, col, broken = {}, {}, []
@@ -231,10 +238,14 @@ def rows_of(snap):
         key = (t["TABLE_SCHEMA"], t["TABLE_NAME"])
         for u in t.get("__merge_union") or []:
             depends(obj[key], obj.get((key[0], u)))  # a MERGE table's tables, in their UNION order
+    # every table of a design carries its design (decision database-per-schema): the column first after id
+    for k, rows in out.items():
+        if k not in ("cortex.designs", "cortex.engine_versions", "cortex.object_kinds"):
+            out[k] = [{"id": r["id"], "design": design, **{c: v for c, v in r.items() if c not in ("id", "design")}} for r in rows]
     return out, broken
 
 
-ORDER = ["cortex.object_kinds", "cortex.namespaces", "cortex.objects", "cortex.columns", "cortex.column_identities", "cortex.indexes",
+ORDER = ["cortex.engine_versions", "cortex.designs", "cortex.object_kinds", "cortex.namespaces", "cortex.objects", "cortex.columns", "cortex.column_identities", "cortex.indexes",
          "cortex.index_parts", "cortex.constraints", "cortex.constraint_columns", "cortex.dependencies", "cortex.views",
          "cortex.routines", "cortex.routine_parameters", "cortex.triggers", "cortex.partitionings", "cortex.partitions",
          "engine_mysql.databases", "engine_mysql.tables", "engine_mysql.columns", "engine_mysql.indexes", "engine_mysql.index_parts",
@@ -259,7 +270,7 @@ def build(db):
            "DO $$ BEGIN CREATE ROLE sf_agent LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
            "DO $$ BEGIN CREATE ROLE sf_reader LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;", "postgres")
     C.psql(f"DROP DATABASE IF EXISTS {db} WITH (FORCE); CREATE DATABASE {db} OWNER sf_owner;", "postgres")
-    owners = SD.databases()["mysql"]
+    owners = SD.databases()["schema_forge"]
     script = "BEGIN;\nSET ROLE sf_owner;\n" + "".join(sql + "\n" for o in owners for _, sql in SD.version_one(o)) + "COMMIT;\n"
     C.psql(script, db)
 
@@ -459,8 +470,8 @@ def main():
                 exact[kind] += got.get((kind, schema, name)) is not None
                 continue
             exact[kind] += got.get((kind, schema, name)) == pr["__show_create"]
-        print(f"{'pass' if exact == n else 'FAIL'}  mysql {version}: {sum(len(v) for k, v in rows.items() if k != 'cortex.object_kinds')} rows in the locked design, "
-              f"loaded as sf_service with every rule held at commit in {t_load:.1f}s, {size}; written from it: "
+        print(f"{'pass' if exact == n else 'FAIL'}  mysql {version}: one design, {sum(len(v) for k, v in rows.items() if k not in ('cortex.object_kinds', 'cortex.designs', 'cortex.engine_versions'))} rows in the locked design, "
+              f"loaded as sf_service, every foreign key held, in {t_load:.1f}s, {size}; written from it: "
               + ", ".join(f"{exact[k]}/{n[k]} {k}s" for k in sorted(n)) + (f"; {len(broken)} broken views not stored" if broken else ""))
         if roundtrip:
             name = C.fresh_mysql(version)

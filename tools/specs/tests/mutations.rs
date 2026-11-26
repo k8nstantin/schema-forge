@@ -250,7 +250,7 @@ fn an_engine_whose_card_names_another_namespace_and_a_card_whose_version_is_not_
  {
     let c = copy("cards");
     c.edit("engines/mysql/owner.toml", r#"namespace = "engine_mysql""#, r#"namespace = "engine_other""#);
-    c.edit("docs/owner-template/owner.toml", "version = 3 ", "version = 2 ");
+    c.edit("docs/owner-template/owner.toml", "version = 4 ", "version = 3 ");
     let found = check(c.root());
     named(&found, &["engines/mysql/owner.toml", "namespace"]);
     named(&found, &["docs/owner-template/owner.toml", "version"]);
@@ -303,8 +303,8 @@ fn an_engine_table_referring_to_another_engine_s_table_is_the_finding_which_is_n
     let c = copy("refers");
     c.edit(
         "engines/mysql/schema/columns.sql",
-        "REFERENCES cortex.columns (id)",
-        "REFERENCES engine_other.table_options (id)",
+        "REFERENCES cortex.columns (design, id)",
+        "REFERENCES engine_other.table_options (design, id)",
     );
     named(&check(c.root()), &["engines/mysql/schema/columns.sql", "which is not its own or the cortex's"]);
 }
@@ -316,15 +316,43 @@ fn a_table_whose_primary_key_is_not_the_one_column_id_is_the_finding_not_the_one
     named(&check(c.root()), &["schema/cortex/namespaces.sql", "not the one column id"]);
 }
 
+#[test]
+fn a_design_s_table_without_its_design_column_is_the_finding_has_no_column_design() {
+    let c = copy("no-design");
+    c.cut("schema/cortex/columns.sql", "  design  ", "the design it belongs to\n");
+    named(&check(c.root()), &["schema/cortex/columns.sql", "holds a design's rows but has no column design"]);
+}
+
+#[test]
+fn a_reference_to_a_design_s_table_by_id_alone_is_the_finding_by_id_alone() {
+    let c = copy("by-id");
+    c.edit("schema/cortex/columns.sql", "BIGINT NOT NULL,", "BIGINT NOT NULL REFERENCES cortex.objects (id),");
+    named(
+        &check(c.root()),
+        &["schema/cortex/columns.sql", "refers to cortex.objects by id alone, not by (design, object)"],
+    );
+}
+
+#[test]
+fn a_design_s_foreign_key_without_its_index_is_the_finding_no_index() {
+    let c = copy("no-index");
+    c.edit("schema/cortex/columns.sql", "CREATE INDEX columns_object ON cortex.columns (design, object);\n", "");
+    named(&check(c.root()), &["schema/cortex/columns.sql", "no index on cortex.columns (design, object)"]);
+}
+
 // --- step 10: rules ------------------------------------------------------------------------------------------------
 
 #[test]
 fn a_rule_whose_view_is_not_named_broken_and_its_rule_is_a_finding_naming_the_file() {
     let c = copy("rule-view");
     let path = "schema/cortex/rules/triggers-on-a-table.sql";
-    let file = c.root().join(path);
-    let text = fs::read_to_string(&file).expect("read");
-    fs::write(&file, text.replace("cortex.broken_triggers_on_a_table", "cortex.triggers_on_a_table")).expect("written");
+    c.write(
+        path,
+        "-- triggers-on-a-table: Every trigger is on a table. Owner: cortex.\n\
+         CREATE VIEW cortex.triggers_on_a_table AS\n\
+         SELECT 'triggers-on-a-table' AS rule, (t.id)::text AS id FROM cortex.triggers t WHERE false;\n\n\
+         COMMENT ON VIEW cortex.triggers_on_a_table IS 'Every trigger is on a table.';\n",
+    );
     named(&check(c.root()), &[path]);
 }
 
@@ -334,11 +362,11 @@ fn a_rule_whose_view_is_not_named_broken_and_its_rule_is_a_finding_naming_the_fi
 fn a_seed_that_updates_a_row_is_the_finding_a_seed_writes_only_new_rows() {
     let c = copy("seed");
     c.edit(
-        "schema/workspace/seeds/parameters.sql",
+        "schema/cortex/seeds/workspace_parameters.sql",
         "ON CONFLICT (id) DO NOTHING",
         "ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value",
     );
-    named(&check(c.root()), &["schema/workspace/seeds/parameters.sql", "a seed writes only new rows"]);
+    named(&check(c.root()), &["schema/cortex/seeds/workspace_parameters.sql", "a seed writes only new rows"]);
 }
 
 // --- step 12: migrations -------------------------------------------------------------------------------------------
@@ -379,12 +407,12 @@ fn in_docker_a_rule_that_lists_a_row_of_a_new_database_is_the_finding_lists_rows
 fn in_docker_a_seed_whose_rows_take_a_new_id_each_time_it_is_applied_is_the_finding_changes_the_database() {
     let c = copy("seed-again");
     c.append(
-        "schema/workspace/seeds/parameters.sql",
-        "\nINSERT INTO workspace.parameters (id, value, about) VALUES \
+        "schema/cortex/seeds/workspace_parameters.sql",
+        "\nINSERT INTO cortex.workspace_parameters (id, value, about) VALUES \
          ('product.' || translate(substr(md5(random()::text), 1, 8), '0123456789', 'ghijklmnop'), '\"x\"', 'a new row each time') \
          ON CONFLICT (id) DO NOTHING;\n",
     );
-    named(&load(c.root()), &["schema/workspace/seeds/parameters.sql: applying it again changes the database"]);
+    named(&load(c.root()), &["schema/cortex/seeds/workspace_parameters.sql: applying it again changes the database"]);
 }
 
 #[test]
