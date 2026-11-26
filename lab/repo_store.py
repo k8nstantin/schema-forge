@@ -280,8 +280,13 @@ def copy_sql(table, rows):
     return f"COPY {table} ({', '.join(chr(34) + c + chr(34) for c in cols)}) FROM STDIN WITH (FORMAT csv, NULL '\\N');\n{body}\\.\n"
 
 
+LAYOUT = os.environ.get("LAB_LAYOUT", "locked")  # locked: the schema folders as they are; options: layout B (lab/options_layout.py)
+MOVED, ORIGIN = {}, {}
+
+
 def build(db):
-    """A database of the locked design: the cortex and MySQL's owner folders, as the dumps load them."""
+    """A database of the locked design: the cortex and MySQL's owner folders, as the dumps load them; made layout B
+    when LAB_LAYOUT is options."""
     C.psql("DO $$ BEGIN CREATE ROLE sf_owner NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
            "DO $$ BEGIN CREATE ROLE sf_service LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
            "DO $$ BEGIN CREATE ROLE sf_agent LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
@@ -290,9 +295,16 @@ def build(db):
     owners = SD.databases()["schema_forge"]
     script = "BEGIN;\nSET ROLE sf_owner;\n" + "".join(sql + "\n" for o in owners for _, sql in SD.version_one(o)) + "COMMIT;\n"
     C.psql(script, db)
+    if LAYOUT == "options":
+        import options_layout as OL
+        m, o = OL.transform(db)
+        MOVED.clear(), MOVED.update(m), ORIGIN.clear(), ORIGIN.update(o)
 
 
 def load(db, rows):
+    if MOVED:
+        import options_layout as OL
+        rows = OL.to_options(rows, MOVED)
     t = time.time()
     C.psql("BEGIN;\nSET ROLE sf_service;\n" + "".join(copy_sql(k, rows[k]) for k in ORDER if rows.get(k)) + "COMMIT;\n", db)
     return time.time() - t
@@ -301,7 +313,11 @@ def load(db, rows):
 def read_back(db):
     out = {}
     for k in ORDER:
-        out[k] = {r["id"]: r for r in json.loads(C.psql(f"SELECT coalesce(json_agg(to_jsonb(t)), '[]') FROM {k} t;", db))}
+        if k not in MOVED:
+            out[k] = {r["id"]: r for r in json.loads(C.psql(f"SELECT coalesce(json_agg(to_jsonb(t)), '[]') FROM {k} t;", db))}
+    if MOVED:
+        import options_layout as OL
+        out = OL.from_options(out, MOVED, ORIGIN)
     return out
 
 

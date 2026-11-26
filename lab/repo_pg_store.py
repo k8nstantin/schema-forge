@@ -324,10 +324,17 @@ def main():
         db = f"lab_repo_postgresql_{version}"
         R.build(db)
         t = time.time()
+        if R.MOVED:
+            import options_layout as OL
+            rows = OL.to_options(rows, R.MOVED)
         rows = jsonish(rows)
         C.psql("BEGIN;\nSET ROLE sf_service;\n" + "".join(R.copy_sql(k, rows[k]) for k in ORDER if rows.get(k)) + "COMMIT;\n", db)
         t_load = time.time() - t
-        st = {k: {r["id"]: r for r in json.loads(C.psql(f"SELECT coalesce(json_agg(to_jsonb(t)), '[]') FROM {k} t;", db))} for k in ORDER}
+        st = {k: {r["id"]: r for r in json.loads(C.psql(f"SELECT coalesce(json_agg(to_jsonb(t)), '[]') FROM {k} t;", db))}
+              for k in ORDER if k not in R.MOVED}
+        if R.MOVED:
+            import options_layout as OL
+            st = OL.from_options(st, R.MOVED, R.ORIGIN)
         S = P.Store(from_locked(st))
         n, exact, first = Counter(), Counter(), {}
         names = {(S.schema(S.objs[i["object_id"]]), i["name"]): i for i in S.st["core.index"].values()}

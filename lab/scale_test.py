@@ -27,9 +27,8 @@ sys.dont_write_bytecode = True
 import common as C  # noqa: E402
 import repo_store as R  # noqa: E402
 
-OFF = 10_000_000
 NOT_A_DESIGN = {"cortex.designs", "cortex.engine_versions", "cortex.engine_features", "cortex.catalog_sources", "cortex.object_kinds",
-                "cortex.schema_migrations"}
+                "cortex.schema_migrations", "cortex.option_declarations"}
 HISTORY = {"cortex.branches", "cortex.turns", "cortex.operations", "cortex.row_changes", "cortex.savepoints", "cortex.locked_versions",
            "cortex.source_reads"}
 
@@ -93,7 +92,8 @@ def open_queries(db, design):
 
 def measure(snap, n):
     db = f"lab_scale_{n}"
-    designs = [R.rows_of(snap, i * OFF, f"design-{i + 1}") for i in range(n + 1)]
+    base, _ = R.rows_of(snap, "design-1")
+    designs = [(base, None)] + [(R.twin(base, f"design-{i + 1}")[0], None) for i in range(1, n + 1)]
     R.build(db)
     t_import = []
     for i, (rows, _) in enumerate(designs[:n]):
@@ -121,10 +121,10 @@ def measure(snap, n):
          "BEGIN; SELECT sf_log.begin_turn('start'); SELECT sf_log.end_turn(); COMMIT;\nSELECT sf_log.savepoint('start');")
     cols = psql(db, f"SELECT c.id FROM cortex.columns c JOIN cortex.objects o ON o.id = c.object JOIN cortex.namespaces s ON s.id = o.namespace "
                     f"WHERE s.design = '{first}' ORDER BY c.id LIMIT 101;").split()
-    psql(db, "".join(f"BEGIN; SELECT sf_log.begin_turn('edit {k}'); UPDATE cortex.columns SET comment = 'edit {k}' WHERE id = {c}; "
+    psql(db, "".join(f"BEGIN; SELECT sf_log.begin_turn('edit {k}'); UPDATE cortex.columns SET comment = 'edit {k}' WHERE id = '{c}'; "
                      f"SELECT sf_log.end_turn(); COMMIT;\n" for k, c in ((k, cols[k % len(cols)]) for k in range(100))))
     res["an edit: one row, one turn, logged"] = statistics.median(
-        timed(db, f"BEGIN; SELECT sf_log.begin_turn('timed'); UPDATE cortex.columns SET comment = 'timed {k}' WHERE id = {cols[-1]}; "
+        timed(db, f"BEGIN; SELECT sf_log.begin_turn('timed'); UPDATE cortex.columns SET comment = 'timed {k}' WHERE id = '{cols[-1]}'; "
                   f"SELECT sf_log.end_turn(); COMMIT;") for k in range(3))
     # catching up: the log's rows of the turns after the number the copy holds (decision work-from-memory)
     log = ("SELECT rc.* FROM cortex.turns t JOIN cortex.operations o ON o.design = t.design AND o.turn = t.id "

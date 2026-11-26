@@ -47,17 +47,30 @@ def edit(db, rnd, n, version):
             sql.append(f"UPDATE cortex.columns SET default_value = '''{rnd.randint(0, 99)}''' WHERE id = (SELECT id FROM cortex.columns "
                        f"WHERE type LIKE 'int%' AND generated_expression IS NULL AND id NOT IN (SELECT id FROM cortex.column_identities) ORDER BY id OFFSET {off} LIMIT 1);")
         elif k < 0.5:
-            sql.append(f"UPDATE engine_mysql.tables SET engine = '{rnd.choice(['InnoDB', 'MyISAM'])}', row_format = {rnd.choice(['NULL', chr(39) + 'DYNAMIC' + chr(39)])} "
-                       f"WHERE id = (SELECT o.id FROM cortex.objects o WHERE {PLAIN} ORDER BY o.id OFFSET {off} LIMIT 1);")
+            engine, row_format = rnd.choice(['InnoDB', 'MyISAM']), rnd.choice(['NULL', chr(39) + 'DYNAMIC' + chr(39)])
+            where = f"WHERE id = (SELECT o.id FROM cortex.objects o WHERE {PLAIN} ORDER BY o.id OFFSET {off} LIMIT 1);"
+            if R.LAYOUT == "options":  # layout B: the same facts, as the table's options
+                sql.append(f"UPDATE cortex.objects SET options = options || jsonb_build_object('engine', '{engine}', 'row_format', {row_format}::text) {where}")
+            else:
+                sql.append(f"UPDATE engine_mysql.tables SET engine = '{engine}', row_format = {row_format} {where}")
         elif k < 0.65:
             sql.append(f"UPDATE cortex.columns SET name = name || '_{n}' WHERE id = (SELECT c.id FROM cortex.columns c JOIN cortex.objects o ON o.id = c.object "
                        f"WHERE o.kind = 'table' AND NOT EXISTS (SELECT 1 FROM cortex.dependencies d WHERE d.uses = o.id) ORDER BY c.id OFFSET {off * 7} LIMIT 1);")
         elif k < 0.85:
             cols = rnd.randint(1, 4)
-            sql.append(f"""WITH t AS (INSERT INTO cortex.objects (design, namespace, kind, name, position)
-                 SELECT (SELECT id FROM cortex.designs LIMIT 1), min(id::text)::uuid, 'table', 'lab_t{n}_{rnd.randint(0, 10**6)}', (SELECT max(position) + 1 FROM cortex.objects) FROM cortex.namespaces RETURNING id),
+            name = f"lab_t{n}_{rnd.randint(0, 10**6)}"
+            if R.LAYOUT == "options":  # layout B: the table's engine and collation are its options, from its database's
+                head = f"""WITH t AS (INSERT INTO cortex.objects (design, namespace, kind, name, position, options)
+                 SELECT (SELECT id FROM cortex.designs LIMIT 1), min(id::text)::uuid, 'table', '{name}', (SELECT max(position) + 1 FROM cortex.objects),
+                        jsonb_build_object('engine', 'InnoDB', 'collation', (SELECT options->>'collation' FROM cortex.namespaces
+                                           WHERE id = (SELECT min(id::text)::uuid FROM cortex.namespaces)))
+                 FROM cortex.namespaces RETURNING id),"""
+            else:
+                head = f"""WITH t AS (INSERT INTO cortex.objects (design, namespace, kind, name, position)
+                 SELECT (SELECT id FROM cortex.designs LIMIT 1), min(id::text)::uuid, 'table', '{name}', (SELECT max(position) + 1 FROM cortex.objects) FROM cortex.namespaces RETURNING id),
                m AS (INSERT INTO engine_mysql.tables (id, design, engine, "collation") SELECT t.id, (SELECT id FROM cortex.designs LIMIT 1), 'InnoDB', d."collation" FROM t, engine_mysql.databases d
-                 WHERE d.id = (SELECT min(id::text)::uuid FROM cortex.namespaces) RETURNING id),
+                 WHERE d.id = (SELECT min(id::text)::uuid FROM cortex.namespaces) RETURNING id),"""
+            sql.append(head + f"""
                c AS (INSERT INTO cortex.columns (design, object, position, name, type, nullable)
                  SELECT (SELECT id FROM cortex.designs LIMIT 1), t.id, g, 'c' || g, '{int_type}', g > 1 FROM t, generate_series(1, {cols}) g RETURNING id, position),
                i AS (INSERT INTO cortex.indexes (design, object, position, name, "unique", method) SELECT (SELECT id FROM cortex.designs LIMIT 1), t.id, 1, 'PRIMARY', true, 'BTREE' FROM t RETURNING id),
@@ -93,6 +106,9 @@ def main():
     db = f"lab_repo_mysql_{version.replace('.', '_')}"
     rows, _ = R.rows_of(snap)
     R.build(db)
+    if R.MOVED:  # layout B: the engine tables' facts are options of their cortex rows
+        import options_layout as OL
+        rows = OL.to_options(rows, R.MOVED)
     # the design is a row of cortex.designs, made before its first turn; its engine's kinds are the engine's declaration
     C.psql("BEGIN;\n" + R.copy_sql("cortex.engine_versions", rows["cortex.engine_versions"]) + R.copy_sql("cortex.designs", rows["cortex.designs"]) + R.copy_sql("cortex.object_kinds", rows["cortex.object_kinds"]) + "COMMIT;", db)
     C.psql(open(os.path.join(HERE, "design", "repo_versioning.sql")).read() + f"\nSELECT sf_log.attach('{rows['cortex.designs'][0]['id']}');", db)
@@ -163,7 +179,7 @@ def main():
         ("creates a table in the ui", False, "BEGIN; SET LOCAL ROLE sf_agent; CREATE TABLE ui.agent_attempt (id bigint); COMMIT;"),
         ("creates a table", False, "BEGIN; SET LOCAL ROLE sf_agent; CREATE TABLE cortex.agent_attempt (id bigint); COMMIT;"),
         ("alters a table", False, "BEGIN; SET LOCAL ROLE sf_agent; ALTER TABLE cortex.objects ADD COLUMN x int; COMMIT;"),
-        ("drops a table", False, "BEGIN; SET LOCAL ROLE sf_agent; DROP TABLE engine_mysql.events; COMMIT;"),
+        ("drops a table", False, "BEGIN; SET LOCAL ROLE sf_agent; DROP TABLE cortex.views; COMMIT;"),
         ("rewrites the log", False, "BEGIN; SET LOCAL ROLE sf_agent; UPDATE cortex.row_changes SET after = NULL; COMMIT;"),
         ("deletes from the log", False, "BEGIN; SET LOCAL ROLE sf_agent; DELETE FROM cortex.turns WHERE parent IS NULL; COMMIT;"),
         ("changes a locked version", False, "BEGIN; SET LOCAL ROLE sf_agent; UPDATE cortex.locked_versions SET message = 'x'; COMMIT;"),
