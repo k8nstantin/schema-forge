@@ -2,7 +2,7 @@
 CREATE TABLE cortex.source_reads (
   id               UUID NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),                     -- UUIDv7, issued by the database
   design           UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,        -- the design it was read for
-  turn             UUID REFERENCES cortex.turns (id),                                                                   -- the import turn the structure read landed in; NULL for a read of usage alone
+  turn             UUID,                                                                                                -- the import turn the structure read landed in; NULL for a read of usage alone
   connection       UUID REFERENCES cortex.workspace_connections (id) ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED,  -- the saved connection read through; NULL once it is deleted
   connection_name  TEXT NOT NULL CHECK (length(connection_name) >= 1),                                                  -- its name when it was read (prod-replica)
   database_name    TEXT NOT NULL CHECK (length(database_name) >= 1),                                                    -- the database read, as the server names it (shop)
@@ -15,8 +15,12 @@ CREATE TABLE cortex.source_reads (
   missing_grants   TEXT,                                                                                                -- the grants the account lacked, and so what was not read; NULL for none
   started_at       TIMESTAMPTZ NOT NULL,                                                                                -- when the read began
   ended_at         TIMESTAMPTZ,                                                                                         -- when it ended; NULL while it runs
-  CHECK (ended_at IS NULL OR ended_at >= started_at)
+  CHECK (ended_at IS NULL OR ended_at >= started_at),
+  UNIQUE (design, id),
+  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id)
 );
+
+CREATE INDEX source_reads_turn ON cortex.source_reads (design, turn);
 
 COMMENT ON TABLE cortex.source_reads IS 'each read of a live database for a design: from which saved connection, which server, as whom, and when.';
 COMMENT ON COLUMN cortex.source_reads.id IS 'UUIDv7, issued by the database';

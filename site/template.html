@@ -99,7 +99,7 @@ pre{margin:8px 0 0;background:var(--raised);border:1px solid var(--line);border-
 <div class="wrap"><span id="top"></span><nav class="nav" aria-label="SchemaForge"><a class="brand" href="index.html">SchemaForge</a><a href="start.html">Start here</a><a href="engines.html">Engines</a><a href="database.html">Database</a><a href="#top" aria-current="page">Owner Template</a><a href="build-spec.html">Build Spec</a><a href="contribute.html">Contribute</a><a href="https://github.com/k8nstantin/schema-forge" target="_blank" rel="noopener">GitHub</a><div class="sub"><a href="#card">Card</a> <a href="#shapes">Shapes</a> <a href="#rules">Rules</a> <a href="#versions">Versions</a></div></nav>
 <div class="tb" role="group" aria-label="Title block">
   <div><span>Owner</span><b>example · engine</b></div><div><span>Namespace</span><b>engine_example</b></div>
-  <div><span>Version</span><b>3</b></div><div><span>Needs cortex</span><b>1</b></div><div><span>Date</span><b>2026-11-24</b></div>
+  <div><span>Version</span><b>4</b></div><div><span>Needs cortex</span><b>1</b></div><div><span>Date</span><b>2026-11-24</b></div>
 </div>
 <h1>The Owner Template</h1>
 <p class="lede"><b>Modularity and yet coherence.</b> Every engine and every feature (insight, a semantic layer, design rules, pipelines) brings its own
@@ -111,7 +111,7 @@ Everything below is read from its files.</p>
 id = &quot;example&quot;                 # lowercase, a to z, 0 to 9, _: the engine&#x27;s or the feature&#x27;s id
 kind = &quot;engine&quot;                # core (schema/cortex, schema/ui), engine (engines/&lt;id&gt;/schema) or feature (features/&lt;id&gt;/schema)
 namespace = &quot;engine_example&quot;   # engine_&lt;id&gt; for an engine; the id itself for a feature (insight)
-version = 3                    # the owner&#x27;s newest version: 1 is the table files, each later one a file of migrations/
+version = 4                    # the owner&#x27;s newest version: 1 is the table files, each later one a file of migrations/
 requires_cortex = 1            # the lowest cortex version its tables are written against</pre></section>
 
 <section id="shapes"><h2>The five shapes</h2><p class="lede">Every table an owner needs is one of these. A value the engine names belongs in a typed column of shape 1, never in shape 4: shape 4 is only for keys nobody can list.</p>
@@ -119,31 +119,41 @@ requires_cortex = 1            # the lowest cortex version its tables are writte
 <article class="tbl"><h3><code class="tn">engine_example.table_options</code><span class="pill eng">1. options of a part</span><span class="path">docs/owner-template/schema/table_options.sql</span></h3><p class="lede">At most one row per table, every option typed. Shape 1, options of a cortex part: one row at most per cortex row, its id that row&#x27;s id. A row exists only when an option is written.</p><details><summary>The file, whole</summary><pre>-- engine_example.table_options: what Example says of a table beyond the cortex: its storage format and how it is compacted. Owner: example.
 -- Shape 1, options of a cortex part: one row at most per cortex row, its id that row&#x27;s id. A row exists only when an option is written.
 CREATE TABLE engine_example.table_options (
-  id                 BIGINT  NOT NULL PRIMARY KEY REFERENCES cortex.objects (id) ON DELETE CASCADE,  -- the table
-  format             TEXT    CHECK (format IN (&#x27;row&#x27;, &#x27;column&#x27;)),                                    -- how its rows are stored; NULL when not written
-  frozen             BOOLEAN NOT NULL DEFAULT false,                                                 -- true when nothing in it may change (FROZEN)
-  properties         JSONB,                                                                          -- the properties its users name themselves (WITH PROPERTIES (&#x27;k&#x27; = &#x27;v&#x27;)), as an object; NULL for none
-  compaction_policy  TEXT    CHECK (compaction_policy IN (&#x27;none&#x27;, &#x27;size&#x27;, &#x27;time&#x27;))                   -- how its files are compacted; NULL when not written
+  id                 BIGINT  NOT NULL PRIMARY KEY,                                                                  -- the table
+  format             TEXT    CHECK (format IN (&#x27;row&#x27;, &#x27;column&#x27;)),                                                   -- how its rows are stored; NULL when not written
+  frozen             BOOLEAN NOT NULL DEFAULT false,                                                                -- true when nothing in it may change (FROZEN)
+  properties         JSONB,                                                                                         -- the properties its users name themselves (WITH PROPERTIES (&#x27;k&#x27; = &#x27;v&#x27;)), as an object; NULL for none
+  compaction_policy  TEXT    CHECK (compaction_policy IN (&#x27;none&#x27;, &#x27;size&#x27;, &#x27;time&#x27;)),                                 -- how its files are compacted; NULL when not written
+  design             UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
+  UNIQUE (design, id),
+  FOREIGN KEY (design, id) REFERENCES cortex.objects (design, id) ON DELETE CASCADE
 );
 
 COMMENT ON TABLE engine_example.table_options IS &#x27;what Example says of a table beyond the cortex: its storage format and how it is compacted. Shape 1, options of a cortex part: one row at most per cortex row, its id that row&#x27;&#x27;s id. A row exists only when an option is written.&#x27;;
 COMMENT ON COLUMN engine_example.table_options.id IS &#x27;the table&#x27;;
+COMMENT ON COLUMN engine_example.table_options.design IS &#x27;the design it belongs to&#x27;;
 COMMENT ON COLUMN engine_example.table_options.format IS &#x27;how its rows are stored; NULL when not written&#x27;;
 COMMENT ON COLUMN engine_example.table_options.frozen IS &#x27;true when nothing in it may change (FROZEN)&#x27;;
 COMMENT ON COLUMN engine_example.table_options.properties IS &#x27;the properties its users name themselves (WITH PROPERTIES (&#x27;&#x27;k&#x27;&#x27; = &#x27;&#x27;v&#x27;&#x27;)), as an object; NULL for none&#x27;;
 COMMENT ON COLUMN engine_example.table_options.compaction_policy IS &#x27;how its files are compacted; NULL when not written&#x27;;</pre></details></article><article class="tbl"><h3><code class="tn">engine_example.column_codecs</code><span class="pill eng">2. an ordered list</span><span class="path">docs/owner-template/schema/column_codecs.sql</span></h3><p class="lede">In order, ids the database issues. Shape 2, an ordered list: many rows per cortex row, each placed by an order key.</p><details><summary>The file, whole</summary><pre>-- engine_example.column_codecs: the codecs a column&#x27;s values pass through, in order. Owner: example.
 -- Shape 2, an ordered list: many rows per cortex row, each placed by an order key.
 CREATE TABLE engine_example.column_codecs (
-  id        BIGINT  NOT NULL PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY,                                              -- issued by the database
-  &quot;column&quot;  BIGINT  NOT NULL REFERENCES cortex.columns (id) ON DELETE CASCADE,         -- the column
-  position  NUMERIC NOT NULL CHECK (position &gt; 0),                                     -- its place among the column&#x27;s codecs; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered
-  codec     TEXT    NOT NULL CHECK (codec IN (&#x27;delta&#x27;, &#x27;dictionary&#x27;, &#x27;zstd&#x27;, &#x27;lz4&#x27;)),  -- the codec
-  level     INTEGER CHECK (level BETWEEN 1 AND 22),                                    -- its level, for a codec that has one; NULL for its default
-  UNIQUE (&quot;column&quot;, position)
+  id        BIGINT  NOT NULL PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY,                                 -- issued by the database
+  &quot;column&quot;  BIGINT  NOT NULL,                                                                              -- the column
+  position  NUMERIC NOT NULL CHECK (position &gt; 0),                                                         -- its place among the column&#x27;s codecs; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered
+  codec     TEXT    NOT NULL CHECK (codec IN (&#x27;delta&#x27;, &#x27;dictionary&#x27;, &#x27;zstd&#x27;, &#x27;lz4&#x27;)),                      -- the codec
+  level     INTEGER CHECK (level BETWEEN 1 AND 22),                                                        -- its level, for a codec that has one; NULL for its default
+  design    UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
+  UNIQUE (&quot;column&quot;, position),
+  UNIQUE (design, id),
+  FOREIGN KEY (design, &quot;column&quot;) REFERENCES cortex.columns (design, id) ON DELETE CASCADE
 );
+
+CREATE INDEX column_codecs_column ON engine_example.column_codecs (design, &quot;column&quot;);
 
 COMMENT ON TABLE engine_example.column_codecs IS &#x27;the codecs a column&#x27;&#x27;s values pass through, in order. Shape 2, an ordered list: many rows per cortex row, each placed by an order key.&#x27;;
 COMMENT ON COLUMN engine_example.column_codecs.id IS &#x27;issued by the database&#x27;;
+COMMENT ON COLUMN engine_example.column_codecs.design IS &#x27;the design it belongs to&#x27;;
 COMMENT ON COLUMN engine_example.column_codecs.&quot;column&quot; IS &#x27;the column&#x27;;
 COMMENT ON COLUMN engine_example.column_codecs.position IS &#x27;its place among the column&#x27;&#x27;s codecs; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered&#x27;;
 COMMENT ON COLUMN engine_example.column_codecs.codec IS &#x27;the codec&#x27;;
@@ -151,30 +161,42 @@ COMMENT ON COLUMN engine_example.column_codecs.level IS &#x27;its level, for a c
 -- Shape 3, an engine-only kind: the object is a cortex row of the kind storage_pool, which Example declares in object_kinds;
 -- what only a pool has is here, one row per pool.
 CREATE TABLE engine_example.storage_pools (
-  id        BIGINT  NOT NULL PRIMARY KEY REFERENCES cortex.objects (id) ON DELETE CASCADE,  -- the pool, an object of the kind storage_pool
-  location  TEXT    NOT NULL CHECK (length(location) &gt;= 1),                                 -- where its files are, as written
-  quota_gb  INTEGER CHECK (quota_gb &gt;= 1)                                                   -- how much it may hold, in GB; NULL for no limit
+  id        BIGINT  NOT NULL PRIMARY KEY,                                                                  -- the pool, an object of the kind storage_pool
+  location  TEXT    NOT NULL CHECK (length(location) &gt;= 1),                                                -- where its files are, as written
+  quota_gb  INTEGER CHECK (quota_gb &gt;= 1),                                                                 -- how much it may hold, in GB; NULL for no limit
+  design    UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
+  UNIQUE (design, id),
+  FOREIGN KEY (design, id) REFERENCES cortex.objects (design, id) ON DELETE CASCADE
 );
 
 COMMENT ON TABLE engine_example.storage_pools IS &#x27;a storage pool, a kind of object only Example has (CREATE POOL). Shape 3, an engine-only kind: the object is a cortex row of the kind storage_pool, which Example declares in object_kinds; what only a pool has is here, one row per pool.&#x27;;
 COMMENT ON COLUMN engine_example.storage_pools.id IS &#x27;the pool, an object of the kind storage_pool&#x27;;
+COMMENT ON COLUMN engine_example.storage_pools.design IS &#x27;the design it belongs to&#x27;;
 COMMENT ON COLUMN engine_example.storage_pools.location IS &#x27;where its files are, as written&#x27;;
 COMMENT ON COLUMN engine_example.storage_pools.quota_gb IS &#x27;how much it may hold, in GB; NULL for no limit&#x27;;</pre></details></article><article class="tbl"><h3><code class="tn">engine_example.nested_fields</code><span class="pill eng">4. a tree</span><span class="path">docs/owner-template/schema/nested_fields.sql</span></h3><p class="lede">Parent: the same table. Shape 4, a tree: each row names its parent row, or none at the top; the column it belongs to is on every row, so a column&#x27;s whole tree is one query and deleting the column deletes it.</p><details><summary>The file, whole</summary><pre>-- engine_example.nested_fields: the fields inside a column of a nested type (a struct of structs), as a tree. Owner: example.
 -- Shape 4, a tree: each row names its parent row, or none at the top; the column it belongs to is on every row, so a
 -- column&#x27;s whole tree is one query and deleting the column deletes it.
 CREATE TABLE engine_example.nested_fields (
-  id        BIGINT  NOT NULL PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY,                                            -- issued by the database
-  &quot;column&quot;  BIGINT  NOT NULL REFERENCES cortex.columns (id) ON DELETE CASCADE,       -- the column the tree belongs to
-  parent    BIGINT  REFERENCES engine_example.nested_fields (id) ON DELETE CASCADE,  -- the field it sits in; NULL at the top of the column
-  position  NUMERIC NOT NULL CHECK (position &gt; 0),                                   -- its place among its parent&#x27;s fields; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered
-  name      TEXT    NOT NULL CHECK (length(name) &gt;= 1),                              -- its name
-  type      TEXT    NOT NULL CHECK (length(type) &gt;= 1),                              -- its type, as the engine writes it
-  CHECK (parent IS NULL OR parent &lt;&gt; id)
+  id        BIGINT  NOT NULL PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY,                                 -- issued by the database
+  &quot;column&quot;  BIGINT  NOT NULL,                                                                              -- the column the tree belongs to
+  parent    BIGINT,                                                                                        -- the field it sits in; NULL at the top of the column
+  position  NUMERIC NOT NULL CHECK (position &gt; 0),                                                         -- its place among its parent&#x27;s fields; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered
+  name      TEXT    NOT NULL CHECK (length(name) &gt;= 1),                                                    -- its name
+  type      TEXT    NOT NULL CHECK (length(type) &gt;= 1),                                                    -- its type, as the engine writes it
+  design    UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
+  CHECK (parent IS NULL OR parent &lt;&gt; id),
+  UNIQUE (design, id),
+  FOREIGN KEY (design, &quot;column&quot;) REFERENCES cortex.columns (design, id) ON DELETE CASCADE,
+  FOREIGN KEY (design, parent) REFERENCES engine_example.nested_fields (design, id) ON DELETE CASCADE
 );
+
+CREATE INDEX nested_fields_column ON engine_example.nested_fields (design, &quot;column&quot;);
+CREATE INDEX nested_fields_parent ON engine_example.nested_fields (design, parent);
 CREATE UNIQUE INDEX nested_fields_place ON engine_example.nested_fields (&quot;column&quot;, coalesce(parent, 0), position);  -- one field per place, at the top too
 
 COMMENT ON TABLE engine_example.nested_fields IS &#x27;the fields inside a column of a nested type (a struct of structs), as a tree. Shape 4, a tree: each row names its parent row, or none at the top; the column it belongs to is on every row, so a column&#x27;&#x27;s whole tree is one query and deleting the column deletes it.&#x27;;
 COMMENT ON COLUMN engine_example.nested_fields.id IS &#x27;issued by the database&#x27;;
+COMMENT ON COLUMN engine_example.nested_fields.design IS &#x27;the design it belongs to&#x27;;
 COMMENT ON COLUMN engine_example.nested_fields.&quot;column&quot; IS &#x27;the column the tree belongs to&#x27;;
 COMMENT ON COLUMN engine_example.nested_fields.parent IS &#x27;the field it sits in; NULL at the top of the column&#x27;;
 COMMENT ON COLUMN engine_example.nested_fields.position IS &#x27;its place among its parent&#x27;&#x27;s fields; an order key: one put between two takes their midpoint (NUMERIC, so the midpoints never run out), so nothing is renumbered&#x27;;
@@ -296,5 +318,39 @@ UPDATE engine_example.table_options SET compaction_policy = compaction WHERE com
 -- Shipped in a later release than version 2, once no supported build reads compaction; the table file
 -- schema/table_options.sql is changed in the same design session, so applying versions 1 to 3 to an empty database gives
 -- exactly the table files.
-ALTER TABLE engine_example.table_options DROP COLUMN compaction;</pre></details></section>
+ALTER TABLE engine_example.table_options DROP COLUMN compaction;</pre></details><details><summary><code>4_design.sql</code></summary><pre>-- 4_design: version 4 of example: every table of a design carries its design (decision database-per-schema). Owner: example.
+-- Each table gains the column design, filled from the cortex row it belongs to in the same transaction, then made NOT
+-- NULL; UNIQUE (design, id) is added, and every reference to a design&#x27;s table becomes (design, column) to (design, id),
+-- with its index, so no row can point into another design and a design&#x27;s rows are read by its index alone.
+ALTER TABLE engine_example.column_codecs ADD COLUMN design UUID REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+UPDATE engine_example.column_codecs x SET design = c.design FROM cortex.columns c WHERE c.id = x.&quot;column&quot;;
+ALTER TABLE engine_example.column_codecs ALTER COLUMN design SET NOT NULL, ADD UNIQUE (design, id),
+  DROP CONSTRAINT column_codecs_column_fkey,
+  ADD FOREIGN KEY (design, &quot;column&quot;) REFERENCES cortex.columns (design, id) ON DELETE CASCADE;
+CREATE INDEX column_codecs_column ON engine_example.column_codecs (design, &quot;column&quot;);
+COMMENT ON COLUMN engine_example.column_codecs.design IS &#x27;the design it belongs to&#x27;;
+
+ALTER TABLE engine_example.nested_fields ADD COLUMN design UUID REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+UPDATE engine_example.nested_fields x SET design = c.design FROM cortex.columns c WHERE c.id = x.&quot;column&quot;;
+ALTER TABLE engine_example.nested_fields ALTER COLUMN design SET NOT NULL, ADD UNIQUE (design, id),
+  DROP CONSTRAINT nested_fields_column_fkey, DROP CONSTRAINT nested_fields_parent_fkey,
+  ADD FOREIGN KEY (design, &quot;column&quot;) REFERENCES cortex.columns (design, id) ON DELETE CASCADE,
+  ADD FOREIGN KEY (design, parent) REFERENCES engine_example.nested_fields (design, id) ON DELETE CASCADE;
+CREATE INDEX nested_fields_column ON engine_example.nested_fields (design, &quot;column&quot;);
+CREATE INDEX nested_fields_parent ON engine_example.nested_fields (design, parent);
+COMMENT ON COLUMN engine_example.nested_fields.design IS &#x27;the design it belongs to&#x27;;
+
+ALTER TABLE engine_example.storage_pools ADD COLUMN design UUID REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+UPDATE engine_example.storage_pools x SET design = o.design FROM cortex.objects o WHERE o.id = x.id;
+ALTER TABLE engine_example.storage_pools ALTER COLUMN design SET NOT NULL, ADD UNIQUE (design, id),
+  DROP CONSTRAINT storage_pools_id_fkey,
+  ADD FOREIGN KEY (design, id) REFERENCES cortex.objects (design, id) ON DELETE CASCADE;
+COMMENT ON COLUMN engine_example.storage_pools.design IS &#x27;the design it belongs to&#x27;;
+
+ALTER TABLE engine_example.table_options ADD COLUMN design UUID REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+UPDATE engine_example.table_options x SET design = o.design FROM cortex.objects o WHERE o.id = x.id;
+ALTER TABLE engine_example.table_options ALTER COLUMN design SET NOT NULL, ADD UNIQUE (design, id),
+  DROP CONSTRAINT table_options_id_fkey,
+  ADD FOREIGN KEY (design, id) REFERENCES cortex.objects (design, id) ON DELETE CASCADE;
+COMMENT ON COLUMN engine_example.table_options.design IS &#x27;the design it belongs to&#x27;;</pre></details></section>
 <aside class="agents" aria-label="For coding agents"><p class="kicker">For coding agents</p><p>Everything a coding agent needs to work on SchemaForge is in one place: the brief, https://k8nstantin.github.io/schema-forge/agents.xml. It explains what SchemaForge is and how it is built, lists every contribution open now, and leads to the spec, the rules and the task files, in the order to read them. Read it before you act on this page, and let your human choose what to do.</p><a class="btn btn-outline" href="https://k8nstantin.github.io/schema-forge/agents.xml">The brief: agents.xml</a></aside><p class="foot"><span>SchemaForge · MIT or Apache-2.0</span><a href="https://github.com/k8nstantin/schema-forge">GitHub</a><a href="https://github.com/k8nstantin/schema-forge/discussions">Discussions</a><a href="https://k8nstantin.github.io/schema-forge/agents.xml">For coding agents: the brief, agents.xml</a><span>Generated by docs/pages/build.py from the repository: the files are the authority.</span></p></div>

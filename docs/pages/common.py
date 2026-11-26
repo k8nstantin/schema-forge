@@ -54,6 +54,11 @@ def table_files(folder):
                     "ref": ref.group(1) if ref else None, "ref_col": ref.group(2) if ref else None,
                     "on_delete": ref.group(3) if ref and ref.group(3) else None,
                     "check": chk.group(1) if chk else None, "comment": (c.group(4) or "").strip()})
+            elif in_table and l.strip().startswith("FOREIGN KEY (design, "):
+                # a reference within the design: (design, column) -> (design, id); drawn as the column's own
+                fk = re.match(r'FOREIGN KEY \(design, "?(\w+)"?\) REFERENCES ([\w.]+) \(design, id\)(?: ON DELETE (CASCADE|SET NULL))?', l.strip())
+                col = next(c for c in cols if c["name"] == fk.group(1))
+                col.update({"ref": fk.group(2), "ref_col": "id", "on_delete": fk.group(3)})
             elif in_table and l.strip().startswith(("UNIQUE", "CHECK")):
                 constraints.append(l.split("--")[0].strip().rstrip(","))
             elif l.startswith("CREATE") and "INDEX" in l:

@@ -24,16 +24,16 @@ BEGIN
   IF current_setting('sf.replaying', true) = 'on' THEN RETURN NULL; END IF;
   IF op IS NULL THEN RAISE EXCEPTION 'a change outside a turn: begin one with sf_log.begin_turn'; END IF;
   IF TG_OP = 'INSERT' THEN
-    INSERT INTO cortex.row_changes (operation, table_name, row_id, action, after) VALUES (op, tab, NEW.id, 'insert', to_jsonb(NEW));
+    INSERT INTO cortex.row_changes (design, operation, table_name, row_id, action, after) VALUES (NEW.design, op, tab, NEW.id, 'insert', to_jsonb(NEW));
   ELSIF TG_OP = 'DELETE' THEN
-    INSERT INTO cortex.row_changes (operation, table_name, row_id, action, before) VALUES (op, tab, OLD.id, 'delete', to_jsonb(OLD));
+    INSERT INTO cortex.row_changes (design, operation, table_name, row_id, action, before) VALUES (OLD.design, op, tab, OLD.id, 'delete', to_jsonb(OLD));
   ELSE
     o := to_jsonb(OLD); n := to_jsonb(NEW);
     FOR k IN SELECT jsonb_object_keys(n) LOOP
       IF o -> k IS DISTINCT FROM n -> k THEN b := b || jsonb_build_object(k, o -> k); a := a || jsonb_build_object(k, n -> k); END IF;
     END LOOP;
     IF a <> '{}' THEN
-      INSERT INTO cortex.row_changes (operation, table_name, row_id, action, before, after) VALUES (op, tab, OLD.id, 'update', b, a);
+      INSERT INTO cortex.row_changes (design, operation, table_name, row_id, action, before, after) VALUES (OLD.design, op, tab, OLD.id, 'update', b, a);
     END IF;
   END IF;
   RETURN NULL;
@@ -58,9 +58,9 @@ CREATE FUNCTION sf_log.begin_turn(p_summary text, p_who text DEFAULT 'lab') RETU
 DECLARE b cortex.branches := sf_log.current(); t uuid; op uuid;
 BEGIN
   IF EXISTS (SELECT 1 FROM cortex.turns WHERE state = 'open') THEN RAISE EXCEPTION 'a turn is still open'; END IF;
-  INSERT INTO cortex.turns (parent, branch, by, who, summary, state, started_at)
-    VALUES (b.head, b.id, 'person', p_who, p_summary, 'open', clock_timestamp()) RETURNING id INTO t;
-  INSERT INTO cortex.operations (turn, kind, summary, at) VALUES (t, 'edit', p_summary, clock_timestamp()) RETURNING id INTO op;
+  INSERT INTO cortex.turns (design, parent, branch, by, who, summary, state, started_at)
+    VALUES (b.design, b.head, b.id, 'person', p_who, p_summary, 'open', clock_timestamp()) RETURNING id INTO t;
+  INSERT INTO cortex.operations (design, turn, kind, summary, at) VALUES (b.design, t, 'edit', p_summary, clock_timestamp()) RETURNING id INTO op;
   PERFORM set_config('sf.operation', op::text, true);
   RETURN t;
 END $$;
@@ -69,7 +69,10 @@ CREATE FUNCTION sf_log.end_turn() RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE t cortex.turns;
 BEGIN
   SELECT * INTO t FROM cortex.turns WHERE state = 'open';
-  UPDATE cortex.turns SET state = 'accepted', ended_at = clock_timestamp(), decided_at = clock_timestamp(), decided_by = t.who WHERE id = t.id;
+  -- its number in its design's commit order: the next after the design's last, the unique (design, seq) making a
+  -- second writer that took the same number wait for the first and fail, so the numbers follow the commits
+  UPDATE cortex.turns SET state = 'accepted', ended_at = clock_timestamp(), decided_at = clock_timestamp(), decided_by = t.who,
+    seq = (SELECT coalesce(max(seq), 0) + 1 FROM cortex.turns WHERE design = t.design) WHERE id = t.id;
   UPDATE cortex.branches SET head = t.id WHERE id = t.branch;
   PERFORM set_config('sf.operation', '', true);
   RETURN t.id;

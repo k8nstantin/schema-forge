@@ -250,7 +250,7 @@ fn an_engine_whose_card_names_another_namespace_and_a_card_whose_version_is_not_
  {
     let c = copy("cards");
     c.edit("engines/mysql/owner.toml", r#"namespace = "engine_mysql""#, r#"namespace = "engine_other""#);
-    c.edit("docs/owner-template/owner.toml", "version = 3 ", "version = 2 ");
+    c.edit("docs/owner-template/owner.toml", "version = 4 ", "version = 3 ");
     let found = check(c.root());
     named(&found, &["engines/mysql/owner.toml", "namespace"]);
     named(&found, &["docs/owner-template/owner.toml", "version"]);
@@ -303,8 +303,8 @@ fn an_engine_table_referring_to_another_engine_s_table_is_the_finding_which_is_n
     let c = copy("refers");
     c.edit(
         "engines/mysql/schema/columns.sql",
-        "REFERENCES cortex.columns (id)",
-        "REFERENCES engine_other.table_options (id)",
+        "REFERENCES cortex.columns (design, id)",
+        "REFERENCES engine_other.table_options (design, id)",
     );
     named(&check(c.root()), &["engines/mysql/schema/columns.sql", "which is not its own or the cortex's"]);
 }
@@ -314,6 +314,30 @@ fn a_table_whose_primary_key_is_not_the_one_column_id_is_the_finding_not_the_one
     let c = copy("primary-key");
     c.edit("schema/cortex/namespaces.sql", "NOT NULL PRIMARY KEY GENERATED", "NOT NULL GENERATED");
     named(&check(c.root()), &["schema/cortex/namespaces.sql", "not the one column id"]);
+}
+
+#[test]
+fn a_design_s_table_without_its_design_column_is_the_finding_has_no_column_design() {
+    let c = copy("no-design");
+    c.cut("schema/cortex/columns.sql", "  design  ", "the design it belongs to\n");
+    named(&check(c.root()), &["schema/cortex/columns.sql", "holds a design's rows but has no column design"]);
+}
+
+#[test]
+fn a_reference_to_a_design_s_table_by_id_alone_is_the_finding_by_id_alone() {
+    let c = copy("by-id");
+    c.edit("schema/cortex/columns.sql", "BIGINT NOT NULL,", "BIGINT NOT NULL REFERENCES cortex.objects (id),");
+    named(
+        &check(c.root()),
+        &["schema/cortex/columns.sql", "refers to cortex.objects by id alone, not by (design, object)"],
+    );
+}
+
+#[test]
+fn a_design_s_foreign_key_without_its_index_is_the_finding_no_index() {
+    let c = copy("no-index");
+    c.edit("schema/cortex/columns.sql", "CREATE INDEX columns_object ON cortex.columns (design, object);\n", "");
+    named(&check(c.root()), &["schema/cortex/columns.sql", "no index on cortex.columns (design, object)"]);
 }
 
 // --- step 10: rules ------------------------------------------------------------------------------------------------

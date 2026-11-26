@@ -1,6 +1,6 @@
 """Our own PostgreSQL (sf-store) wiped and the locked design installed fresh: every database but postgres dropped, the
 four roles made again, then the one database, schema_forge, loaded from the owner folders exactly as the dump loads it
-(tools/schema_dump.py), as sf_owner, its rules enforced. Its passwords are not set: schema/install.py is the install
+(tools/schema_dump.py), as sf_owner, its foreign keys holding every design apart. Its passwords are not set: schema/install.py is the install
 with accounts; this is the lab's quick reset.
 
   python3 lab/fresh_store.py

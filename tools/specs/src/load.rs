@@ -151,7 +151,7 @@ fn version_one(root: &Path, owner: &Owner) -> Vec<(String, String)> {
         parts.push((path, text));
     }
     if owner.id == "cortex" {
-        for f in ["enforce_rules.sql", "grant_roles.sql"] {
+        for f in ["enforce_rules.sql", "notify_turns.sql", "grant_roles.sql"] {
             parts.push((format!("{}/{f}", owner.folder), fs::read_to_string(folder.join(f)).unwrap_or_default()));
         }
     }
@@ -247,6 +247,8 @@ pub fn check(root: &Path, found: &mut Vec<Finding>) {
     }
 }
 
+/// Every foreign key refers to its table's primary key, or, within a design, to the table's UNIQUE (design, id)
+/// (decision database-per-schema).
 fn keys_to_primary(
     c: &Container,
     db: &str,
@@ -261,7 +263,9 @@ fn keys_to_primary(
          FROM pg_constraint k JOIN pg_class t ON t.oid = k.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace \
          JOIN pg_class r ON r.oid = k.confrelid JOIN pg_namespace n2 ON n2.oid = r.relnamespace \
          WHERE k.contype = 'f' AND n.nspname IN ({}) \
-           AND NOT EXISTS (SELECT 1 FROM pg_constraint p WHERE p.conrelid = k.confrelid AND p.contype = 'p' AND p.conkey = k.confkey);",
+           AND NOT EXISTS (SELECT 1 FROM pg_constraint p WHERE p.conrelid = k.confrelid AND p.contype = 'p' AND p.conkey = k.confkey) \
+           AND NOT EXISTS (SELECT 1 FROM pg_constraint u WHERE u.conrelid = k.confrelid AND u.contype = 'u' AND u.conkey = k.confkey \
+             AND (SELECT string_agg(a.attname, ',' ORDER BY a.attnum) FROM pg_attribute a WHERE a.attrelid = r.oid AND a.attnum = ANY (u.conkey)) IN ('id,design', 'design,id'));",
         namespaces.join(", ")
     );
     if let Ok(out) = c.psql(db, &query) {

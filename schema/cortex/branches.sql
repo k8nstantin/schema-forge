@@ -5,7 +5,8 @@ CREATE TABLE cortex.branches (
   name     TEXT NOT NULL CHECK (length(name) >= 1),                                                       -- main, experiment
   head     UUID,                                                                                          -- its newest turn, or the turn it forks from before it has one (a rule holds it to a turn: turns name their branch, so a key here would be a cycle); NULL before the first turn
   current  BOOLEAN NOT NULL DEFAULT false,                                                                -- true for the branch its design is on: exactly one per design, held at commit
-  UNIQUE (design, name) DEFERRABLE INITIALLY DEFERRED
+  UNIQUE (design, name) DEFERRABLE INITIALLY DEFERRED,
+  UNIQUE (design, id)
 );
 
 COMMENT ON TABLE cortex.branches IS 'a line of work: its newest turn. Switching branch moves the design to its newest turn.';

@@ -7,7 +7,8 @@ CREATE TABLE cortex.required_extensions (
   version         TEXT,                                                                                          -- the version installed; NULL for the newest
   position        NUMERIC NOT NULL CHECK (position > 0),                                                         -- its place in the design's list of requirements; an order key
   UNIQUE (design, name) DEFERRABLE INITIALLY DEFERRED,
-  UNIQUE (design, position) DEFERRABLE INITIALLY DEFERRED
+  UNIQUE (design, position) DEFERRABLE INITIALLY DEFERRED,
+  UNIQUE (design, id)
 );
 
 COMMENT ON TABLE cortex.required_extensions IS 'what the database must have installed for the design (an extension, a plugin), in order.';

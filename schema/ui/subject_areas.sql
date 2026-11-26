@@ -6,7 +6,8 @@ CREATE TABLE ui.subject_areas (
   colour    TEXT CHECK (colour ~ '^#[0-9a-f]{6}$'),                                                        -- its colour, as #rrggbb; NULL for the canvas's choice
   position  NUMERIC NOT NULL CHECK (position > 0),                                                         -- its place among its design's areas; an order key
   UNIQUE (design, name) DEFERRABLE INITIALLY DEFERRED,
-  UNIQUE (design, position) DEFERRABLE INITIALLY DEFERRED
+  UNIQUE (design, position) DEFERRABLE INITIALLY DEFERRED,
+  UNIQUE (design, id)
 );
 
 COMMENT ON TABLE ui.subject_areas IS 'groups of objects by subject (billing, catalog), across namespaces, as the canvas groups and colours them.';

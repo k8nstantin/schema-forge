@@ -54,27 +54,27 @@ def edit(db, rnd, n, version):
                        f"WHERE o.kind = 'table' AND NOT EXISTS (SELECT 1 FROM cortex.dependencies d WHERE d.uses = o.id) ORDER BY c.id OFFSET {off * 7} LIMIT 1);")
         elif k < 0.85:
             cols = rnd.randint(1, 4)
-            sql.append(f"""WITH t AS (INSERT INTO cortex.objects (namespace, kind, name, position)
-                 SELECT min(id), 'table', 'lab_t{n}_{rnd.randint(0, 10**6)}', (SELECT max(position) + 1 FROM cortex.objects) FROM cortex.namespaces RETURNING id),
-               m AS (INSERT INTO engine_mysql.tables (id, engine, "collation") SELECT t.id, 'InnoDB', d."collation" FROM t, engine_mysql.databases d
+            sql.append(f"""WITH t AS (INSERT INTO cortex.objects (design, namespace, kind, name, position)
+                 SELECT (SELECT id FROM cortex.designs LIMIT 1), min(id), 'table', 'lab_t{n}_{rnd.randint(0, 10**6)}', (SELECT max(position) + 1 FROM cortex.objects) FROM cortex.namespaces RETURNING id),
+               m AS (INSERT INTO engine_mysql.tables (id, design, engine, "collation") SELECT t.id, (SELECT id FROM cortex.designs LIMIT 1), 'InnoDB', d."collation" FROM t, engine_mysql.databases d
                  WHERE d.id = (SELECT min(id) FROM cortex.namespaces) RETURNING id),
-               c AS (INSERT INTO cortex.columns (object, position, name, type, nullable)
-                 SELECT t.id, g, 'c' || g, '{int_type}', g > 1 FROM t, generate_series(1, {cols}) g RETURNING id, position),
-               i AS (INSERT INTO cortex.indexes (object, position, name, "unique", method) SELECT t.id, 1, 'PRIMARY', true, 'BTREE' FROM t RETURNING id),
-               p AS (INSERT INTO cortex.index_parts ("index", position, "column") SELECT i.id, 1, c.id FROM i, c WHERE c.position = 1 RETURNING id),
-               k AS (INSERT INTO cortex.constraints (object, name, kind, "index", position) SELECT t.id, 'PRIMARY', 'primary', i.id, 1 FROM t, i RETURNING id)
-               INSERT INTO cortex.constraint_columns ("constraint", position, "column") SELECT k.id, 1, c.id FROM k, c WHERE c.position = 1;""")
+               c AS (INSERT INTO cortex.columns (design, object, position, name, type, nullable)
+                 SELECT (SELECT id FROM cortex.designs LIMIT 1), t.id, g, 'c' || g, '{int_type}', g > 1 FROM t, generate_series(1, {cols}) g RETURNING id, position),
+               i AS (INSERT INTO cortex.indexes (design, object, position, name, "unique", method) SELECT (SELECT id FROM cortex.designs LIMIT 1), t.id, 1, 'PRIMARY', true, 'BTREE' FROM t RETURNING id),
+               p AS (INSERT INTO cortex.index_parts (design, "index", position, "column") SELECT (SELECT id FROM cortex.designs LIMIT 1), i.id, 1, c.id FROM i, c WHERE c.position = 1 RETURNING id),
+               k AS (INSERT INTO cortex.constraints (design, object, name, kind, "index", position) SELECT (SELECT id FROM cortex.designs LIMIT 1), t.id, 'PRIMARY', 'primary', i.id, 1 FROM t, i RETURNING id)
+               INSERT INTO cortex.constraint_columns (design, "constraint", position, "column") SELECT (SELECT id FROM cortex.designs LIMIT 1), k.id, 1, c.id FROM k, c WHERE c.position = 1;""")
         elif k < 0.93:
             # the ui, versioned like the design: an area and its objects, a perspective, pins, a note; names unique in the run
             tag = f"{n}_{rnd.randint(0, 10**9)}"
             sql.append(f"""WITH d AS (SELECT id FROM cortex.designs LIMIT 1),
                  a AS (INSERT INTO ui.subject_areas (design, name, position) SELECT d.id, 'area {tag}', (SELECT coalesce(max(position), 0) + 1 FROM ui.subject_areas) FROM d RETURNING id),
                  o AS (SELECT id FROM cortex.objects WHERE kind = 'table' AND id NOT IN (SELECT id FROM ui.object_places) ORDER BY id OFFSET {off} LIMIT 3),
-                 pl AS (INSERT INTO ui.object_places (id, area) SELECT o.id, a.id FROM o, a RETURNING id),
+                 pl AS (INSERT INTO ui.object_places (id, design, area) SELECT o.id, d.id, a.id FROM o, a, d RETURNING id),
                  p AS (INSERT INTO ui.custom_perspectives (design, name, position, made_by) SELECT d.id, 'view {tag}', (SELECT coalesce(max(position), 0) + 1 FROM ui.custom_perspectives), 'lab' FROM d RETURNING id),
-                 m AS (INSERT INTO ui.perspective_members (perspective, object, position) SELECT p.id, o.id, row_number() OVER () FROM p, o RETURNING id),
-                 pin AS (INSERT INTO ui.layout_pins (view, object, x, y) SELECT 'map/{tag}', o.id, {off}, {n} FROM o RETURNING id),
-                 ppin AS (INSERT INTO ui.layout_pins (perspective, object, x, y) SELECT p.id, o.id, {n}, {off} FROM p, o RETURNING id)
+                 m AS (INSERT INTO ui.perspective_members (design, perspective, object, position) SELECT d.id, p.id, o.id, row_number() OVER () FROM p, o, d RETURNING id),
+                 pin AS (INSERT INTO ui.layout_pins (design, view, object, x, y) SELECT d.id, 'map/{tag}', o.id, {off}, {n} FROM o, d RETURNING id),
+                 ppin AS (INSERT INTO ui.layout_pins (design, perspective, object, x, y) SELECT d.id, p.id, o.id, {n}, {off} FROM p, o, d RETURNING id)
                INSERT INTO ui.pinned_notes (design, object, position, text, written_by)
                SELECT d.id, o.id, (SELECT coalesce(max(position), 0) FROM ui.pinned_notes) + row_number() OVER (), 'check {n}', 'lab' FROM o, d;""")
         elif k < 0.95:
@@ -162,8 +162,8 @@ def main():
          "BEGIN; SELECT sf_log.begin_turn('agent'); SET LOCAL ROLE sf_agent; UPDATE cortex.objects SET notes = 'agent' "
          "WHERE id = (SELECT min(id) FROM cortex.objects); RESET ROLE; SELECT sf_log.end_turn(); COMMIT;"),
         ("pins a table on the canvas inside a turn", True,
-         "BEGIN; SELECT sf_log.begin_turn('agent'); SET LOCAL ROLE sf_agent; INSERT INTO ui.layout_pins (view, object, x, y) "
-         "VALUES ('map/agent', (SELECT min(id) FROM cortex.objects), 1, 1); RESET ROLE; SELECT sf_log.end_turn(); COMMIT;"),
+         "BEGIN; SELECT sf_log.begin_turn('agent'); SET LOCAL ROLE sf_agent; INSERT INTO ui.layout_pins (design, view, object, x, y) "
+         "VALUES ((SELECT id FROM cortex.designs LIMIT 1), 'map/agent', (SELECT min(id) FROM cortex.objects), 1, 1); RESET ROLE; SELECT sf_log.end_turn(); COMMIT;"),
         ("creates a table in the ui", False, "BEGIN; SET LOCAL ROLE sf_agent; CREATE TABLE ui.agent_attempt (id bigint); COMMIT;"),
         ("creates a table", False, "BEGIN; SET LOCAL ROLE sf_agent; CREATE TABLE cortex.agent_attempt (id bigint); COMMIT;"),
         ("alters a table", False, "BEGIN; SET LOCAL ROLE sf_agent; ALTER TABLE cortex.objects ADD COLUMN x int; COMMIT;"),
@@ -178,10 +178,53 @@ def main():
         ok, why = attempt(sql, db)
         print(f"  {'pass' if ok == want else 'FAIL'}  {label}: {'allowed' if ok else 'refused (' + why + ')'}")
 
+    feed(db)
+
     st = R.read_back(db)
     t = time.time()
     written = R.write(st, version)
     print(f"== after it all, every object written from the design: {len(written)} statements in {(time.time() - t) * 1000:.0f} ms")
+
+
+def feed(db):
+    """The change feed (decision work-from-memory): every ended turn numbered 1, 2, 3 in its design's commit order, a
+    bell rung at commit with the design and the number, and two writers that take the same number kept in commit order."""
+    print("== the change feed: turns.seq and the bell")
+    nums = one("SELECT count(*) || ' ' || min(seq) || ' ' || max(seq) || ' ' || count(DISTINCT seq) || ' ' || "
+               "bool_and(seq_order = end_order) FROM (SELECT seq, row_number() OVER (ORDER BY seq) seq_order, "
+               "row_number() OVER (ORDER BY ended_at, seq) end_order FROM cortex.turns WHERE seq IS NOT NULL) x", db).split()
+    n = int(nums[0])
+    print(f"  {'pass' if nums[1:] == ['1', str(n), str(n), 'true'] else 'FAIL'}  {n} ended turns numbered 1 to {nums[2]}, no gap, "
+          f"in the order they ended: {nums[4] == 'true'}")
+    r = subprocess.run(["docker", "exec", "-i", C.SERVER, "psql", "-U", "postgres", "-d", db, "-At", "-v", "ON_ERROR_STOP=1"],
+                       input="LISTEN schema_forge_turns;\nBEGIN; SELECT sf_log.begin_turn('bell');\n"
+                             "UPDATE cortex.objects SET notes = 'bell' WHERE id = (SELECT min(id) FROM cortex.objects);\n"
+                             "SELECT sf_log.end_turn(); COMMIT;\nSELECT 'after';\n", capture_output=True, text=True)
+    heard = [l for l in (r.stdout + r.stderr).splitlines() if "schema_forge_turns" in l]
+    want = one("SELECT design || ' ' || seq FROM cortex.turns WHERE seq = (SELECT max(seq) FROM cortex.turns)", db)
+    print(f"  {'pass' if len(heard) == 1 and want in heard[0] else 'FAIL'}  a committed turn rings the bell once, after commit, "
+          f"with its design and number: {heard[0].split('payload')[-1].split(' received')[0].strip() if heard else 'NOTHING HEARD'}")
+    # two writers end a turn at once: the second takes the same number, waits for the first's commit, and is refused
+    first = ("BEGIN; SELECT sf_log.begin_turn('first'); UPDATE cortex.objects SET notes = 'first' WHERE id = (SELECT min(id) FROM cortex.objects);\n"
+             "SELECT sf_log.end_turn(); SELECT pg_sleep(2); COMMIT;\n")
+    second = ("BEGIN; SELECT sf_log.begin_turn('second'); UPDATE cortex.objects SET notes = 'second' WHERE id = (SELECT max(id) FROM cortex.objects);\n"
+              "SELECT sf_log.end_turn(); COMMIT;\n")
+    cmd = ["docker", "exec", "-i", C.SERVER, "psql", "-U", "postgres", "-d", db, "-At", "-v", "ON_ERROR_STOP=1", "-q"]
+    before = int(one("SELECT max(seq) FROM cortex.turns", db))
+    a = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    a.stdin.write(first)
+    a.stdin.close()
+    time.sleep(0.7)
+    t = time.time()
+    b = subprocess.run(cmd, input=second, capture_output=True, text=True)
+    waited = time.time() - t
+    a.wait()
+    again = subprocess.run(cmd, input=second, capture_output=True, text=True)
+    order = one(f"SELECT string_agg(summary || '=' || seq, ' ' ORDER BY seq) FROM cortex.turns WHERE seq > {before}", db)
+    ok = a.returncode == 0 and b.returncode != 0 and "duplicate key" in b.stderr and waited > 0.8 and again.returncode == 0 \
+        and order == f"first={before + 1} second={before + 2}"
+    print(f"  {'pass' if ok else 'FAIL'}  two writers ending a turn at once: the second waited {waited:.1f}s for the first's commit, "
+          f"was refused ({'duplicate key' if 'duplicate key' in b.stderr else b.stderr.strip()[-80:] or 'NOT REFUSED'}), and took the next number again: {order}")
 
 
 if __name__ == "__main__":

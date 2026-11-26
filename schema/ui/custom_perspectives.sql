@@ -9,7 +9,8 @@ CREATE TABLE ui.custom_perspectives (
   comment    TEXT,                                                                                          -- what it is for; NULL for none
   made_by    TEXT NOT NULL CHECK (length(made_by) >= 1),                                                    -- who made it: a person's name or the agent's label
   UNIQUE (design, name) DEFERRABLE INITIALLY DEFERRED,
-  UNIQUE (design, position) DEFERRABLE INITIALLY DEFERRED
+  UNIQUE (design, position) DEFERRABLE INITIALLY DEFERRED,
+  UNIQUE (design, id)
 );
 
 COMMENT ON TABLE ui.custom_perspectives IS 'a perspective someone saved: their own choice of tables and columns, grouped and coloured their way.';

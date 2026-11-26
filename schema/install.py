@@ -54,7 +54,7 @@ def install(conn):
                               "FROM pg_class WHERE relkind = 'r' GROUP BY 1) x JOIN pg_namespace n ON n.oid = x.relnamespace "
                               "WHERE n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema';", DATABASE), "counting")
     rules = A.ok(A.run(conn, "SELECT count(*) FROM pg_views WHERE viewname LIKE 'broken\\_%';", DATABASE), "counting rules")
-    print(f"{DATABASE}: {tables}; {rules} rules in force")
+    print(f"{DATABASE}: {tables}" + (f"; {rules} rules in force" if rules != "0" else ""))
     return [o["ns"] for o in owners]
 
 

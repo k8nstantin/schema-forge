@@ -6,6 +6,8 @@ from collections import defaultdict
 from common import REPO, Svg, database, e, page, short
 
 db, edges = database()
+# every table of a design refers to cortex.designs by its column design: said once, in the captions, not drawn on each
+edges = [(a, c, b) for a, c, b in edges if not (c == "design" and not a.startswith("cortex.workspace_"))]
 T = {t["name"]: (o, t) for o, d in db.items() for t in d["tables"]}
 refs = defaultdict(list)      # table -> [(column, target)]
 refd = defaultdict(list)      # target -> [(table, column)]
@@ -319,7 +321,7 @@ foreign key cannot state is a view the database enforces at every commit. Everyt
 <div class="stats">{''.join(f'<div><b>{len(d["tables"])}</b><span>{e(o)} tables · {e(d["folder"])}</span></div>' for o, d in db.items())}</div>
 
 <section id="files"><h2>The database</h2>
-<p class="lede">A workspace is a folder with its own PostgreSQL cluster, started when the workspace opens and reached only through a Unix socket in that folder. The cluster holds one database, <code>schema_forge</code>, installed once: the cortex, the ui and each engine in its own namespace. Every design people work on is a row of <code>cortex.designs</code> and the rows that point at it; making a design or reading a table into one adds rows, never a database, a namespace or a table.</p>
+<p class="lede">A workspace is a folder with its own PostgreSQL cluster, started when the workspace opens and reached only through a Unix socket in that folder. The cluster holds one database, <code>schema_forge</code>, installed once: the cortex, the ui and each engine in its own namespace. Every design people work on is a row of <code>cortex.designs</code> and the rows that point at it; making a design or reading a table into one adds rows, never a database, a namespace or a table. Every table of a design carries its design in a column <code>design</code>, with <code>UNIQUE (design, id)</code>; every reference within a design is <code>(design, column)</code> to <code>(design, id)</code>, with an index on it, so no row can point into another design and opening, changing or deleting one design reads that design's rows only. The diagrams leave each table's <code>design</code> out.</p>
 <figure>{files_svg}<figcaption>The same layout runs on a central team server later: only the connection changes.</figcaption></figure></section>
 
 <section id="model"><h2>The model</h2><p class="lede">Namespaces hold objects (tables, views, routines, whatever kinds the engine declares); objects have columns; constraints are a table's keys and checks and the links from its columns to another's, enforced by the database or only drawn by the design. An object's kind must be one its engine declared, and what it holds must suit its kind (the rule <code>parts-of-their-kind</code>).</p>

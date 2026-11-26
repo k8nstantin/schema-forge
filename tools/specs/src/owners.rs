@@ -8,6 +8,22 @@ use std::path::Path;
 pub const TYPES: &[&str] = &["TEXT", "INTEGER", "BIGINT", "NUMERIC", "BOOLEAN", "UUID", "TIMESTAMPTZ", "JSONB"];
 /// Words that start a table constraint, not a column.
 const CONSTRAINTS: &[&str] = &["UNIQUE", "CHECK", "PRIMARY", "FOREIGN", "CONSTRAINT", "EXCLUDE"];
+/// The cortex's tables that are no one design's (with every workspace_ table): every other table of every owner holds
+/// a design's rows, carries its design, and refers to another design's table by (design, column) (decision
+/// work-from-memory).
+const NOT_A_DESIGN: &[&str] = &[
+    "cortex.designs",
+    "cortex.engine_versions",
+    "cortex.engine_features",
+    "cortex.catalog_sources",
+    "cortex.object_kinds",
+    "cortex.schema_migrations",
+];
+
+/// Whether a table holds a design's rows.
+pub fn of_a_design(table: &str) -> bool {
+    !NOT_A_DESIGN.contains(&table) && !table.starts_with("cortex.workspace_")
+}
 
 pub fn check(root: &Path, found: &mut Vec<Finding>) {
     let all = owners(root);
@@ -144,7 +160,8 @@ fn sql_file(root: &Path, owner: &Owner, file: &Path, found: &mut Vec<Finding>) {
     let text = fs::read_to_string(file).unwrap_or_default();
     let lines: Vec<&str> = text.lines().collect();
     let Some(create) = lines.iter().position(|l| l.starts_with("CREATE TABLE ")) else {
-        let allowed = owner.id == "cortex" && matches!(name(file).as_str(), "enforce_rules.sql" | "grant_roles.sql");
+        let allowed = owner.id == "cortex"
+            && matches!(name(file).as_str(), "enforce_rules.sql" | "notify_turns.sql" | "grant_roles.sql");
         if !allowed {
             finding(found, &at, "neither a table file nor a file the method names");
         }
@@ -179,12 +196,27 @@ fn sql_file(root: &Path, owner: &Owner, file: &Path, found: &mut Vec<Finding>) {
     // the columns
     let mut columns: Vec<(String, String)> = Vec::new();
     let mut primary: Vec<String> = Vec::new();
+    let mut references: Vec<(Option<String>, String)> = Vec::new(); // (the column referring, or None for a table constraint; its target)
+    let mut constraints: Vec<String> = Vec::new();
     for (i, line) in lines.iter().enumerate().take(close).skip(create + 1) {
         let (code, comment) = split_comment(line);
         if code.trim_start().starts_with("PRIMARY KEY") {
             primary.push("(table constraint)".into());
         }
-        let Some((col, ty)) = column(&code) else { continue };
+        // every reference is to its own namespace or the cortex's, a column's or a table constraint's alike
+        let mut rest = code.as_str();
+        while let Some(p) = rest.find("REFERENCES ") {
+            rest = &rest[p + 11..];
+            let target = rest.split_whitespace().next().unwrap_or("").to_string();
+            if !target.starts_with(&format!("{ns}.")) && !target.starts_with("cortex.") {
+                finding(found, &at, format!("refers to {target}, which is not its own or the cortex's"));
+            }
+            references.push((column(&code).map(|(c, _)| c), target));
+        }
+        let Some((col, ty)) = column(&code) else {
+            constraints.push(code.trim().trim_end_matches(',').to_string());
+            continue;
+        };
         if col.contains("__") {
             finding(found, &at, format!("the name {col} holds __"));
         }
@@ -202,16 +234,9 @@ fn sql_file(root: &Path, owner: &Owner, file: &Path, found: &mut Vec<Finding>) {
         if code.contains("PRIMARY KEY") {
             primary.push(col);
         }
-        // every reference is to its own namespace or the cortex's
-        let mut rest = code.as_str();
-        while let Some(p) = rest.find("REFERENCES ") {
-            rest = &rest[p + 11..];
-            let target = rest.split_whitespace().next().unwrap_or("");
-            let ok = target.starts_with(&format!("{ns}.")) || target.starts_with("cortex.");
-            if !ok {
-                finding(found, &at, format!("refers to {target}, which is not its own or the cortex's"));
-            }
-        }
+    }
+    if of_a_design(&table) {
+        design_shape(&at, &columns, &constraints, &references, &lines[close + 1..], &table, found);
     }
     if primary != ["id"] {
         finding(found, &at, "the primary key is not the one column id");
@@ -252,6 +277,53 @@ fn sql_file(root: &Path, owner: &Owner, file: &Path, found: &mut Vec<Finding>) {
         let said = column_comments.iter().find(|(c, _)| c == col).map(|(_, s)| s.as_str());
         if said != Some(comment.as_str()) {
             finding(found, &at, format!("the database's comment on {col} is not its file's"));
+        }
+    }
+}
+
+/// A design's table carries its design: the column design, UNIQUE (design, id), every reference to another design's
+/// table by (design, column) to (design, id), and an index on (design, column) for each, so that reading, changing or
+/// deleting one design reads that design's rows only (decision work-from-memory).
+fn design_shape(
+    at: &str,
+    columns: &[(String, String)],
+    constraints: &[String],
+    references: &[(Option<String>, String)],
+    after: &[&str],
+    table: &str,
+    found: &mut Vec<Finding>,
+) {
+    if !columns.iter().any(|(c, _)| c == "design") {
+        finding(found, at, format!("{table} holds a design's rows but has no column design"));
+    }
+    if !constraints.iter().any(|c| c == "UNIQUE (design, id)") {
+        finding(found, at, format!("{table} has no UNIQUE (design, id)"));
+    }
+    for (col, target) in references {
+        if let Some(col) = col
+            && col != "design"
+            && of_a_design(target)
+        {
+            finding(found, at, format!("{col} refers to {target} by id alone, not by (design, {col})"));
+        }
+    }
+    for c in constraints {
+        let Some(rest) = c.strip_prefix("FOREIGN KEY (") else { continue };
+        let cols = rest.split(')').next().unwrap_or("");
+        let Some(col) = cols.strip_prefix("design, ") else {
+            finding(found, at, format!("a foreign key not led by design: {c}"));
+            continue;
+        };
+        if !c.contains("REFERENCES ") || !c.contains(" (design, id)") {
+            finding(found, at, format!("a foreign key not to (design, id): {c}"));
+        }
+        let indexed = col == "id"
+            || after.iter().any(|l| {
+                (l.starts_with("CREATE INDEX ") || l.starts_with("CREATE UNIQUE INDEX "))
+                    && l.contains(&format!(" ON {table} (design, {col}"))
+            });
+        if !indexed {
+            finding(found, at, format!("no index on {table} (design, {col}) for its foreign key"));
         }
     }
 }

@@ -1,5 +1,5 @@
 """The locked design itself on MySQL snapshots: schema/cortex and engines/mysql/schema, loaded exactly as the dumps and
-the lock load them (tools/schema_dump.py, rules enforced at every commit), every object of a snapshot stored in them,
+the lock load them (tools/schema_dump.py, every reference of a design held by its foreign keys), every object of a snapshot stored in them,
 every statement written back from them alone and compared with the server's SHOW CREATE, and with --roundtrip the
 whole schema written as SQL, loaded into a fresh server of the same version, read again and compared, part by part.
 
@@ -238,6 +238,10 @@ def rows_of(snap, first=0, name=None):
         key = (t["TABLE_SCHEMA"], t["TABLE_NAME"])
         for u in t.get("__merge_union") or []:
             depends(obj[key], obj.get((key[0], u)))  # a MERGE table's tables, in their UNION order
+    # every table of a design carries its design (decision database-per-schema): the column first after id
+    for k, rows in out.items():
+        if k not in ("cortex.designs", "cortex.engine_versions", "cortex.object_kinds"):
+            out[k] = [{"id": r["id"], "design": design, **{c: v for c, v in r.items() if c not in ("id", "design")}} for r in rows]
     return out, broken
 
 
@@ -467,7 +471,7 @@ def main():
                 continue
             exact[kind] += got.get((kind, schema, name)) == pr["__show_create"]
         print(f"{'pass' if exact == n else 'FAIL'}  mysql {version}: one design, {sum(len(v) for k, v in rows.items() if k not in ('cortex.object_kinds', 'cortex.designs', 'cortex.engine_versions'))} rows in the locked design, "
-              f"loaded as sf_service with every rule held at commit in {t_load:.1f}s, {size}; written from it: "
+              f"loaded as sf_service, every foreign key held, in {t_load:.1f}s, {size}; written from it: "
               + ", ".join(f"{exact[k]}/{n[k]} {k}s" for k in sorted(n)) + (f"; {len(broken)} broken views not stored" if broken else ""))
         if roundtrip:
             name = C.fresh_mysql(version)
