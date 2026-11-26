@@ -148,7 +148,7 @@ def to_locked(old, version, parts=()):
         add("engine_postgresql.relations", {"id": U(r["id"]), **{k: r[k] for k in ("options", "access_method", "owner", "acl",
                                                                                      "row_security", "force_row_security", "populated")},
                                             "persistence": PERSISTENCE[r["persistence"]], "replica_identity": REPLICA[r["replica_identity"]],
-                                            "of_type": r.get("of_type")})
+                                            "of_type": r.get("of_type"), "tablespace": r.get("tablespace")})
     for i in old["engine_postgresql.inheritance"]:
         add("engine_postgresql.inheritance", {"id": U(i["id"]), "object": U(i["object_id"]), "parent": U(i["parent_id"]), "position": i["position"]})
     for c in old["engine_postgresql.column"]:
@@ -243,7 +243,13 @@ def access(out, parts, design, add):
             add("engine_postgresql.memberships", {"id": i, "inherit_option": pr["inherit_option"], "set_option": pr["set_option"]})
     names = {n["id"]: n["name"] for n in out["cortex.namespaces"]}
     by_key = {M.key_of(o, {k: {"name": v} for k, v in names.items()}): o["id"] for o in objects if o["kind"] != "role"}
-    M.to_design(out, parts, add, role, grant, by_key)
+    made = M.to_design(out, parts, add, role, grant, by_key)
+    for r in out["engine_postgresql.relations"]:   # a table stored in a tablespace uses it
+        space = r.pop("tablespace", None)
+        if space:
+            d = str(uuid.uuid7())
+            add("cortex.dependencies", {"id": d, "object": r["id"], "uses": made[("tablespace", space)], "position": len(out["cortex.dependencies"]) + 1})
+            add("engine_postgresql.dependency_options", {"id": d, "as": "tablespace"})
     for r in out["engine_postgresql.relations"]:   # a typed table (CREATE TABLE ... OF type) uses its type
         of = r.pop("of_type", None)
         if of:
@@ -412,6 +418,8 @@ def access_back(st, out):
         return [f"{w}={l}/{owner}" for w, l in items.items()] or None
     roles = st.get("engine_postgresql.dependency_options", {})
     for d in st["cortex.dependencies"].values():
+        if roles.get(d["id"], {}).get("as") == "tablespace":
+            out["engine_postgresql.relation"][d["object"]]["tablespace"] = objs[d["uses"]]["name"]
         if roles.get(d["id"], {}).get("as") == "of_type":
             t = objs[d["uses"]]
             out["engine_postgresql.relation"][d["object"]]["of_type"] = f"{st['cortex.namespaces'][t['namespace']]['name']}.{t['name']}"
@@ -501,7 +509,12 @@ def main():
             name = C.fresh_pg(version)
             try:
                 C.ready_pg(name)
-                sql = snap.get("prelude", "") + P.script(S.st) + M.write(M.back(st))  # the roles a server needs first, a stand-in
+                more = M.back(st)
+                for o in (o for o in more if o["kind"] == "tablespace"):   # a tablespace's folder, made on the server as a DBA would
+                    subprocess.run(["docker", "exec", name, "sh", "-c", f"mkdir -p '{o['opts']['location']}' && chown postgres '{o['opts']['location']}'"])
+                # the server's own objects first (tablespaces, languages), then the schema, then what uses both
+                first = M.write([o for o in more if o["kind"] in ("tablespace", "language")])
+                sql = snap.get("prelude", "") + first + P.script(S.st) + M.write([o for o in more if o["kind"] not in ("tablespace", "language")])
                 r = subprocess.run(["docker", "exec", "-i", name, "psql", "-U", "postgres", "-d", C.SOURCE_DB, "-q"], input=sql, capture_output=True, text=True)
                 refused = [line for line in r.stderr.splitlines() if "ERROR:" in line]
                 saved, X.SCHEMAS = X.SCHEMAS, tuple(n["name"] for n in S.ns.values() if n["parent_id"])

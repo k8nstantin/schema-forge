@@ -128,6 +128,8 @@ def main():
             sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "DROP EXTENSION IF EXISTS pg_stat_statements")
         # the samples live in their own database; earlier runs left them in postgres, the server's own: gone from there
         sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", 'DROP SCHEMA IF EXISTS shop, features, audit, "Quoted Names" CASCADE')
+        # a subscription is the cluster's to drop before its database; with no slot it drops alone
+        sh("docker", "exec", name, "psql", "-U", "postgres", "-d", SOURCE_DB, "-qc", "DROP SUBSCRIPTION IF EXISTS every_sub", check=False)
         sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", f"DROP DATABASE IF EXISTS {SOURCE_DB} WITH (FORCE)")
         sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "DROP ROLE IF EXISTS features_reader")
         # what the every-object sample makes in the cluster, beside its database: its roles and its tablespace

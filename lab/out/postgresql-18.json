@@ -808,7 +808,8 @@
     "relname": "spaced",
     "relpersistence": "p",
     "relreplident": "d",
-    "relrowsecurity": false
+    "relrowsecurity": false,
+    "tablespace": "every_space"
    }
   },
   {
@@ -4875,6 +4876,21 @@
    }
   },
   {
+   "key": "features.status",
+   "kind": "type",
+   "parent": "features",
+   "props": {
+    "labels": [
+     "new",
+     "paid",
+     "shipped"
+    ],
+    "notnull": false,
+    "owner": "postgres",
+    "typtype": "e"
+   }
+  },
+  {
    "key": "features.address",
    "kind": "type",
    "parent": "features",
@@ -4896,17 +4912,6 @@
     "notnull": false,
     "owner": "postgres",
     "typtype": "c"
-   }
-  },
-  {
-   "key": "features.email",
-   "kind": "type",
-   "parent": "features",
-   "props": {
-    "base": "citext",
-    "notnull": false,
-    "owner": "postgres",
-    "typtype": "d"
    }
   },
   {
@@ -4934,30 +4939,14 @@
    }
   },
   {
-   "key": "features.status",
+   "key": "features.email",
    "kind": "type",
    "parent": "features",
    "props": {
-    "labels": [
-     "new",
-     "paid",
-     "shipped"
-    ],
+    "base": "citext",
     "notnull": false,
     "owner": "postgres",
-    "typtype": "e"
-   }
-  },
-  {
-   "key": "every.floatrange",
-   "kind": "type",
-   "parent": "every",
-   "props": {
-    "multirange": "every.floatmultirange",
-    "notnull": false,
-    "owner": "postgres",
-    "range_subtype": "double precision",
-    "typtype": "r"
+    "typtype": "d"
    }
   },
   {
@@ -5005,6 +4994,18 @@
     "notnull": false,
     "owner": "postgres",
     "typtype": "d"
+   }
+  },
+  {
+   "key": "every.floatrange",
+   "kind": "type",
+   "parent": "every",
+   "props": {
+    "multirange": "every.floatmultirange",
+    "notnull": false,
+    "owner": "postgres",
+    "range_subtype": "double precision",
+    "typtype": "r"
    }
   },
   {
@@ -7669,56 +7670,20 @@
    }
   },
   {
-   "key": "features.child.t_child_deferred",
+   "key": "shop.orders.orders_status",
    "kind": "trigger",
-   "parent": "features.child",
+   "parent": "shop.orders",
    "props": {
-    "constraint_trigger": true,
-    "definition": "CREATE CONSTRAINT TRIGGER t_child_deferred AFTER INSERT OR UPDATE ON features.child DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION audit.log_change()",
-    "function": "audit.log_change",
-    "tgdeferrable": true,
-    "tgenabled": "O",
-    "tginitdeferred": true,
-    "tgisinternal": false,
-    "tgname": "t_child_deferred",
-    "tgnargs": 0,
-    "tgtype": 21
-   }
-  },
-  {
-   "key": "features.child.t_child_checked",
-   "kind": "trigger",
-   "parent": "features.child",
-   "props": {
-    "constraint_trigger": true,
-    "definition": "CREATE CONSTRAINT TRIGGER t_child_checked AFTER DELETE ON features.child FROM features.parent NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION audit.log_change()",
-    "from_table": "features.parent",
-    "function": "audit.log_change",
-    "tgdeferrable": false,
-    "tgenabled": "O",
-    "tginitdeferred": false,
-    "tgisinternal": false,
-    "tgname": "t_child_checked",
-    "tgnargs": 0,
-    "tgtype": 9
-   }
-  },
-  {
-   "key": "features.child.t_child_when",
-   "kind": "trigger",
-   "parent": "features.child",
-   "props": {
-    "condition": "(old.parent_id IS DISTINCT FROM new.parent_id)",
     "constraint_trigger": false,
-    "definition": "CREATE TRIGGER t_child_when BEFORE UPDATE ON features.child FOR EACH ROW WHEN ((old.parent_id IS DISTINCT FROM new.parent_id)) EXECUTE FUNCTION audit.log_change()",
-    "function": "audit.log_change",
+    "definition": "CREATE TRIGGER orders_status BEFORE INSERT ON shop.orders FOR EACH ROW EXECUTE FUNCTION shop.default_status()",
+    "function": "shop.default_status",
     "tgdeferrable": false,
-    "tgenabled": "D",
+    "tgenabled": "A",
     "tginitdeferred": false,
     "tgisinternal": false,
-    "tgname": "t_child_when",
+    "tgname": "orders_status",
     "tgnargs": 0,
-    "tgtype": 19
+    "tgtype": 7
    }
   },
   {
@@ -7740,20 +7705,56 @@
    }
   },
   {
-   "key": "shop.orders.orders_status",
+   "key": "features.child.t_child_when",
    "kind": "trigger",
-   "parent": "shop.orders",
+   "parent": "features.child",
    "props": {
+    "condition": "(old.parent_id IS DISTINCT FROM new.parent_id)",
     "constraint_trigger": false,
-    "definition": "CREATE TRIGGER orders_status BEFORE INSERT ON shop.orders FOR EACH ROW EXECUTE FUNCTION shop.default_status()",
-    "function": "shop.default_status",
+    "definition": "CREATE TRIGGER t_child_when BEFORE UPDATE ON features.child FOR EACH ROW WHEN ((old.parent_id IS DISTINCT FROM new.parent_id)) EXECUTE FUNCTION audit.log_change()",
+    "function": "audit.log_change",
     "tgdeferrable": false,
-    "tgenabled": "A",
+    "tgenabled": "D",
     "tginitdeferred": false,
     "tgisinternal": false,
-    "tgname": "orders_status",
+    "tgname": "t_child_when",
     "tgnargs": 0,
-    "tgtype": 7
+    "tgtype": 19
+   }
+  },
+  {
+   "key": "features.child.t_child_checked",
+   "kind": "trigger",
+   "parent": "features.child",
+   "props": {
+    "constraint_trigger": true,
+    "definition": "CREATE CONSTRAINT TRIGGER t_child_checked AFTER DELETE ON features.child FROM features.parent NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION audit.log_change()",
+    "from_table": "features.parent",
+    "function": "audit.log_change",
+    "tgdeferrable": false,
+    "tgenabled": "O",
+    "tginitdeferred": false,
+    "tgisinternal": false,
+    "tgname": "t_child_checked",
+    "tgnargs": 0,
+    "tgtype": 9
+   }
+  },
+  {
+   "key": "features.child.t_child_deferred",
+   "kind": "trigger",
+   "parent": "features.child",
+   "props": {
+    "constraint_trigger": true,
+    "definition": "CREATE CONSTRAINT TRIGGER t_child_deferred AFTER INSERT OR UPDATE ON features.child DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION audit.log_change()",
+    "function": "audit.log_change",
+    "tgdeferrable": true,
+    "tgenabled": "O",
+    "tginitdeferred": true,
+    "tgisinternal": false,
+    "tgname": "t_child_deferred",
+    "tgnargs": 0,
+    "tgtype": 21
    }
   },
   {
@@ -7803,23 +7804,13 @@
    }
   },
   {
-   "key": "postgres_fdw",
+   "key": "pg_trgm",
    "kind": "extension",
    "parent": null,
    "props": {
     "relocatable": true,
     "schema": "public",
-    "version": "1.2"
-   }
-  },
-  {
-   "key": "btree_gist",
-   "kind": "extension",
-   "parent": null,
-   "props": {
-    "relocatable": true,
-    "schema": "public",
-    "version": "1.8"
+    "version": "1.6"
    }
   },
   {
@@ -7833,13 +7824,13 @@
    }
   },
   {
-   "key": "pg_trgm",
+   "key": "btree_gist",
    "kind": "extension",
    "parent": null,
    "props": {
     "relocatable": true,
     "schema": "public",
-    "version": "1.6"
+    "version": "1.8"
    }
   },
   {
@@ -7850,6 +7841,16 @@
     "relocatable": true,
     "schema": "every",
     "version": "1.8"
+   }
+  },
+  {
+   "key": "postgres_fdw",
+   "kind": "extension",
+   "parent": null,
+   "props": {
+    "relocatable": true,
+    "schema": "public",
+    "version": "1.2"
    }
   },
   {
@@ -8015,6 +8016,41 @@
     "objtype": "r",
     "role": "every_owner",
     "schema": "every"
+   }
+  },
+  {
+   "key": "every_space",
+   "kind": "tablespace",
+   "parent": null,
+   "props": {
+    "key": "every_space",
+    "name": "every_space",
+    "opts": {
+     "location": "/var/lib/postgresql/every_space",
+     "tablespace_options": null
+    },
+    "owner": "postgres",
+    "refs": {},
+    "signature": ""
+   }
+  },
+  {
+   "key": "every_plpgsql",
+   "kind": "language",
+   "parent": null,
+   "props": {
+    "comment": "PL/pgSQL under another name",
+    "key": "every_plpgsql",
+    "name": "every_plpgsql",
+    "opts": {
+     "handler": "plpgsql_call_handler",
+     "inline": "plpgsql_inline_handler",
+     "trusted": false,
+     "validator": "plpgsql_validator"
+    },
+    "owner": "postgres",
+    "refs": {},
+    "signature": ""
    }
   },
   {
@@ -8530,6 +8566,31 @@
     "refs": {
      "function": "every.on_ddl()"
     },
+    "signature": ""
+   }
+  },
+  {
+   "key": "every_sub",
+   "kind": "subscription",
+   "parent": null,
+   "props": {
+    "key": "every_sub",
+    "name": "every_sub",
+    "opts": {
+     "binary": true,
+     "connection": "host=publisher.example dbname=engine_postgresql user=replicator",
+     "disable_on_error": false,
+     "enabled": false,
+     "publications": [
+      "every_pub"
+     ],
+     "slot_name": null,
+     "stream": "p",
+     "synchronous_commit": "off",
+     "two_phase": "d"
+    },
+    "owner": "postgres",
+    "refs": {},
     "signature": ""
    }
   }

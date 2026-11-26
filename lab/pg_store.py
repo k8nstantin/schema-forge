@@ -111,7 +111,8 @@ def rows_of(snap):
         out["engine_postgresql.relation"].append({
             "id": i, "persistence": pr["relpersistence"], "options": pr.get("reloptions"), "access_method": pr.get("am"), "owner": pr.get("owner"),
             "acl": pr.get("acl"), "row_security": pr["relrowsecurity"], "force_row_security": pr["relforcerowsecurity"],
-            "replica_identity": pr["relreplident"], "populated": pr["relispopulated"], "of_type": pr.get("of_type")})
+            "replica_identity": pr["relreplident"], "populated": pr["relispopulated"], "of_type": pr.get("of_type"),
+            "tablespace": pr.get("tablespace")})
         if kind in ("view", "materialized view"):
             opts = pr.get("reloptions") or []
             check = next((o.split("=")[1].upper() for o in opts if o.startswith("check_option=")), None)
@@ -576,6 +577,7 @@ def script(st):
         unlogged = "UNLOGGED " if r["persistence"] == "u" else ""
         pg = st["core.partitioning"].get(o["id"])
         tail = (f" PARTITION BY {pg['strategy']} ({pg['expression']})" if pg else "") + (f" WITH ({', '.join(r['options'])})" if r.get("options") else "")
+        tail += f" TABLESPACE {qi(r['tablespace'])}" if r.get("tablespace") else ""
         if o["id"] in partition_of:
             p = partition_of[o["id"]]
             sql.append(f"CREATE {unlogged}TABLE {S.full(o)} PARTITION OF {S.full(objs[p['object_id']])} {p['bounds']}{tail};")

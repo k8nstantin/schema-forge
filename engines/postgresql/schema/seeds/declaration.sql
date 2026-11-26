@@ -52,7 +52,10 @@ INSERT INTO cortex.object_kinds (id, engine, kind, name, position, scope, flavor
   ('postgresql/foreign_data_wrapper', 'postgresql', 'foreign_data_wrapper', 'Foreign data wrapper', 30, 'database', NULL),
   ('postgresql/foreign_server', 'postgresql', 'foreign_server', 'Foreign server', 31, 'database', NULL),
   ('postgresql/publication', 'postgresql', 'publication', 'Publication', 32, 'database', NULL),
-  ('postgresql/access_method', 'postgresql', 'access_method', 'Access method', 33, 'database', NULL)
+  ('postgresql/access_method', 'postgresql', 'access_method', 'Access method', 33, 'database', NULL),
+  ('postgresql/tablespace', 'postgresql', 'tablespace', 'Tablespace', 34, 'server', NULL),
+  ('postgresql/language', 'postgresql', 'language', 'Procedural language', 35, 'database', NULL),
+  ('postgresql/subscription', 'postgresql', 'subscription', 'Subscription', 36, 'database', NULL)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, about) VALUES
@@ -190,6 +193,21 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('postgresql/objects/pub_delete', 'postgresql', 'objects', 'pub_delete', 'boolean', true, NULL, 'a publication''s delete (pg_catalog)'),
   ('postgresql/objects/pub_insert', 'postgresql', 'objects', 'pub_insert', 'boolean', true, NULL, 'a publication''s insert (pg_catalog)'),
   ('postgresql/objects/pub_table', 'postgresql', 'objects', 'pub_table', 'string', true, NULL, 'a publication''s table, by name, where the design does not hold it (pg_catalog)'),
+  ('postgresql/objects/spc_location', 'postgresql', 'objects', 'spc_location', 'string', true, NULL, 'a tablespace''s folder on the server'),
+  ('postgresql/objects/spc_tablespace_options', 'postgresql', 'objects', 'spc_tablespace_options', 'json', true, NULL, 'a tablespace''s options (seq_page_cost, random_page_cost)'),
+  ('postgresql/objects/lan_trusted', 'postgresql', 'objects', 'lan_trusted', 'boolean', true, NULL, 'a language anyone may write routines in (TRUSTED)'),
+  ('postgresql/objects/lan_handler', 'postgresql', 'objects', 'lan_handler', 'string', true, NULL, 'a language''s call handler, by name'),
+  ('postgresql/objects/lan_inline', 'postgresql', 'objects', 'lan_inline', 'string', true, NULL, 'a language''s inline handler (DO), by name'),
+  ('postgresql/objects/lan_validator', 'postgresql', 'objects', 'lan_validator', 'string', true, NULL, 'a language''s validator, by name'),
+  ('postgresql/objects/sub_connection', 'postgresql', 'objects', 'sub_connection', 'string', true, NULL, 'a subscription''s connection to its publisher, never with a password'),
+  ('postgresql/objects/sub_publications', 'postgresql', 'objects', 'sub_publications', 'json', true, NULL, 'the publications a subscription takes'),
+  ('postgresql/objects/sub_enabled', 'postgresql', 'objects', 'sub_enabled', 'boolean', true, NULL, 'true when a subscription replicates'),
+  ('postgresql/objects/sub_binary', 'postgresql', 'objects', 'sub_binary', 'boolean', true, NULL, 'true when it copies in binary'),
+  ('postgresql/objects/sub_slot_name', 'postgresql', 'objects', 'sub_slot_name', 'string', true, NULL, 'its replication slot on the publisher; NULL for none'),
+  ('postgresql/objects/sub_synchronous_commit', 'postgresql', 'objects', 'sub_synchronous_commit', 'string', true, NULL, 'the synchronous_commit its worker runs under'),
+  ('postgresql/objects/sub_stream', 'postgresql', 'objects', 'sub_stream', 'string', true, NULL, 'how it takes transactions in progress (f off, t on, p parallel)'),
+  ('postgresql/objects/sub_two_phase', 'postgresql', 'objects', 'sub_two_phase', 'string', true, NULL, 'its two-phase commit state (d, p, e)'),
+  ('postgresql/objects/sub_disable_on_error', 'postgresql', 'objects', 'sub_disable_on_error', 'boolean', true, NULL, 'true when an error disables it'),
   ('postgresql/objects/pub_schemas', 'postgresql', 'objects', 'pub_schemas', 'json', true, NULL, 'a publication''s schemas (FOR TABLES IN SCHEMA) (pg_catalog)'),
   ('postgresql/objects/pub_tables', 'postgresql', 'objects', 'pub_tables', 'json', true, NULL, 'a publication''s tables (pg_catalog)'),
   ('postgresql/objects/pub_truncate', 'postgresql', 'objects', 'pub_truncate', 'boolean', true, NULL, 'a publication''s truncate (pg_catalog)'),
@@ -215,7 +233,7 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, about) VALUES
-  ('postgresql/dependencies/as', 'postgresql', 'dependencies', 'as', 'string', false, '["combinefunc", "deserialfunc", "family", "of_type", "finalfunc", "function", "parser", "serialfunc", "server", "sfunc", "sortop", "table", "template"]', 'the part the used object plays (an aggregate''s sfunc, an operator''s function, a foreign table''s server)')
+  ('postgresql/dependencies/as', 'postgresql', 'dependencies', 'as', 'string', false, '["combinefunc", "deserialfunc", "family", "of_type", "finalfunc", "function", "parser", "serialfunc", "server", "sfunc", "sortop", "table", "tablespace", "template"]', 'the part the used object plays (an aggregate''s sfunc, an operator''s function, a foreign table''s server)')
 ON CONFLICT (id) DO NOTHING;
 
 -- what each flavor lacks

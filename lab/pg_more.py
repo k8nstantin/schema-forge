@@ -131,16 +131,48 @@ Q = {
           'schemas', (SELECT jsonb_agg(sn.nspname ORDER BY 1) FROM pg_publication_namespace pn JOIN pg_namespace sn ON sn.oid = pn.pnnspid
             WHERE pn.pnpubid = p.oid)) AS opts, '{}'::jsonb AS refs
       FROM pg_publication p"""),
+    "tablespace": ("server", "spc", """SELECT t.spcname AS key, NULL AS schema, t.spcname AS name, '' AS signature,
+        pg_get_userbyid(t.spcowner) AS owner, t.spcacl::text[] AS acl, shobj_description(t.oid, 'pg_tablespace') AS comment,
+        jsonb_build_object('location', pg_tablespace_location(t.oid), 'tablespace_options', t.spcoptions) AS opts, '{}'::jsonb AS refs
+      FROM pg_tablespace t WHERE t.spcname NOT IN ('pg_default', 'pg_global')"""),
+    "language": ("database", "lan", """SELECT l.lanname AS key, NULL AS schema, l.lanname AS name, '' AS signature,
+        pg_get_userbyid(l.lanowner) AS owner, l.lanacl::text[] AS acl, obj_description(l.oid, 'pg_language') AS comment,
+        jsonb_build_object('trusted', l.lanpltrusted, 'handler', l.lanplcallfoid::regproc::text,
+          'inline', nullif(l.laninline, 0)::regproc::text, 'validator', nullif(l.lanvalidator, 0)::regproc::text) AS opts, '{}'::jsonb AS refs
+      FROM pg_language l WHERE l.lanispl AND l.oid >= 16384 AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = l.oid AND d.deptype = 'e')"""),
+    # a subscription's connection never with its password: anything password= is cut from it as it is read
+    "subscription": ("database", "sub", """SELECT s.subname AS key, NULL AS schema, s.subname AS name, '' AS signature,
+        pg_get_userbyid(s.subowner) AS owner, NULL::text[] AS acl, shobj_description(s.oid, 'pg_subscription') AS comment,
+        jsonb_build_object('connection', regexp_replace(s.subconninfo, '\s*password\s*=\s*(''[^'']*''|\S+)', '', 'gi'),
+          'publications', to_jsonb(s.subpublications), 'enabled', s.subenabled, 'binary', s.subbinary, 'slot_name', s.subslotname::text,
+          'synchronous_commit', s.subsynccommit, 'stream', s.substream::text, 'two_phase', s.subtwophasestate::text,
+          'disable_on_error', s.subdisableonerr) AS opts, '{}'::jsonb AS refs
+      FROM pg_subscription s WHERE s.subdbid = (SELECT oid FROM pg_database WHERE datname = current_database())"""),
     "event_trigger": ("database", "evt", """SELECT e.evtname AS key, NULL AS schema, e.evtname AS name, '' AS signature,
         pg_get_userbyid(e.evtowner) AS owner, NULL::text[] AS acl, obj_description(e.oid, 'pg_event_trigger') AS comment,
         jsonb_build_object('event', e.evtevent, 'tags', to_jsonb(e.evttags), 'enabled', e.evtenabled::text) AS opts,
         jsonb_build_object('function', e.evtfoid::regprocedure::text) AS refs
       FROM pg_event_trigger e"""),
 }
-ORDER = ["access_method", "foreign_data_wrapper", "foreign_server", "foreign_table", "operator_family", "operator", "operator_class",
+ORDER = ["tablespace", "language", "access_method", "foreign_data_wrapper", "foreign_server", "foreign_table", "operator_family", "operator", "operator_class",
          "aggregate", "cast", "conversion", "ts_template", "ts_parser", "ts_dictionary", "ts_configuration", "statistics", "publication",
-         "event_trigger"]
+         "event_trigger", "subscription"]
 TYPES = {
+    ('subscription', 'connection'): 'string',
+    ('subscription', 'publications'): 'json',
+    ('subscription', 'enabled'): 'boolean',
+    ('subscription', 'binary'): 'boolean',
+    ('subscription', 'slot_name'): 'string',
+    ('subscription', 'synchronous_commit'): 'string',
+    ('subscription', 'stream'): 'string',
+    ('subscription', 'two_phase'): 'string',
+    ('subscription', 'disable_on_error'): 'boolean',
+    ('tablespace', 'location'): 'string',
+    ('tablespace', 'tablespace_options'): 'json',
+    ('language', 'trusted'): 'boolean',
+    ('language', 'handler'): 'string',
+    ('language', 'inline'): 'string',
+    ('language', 'validator'): 'string',
     ('access_method', 'handler'): 'string',
     ('access_method', 'type'): 'string',
     ('aggregate', 'arguments'): 'string',
@@ -236,7 +268,7 @@ TYPES = {
     ('ts_template', 'init'): 'string',
     ('ts_template', 'lexize'): 'string',
 }
-ROLES = {"of_type", "sfunc", "finalfunc", "combinefunc", "serialfunc", "deserialfunc", "sortop", "function", "family", "table", "template", "parser", "server"}
+ROLES = {"of_type", "tablespace", "sfunc", "finalfunc", "combinefunc", "serialfunc", "deserialfunc", "sortop", "function", "family", "table", "template", "parser", "server"}
 
 
 def capture(pg, container, schemas):
@@ -355,7 +387,13 @@ def write(items):
     sql = []
     for o in items:
         k, p, r, f = o["kind"], o["opts"], o["refs"], full(o)
-        if k == "access_method":
+        if k == "tablespace":
+            sql.append(f"CREATE TABLESPACE {qi(o['name'])} LOCATION {lit(p['location'])}"
+                       + (f" WITH ({', '.join(p['tablespace_options'])})" if p.get("tablespace_options") else "") + ";")
+        elif k == "language":
+            sql.append(f"CREATE {'TRUSTED ' if p.get('trusted') else ''}LANGUAGE {qi(o['name'])} HANDLER {p['handler']}"
+                       + (f" INLINE {p['inline']}" if p.get("inline") else "") + (f" VALIDATOR {p['validator']}" if p.get("validator") else "") + ";")
+        elif k == "access_method":
             sql.append(f"CREATE ACCESS METHOD {qi(o['name'])} TYPE {'TABLE' if p['type'] == 't' else 'INDEX'} HANDLER {p.get('handler') or r.get('handler')};")
         elif k == "foreign_data_wrapper":
             sql.append(f"CREATE FOREIGN DATA WRAPPER {qi(o['name'])}" + (f" HANDLER {p['handler']}" if p.get("handler") else " NO HANDLER")
@@ -384,12 +422,12 @@ def write(items):
             sql.append(f"CREATE OPERATOR {o['schema'] + '.' if o['schema'] else ''}{o['name']} ({', '.join(parts)});")
         elif k == "operator_class":
             fam = r.get("family", "")
-            items = [f"OPERATOR {i['number']} {i['name'].split('(')[0]}{'(' + i['name'].split('(')[1] if '(' in i['name'] else ''}" if i["what"] == "operator"
+            members = [f"OPERATOR {i['number']} {i['name'].split('(')[0]}{'(' + i['name'].split('(')[1] if '(' in i['name'] else ''}" if i["what"] == "operator"
                      else f"FUNCTION {i['number']} {i['name']}" for i in p.get("items") or []]
             fam_name = fam.rsplit(" ", 1)[0]
             sql.append(f"CREATE OPERATOR CLASS {f}{' DEFAULT' if p.get('is_default') else ''} FOR TYPE {p['for_type']} USING {p['method']}"
                        + (f" FAMILY {fam_name}" if fam_name and fam_name.split('.')[-1] != o["name"] else "")
-                       + f" AS {', '.join(items)}" + (f", STORAGE {p['storage']}" if p.get("storage") else "") + ";")
+                       + f" AS {', '.join(members)}" + (f", STORAGE {p['storage']}" if p.get("storage") else "") + ";")
         elif k == "aggregate":
             parts = [f"SFUNC = {r['sfunc'].split('(')[0]}", f"STYPE = {p['stype']}"]
             parts += [f"{w} = {r[key].split('(')[0]}" for key, w in (("finalfunc", "FINALFUNC"), ("combinefunc", "COMBINEFUNC"),
@@ -431,16 +469,25 @@ def write(items):
                 what = ["FOR " + ", ".join(targets)] if targets else []
             publish = ", ".join(w for w in ("insert", "update", "delete", "truncate") if p.get(w))
             sql.append(f"CREATE PUBLICATION {qi(o['name'])} {' '.join(what)} WITH (publish = {lit(publish)}" + (", publish_via_partition_root = true" if p.get("via_root") else "") + ");")
+        elif k == "subscription":
+            stream = {"f": "off", "t": "on", "p": "parallel"}.get(p.get("stream"), "off")
+            withs = ["connect = false", f"enabled = {str(bool(p.get('enabled'))).lower()}", "create_slot = false",
+                     f"slot_name = {lit(p['slot_name']) if p.get('slot_name') else 'NONE'}", f"binary = {str(bool(p.get('binary'))).lower()}",
+                     f"streaming = {stream}", f"synchronous_commit = {lit(p.get('synchronous_commit') or 'off')}",
+                     f"disable_on_error = {str(bool(p.get('disable_on_error'))).lower()}"]
+            sql.append(f"CREATE SUBSCRIPTION {qi(o['name'])} CONNECTION {lit(p['connection'])} PUBLICATION {', '.join(qi(x) for x in p['publications'])}"
+                       f" WITH ({', '.join(withs)});")
         elif k == "event_trigger":
             sql.append(f"CREATE EVENT TRIGGER {qi(o['name'])} ON {p['event']}" + (f" WHEN TAG IN ({', '.join(lit(t) for t in p['tags'])})" if p.get("tags") else "")
                        + f" EXECUTE FUNCTION {r['function'].split('(')[0]}();")
             state = {"D": "DISABLE", "R": "ENABLE REPLICA", "A": "ENABLE ALWAYS"}.get(p.get("enabled"))
             if state:
                 sql.append(f"ALTER EVENT TRIGGER {qi(o['name'])} {state};")
-        word = {"access_method": None, "cast": None, "ts_template": None, "ts_parser": None, "foreign_data_wrapper": "FOREIGN DATA WRAPPER",
+        word = {"tablespace": "TABLESPACE", "language": "LANGUAGE", "access_method": None, "cast": None, "ts_template": None, "ts_parser": None, "foreign_data_wrapper": "FOREIGN DATA WRAPPER",
                 "foreign_server": "SERVER", "foreign_table": "FOREIGN TABLE", "operator_family": "OPERATOR FAMILY", "operator_class": "OPERATOR CLASS",
                 "aggregate": "AGGREGATE", "conversion": "CONVERSION", "ts_dictionary": "TEXT SEARCH DICTIONARY", "ts_configuration": "TEXT SEARCH CONFIGURATION",
-                "statistics": "STATISTICS", "publication": "PUBLICATION", "event_trigger": "EVENT TRIGGER", "operator": "OPERATOR"}[k]
+                "statistics": "STATISTICS", "publication": "PUBLICATION", "event_trigger": "EVENT TRIGGER", "operator": "OPERATOR",
+                "subscription": "SUBSCRIPTION"}[k]
         if word and o.get("owner"):
             target = f
             if k == "aggregate":
@@ -450,6 +497,11 @@ def write(items):
             elif k == "operator":
                 target = f"{o['schema'] + '.' if o['schema'] else ''}{o['name']} {o['signature']}"
             sql.append(f"ALTER {word} {target} OWNER TO {qi(o['owner'])};")
+    for o in items:
+        if o.get("comment") and o["kind"] in ("tablespace", "language", "foreign_data_wrapper", "foreign_server", "publication", "event_trigger", "access_method"):
+            word = {"tablespace": "TABLESPACE", "language": "LANGUAGE", "foreign_data_wrapper": "FOREIGN DATA WRAPPER", "foreign_server": "SERVER",
+                    "publication": "PUBLICATION", "event_trigger": "EVENT TRIGGER", "access_method": "ACCESS METHOD"}[o["kind"]]
+            sql.append(f"COMMENT ON {word} {qi(o['name'])} IS {lit(o['comment'])};")
     return "\n".join(sql) + "\n"
 
 

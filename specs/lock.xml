@@ -24,7 +24,7 @@
   <file path="engines/postgresql/schema/inheritance.sql" sha256="e0b38d27ce46015f03ccc03a0de90e0648adfc33fd667fd028f868d9785b9758"/>
   <file path="engines/postgresql/schema/policies.sql" sha256="2bab5ceffe6fc2987f0e9a8359af74668ad64c15eb532fd5e81faed827967ee1"/>
   <file path="engines/postgresql/schema/rules.sql" sha256="bd548b50f1105370bd97fd50e94082c112149ce896f85704e1c9a4bb32ab829b"/>
-  <file path="engines/postgresql/schema/seeds/declaration.sql" sha256="b231b14abf51214d3ea1702c7ec68c045efbb140493c9520566639b6c3ca2938"/>
+  <file path="engines/postgresql/schema/seeds/declaration.sql" sha256="9eab2971a141f5b0e7baaf522c1018dd0781b152bf39e1703f6da6aa0d2f1e8c"/>
   <file path="engines/postgresql/schema/trigger_columns.sql" sha256="bb82e06930a67fca38415ead0e939b6be6efd9fb16826546a2374c253a25b55b"/>
   <file path="postgres/manifest.toml" sha256="d8e75bb68508d4aa724ca0d43c7b8a50a6d70c449e620f8d0c01cd0db634aad1"/>
   <file path="schema/accounts.py" sha256="56a019aaabee5f23ee9dffb45b589dc9f5233716fed2df59664ebf8e05367190"/>

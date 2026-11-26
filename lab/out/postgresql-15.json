@@ -808,7 +808,8 @@
     "relname": "spaced",
     "relpersistence": "p",
     "relreplident": "d",
-    "relrowsecurity": false
+    "relrowsecurity": false,
+    "tablespace": "every_space"
    }
   },
   {
@@ -7297,6 +7298,41 @@
    }
   },
   {
+   "key": "every_space",
+   "kind": "tablespace",
+   "parent": null,
+   "props": {
+    "key": "every_space",
+    "name": "every_space",
+    "opts": {
+     "location": "/var/lib/postgresql/every_space",
+     "tablespace_options": null
+    },
+    "owner": "postgres",
+    "refs": {},
+    "signature": ""
+   }
+  },
+  {
+   "key": "every_plpgsql",
+   "kind": "language",
+   "parent": null,
+   "props": {
+    "comment": "PL/pgSQL under another name",
+    "key": "every_plpgsql",
+    "name": "every_plpgsql",
+    "opts": {
+     "handler": "plpgsql_call_handler",
+     "inline": "plpgsql_inline_handler",
+     "trusted": false,
+     "validator": "plpgsql_validator"
+    },
+    "owner": "postgres",
+    "refs": {},
+    "signature": ""
+   }
+  },
+  {
    "key": "every_heap",
    "kind": "access_method",
    "parent": null,
@@ -7809,6 +7845,31 @@
     "refs": {
      "function": "every.on_ddl()"
     },
+    "signature": ""
+   }
+  },
+  {
+   "key": "every_sub",
+   "kind": "subscription",
+   "parent": null,
+   "props": {
+    "key": "every_sub",
+    "name": "every_sub",
+    "opts": {
+     "binary": true,
+     "connection": "host=publisher.example dbname=engine_postgresql user=replicator",
+     "disable_on_error": false,
+     "enabled": false,
+     "publications": [
+      "every_pub"
+     ],
+     "slot_name": null,
+     "stream": "false",
+     "synchronous_commit": "off",
+     "two_phase": "d"
+    },
+    "owner": "postgres",
+    "refs": {},
     "signature": ""
    }
   }

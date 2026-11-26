@@ -266,6 +266,7 @@ PG_PARTS = {
         - 'relrewrite' - 'relpartbound' - 'relhasindex' - 'relhastriggers' - 'relhasrules' - 'relhassubclass' - 'relnatts' - 'relchecks'
         || jsonb_build_object('owner', pg_get_userbyid(c.relowner), 'am', am.amname, 'acl', c.relacl::text[],
         'of_type', CASE WHEN c.reloftype <> 0 THEN format_type(c.reloftype, NULL) END,
+        'tablespace', (SELECT spcname FROM pg_tablespace WHERE oid = c.reltablespace),
         'comment', obj_description(c.oid, 'pg_class'), 'partition_key', pg_get_partkeydef(c.oid),
         'partition_bound', pg_get_expr(c.relpartbound, c.oid),
         'inherits', (SELECT array_agg(pn.nspname || '.' || p.relname ORDER BY i.inhseqno) FROM pg_inherits i JOIN pg_class p ON p.oid = i.inhparent JOIN pg_namespace pn ON pn.oid = p.relnamespace WHERE i.inhrelid = c.oid),

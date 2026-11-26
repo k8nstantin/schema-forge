@@ -77,3 +77,7 @@ CREATE SEQUENCE every.ticket AS bigint START 100 INCREMENT 5 CACHE 10;
 CREATE ACCESS METHOD every_heap TYPE TABLE HANDLER heap_tableam_handler;
 COMMENT ON TABLE every.parent IS 'the parent';
 CREATE TABLE every.spaced (id int PRIMARY KEY) TABLESPACE every_space;
+CREATE LANGUAGE every_plpgsql HANDLER plpgsql_call_handler INLINE plpgsql_inline_handler VALIDATOR plpgsql_validator;
+COMMENT ON LANGUAGE every_plpgsql IS 'PL/pgSQL under another name';
+CREATE SUBSCRIPTION every_sub CONNECTION 'host=publisher.example dbname=engine_postgresql user=replicator' PUBLICATION every_pub
+  WITH (connect = false, enabled = false, create_slot = false, slot_name = NONE, binary = true);
