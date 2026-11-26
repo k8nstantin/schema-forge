@@ -1,4 +1,4 @@
--- schema/dump/mysql.sql: the schema-only pg_dump of the database cortex and engine_mysql make, as the locked design gives it.
+-- schema/dump/mysql.sql: the schema-only pg_dump of the database cortex and ui and engine_mysql make, as the locked design gives it.
 -- Written by tools/schema_dump.py --write in a design session; tools/check.sh compares it on every change and CI every day (decision schema-dump).
 --
 -- PostgreSQL database dump
@@ -35,6 +35,15 @@ CREATE SCHEMA engine_mysql;
 
 
 ALTER SCHEMA engine_mysql OWNER TO sf_owner;
+
+--
+-- Name: ui; Type: SCHEMA; Schema: -; Owner: sf_owner
+--
+
+CREATE SCHEMA ui;
+
+
+ALTER SCHEMA ui OWNER TO sf_owner;
 
 --
 -- Name: enforce_rules(text); Type: FUNCTION; Schema: cortex; Owner: sf_owner
@@ -4143,6 +4152,518 @@ COMMENT ON COLUMN engine_mysql.views.security IS 'whose rights it runs with';
 
 
 --
+-- Name: perspective_members; Type: TABLE; Schema: ui; Owner: sf_owner
+--
+
+CREATE TABLE ui.perspective_members (
+    id bigint NOT NULL,
+    perspective bigint NOT NULL,
+    object bigint NOT NULL,
+    "column" bigint,
+    "position" numeric NOT NULL,
+    colour text,
+    CONSTRAINT perspective_members_colour_check CHECK ((colour ~ '^#[0-9a-f]{6}$'::text)),
+    CONSTRAINT perspective_members_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE ui.perspective_members OWNER TO sf_owner;
+
+--
+-- Name: TABLE perspective_members; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON TABLE ui.perspective_members IS 'the tables and columns a custom perspective shows, in order.';
+
+
+--
+-- Name: COLUMN perspective_members.id; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.perspective_members.id IS 'issued by the database';
+
+
+--
+-- Name: COLUMN perspective_members.perspective; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.perspective_members.perspective IS 'the perspective';
+
+
+--
+-- Name: COLUMN perspective_members.object; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.perspective_members.object IS 'the table or view shown';
+
+
+--
+-- Name: COLUMN perspective_members."column"; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.perspective_members."column" IS 'one of its columns, shown alone; NULL for the whole object';
+
+
+--
+-- Name: COLUMN perspective_members."position"; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.perspective_members."position" IS 'its place in the perspective; an order key';
+
+
+--
+-- Name: COLUMN perspective_members.colour; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.perspective_members.colour IS 'its own colour, as #rrggbb; NULL to follow the perspective''s colour_by';
+
+
+--
+-- Name: broken_perspective_columns_of_their_object; Type: VIEW; Schema: ui; Owner: sf_owner
+--
+
+CREATE VIEW ui.broken_perspective_columns_of_their_object AS
+ SELECT 'perspective-columns-of-their-object'::text AS rule,
+    (m.id)::text AS id
+   FROM (ui.perspective_members m
+     JOIN cortex.columns c ON ((c.id = m."column")))
+  WHERE (c.object <> m.object);
+
+
+ALTER VIEW ui.broken_perspective_columns_of_their_object OWNER TO sf_owner;
+
+--
+-- Name: VIEW broken_perspective_columns_of_their_object; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON VIEW ui.broken_perspective_columns_of_their_object IS 'A column a perspective shows alone is a column of the object it shows.';
+
+
+--
+-- Name: custom_perspectives; Type: TABLE; Schema: ui; Owner: sf_owner
+--
+
+CREATE TABLE ui.custom_perspectives (
+    id bigint NOT NULL,
+    name text NOT NULL,
+    "position" numeric NOT NULL,
+    group_by text DEFAULT 'family'::text NOT NULL,
+    colour_by text DEFAULT 'family'::text NOT NULL,
+    comment text,
+    made_by text NOT NULL,
+    CONSTRAINT custom_perspectives_colour_by_check CHECK ((colour_by = ANY (ARRAY['namespace'::text, 'family'::text, 'area'::text, 'none'::text]))),
+    CONSTRAINT custom_perspectives_group_by_check CHECK ((group_by = ANY (ARRAY['namespace'::text, 'family'::text, 'area'::text, 'none'::text]))),
+    CONSTRAINT custom_perspectives_made_by_check CHECK ((length(made_by) >= 1)),
+    CONSTRAINT custom_perspectives_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT custom_perspectives_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE ui.custom_perspectives OWNER TO sf_owner;
+
+--
+-- Name: TABLE custom_perspectives; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON TABLE ui.custom_perspectives IS 'a perspective someone saved: their own choice of tables and columns, grouped and coloured their way.';
+
+
+--
+-- Name: COLUMN custom_perspectives.id; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.custom_perspectives.id IS 'issued by the database, kept when it is renamed';
+
+
+--
+-- Name: COLUMN custom_perspectives.name; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.custom_perspectives.name IS 'as people call it (Billing review)';
+
+
+--
+-- Name: COLUMN custom_perspectives."position"; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.custom_perspectives."position" IS 'its place among the perspectives; an order key';
+
+
+--
+-- Name: COLUMN custom_perspectives.group_by; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.custom_perspectives.group_by IS 'how its tables are grouped';
+
+
+--
+-- Name: COLUMN custom_perspectives.colour_by; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.custom_perspectives.colour_by IS 'what its colours follow, unless a member sets its own';
+
+
+--
+-- Name: COLUMN custom_perspectives.comment; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.custom_perspectives.comment IS 'what it is for; NULL for none';
+
+
+--
+-- Name: COLUMN custom_perspectives.made_by; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.custom_perspectives.made_by IS 'who made it: a person''s name or the agent''s label';
+
+
+--
+-- Name: custom_perspectives_id_seq; Type: SEQUENCE; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ui.custom_perspectives ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME ui.custom_perspectives_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: layout_pins; Type: TABLE; Schema: ui; Owner: sf_owner
+--
+
+CREATE TABLE ui.layout_pins (
+    id bigint NOT NULL,
+    view text NOT NULL,
+    object bigint NOT NULL,
+    x numeric NOT NULL,
+    y numeric NOT NULL,
+    CONSTRAINT layout_pins_view_check CHECK ((length(view) >= 1))
+);
+
+
+ALTER TABLE ui.layout_pins OWNER TO sf_owner;
+
+--
+-- Name: TABLE layout_pins; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON TABLE ui.layout_pins IS 'a table''s place pinned in one view of the canvas; everything not pinned is laid out afresh each time.';
+
+
+--
+-- Name: COLUMN layout_pins.id; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.layout_pins.id IS 'issued by the database';
+
+
+--
+-- Name: COLUMN layout_pins.view; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.layout_pins.view IS 'the view: a perspective and its focus (map, map/billing) or a custom perspective''s id';
+
+
+--
+-- Name: COLUMN layout_pins.object; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.layout_pins.object IS 'the table or view pinned';
+
+
+--
+-- Name: COLUMN layout_pins.x; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.layout_pins.x IS 'across, in the layout''s grid units from its left';
+
+
+--
+-- Name: COLUMN layout_pins.y; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.layout_pins.y IS 'down, in the layout''s grid units from its top';
+
+
+--
+-- Name: layout_pins_id_seq; Type: SEQUENCE; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ui.layout_pins ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME ui.layout_pins_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: object_places; Type: TABLE; Schema: ui; Owner: sf_owner
+--
+
+CREATE TABLE ui.object_places (
+    id bigint NOT NULL,
+    area bigint,
+    family text
+);
+
+
+ALTER TABLE ui.object_places OWNER TO sf_owner;
+
+--
+-- Name: TABLE object_places; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON TABLE ui.object_places IS 'where the tool puts an object: its subject area, and the family it is put in by hand.';
+
+
+--
+-- Name: COLUMN object_places.id; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.object_places.id IS 'the object';
+
+
+--
+-- Name: COLUMN object_places.area; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.object_places.area IS 'the subject area it belongs to; NULL for none';
+
+
+--
+-- Name: COLUMN object_places.family; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.object_places.family IS 'the family it is put in by hand, overriding the one worked out from its name; NULL for that one';
+
+
+--
+-- Name: perspective_members_id_seq; Type: SEQUENCE; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ui.perspective_members ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME ui.perspective_members_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: pinned_notes; Type: TABLE; Schema: ui; Owner: sf_owner
+--
+
+CREATE TABLE ui.pinned_notes (
+    id bigint NOT NULL,
+    namespace bigint,
+    object bigint,
+    "column" bigint,
+    "constraint" bigint,
+    index bigint,
+    area bigint,
+    perspective bigint,
+    turn uuid,
+    "position" numeric NOT NULL,
+    text text NOT NULL,
+    done boolean DEFAULT false NOT NULL,
+    written_by text NOT NULL,
+    CONSTRAINT pinned_notes_check CHECK ((num_nonnulls(namespace, object, "column", "constraint", index, area, perspective, turn) <= 1)),
+    CONSTRAINT pinned_notes_position_check CHECK (("position" > (0)::numeric)),
+    CONSTRAINT pinned_notes_text_check CHECK ((length(text) >= 1)),
+    CONSTRAINT pinned_notes_written_by_check CHECK ((length(written_by) >= 1))
+);
+
+
+ALTER TABLE ui.pinned_notes OWNER TO sf_owner;
+
+--
+-- Name: TABLE pinned_notes; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON TABLE ui.pinned_notes IS 'a note pinned to one thing of the design or the tool, or to the whole schema, for people and the agent; it goes when what it is pinned to goes.';
+
+
+--
+-- Name: COLUMN pinned_notes.id; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes.id IS 'issued by the database';
+
+
+--
+-- Name: COLUMN pinned_notes.namespace; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes.namespace IS 'the namespace it is pinned to; NULL when pinned elsewhere';
+
+
+--
+-- Name: COLUMN pinned_notes.object; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes.object IS 'the object it is pinned to; NULL when pinned elsewhere';
+
+
+--
+-- Name: COLUMN pinned_notes."column"; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes."column" IS 'the column it is pinned to; NULL when pinned elsewhere';
+
+
+--
+-- Name: COLUMN pinned_notes."constraint"; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes."constraint" IS 'the key, check or link it is pinned to; NULL when pinned elsewhere';
+
+
+--
+-- Name: COLUMN pinned_notes.index; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes.index IS 'the index it is pinned to; NULL when pinned elsewhere';
+
+
+--
+-- Name: COLUMN pinned_notes.area; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes.area IS 'the subject area it is pinned to; NULL when pinned elsewhere';
+
+
+--
+-- Name: COLUMN pinned_notes.perspective; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes.perspective IS 'the perspective it is pinned to; NULL when pinned elsewhere';
+
+
+--
+-- Name: COLUMN pinned_notes.turn; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes.turn IS 'the turn it is pinned to; NULL when pinned elsewhere';
+
+
+--
+-- Name: COLUMN pinned_notes."position"; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes."position" IS 'its place among the notes; an order key';
+
+
+--
+-- Name: COLUMN pinned_notes.text; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes.text IS 'the note, as written';
+
+
+--
+-- Name: COLUMN pinned_notes.done; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes.done IS 'true once it has been worked through';
+
+
+--
+-- Name: COLUMN pinned_notes.written_by; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.pinned_notes.written_by IS 'who wrote it: a person''s name or the agent''s label';
+
+
+--
+-- Name: pinned_notes_id_seq; Type: SEQUENCE; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ui.pinned_notes ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME ui.pinned_notes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: subject_areas; Type: TABLE; Schema: ui; Owner: sf_owner
+--
+
+CREATE TABLE ui.subject_areas (
+    id bigint NOT NULL,
+    name text NOT NULL,
+    colour text,
+    "position" numeric NOT NULL,
+    CONSTRAINT subject_areas_colour_check CHECK ((colour ~ '^#[0-9a-f]{6}$'::text)),
+    CONSTRAINT subject_areas_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT subject_areas_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE ui.subject_areas OWNER TO sf_owner;
+
+--
+-- Name: TABLE subject_areas; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON TABLE ui.subject_areas IS 'groups of objects by subject (billing, catalog), across namespaces, as the canvas groups and colours them.';
+
+
+--
+-- Name: COLUMN subject_areas.id; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.subject_areas.id IS 'issued by the database';
+
+
+--
+-- Name: COLUMN subject_areas.name; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.subject_areas.name IS 'billing';
+
+
+--
+-- Name: COLUMN subject_areas.colour; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.subject_areas.colour IS 'its colour, as #rrggbb; NULL for the canvas''s choice';
+
+
+--
+-- Name: COLUMN subject_areas."position"; Type: COMMENT; Schema: ui; Owner: sf_owner
+--
+
+COMMENT ON COLUMN ui.subject_areas."position" IS 'its place among the areas; an order key';
+
+
+--
+-- Name: subject_areas_id_seq; Type: SEQUENCE; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ui.subject_areas ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME ui.subject_areas_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: branches branches_name_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
@@ -4775,6 +5296,110 @@ ALTER TABLE ONLY engine_mysql.views
 
 
 --
+-- Name: custom_perspectives custom_perspectives_name_key; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.custom_perspectives
+    ADD CONSTRAINT custom_perspectives_name_key UNIQUE (name);
+
+
+--
+-- Name: custom_perspectives custom_perspectives_pkey; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.custom_perspectives
+    ADD CONSTRAINT custom_perspectives_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: custom_perspectives custom_perspectives_position_key; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.custom_perspectives
+    ADD CONSTRAINT custom_perspectives_position_key UNIQUE ("position");
+
+
+--
+-- Name: layout_pins layout_pins_pkey; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.layout_pins
+    ADD CONSTRAINT layout_pins_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: layout_pins layout_pins_view_object_key; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.layout_pins
+    ADD CONSTRAINT layout_pins_view_object_key UNIQUE (view, object) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: object_places object_places_pkey; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.object_places
+    ADD CONSTRAINT object_places_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: perspective_members perspective_members_perspective_position_key; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.perspective_members
+    ADD CONSTRAINT perspective_members_perspective_position_key UNIQUE (perspective, "position") DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: perspective_members perspective_members_pkey; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.perspective_members
+    ADD CONSTRAINT perspective_members_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: pinned_notes pinned_notes_pkey; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.pinned_notes
+    ADD CONSTRAINT pinned_notes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: pinned_notes pinned_notes_position_key; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.pinned_notes
+    ADD CONSTRAINT pinned_notes_position_key UNIQUE ("position");
+
+
+--
+-- Name: subject_areas subject_areas_name_key; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.subject_areas
+    ADD CONSTRAINT subject_areas_name_key UNIQUE (name);
+
+
+--
+-- Name: subject_areas subject_areas_pkey; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.subject_areas
+    ADD CONSTRAINT subject_areas_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: subject_areas subject_areas_position_key; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.subject_areas
+    ADD CONSTRAINT subject_areas_position_key UNIQUE ("position");
+
+
+--
 -- Name: row_changes_operation; Type: INDEX; Schema: cortex; Owner: sf_owner
 --
 
@@ -5286,6 +5911,20 @@ CREATE TRIGGER "rule:engine_mysql.tables_have_their_options:again" AFTER INSERT 
 
 
 --
+-- Name: columns rule:ui.perspective_columns_of_their_object; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:ui.perspective_columns_of_their_object" AFTER INSERT OR DELETE OR UPDATE ON cortex.columns DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('ui.broken_perspective_columns_of_their_object');
+
+
+--
+-- Name: columns rule:ui.perspective_columns_of_their_object:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:ui.perspective_columns_of_their_object:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.columns FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('ui.broken_perspective_columns_of_their_object');
+
+
+--
 -- Name: events rule:engine_mysql.parts_of_their_kind; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
 --
 
@@ -5367,6 +6006,20 @@ CREATE CONSTRAINT TRIGGER "rule:engine_mysql.tables_have_their_options" AFTER IN
 --
 
 CREATE TRIGGER "rule:engine_mysql.tables_have_their_options:again" AFTER INSERT OR DELETE OR UPDATE ON engine_mysql.tables FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_tables_have_their_options');
+
+
+--
+-- Name: perspective_members rule:ui.perspective_columns_of_their_object; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:ui.perspective_columns_of_their_object" AFTER INSERT OR DELETE OR UPDATE ON ui.perspective_members DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('ui.broken_perspective_columns_of_their_object');
+
+
+--
+-- Name: perspective_members rule:ui.perspective_columns_of_their_object:again; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:ui.perspective_columns_of_their_object:again" AFTER INSERT OR DELETE OR UPDATE ON ui.perspective_members FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('ui.broken_perspective_columns_of_their_object');
 
 
 --
@@ -5818,6 +6471,118 @@ ALTER TABLE ONLY engine_mysql.views
 
 
 --
+-- Name: layout_pins layout_pins_object_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.layout_pins
+    ADD CONSTRAINT layout_pins_object_fkey FOREIGN KEY (object) REFERENCES cortex.objects(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: object_places object_places_area_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.object_places
+    ADD CONSTRAINT object_places_area_fkey FOREIGN KEY (area) REFERENCES ui.subject_areas(id) ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: object_places object_places_id_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.object_places
+    ADD CONSTRAINT object_places_id_fkey FOREIGN KEY (id) REFERENCES cortex.objects(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: perspective_members perspective_members_column_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.perspective_members
+    ADD CONSTRAINT perspective_members_column_fkey FOREIGN KEY ("column") REFERENCES cortex.columns(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: perspective_members perspective_members_object_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.perspective_members
+    ADD CONSTRAINT perspective_members_object_fkey FOREIGN KEY (object) REFERENCES cortex.objects(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: perspective_members perspective_members_perspective_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.perspective_members
+    ADD CONSTRAINT perspective_members_perspective_fkey FOREIGN KEY (perspective) REFERENCES ui.custom_perspectives(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pinned_notes pinned_notes_area_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.pinned_notes
+    ADD CONSTRAINT pinned_notes_area_fkey FOREIGN KEY (area) REFERENCES ui.subject_areas(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pinned_notes pinned_notes_column_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.pinned_notes
+    ADD CONSTRAINT pinned_notes_column_fkey FOREIGN KEY ("column") REFERENCES cortex.columns(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pinned_notes pinned_notes_constraint_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.pinned_notes
+    ADD CONSTRAINT pinned_notes_constraint_fkey FOREIGN KEY ("constraint") REFERENCES cortex.constraints(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pinned_notes pinned_notes_index_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.pinned_notes
+    ADD CONSTRAINT pinned_notes_index_fkey FOREIGN KEY (index) REFERENCES cortex.indexes(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pinned_notes pinned_notes_namespace_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.pinned_notes
+    ADD CONSTRAINT pinned_notes_namespace_fkey FOREIGN KEY (namespace) REFERENCES cortex.namespaces(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pinned_notes pinned_notes_object_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.pinned_notes
+    ADD CONSTRAINT pinned_notes_object_fkey FOREIGN KEY (object) REFERENCES cortex.objects(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pinned_notes pinned_notes_perspective_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.pinned_notes
+    ADD CONSTRAINT pinned_notes_perspective_fkey FOREIGN KEY (perspective) REFERENCES ui.custom_perspectives(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pinned_notes pinned_notes_turn_fkey; Type: FK CONSTRAINT; Schema: ui; Owner: sf_owner
+--
+
+ALTER TABLE ONLY ui.pinned_notes
+    ADD CONSTRAINT pinned_notes_turn_fkey FOREIGN KEY (turn) REFERENCES cortex.turns(id);
+
+
+--
 -- Name: SCHEMA cortex; Type: ACL; Schema: -; Owner: sf_owner
 --
 
@@ -5833,6 +6598,15 @@ GRANT USAGE ON SCHEMA cortex TO sf_reader;
 GRANT USAGE ON SCHEMA engine_mysql TO sf_service;
 GRANT USAGE ON SCHEMA engine_mysql TO sf_agent;
 GRANT USAGE ON SCHEMA engine_mysql TO sf_reader;
+
+
+--
+-- Name: SCHEMA ui; Type: ACL; Schema: -; Owner: sf_owner
+--
+
+GRANT USAGE ON SCHEMA ui TO sf_service;
+GRANT USAGE ON SCHEMA ui TO sf_agent;
+GRANT USAGE ON SCHEMA ui TO sf_reader;
 
 
 --
@@ -6461,6 +7235,69 @@ GRANT SELECT ON TABLE engine_mysql.views TO sf_reader;
 
 
 --
+-- Name: TABLE perspective_members; Type: ACL; Schema: ui; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.perspective_members TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.perspective_members TO sf_agent;
+GRANT SELECT ON TABLE ui.perspective_members TO sf_reader;
+
+
+--
+-- Name: TABLE broken_perspective_columns_of_their_object; Type: ACL; Schema: ui; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.broken_perspective_columns_of_their_object TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.broken_perspective_columns_of_their_object TO sf_agent;
+GRANT SELECT ON TABLE ui.broken_perspective_columns_of_their_object TO sf_reader;
+
+
+--
+-- Name: TABLE custom_perspectives; Type: ACL; Schema: ui; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.custom_perspectives TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.custom_perspectives TO sf_agent;
+GRANT SELECT ON TABLE ui.custom_perspectives TO sf_reader;
+
+
+--
+-- Name: TABLE layout_pins; Type: ACL; Schema: ui; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.layout_pins TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.layout_pins TO sf_agent;
+GRANT SELECT ON TABLE ui.layout_pins TO sf_reader;
+
+
+--
+-- Name: TABLE object_places; Type: ACL; Schema: ui; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.object_places TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.object_places TO sf_agent;
+GRANT SELECT ON TABLE ui.object_places TO sf_reader;
+
+
+--
+-- Name: TABLE pinned_notes; Type: ACL; Schema: ui; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.pinned_notes TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.pinned_notes TO sf_agent;
+GRANT SELECT ON TABLE ui.pinned_notes TO sf_reader;
+
+
+--
+-- Name: TABLE subject_areas; Type: ACL; Schema: ui; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.subject_areas TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ui.subject_areas TO sf_agent;
+GRANT SELECT ON TABLE ui.subject_areas TO sf_reader;
+
+
+--
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: cortex; Owner: sf_owner
 --
 
@@ -6492,6 +7329,23 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA engine_mysql GRANT ALL ON F
 ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA engine_mysql GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sf_service;
 ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA engine_mysql GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sf_agent;
 ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA engine_mysql GRANT SELECT ON TABLES TO sf_reader;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: ui; Owner: sf_owner
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA ui GRANT ALL ON FUNCTIONS TO sf_service;
+ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA ui GRANT ALL ON FUNCTIONS TO sf_agent;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: ui; Owner: sf_owner
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA ui GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sf_service;
+ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA ui GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sf_agent;
+ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA ui GRANT SELECT ON TABLES TO sf_reader;
 
 
 --

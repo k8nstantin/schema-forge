@@ -63,6 +63,16 @@ def edit(db, rnd, n, version):
                p AS (INSERT INTO cortex.index_parts ("index", position, "column") SELECT i.id, 1, c.id FROM i, c WHERE c.position = 1 RETURNING id),
                k AS (INSERT INTO cortex.constraints (object, name, kind, "index", position) SELECT t.id, 'PRIMARY', 'primary', i.id, 1 FROM t, i RETURNING id)
                INSERT INTO cortex.constraint_columns ("constraint", position, "column") SELECT k.id, 1, c.id FROM k, c WHERE c.position = 1;""")
+        elif k < 0.93:
+            # the ui, versioned like the design: an area and its objects, a perspective, a pin, a note
+            sql.append(f"""WITH a AS (INSERT INTO ui.subject_areas (name, position) VALUES ('area {n}_{off}', (SELECT coalesce(max(position), 0) + 1 FROM ui.subject_areas)) RETURNING id),
+                 o AS (SELECT id FROM cortex.objects WHERE kind = 'table' AND id NOT IN (SELECT id FROM ui.object_places) ORDER BY id OFFSET {off} LIMIT 3),
+                 pl AS (INSERT INTO ui.object_places (id, area) SELECT o.id, a.id FROM o, a RETURNING id),
+                 p AS (INSERT INTO ui.custom_perspectives (name, position, made_by) VALUES ('view {n}_{off}', (SELECT coalesce(max(position), 0) + 1 FROM ui.custom_perspectives), 'lab') RETURNING id),
+                 m AS (INSERT INTO ui.perspective_members (perspective, object, position) SELECT p.id, o.id, row_number() OVER () FROM p, o RETURNING id),
+                 pin AS (INSERT INTO ui.layout_pins (view, object, x, y) SELECT 'map/{n}_{off}', o.id, {off}, {n} FROM o RETURNING id)
+               INSERT INTO ui.pinned_notes (object, position, text, written_by)
+               SELECT o.id, (SELECT coalesce(max(position), 0) FROM ui.pinned_notes) + row_number() OVER (), 'check {n}', 'lab' FROM o;""")
         else:
             sql.append(f"DELETE FROM cortex.objects WHERE id = (SELECT o.id FROM cortex.objects o WHERE {UNUSED} ORDER BY o.id OFFSET {off} LIMIT 1);")
     sql.append("SELECT sf_log.end_turn(); COMMIT;")
@@ -127,6 +137,9 @@ def main():
     C.psql("SELECT sf_log.switch('main');", db)
     diff = one("SELECT string_agg(what || ' ' || n, ', ') FROM (SELECT what, count(*) n FROM sf_log.compare('main1', 'main3') GROUP BY what) x", db)
     print(f"  compare main1 to main3: {diff}")
+    print("  the ui's rows in the log: " + one("SELECT count(*) FROM cortex.row_changes WHERE table_name LIKE 'ui.%'", db)
+          + "; dropped objects took their ui rows with them: "
+          + one("SELECT count(*) FROM cortex.row_changes WHERE table_name LIKE 'ui.%' AND action = 'delete'", db))
     print("  the log: " + one("SELECT count(*) || ' row changes, ' || (SELECT count(*) FROM cortex.turns) || ' turns, ' || "
                               "pg_size_pretty(pg_total_relation_size('cortex.row_changes')) FROM cortex.row_changes", db))
 
@@ -135,6 +148,10 @@ def main():
         ("edits a design row inside a turn", True,
          "BEGIN; SELECT sf_log.begin_turn('agent'); SET LOCAL ROLE sf_agent; UPDATE cortex.objects SET notes = 'agent' "
          "WHERE id = (SELECT min(id) FROM cortex.objects); RESET ROLE; SELECT sf_log.end_turn(); COMMIT;"),
+        ("pins a table on the canvas inside a turn", True,
+         "BEGIN; SELECT sf_log.begin_turn('agent'); SET LOCAL ROLE sf_agent; INSERT INTO ui.layout_pins (view, object, x, y) "
+         "VALUES ('map/agent', (SELECT min(id) FROM cortex.objects), 1, 1); RESET ROLE; SELECT sf_log.end_turn(); COMMIT;"),
+        ("creates a table in the ui", False, "BEGIN; SET LOCAL ROLE sf_agent; CREATE TABLE ui.agent_attempt (id bigint); COMMIT;"),
         ("creates a table", False, "BEGIN; SET LOCAL ROLE sf_agent; CREATE TABLE cortex.agent_attempt (id bigint); COMMIT;"),
         ("alters a table", False, "BEGIN; SET LOCAL ROLE sf_agent; ALTER TABLE cortex.objects ADD COLUMN x int; COMMIT;"),
         ("drops a table", False, "BEGIN; SET LOCAL ROLE sf_agent; DROP TABLE engine_mysql.events; COMMIT;"),

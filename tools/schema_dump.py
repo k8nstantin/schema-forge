@@ -29,6 +29,7 @@ def owner(root, folder, kind, oid):
 
 CORTEX = owner("schema/cortex", "schema/cortex", "core", "cortex")
 WORKSPACE = owner("schema/workspace", "schema/workspace", "core", "workspace")
+UI = owner("schema/ui", "schema/ui", "core", "ui")
 
 
 def databases():
@@ -38,7 +39,7 @@ def databases():
     for parent, kind in (("engines", "engine"), ("features", "feature")):
         for d in sorted(glob.glob(os.path.join(ROOT, parent, "*", "schema"))):
             oid = os.path.basename(os.path.dirname(d))
-            out[oid] = [CORTEX, owner(f"{parent}/{oid}", f"{parent}/{oid}/schema", kind, oid)]
+            out[oid] = [CORTEX, UI, owner(f"{parent}/{oid}", f"{parent}/{oid}/schema", kind, oid)]
     return out
 
 
