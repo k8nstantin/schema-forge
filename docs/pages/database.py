@@ -177,7 +177,7 @@ missing = [t["name"] for t in db["cortex"]["tables"] if t["name"] not in grouped
 assert not missing, f"cortex tables in no group: {missing}"
 for o in db:
     if o != "cortex":
-        GROUPS.append((o, {"workspace": "sf_workspace", "usage": "usage: what the live server measured, apart from the design"}.get(o, f"{o}: the engine's own tables"), [t["name"] for t in db[o]["tables"]]))
+        GROUPS.append((o, {"workspace": "sf_workspace", "ui": "ui: what the tool shows and people keep of it, versioned with the design", "usage": "usage: what the live server measured, apart from the design"}.get(o, f"{o}: the engine's own tables"), [t["name"] for t in db[o]["tables"]]))
 
 def id_pattern(t):
     idc = next((c for c in t["columns"] if c["name"] == "id"), None)

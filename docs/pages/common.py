@@ -4,7 +4,7 @@ import glob, html, json, os, re
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 e = html.escape
-OWNERS = [("cortex", "schema/cortex"), ("workspace", "schema/workspace")] + [
+OWNERS = [("cortex", "schema/cortex"), ("ui", "schema/ui"), ("workspace", "schema/workspace")] + [
     ("engine_" + os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO))
     for d in sorted(glob.glob(f"{REPO}/engines/*/schema"))] + [
     (os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO)) for d in sorted(glob.glob(f"{REPO}/features/*/schema"))]

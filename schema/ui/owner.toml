@@ -1,0 +1,5 @@
+# The owner's card: who it is, what it is, and its newest version.
+id = "ui"
+kind = "core"
+namespace = "ui"
+version = 1

@@ -216,14 +216,16 @@ pub fn check(root: &Path, found: &mut Vec<Finding>) {
     let all = owners(root);
     let cortex = all[0].clone();
     let workspace = all[1].clone();
-    let others: Vec<Owner> = all[2..].to_vec();
+    let ui = all[2].clone();
+    let others: Vec<Owner> = all[3..].to_vec();
     let file_of: BTreeMap<String, String> =
         all.iter().flat_map(|o| tables_in_order(root, o).into_iter().map(|(p, t, _)| (t, p))).collect();
 
-    // the workspace alone, then every engine (and feature, and the template) beside the cortex
+    // the workspace alone, then every engine (and feature, and the template) beside the cortex and the ui, which every
+    // schema's database holds
     let mut databases: Vec<(String, Vec<Owner>)> = vec![("specs_workspace".into(), vec![workspace])];
     for o in &others {
-        databases.push((format!("specs_{}", o.id), vec![cortex.clone(), o.clone()]));
+        databases.push((format!("specs_{}", o.id), vec![cortex.clone(), ui.clone(), o.clone()]));
     }
     let mut dumped: BTreeMap<String, String> = BTreeMap::new();
     for (db, its) in &databases {
@@ -247,7 +249,7 @@ pub fn check(root: &Path, found: &mut Vec<Finding>) {
 
     // an owner with migrations: its versions, applied in order, give exactly its files
     for o in &others {
-        versions(&c, root, &cortex, o, found);
+        versions(&c, root, &[cortex.clone(), ui.clone()], o, found);
     }
 }
 
@@ -349,7 +351,7 @@ fn described(dump: &str) -> Vec<String> {
     lines
 }
 
-fn versions(c: &Container, root: &Path, cortex: &Owner, o: &Owner, found: &mut Vec<Finding>) {
+fn versions(c: &Container, root: &Path, core: &[Owner], o: &Owner, found: &mut Vec<Finding>) {
     let dir = root.join(&o.folder).join("migrations");
     let files = files_in(&dir, ".sql");
     if files.is_empty() {
@@ -368,7 +370,7 @@ fn versions(c: &Container, root: &Path, cortex: &Owner, o: &Owner, found: &mut V
         return;
     }
     let ns = o.namespace();
-    let mut parts = version_one(root, cortex);
+    let mut parts: Vec<(String, String)> = core.iter().flat_map(|k| version_one(root, k)).collect();
     let mut grant_after_first = true;
     for (_, path, text) in &ordered {
         parts.push((path.clone(), text.clone()));
