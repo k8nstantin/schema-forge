@@ -109,6 +109,10 @@ arrows(g, {(C("workspace_connection_values"), C("workspace_connections")): (0, 0
            (C("workspace_design_connections"), C("workspace_connections")): (0, 0), (C("workspace_design_connections"), C("designs")): (0, 0)})
 ws_svg = g.render()
 
+CORTEX_ORDER = [(None, None, ["designs", "namespaces", "objects", "columns", "column_identities", "constraints", "constraint_columns",
+                                "indexes", "index_parts", "partitionings", "partitions", "views", "sequences", "enum_values", "domains",
+                                "routines", "routine_parameters", "triggers"])]
+
 # --- 6. each engine's tables against the cortex -------------------------------------------------------------------
 def engine_svg(owner):
     tabs = [t["name"] for t in db[owner]["tables"]]
@@ -117,11 +121,11 @@ def engine_svg(owner):
     for a in tabs:
         for c, b in out[a]:
             if b not in tabs and b not in targets: targets.append(b)
-    order = [t["name"] for t in db["cortex"]["tables"]]
-    targets.sort(key=lambda b: order.index(b))
+    order = [C(nm) for _, _, names in CORTEX_ORDER for nm in names]   # the cortex in reading order: namespaces before objects before their parts
+    targets.sort(key=lambda b: order.index(b) if b in order else len(order))
     def rank(a):
-        b = next((b for c, b in out[a] if b in targets), None)
-        if b is not None: return targets.index(b)
+        ts = [targets.index(b) for c, b in out[a] if b in targets]
+        if ts: return min(ts)
         if out[a]:      # refers to another table of the engine: placed just after it
             return rank(out[a][0][1]) + 0.5
         return len(targets)   # refers to nothing by a foreign key: last, a rule checks it
@@ -151,7 +155,8 @@ def engine_svg(owner):
             x1, y1, x2, y2 = ax, ay + ah / 2, bx + bw + 2, by_ + bh / 2
             g.parts.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" class="ea" marker-end="url(#mka)"/>')
             g.lines.append((a, b, x1, y1, x2, y2))
-            g.text(ax - 6, ay + 13, ", ".join(cols), "lb m", "end")
+            k = sum(1 for (a2, b2) in list(by)[:list(by).index((a, b))] if a2 == a and b2 not in tabs)   # a second arrow's label below the first
+            g.text(ax - 6, ay + 13 + k * 14, ", ".join(cols), "lb m", "end")
         for c in cols: drawn.add((a, c))
     return g.render()
 
