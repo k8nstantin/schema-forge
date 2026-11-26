@@ -1405,6 +1405,7 @@ CREATE TABLE cortex.indexes (
     method text,
     condition text,
     comment text,
+    parent uuid,
     options jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT indexes_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT indexes_name_check CHECK ((length(name) >= 1)),
@@ -1482,6 +1483,13 @@ COMMENT ON COLUMN cortex.indexes.condition IS 'the rows a partial index covers, 
 --
 
 COMMENT ON COLUMN cortex.indexes.comment IS 'what it is for; NULL for none';
+
+
+--
+-- Name: COLUMN indexes.parent; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.indexes.parent IS 'the partitioned table''s index it is part of; NULL for none';
 
 
 --
@@ -4224,6 +4232,65 @@ COMMENT ON COLUMN engine_postgresql.rules.definition IS 'the rule as the server 
 
 
 --
+-- Name: trigger_columns; Type: TABLE; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TABLE engine_postgresql.trigger_columns (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    design uuid NOT NULL,
+    trigger uuid NOT NULL,
+    "column" uuid NOT NULL,
+    "position" numeric NOT NULL,
+    CONSTRAINT trigger_columns_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT trigger_columns_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE engine_postgresql.trigger_columns OWNER TO sf_owner;
+
+--
+-- Name: TABLE trigger_columns; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON TABLE engine_postgresql.trigger_columns IS 'the columns a trigger fires on when they are updated (UPDATE OF ...), in order.';
+
+
+--
+-- Name: COLUMN trigger_columns.id; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.trigger_columns.id IS 'UUIDv7, made with the row';
+
+
+--
+-- Name: COLUMN trigger_columns.design; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.trigger_columns.design IS 'the design it belongs to';
+
+
+--
+-- Name: COLUMN trigger_columns.trigger; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.trigger_columns.trigger IS 'the trigger';
+
+
+--
+-- Name: COLUMN trigger_columns."column"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.trigger_columns."column" IS 'a column of its table it fires on';
+
+
+--
+-- Name: COLUMN trigger_columns."position"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+COMMENT ON COLUMN engine_postgresql.trigger_columns."position" IS 'its place in UPDATE OF; an order key: one put between two takes their midpoint, so nothing is renumbered';
+
+
+--
 -- Name: custom_perspectives; Type: TABLE; Schema: ui; Owner: sf_owner
 --
 
@@ -5788,6 +5855,38 @@ ALTER TABLE ONLY engine_postgresql.rules
 
 
 --
+-- Name: trigger_columns trigger_columns_design_id_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.trigger_columns
+    ADD CONSTRAINT trigger_columns_design_id_key UNIQUE (design, id);
+
+
+--
+-- Name: trigger_columns trigger_columns_pkey; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.trigger_columns
+    ADD CONSTRAINT trigger_columns_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: trigger_columns trigger_columns_trigger_column_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.trigger_columns
+    ADD CONSTRAINT trigger_columns_trigger_column_key UNIQUE (trigger, "column") DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: trigger_columns trigger_columns_trigger_position_key; Type: CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.trigger_columns
+    ADD CONSTRAINT trigger_columns_trigger_position_key UNIQUE (trigger, "position") DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: custom_perspectives custom_perspectives_design_id_key; Type: CONSTRAINT; Schema: ui; Owner: sf_owner
 --
 
@@ -6046,6 +6145,13 @@ CREATE INDEX indexes_object ON cortex.indexes USING btree (design, object);
 
 
 --
+-- Name: indexes_parent; Type: INDEX; Schema: cortex; Owner: sf_owner
+--
+
+CREATE INDEX indexes_parent ON cortex.indexes USING btree (design, parent);
+
+
+--
 -- Name: locked_versions_turn; Type: INDEX; Schema: cortex; Owner: sf_owner
 --
 
@@ -6239,6 +6345,20 @@ CREATE INDEX policies_object ON engine_postgresql.policies USING btree (design, 
 --
 
 CREATE INDEX rules_object ON engine_postgresql.rules USING btree (design, object);
+
+
+--
+-- Name: trigger_columns_column; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX trigger_columns_column ON engine_postgresql.trigger_columns USING btree (design, "column");
+
+
+--
+-- Name: trigger_columns_trigger; Type: INDEX; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE INDEX trigger_columns_trigger ON engine_postgresql.trigger_columns USING btree (design, trigger);
 
 
 --
@@ -6695,6 +6815,14 @@ ALTER TABLE ONLY cortex.indexes
 
 ALTER TABLE ONLY cortex.indexes
     ADD CONSTRAINT indexes_design_object_fkey FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: indexes indexes_design_parent_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.indexes
+    ADD CONSTRAINT indexes_design_parent_fkey FOREIGN KEY (design, parent) REFERENCES cortex.indexes(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7231,6 +7359,30 @@ ALTER TABLE ONLY engine_postgresql.rules
 
 ALTER TABLE ONLY engine_postgresql.rules
     ADD CONSTRAINT rules_design_object_fkey FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: trigger_columns trigger_columns_design_column_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.trigger_columns
+    ADD CONSTRAINT trigger_columns_design_column_fkey FOREIGN KEY (design, "column") REFERENCES cortex.columns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: trigger_columns trigger_columns_design_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.trigger_columns
+    ADD CONSTRAINT trigger_columns_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: trigger_columns trigger_columns_design_trigger_fkey; Type: FK CONSTRAINT; Schema: engine_postgresql; Owner: sf_owner
+--
+
+ALTER TABLE ONLY engine_postgresql.trigger_columns
+    ADD CONSTRAINT trigger_columns_design_trigger_fkey FOREIGN KEY (design, trigger) REFERENCES cortex.triggers(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7941,6 +8093,15 @@ GRANT SELECT ON TABLE engine_postgresql.policies TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.rules TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.rules TO sf_agent;
 GRANT SELECT ON TABLE engine_postgresql.rules TO sf_reader;
+
+
+--
+-- Name: TABLE trigger_columns; Type: ACL; Schema: engine_postgresql; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.trigger_columns TO sf_service;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE engine_postgresql.trigger_columns TO sf_agent;
+GRANT SELECT ON TABLE engine_postgresql.trigger_columns TO sf_reader;
 
 
 --

@@ -78,3 +78,12 @@ CREATE RULE r_scratch AS ON DELETE TO features.scratch DO INSTEAD NOTHING;
 CREATE ROLE features_reader NOLOGIN;
 GRANT USAGE ON SCHEMA features TO features_reader;
 GRANT SELECT ON features.kinds TO features_reader;
+-- what replicates a row, the order a table was clustered in, a function parallel only in the leader, and every state a
+-- trigger can be in: each a value of a declared option no other sample takes
+ALTER TABLE features.child REPLICA IDENTITY FULL;
+ALTER TABLE features.parent REPLICA IDENTITY USING INDEX parent_code_key;
+ALTER TABLE features.kinds CLUSTER ON kinds_pkey;
+CREATE FUNCTION features.f_restricted() RETURNS integer LANGUAGE sql STABLE PARALLEL RESTRICTED AS $$ SELECT 1 $$;
+ALTER TABLE features.child DISABLE TRIGGER t_child_when;
+ALTER TABLE features.child ENABLE REPLICA TRIGGER t_child_audit;
+ALTER TABLE shop.orders ENABLE ALWAYS TRIGGER orders_status;

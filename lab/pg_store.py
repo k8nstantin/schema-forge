@@ -157,6 +157,7 @@ def rows_of(snap):
         out["core.index"].append({"id": i, "object_id": obj[table], "name": idx_name, "position": 0, "is_primary": pr["indisprimary"],
                                   "is_unique": pr["indisunique"], "method": pr["am"], "predicate": pr.get("predicate"), "comment": pr.get("comment")})
         out["engine_postgresql.index"].append({"id": i, "nulls_not_distinct": pr.get("indnullsnotdistinct") or False, "options": pr.get("options"),
+                                               "replica_identity_index": pr.get("indisreplident") or False, "clustered": pr.get("indisclustered") or False,
                                                "parent_index_id": None, "__parent": pr.get("parent_index")})
         for part in pr["parts"] or []:
             pid = nid()
@@ -596,6 +597,18 @@ def script(st):
             sql.append(f"ALTER TABLE {S.full(objs[o['parent_id']])} {state} TRIGGER {qi(o['name'])};")
     for r in st["engine_postgresql.rule"].values():
         sql.append(r["definition"].rstrip().rstrip(";") + ";")
+    # what identifies a table's rows to logical replication, and the index it was clustered on
+    for i in st["core.index"].values():
+        pi = st["engine_postgresql.index"].get(i["id"], {})
+        table = S.full(objs[i["object_id"]])
+        if pi.get("replica_identity_index"):
+            sql.append(f"ALTER TABLE {table} REPLICA IDENTITY USING INDEX {qi(i['name'])};")
+        if pi.get("clustered"):
+            sql.append(f"ALTER TABLE {table} CLUSTER ON {qi(i['name'])};")
+    for o in objs.values():
+        r = st["engine_postgresql.relation"].get(o["id"], {})
+        if o["kind"] == "table" and r.get("replica_identity") in ("f", "n"):  # a view's or a sequence's is always nothing
+            sql.append(f"ALTER TABLE {S.full(o)} REPLICA IDENTITY {'FULL' if r['replica_identity'] == 'f' else 'NOTHING'};")
     for sid, s in seqs.items():
         if not st["engine_postgresql.sequence"][sid]["identity"] and s["owned_by"]:
             c = st["core.column"][s["owned_by"]]

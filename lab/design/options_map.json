@@ -4,7 +4,8 @@
   "engine_postgresql.collations",
   "engine_postgresql.inheritance",
   "engine_postgresql.policies",
-  "engine_postgresql.rules"
+  "engine_postgresql.rules",
+  "engine_postgresql.trigger_columns"
  ],
  "moved": {
   "engine_mysql.columns": {
@@ -194,12 +195,10 @@
     "no_inherit",
     "is_local",
     "inherit_count",
-    "operators",
-    "delete_set_columns"
+    "operators"
    ],
    "target": "cortex.constraints",
    "types": {
-    "delete_set_columns": "json",
     "inherit_count": "number",
     "is_local": "boolean",
     "no_inherit": "boolean",
@@ -224,13 +223,15 @@
    "keys": [
     "nulls_not_distinct",
     "options",
-    "parent"
+    "replica_identity_index",
+    "clustered"
    ],
    "target": "cortex.indexes",
    "types": {
+    "clustered": "boolean",
     "nulls_not_distinct": "boolean",
     "options": "json",
-    "parent": "string"
+    "replica_identity_index": "boolean"
    }
   },
   "engine_postgresql.namespaces": {
@@ -309,7 +310,6 @@
    "keys": [
     "function_name",
     "arguments",
-    "update_columns",
     "old_table",
     "new_table",
     "enabled",
@@ -328,8 +328,7 @@
     "function_name": "string",
     "initially_deferred": "boolean",
     "new_table": "string",
-    "old_table": "string",
-    "update_columns": "json"
+    "old_table": "string"
    }
   },
   "engine_postgresql.types": {

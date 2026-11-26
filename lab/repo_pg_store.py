@@ -42,7 +42,7 @@ ORDER = ["cortex.designs", "cortex.namespaces", "cortex.required_extensions",
          "cortex.partitions", "cortex.sequences", "cortex.column_identities", "cortex.domains", "cortex.enum_values",
          "engine_postgresql.namespaces", "engine_postgresql.collations", "engine_postgresql.relations", "engine_postgresql.inheritance",
          "engine_postgresql.columns", "engine_postgresql.indexes", "engine_postgresql.index_parts", "engine_postgresql.constraints",
-         "engine_postgresql.routines", "engine_postgresql.types", "engine_postgresql.sequences", "engine_postgresql.triggers",
+         "engine_postgresql.routines", "engine_postgresql.types", "engine_postgresql.sequences", "engine_postgresql.triggers", "engine_postgresql.trigger_columns",
          "engine_postgresql.policies", "engine_postgresql.rules"]
 
 
@@ -78,7 +78,8 @@ def to_locked(old, version):
             add("cortex.column_identities", {"id": U(c["id"]), "always": c["identity"] == "always", "sequence": U(identity.get(c["id"]))})
     for i in old["core.index"]:
         add("cortex.indexes", {"id": U(i["id"]), "object": U(i["object_id"]), "position": i["position"], "name": i["name"], "unique": i["is_unique"],
-                               "method": i["method"], "condition": i["predicate"], "comment": i["comment"]})
+                               "method": i["method"], "condition": i["predicate"], "comment": i["comment"],
+                               "parent": U(st["engine_postgresql.index"][i["id"]]["parent_index_id"])})
     for p in old["core.index_part"]:
         add("cortex.index_parts", {"id": U(p["id"]), "index": U(p["index_id"]), "position": p["position"], "column": U(p["column_id"]),
                                    "expression": p["expression"], "descending": p["descending"],
@@ -93,8 +94,10 @@ def to_locked(old, version):
                                    "on_delete": ACTION.get(c["on_delete"]), "on_update": ACTION.get(c["on_update"]),
                                    "match_kind": MATCH.get(c["match"]), "position": place[c["object_id"]]})
     for c in old["core.constraint_column"]:
+        only = st["engine_postgresql.constraint"][c["constraint_id"]].get("delete_set_columns") or []
         add("cortex.constraint_columns", {"id": U(c["id"]), "constraint": U(c["constraint_id"]), "position": c["position"],
-                                          "column": U(c["column_id"]), "to_column": U(c["ref_column_id"]), "to_column_name": c["ref_column"]})
+                                          "column": U(c["column_id"]), "to_column": U(c["ref_column_id"]), "to_column_name": c["ref_column"],
+                                          **({"options": {"set_on_delete": True}} if c["column_id"] in only else {})})
     place = Counter()
     for d in old["core.dependency"]:
         place[d["object_id"]] += 1
@@ -150,13 +153,12 @@ def to_locked(old, version):
                                           "acl": c["acl"]})
     for i in old["engine_postgresql.index"]:
         add("engine_postgresql.indexes", {"id": U(i["id"]), "nulls_not_distinct": i["nulls_not_distinct"], "options": i["options"],
-                                          "parent": U(i["parent_index_id"])})
+                                          "replica_identity_index": i["replica_identity_index"], "clustered": i["clustered"]})
     for p in old["engine_postgresql.index_part"]:
         add("engine_postgresql.index_parts", {"id": U(p["id"]), "nulls_first": p["nulls_first"], "operator_class": p["operator_class"],
                                               "collation": p["collation_name"]})
     for c in old["engine_postgresql.constraint"]:
-        add("engine_postgresql.constraints", {"id": U(c["id"]), **{k: c[k] for k in ("validated", "no_inherit", "is_local", "inherit_count", "operators")},
-                                              "delete_set_columns": [U(x) for x in c["delete_set_columns"]] if c.get("delete_set_columns") else None})
+        add("engine_postgresql.constraints", {"id": U(c["id"]), **{k: c[k] for k in ("validated", "no_inherit", "is_local", "inherit_count", "operators")}})
     for r in old["engine_postgresql.routine"]:
         add("engine_postgresql.routines", {"id": U(r["id"]), **{k: r[k] for k in ("strict", "leakproof", "returns_set",
                                                                                    "cost", "result_rows", "config", "owner", "acl")},
@@ -164,8 +166,9 @@ def to_locked(old, version):
     for s in old["engine_postgresql.sequence"]:
         add("engine_postgresql.sequences", {"id": U(s["id"]), "identity": s["identity"]})
     for t in old["engine_postgresql.trigger"]:
+        for k, c in enumerate(t["update_columns"] or []):
+            add("engine_postgresql.trigger_columns", {"id": str(uuid.uuid7()), "trigger": U(t["id"]), "column": U(c), "position": k + 1})
         add("engine_postgresql.triggers", {"id": U(t["id"]), "function_name": t["function_name"], "arguments": t["arguments"],
-                                           "update_columns": [U(c) for c in t["update_columns"]] if t["update_columns"] else None,
                                            "old_table": t["old_table"], "new_table": t["new_table"], "enabled": ENABLED[t["enabled"]],
                                            "deferrable": t["is_deferrable"], "initially_deferred": t["initially_deferred"],
                                            "constraint_trigger": t["constraint_trigger"], "from_table": t["from_table"]})
@@ -246,8 +249,9 @@ def from_locked(st):
         out["core.trigger"][t["id"]] = {"id": t["id"], "kind": "trigger", "timing": TI[t["timing"]], "events": [x.upper() for x in t["events"]],
                                         "level": t["level"]}
         e = st["engine_postgresql.triggers"][t["id"]]
+        fires = sorted((x for x in st["engine_postgresql.trigger_columns"].values() if x["trigger"] == t["id"]), key=lambda x: x["position"])
         out["engine_postgresql.trigger"][t["id"]] = {"id": t["id"], "function_name": e["function_name"], "arguments": e["arguments"],
-                                                     "update_columns": e["update_columns"], "condition": t["condition"], "old_table": e["old_table"],
+                                                     "update_columns": [x["column"] for x in fires] or None, "condition": t["condition"], "old_table": e["old_table"],
                                                      "new_table": e["new_table"], "enabled": EN[e["enabled"]], "is_deferrable": e["deferrable"],
                                                      "initially_deferred": e["initially_deferred"], "constraint_trigger": e["constraint_trigger"],
                                                      "from_table": e["from_table"]}
@@ -286,9 +290,14 @@ def from_locked(st):
         out["engine_postgresql.column"][c["id"]] = {k: v for k, v in c.items() if k != "design"}
     for i in st["engine_postgresql.indexes"].values():
         out["engine_postgresql.index"][i["id"]] = {"id": i["id"], "nulls_not_distinct": i["nulls_not_distinct"], "options": i["options"],
-                                                   "parent_index_id": i["parent"]}
+                                                   "replica_identity_index": i["replica_identity_index"], "clustered": i["clustered"],
+                                                   "parent_index_id": st["cortex.indexes"][i["id"]]["parent"]}
+    sets = {}
+    for cc in sorted(st["cortex.constraint_columns"].values(), key=lambda c: c["position"]):
+        if (cc.get("options") or {}).get("set_on_delete"):
+            sets.setdefault(cc["constraint"], []).append(cc["column"])
     for c in st["engine_postgresql.constraints"].values():
-        out["engine_postgresql.constraint"][c["id"]] = {k: v for k, v in c.items() if k != "design"}
+        out["engine_postgresql.constraint"][c["id"]] = {**{k: v for k, v in c.items() if k != "design"}, "delete_set_columns": sets.get(c["id"])}
     for r in st["engine_postgresql.routines"].values():
         out["engine_postgresql.routine"][r["id"]] = {**{k: v for k, v in r.items() if k != "design"}, "volatility": VO[r["volatility"]],
                                                      "parallel": PA[r["parallel"]]}

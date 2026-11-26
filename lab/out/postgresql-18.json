@@ -38,6 +38,24 @@
    }
   },
   {
+   "key": "features.parent",
+   "kind": "relation",
+   "parent": "features",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "parent",
+    "relpersistence": "p",
+    "relreplident": "i",
+    "relrowsecurity": false
+   }
+  },
+  {
    "key": "shop.products",
    "kind": "relation",
    "parent": "shop",
@@ -227,42 +245,6 @@
    }
   },
   {
-   "key": "features.parent",
-   "kind": "relation",
-   "parent": "features",
-   "props": {
-    "am": "heap",
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "parent",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "features.child",
-   "kind": "relation",
-   "parent": "features",
-   "props": {
-    "am": "heap",
-    "owner": "postgres",
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "child",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
    "key": "features.booking",
    "kind": "relation",
    "parent": "features",
@@ -295,6 +277,24 @@
     "relname": "measurements",
     "relpersistence": "p",
     "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "features.child",
+   "kind": "relation",
+   "parent": "features",
+   "props": {
+    "am": "heap",
+    "owner": "postgres",
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "child",
+    "relpersistence": "p",
+    "relreplident": "f",
     "relrowsecurity": false
    }
   },
@@ -571,6 +571,40 @@
     "relpersistence": "u",
     "relreplident": "d",
     "relrowsecurity": false
+   }
+  },
+  {
+   "key": "features.parent.id",
+   "kind": "column",
+   "parent": "features.parent",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "type": "integer"
+   }
+  },
+  {
+   "key": "features.parent.code",
+   "kind": "column",
+   "parent": "features.parent",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "code",
+    "attnotnull": true,
+    "attnum": 2,
+    "attstorage": "x",
+    "type": "character(3)"
    }
   },
   {
@@ -1074,91 +1108,6 @@
    }
   },
   {
-   "key": "features.parent.id",
-   "kind": "column",
-   "parent": "features.parent",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "id",
-    "attnotnull": true,
-    "attnum": 1,
-    "attstorage": "p",
-    "type": "integer"
-   }
-  },
-  {
-   "key": "features.parent.code",
-   "kind": "column",
-   "parent": "features.parent",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "code",
-    "attnotnull": true,
-    "attnum": 2,
-    "attstorage": "x",
-    "type": "character(3)"
-   }
-  },
-  {
-   "key": "features.child.id",
-   "kind": "column",
-   "parent": "features.child",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "id",
-    "attnotnull": true,
-    "attnum": 1,
-    "attstorage": "p",
-    "type": "integer"
-   }
-  },
-  {
-   "key": "features.child.parent_id",
-   "kind": "column",
-   "parent": "features.child",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "parent_id",
-    "attnotnull": false,
-    "attnum": 2,
-    "attstorage": "p",
-    "type": "integer"
-   }
-  },
-  {
-   "key": "features.child.parent_code",
-   "kind": "column",
-   "parent": "features.child",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "parent_code",
-    "attnotnull": false,
-    "attnum": 3,
-    "attstorage": "x",
-    "type": "character(3)"
-   }
-  },
-  {
    "key": "features.booking.room",
    "kind": "column",
    "parent": "features.booking",
@@ -1258,6 +1207,57 @@
     "attnum": 4,
     "attstorage": "m",
     "type": "numeric"
+   }
+  },
+  {
+   "key": "features.child.id",
+   "kind": "column",
+   "parent": "features.child",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "type": "integer"
+   }
+  },
+  {
+   "key": "features.child.parent_id",
+   "kind": "column",
+   "parent": "features.child",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "parent_id",
+    "attnotnull": false,
+    "attnum": 2,
+    "attstorage": "p",
+    "type": "integer"
+   }
+  },
+  {
+   "key": "features.child.parent_code",
+   "kind": "column",
+   "parent": "features.child",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "parent_code",
+    "attnotnull": false,
+    "attnum": 3,
+    "attstorage": "x",
+    "type": "character(3)"
    }
   },
   {
@@ -1999,7 +1999,7 @@
     "definition": "CREATE UNIQUE INDEX kinds_pkey ON features.kinds USING btree (id)",
     "indcheckxmin": false,
     "indimmediate": true,
-    "indisclustered": false,
+    "indisclustered": true,
     "indisexclusion": false,
     "indislive": true,
     "indisprimary": true,
@@ -2336,7 +2336,7 @@
     "indislive": true,
     "indisprimary": false,
     "indisready": true,
-    "indisreplident": false,
+    "indisreplident": true,
     "indisunique": true,
     "indisvalid": true,
     "indnatts": 1,
@@ -4182,38 +4182,28 @@
    }
   },
   {
-   "key": "shop.orders.orders_status",
-   "kind": "trigger",
-   "parent": "shop.orders",
+   "key": "features.f_restricted()",
+   "kind": "routine",
+   "parent": "features",
    "props": {
-    "constraint_trigger": false,
-    "definition": "CREATE TRIGGER orders_status BEFORE INSERT ON shop.orders FOR EACH ROW EXECUTE FUNCTION shop.default_status()",
-    "function": "shop.default_status",
-    "tgdeferrable": false,
-    "tgenabled": "O",
-    "tginitdeferred": false,
-    "tgisinternal": false,
-    "tgname": "orders_status",
-    "tgnargs": 0,
-    "tgtype": 7
-   }
-  },
-  {
-   "key": "features.child.t_child_audit",
-   "kind": "trigger",
-   "parent": "features.child",
-   "props": {
-    "constraint_trigger": false,
-    "definition": "CREATE TRIGGER t_child_audit AFTER INSERT ON features.child REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION audit.log_change()",
-    "function": "audit.log_change",
-    "tgdeferrable": false,
-    "tgenabled": "O",
-    "tginitdeferred": false,
-    "tgisinternal": false,
-    "tgname": "t_child_audit",
-    "tgnargs": 0,
-    "tgnewtable": "new_rows",
-    "tgtype": 4
+    "arguments": "",
+    "create": "CREATE OR REPLACE FUNCTION features.f_restricted()\n RETURNS integer\n LANGUAGE sql\n STABLE PARALLEL RESTRICTED\nAS $function$ SELECT 1 $function$\n",
+    "language": "sql",
+    "owner": "postgres",
+    "procost": 100,
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "f_restricted",
+    "pronargdefaults": 0,
+    "pronargs": 0,
+    "proparallel": "r",
+    "proretset": false,
+    "prorows": 0,
+    "prosecdef": false,
+    "prosrc": " SELECT 1 ",
+    "provolatile": "s",
+    "returns": "integer"
    }
   },
   {
@@ -4226,12 +4216,47 @@
     "definition": "CREATE TRIGGER t_child_when BEFORE UPDATE ON features.child FOR EACH ROW WHEN ((old.parent_id IS DISTINCT FROM new.parent_id)) EXECUTE FUNCTION audit.log_change()",
     "function": "audit.log_change",
     "tgdeferrable": false,
-    "tgenabled": "O",
+    "tgenabled": "D",
     "tginitdeferred": false,
     "tgisinternal": false,
     "tgname": "t_child_when",
     "tgnargs": 0,
     "tgtype": 19
+   }
+  },
+  {
+   "key": "features.child.t_child_audit",
+   "kind": "trigger",
+   "parent": "features.child",
+   "props": {
+    "constraint_trigger": false,
+    "definition": "CREATE TRIGGER t_child_audit AFTER INSERT ON features.child REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION audit.log_change()",
+    "function": "audit.log_change",
+    "tgdeferrable": false,
+    "tgenabled": "R",
+    "tginitdeferred": false,
+    "tgisinternal": false,
+    "tgname": "t_child_audit",
+    "tgnargs": 0,
+    "tgnewtable": "new_rows",
+    "tgtype": 4
+   }
+  },
+  {
+   "key": "shop.orders.orders_status",
+   "kind": "trigger",
+   "parent": "shop.orders",
+   "props": {
+    "constraint_trigger": false,
+    "definition": "CREATE TRIGGER orders_status BEFORE INSERT ON shop.orders FOR EACH ROW EXECUTE FUNCTION shop.default_status()",
+    "function": "shop.default_status",
+    "tgdeferrable": false,
+    "tgenabled": "A",
+    "tginitdeferred": false,
+    "tgisinternal": false,
+    "tgname": "orders_status",
+    "tgnargs": 0,
+    "tgtype": 7
    }
   },
   {
