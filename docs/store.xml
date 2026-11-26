@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <doc id="store" title="The store">
   <p>Everything SchemaForge keeps lives in <b>PostgreSQL 18, bundled with the app</b>: each release carries its platform's PostgreSQL programs, and the app runs them itself. Nothing to install, nothing to configure.</p>
-  <code><![CDATA[sf_workspace            what the workspace shares: its schemas (by their stable ids) and the saved connections
-sf_<schema id, hex>     one database per schema: the cortex's tables and its engine's tables]]></code>
+  <code><![CDATA[schema_forge            the one database, installed once
+  cortex                every design, as rows: cortex.designs lists them; and the workspace (workspace_*)
+  ui                    what the tool shows and people keep of each design
+  engine_<engine>       each engine's own facts (engine_mysql, engine_postgresql)]]></code>
   <p>The database is designed first and locked: the tables are the files of the schema folders, one <c>CREATE TABLE</c> per file, every column documented on its line and in the database's own comments (<c>\d+ cortex.objects</c> shows them), and no build creates or changes a table any other way.</p>
   <table>
     <head><cell>Folder</cell><cell>Namespace</cell><cell>What it holds</cell></head>
     <row><cell><a href="../schema/cortex"><c>schema/cortex/</c></a></cell><cell><c>cortex</c></cell><cell>what every engine shares: the schema's identity, its object kinds and the parts each may have, namespaces, objects, columns, relationships, subject areas; the shared section layout as tables (table keys, check constraints, indexes, partitionings, sort fields, view queries, sequences, composite types, routines, triggers, scheduled events, verbatim statements); the id counters; the log (turns, operations, row and value changes, locked versions); the engine's versions, features and catalog sources as data (decision version-facts); each read of a live database (<c>source_reads</c>); <c>rules/</c> and <c>enforce_rules.sql</c></cell></row>
-    <row><cell><a href="../schema/workspace"><c>schema/workspace/</c></a></cell><cell><c>workspace</c></cell><cell>the workspace, its schemas, the saved connections (never a secret), their tests, and the connection each schema is read from with what it reads (<c>schema_connections</c>, decision read-scope)</cell></row>
     <row><cell><c>engines/&lt;engine&gt;/schema/</c></cell><cell><c>engine_&lt;engine&gt;</c></cell><cell>the engine's own tables (<c>engine_mysql.tables</c>), each referring to the cortex row it belongs to: its core options typed, every other option a row of its part's property table (decision typed-core); its <c>rules/</c></cell></row>
     <row><cell><c>features/&lt;feature&gt;/schema/</c></cell><cell><c>&lt;feature&gt;</c></cell><cell>a feature's own tables: <c>usage</c> keeps what a live server measured (tables, indexes, statements), as the server gave it, appended and never part of the design's log (decision usage-apart)</cell></row>
   </table>

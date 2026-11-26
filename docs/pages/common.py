@@ -4,7 +4,7 @@ import glob, html, json, os, re
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 e = html.escape
-OWNERS = [("cortex", "schema/cortex"), ("ui", "schema/ui"), ("workspace", "schema/workspace")] + [
+OWNERS = [("cortex", "schema/cortex"), ("ui", "schema/ui")] + [
     ("engine_" + os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO))
     for d in sorted(glob.glob(f"{REPO}/engines/*/schema"))] + [
     (os.path.basename(os.path.dirname(d)), os.path.relpath(d, REPO)) for d in sorted(glob.glob(f"{REPO}/features/*/schema"))]
@@ -193,8 +193,8 @@ PAGES = [("home", "Start here"), ("engines", "Engines"), ("database", "Database"
 
 
 def _parameters():
-    """The product's parameters, read from the workspace's seed: the one place a name or a link is written."""
-    text = open(f"{REPO}/schema/workspace/seeds/parameters.sql", encoding="utf-8").read()
+    """The product's parameters, read from their seed: the one place a name or a link is written."""
+    text = open(f"{REPO}/schema/cortex/seeds/workspace_parameters.sql", encoding="utf-8").read()
     return {k: json.loads(v.replace("''", "'")) for k, v in re.findall(r"\('([a-z_.]+)', '((?:[^']|'')*)', ", text)}
 
 

@@ -1,9 +1,9 @@
 """The schema dump: what PostgreSQL itself holds once the locked design is loaded, kept in schema/dump/ (decision
 schema-dump in specs/root.xml).
 
-Each database the design makes is loaded from the owners' folders on PostgreSQL 18 in Docker, in the order the root's
-method schema gives, and dumped with pg_dump --schema-only: schema/dump/workspace.sql (the workspace's database) and
-schema/dump/<engine>.sql (a schema's database: the cortex and that engine's namespace). A design session writes them
+The one database the design makes, schema_forge, is loaded from the owners' folders on PostgreSQL 18 in Docker, in the
+order the root's method schema gives (the cortex, the ui, then every engine and feature), and dumped with
+pg_dump --schema-only into schema/dump/schema_forge.sql. A design session writes them
 (`--write`) together with the lock; everything else compares (the default, run by tools/check.sh on every change and
 every day by CI), so a database that no longer comes out as the design was locked fails, naming the file and the
 first line that differs. The image is postgres/manifest.toml's [check] image.
@@ -28,19 +28,18 @@ def owner(root, folder, kind, oid):
 
 
 CORTEX = owner("schema/cortex", "schema/cortex", "core", "cortex")
-WORKSPACE = owner("schema/workspace", "schema/workspace", "core", "workspace")
 UI = owner("schema/ui", "schema/ui", "core", "ui")
 
 
 def databases():
-    """Every database the design makes, by its dump's name: the workspace's, and one per engine or feature beside the
-    cortex."""
-    out = {"workspace": [WORKSPACE]}
+    """The one database the design makes, schema_forge: the cortex (the workspace among it), the ui, then every engine
+    and feature, each in its namespace."""
+    owners = [CORTEX, UI]
     for parent, kind in (("engines", "engine"), ("features", "feature")):
         for d in sorted(glob.glob(os.path.join(ROOT, parent, "*", "schema"))):
             oid = os.path.basename(os.path.dirname(d))
-            out[oid] = [CORTEX, UI, owner(f"{parent}/{oid}", f"{parent}/{oid}/schema", kind, oid)]
-    return out
+            owners.append(owner(f"{parent}/{oid}", f"{parent}/{oid}/schema", kind, oid))
+    return {"schema_forge": owners}
 
 
 def read(path):
@@ -78,13 +77,9 @@ def version_one(o):
     if o["id"] == "cortex":
         parts += [(f"{folder}/{f}", read(f"{folder}/{f}")) for f in ("enforce_rules.sql", "grant_roles.sql")]
     parts += [(p, read(p)) for p in files(f"{folder}/rules")]
-    if o["id"] != "workspace":
-        parts.append((f"{folder}/rules", f"SELECT cortex.enforce_rules('{ns}');"))
+    parts.append((f"{folder}/rules", f"SELECT cortex.enforce_rules('{ns}');"))
     parts += [(p, read(p)) for p in files(f"{folder}/seeds")]
-    if o["id"] == "workspace":
-        parts.append((f"{folder}/grants.sql", read(f"{folder}/grants.sql")))
-    else:
-        parts.append((f'{o["root"]}/owner.toml', f"SELECT cortex.grant_roles('{ns}');"))
+    parts.append((f'{o["root"]}/owner.toml', f"SELECT cortex.grant_roles('{ns}');"))
     return parts
 
 
@@ -127,13 +122,13 @@ def dumps():
         psql(name, "postgres", "CREATE ROLE sf_owner NOLOGIN; CREATE ROLE sf_service LOGIN; CREATE ROLE sf_agent LOGIN; CREATE ROLE sf_reader LOGIN;")
         out = {}
         for db, owners in databases().items():
-            psql(name, "postgres", f"CREATE DATABASE sf_{db} OWNER sf_owner;")
+            psql(name, "postgres", f"CREATE DATABASE {db} OWNER sf_owner;")
             script = "BEGIN;\nSET ROLE sf_owner;\n" + "".join(
                 f"\\echo @@ {path}\n{sql}\n" for o in owners for path, sql in version_one(o)) + "COMMIT;\n"
-            psql(name, f"sf_{db}", script)
-            r = docker("exec", name, "pg_dump", "-U", "postgres", "--schema-only", f"sf_{db}")
+            psql(name, db, script)
+            r = docker("exec", name, "pg_dump", "-U", "postgres", "--schema-only", db)
             if r.returncode:
-                raise SystemExit(f"pg_dump sf_{db}: {r.stderr.strip()}")
+                raise SystemExit(f"pg_dump {db}: {r.stderr.strip()}")
             spaces = " and ".join(o["ns"] for o in owners)
             head = (f"-- schema/dump/{db}.sql: the schema-only pg_dump of the database {spaces} make, as the locked "
                     f"design gives it.\n-- Written by tools/schema_dump.py --write in a design session; tools/check.sh "

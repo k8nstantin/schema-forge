@@ -144,8 +144,7 @@ fn sql_file(root: &Path, owner: &Owner, file: &Path, found: &mut Vec<Finding>) {
     let text = fs::read_to_string(file).unwrap_or_default();
     let lines: Vec<&str> = text.lines().collect();
     let Some(create) = lines.iter().position(|l| l.starts_with("CREATE TABLE ")) else {
-        let allowed = (owner.id == "cortex" && matches!(name(file).as_str(), "enforce_rules.sql" | "grant_roles.sql"))
-            || (owner.id == "workspace" && name(file) == "grants.sql");
+        let allowed = owner.id == "cortex" && matches!(name(file).as_str(), "enforce_rules.sql" | "grant_roles.sql");
         if !allowed {
             finding(found, &at, "neither a table file nor a file the method names");
         }
@@ -208,8 +207,7 @@ fn sql_file(root: &Path, owner: &Owner, file: &Path, found: &mut Vec<Finding>) {
         while let Some(p) = rest.find("REFERENCES ") {
             rest = &rest[p + 11..];
             let target = rest.split_whitespace().next().unwrap_or("");
-            let ok =
-                target.starts_with(&format!("{ns}.")) || (owner.id != "workspace" && target.starts_with("cortex."));
+            let ok = target.starts_with(&format!("{ns}.")) || target.starts_with("cortex.");
             if !ok {
                 finding(found, &at, format!("refers to {target}, which is not its own or the cortex's"));
             }

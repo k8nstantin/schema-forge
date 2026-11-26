@@ -334,11 +334,11 @@ fn a_rule_whose_view_is_not_named_broken_and_its_rule_is_a_finding_naming_the_fi
 fn a_seed_that_updates_a_row_is_the_finding_a_seed_writes_only_new_rows() {
     let c = copy("seed");
     c.edit(
-        "schema/workspace/seeds/parameters.sql",
+        "schema/cortex/seeds/workspace_parameters.sql",
         "ON CONFLICT (id) DO NOTHING",
         "ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value",
     );
-    named(&check(c.root()), &["schema/workspace/seeds/parameters.sql", "a seed writes only new rows"]);
+    named(&check(c.root()), &["schema/cortex/seeds/workspace_parameters.sql", "a seed writes only new rows"]);
 }
 
 // --- step 12: migrations -------------------------------------------------------------------------------------------
@@ -379,12 +379,12 @@ fn in_docker_a_rule_that_lists_a_row_of_a_new_database_is_the_finding_lists_rows
 fn in_docker_a_seed_whose_rows_take_a_new_id_each_time_it_is_applied_is_the_finding_changes_the_database() {
     let c = copy("seed-again");
     c.append(
-        "schema/workspace/seeds/parameters.sql",
-        "\nINSERT INTO workspace.parameters (id, value, about) VALUES \
+        "schema/cortex/seeds/workspace_parameters.sql",
+        "\nINSERT INTO cortex.workspace_parameters (id, value, about) VALUES \
          ('product.' || translate(substr(md5(random()::text), 1, 8), '0123456789', 'ghijklmnop'), '\"x\"', 'a new row each time') \
          ON CONFLICT (id) DO NOTHING;\n",
     );
-    named(&load(c.root()), &["schema/workspace/seeds/parameters.sql: applying it again changes the database"]);
+    named(&load(c.root()), &["schema/cortex/seeds/workspace_parameters.sql: applying it again changes the database"]);
 }
 
 #[test]

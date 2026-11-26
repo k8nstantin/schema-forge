@@ -3,7 +3,7 @@
   The brief: what a coding agent, and the person who points it here, read first. The one source of every word the brief
   and the Contribute page say; docs/pages/contribute.py only renders it, with specs/root.xml and specs/rules.xml, into
   site/agents.xml, site/llms.txt, the repository's agent files and the Contribute page (decision xml-for-agents). %PRODUCT%, %SITE%, %REPO% and %BRANCH% are the
-  parameters of schema/workspace/seeds/parameters.sql, filled in when it is rendered.
+  parameters of schema/cortex/seeds/workspace_parameters.sql, filled in when it is rendered.
   Parts: welcome, agent-file, page-note, page-agent, intro, prompt, if-task-file, architecture, method, ways, wanted, first-steps, start, read, database, helping.
 -->
 <brief product="SchemaForge" version="1" date="2026-11-24">

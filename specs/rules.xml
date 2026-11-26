@@ -12,7 +12,7 @@
 
   <rule id="the-schema-decides">
     <from>the operator, 2026-11-24: "at the core stands the database schema ... after we design the schema we lock it in so the coding agents have to fall into compliance"</from>
-    <text>The schema folders (schema/cortex, schema/workspace, engines/&lt;engine&gt;/schema, features/&lt;feature&gt;/schema) are the database. Code reads and writes the tables they declare, with the columns they declare, and nothing else; no code creates, alters or drops a table, a column, an index or a constraint but the store, which does it from these files alone, and no code works out at run time what a file declares. A table, a column or a value the schema has no place for is a stop, not a workaround.</text>
+    <text>The schema folders (schema/cortex, schema/ui, engines/&lt;engine&gt;/schema, features/&lt;feature&gt;/schema) are the database. Code reads and writes the tables they declare, with the columns they declare, and nothing else; no code creates, alters or drops a table, a column, an index or a constraint but the store, which does it from these files alone, and no code works out at run time what a file declares. A table, a column or a value the schema has no place for is a stop, not a workaround.</text>
     <breach>the store, which creates a database only from the schema folders and refuses a database whose tables, comments or rules differ from them; the spec check over the schema folders; review</breach>
   </rule>
 
@@ -36,7 +36,7 @@
 
   <rule id="nothing-hardcoded">
     <from>the operator, 2026-11-24: "never hardcode anything, store as params in the database"; "the more params the easier the mods, key value will do in the database"</from>
-    <text>A value a person may want changed (a name, a label, a limit, a default, a link) is a row of workspace.parameters, read at run time; code holds only the key. A new value ships as a seed of a new version, inserted where its key is missing and never over a changed one.</text>
+    <text>A value a person may want changed (a name, a label, a limit, a default, a link) is a row of cortex.workspace_parameters, read at run time; code holds only the key. A new value ships as a seed of a new version, inserted where its key is missing and never over a changed one.</text>
     <breach>the architecture check, from the store task, refusing the product's name written in code; the conformance kit's round trip under a renamed product; review</breach>
   </rule>
 

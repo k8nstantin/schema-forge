@@ -47,7 +47,7 @@ open_decisions = [(d.get("id"), d.get("closes-before"), flat(d)) for d in root.f
 rule_list = [(r.get("id"), flat(r.find("text"))) for r in rules.findall("rule")]
 authority_paths = {p for p, _ in authority}
 docs = sorted(p for p in (os.path.relpath(x, REPO) for x in glob.glob(f"{REPO}/docs/*.xml") + glob.glob(f"{REPO}/engines/*/README.xml")) if p not in authority_paths)
-owners = ["schema/cortex/", "schema/ui/", "schema/workspace/"] + sorted(
+owners = ["schema/cortex/", "schema/ui/"] + sorted(
     os.path.relpath(p, REPO) + "/" for p in glob.glob(f"{REPO}/engines/*/schema"))
 method = [(s.get("name"), s.get("short"), fill(flat(s))) for s in brief.find("method").findall("step")]
 ways = [(w.get("name"), w.get("kicker"), w.get("title"), fill(flat(w.find("for-agent"))), fill(flat(w.find("for-people"))))

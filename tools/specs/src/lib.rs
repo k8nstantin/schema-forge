@@ -142,17 +142,11 @@ struct Owner {
     id: String,
 }
 
-/// Every owner of the repository: the three core owners (the cortex, the workspace and the ui), every engine, every
-/// feature and the template.
+/// Every owner of the repository: the two core owners (the cortex, which holds the workspace too, and the ui), every
+/// engine, every feature and the template.
 fn owners(root: &Path) -> Vec<Owner> {
     let mut out = vec![
         Owner { root: "schema/cortex".into(), folder: "schema/cortex".into(), kind: "core", id: "cortex".into() },
-        Owner {
-            root: "schema/workspace".into(),
-            folder: "schema/workspace".into(),
-            kind: "core",
-            id: "workspace".into(),
-        },
         Owner { root: "schema/ui".into(), folder: "schema/ui".into(), kind: "core", id: "ui".into() },
     ];
     for (parent, kind) in [("engines", "engine"), ("features", "feature")] {
