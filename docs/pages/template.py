@@ -14,11 +14,10 @@ g.band(10, 10, 300, 390, "cortex")
 g.band(380, 10, 650, 390, "engine_example")
 for key, y in [("objects", 70), ("columns", 250)]:
     g.box(f"c.{key}", 60, y, 200, 44, key, cls="pri")
-shapes = [("table_options", 40, "1. options of a part", "at most one row per table"),
-          ("storage_pools", 110, "3. a kind only it has", "the object is a cortex row"),
-          ("table_properties", 180, "4. open-ended properties", "key and value, as written"),
-          ("column_codecs", 250, "2. an ordered list", "<column>.codec<n>, in order"),
-          ("nested_fields", 330, "5. a tree", "parent: the same table")]
+shapes = [("table_options", 40, "1. options of a part", "at most one row per table, every option typed"),
+          ("storage_pools", 130, "3. a kind only it has", "the object is a cortex row"),
+          ("column_codecs", 220, "2. an ordered list", "in order, ids the database issues"),
+          ("nested_fields", 310, "4. a tree", "parent: the same table")]
 for nm, y, title, sub in shapes:
     g.box(nm, 600, y, 280, 52, nm, title, cls="eng")
 for nm, y, *_ in shapes:

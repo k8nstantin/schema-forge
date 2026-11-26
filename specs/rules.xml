@@ -24,7 +24,7 @@
 
   <rule id="cortex-and-engines">
     <from>the operator, 2026-11-24: "a cortex schema global and schema per engine"; docs/engines.xml</from>
-    <text>What every engine shares is the cortex's; what is one engine's alone is that engine's, in its own tables in its own crate, in its own namespace engine_&lt;engine&gt; (engine_mysql.table_options). Shared code (the model, the interface, the store, the server, the canvas) never names an engine, an engine table or an engine column; an engine never writes a cortex table's rows but through the interface, and never another engine's.</text>
+    <text>What every engine shares is the cortex's; what is one engine's alone is that engine's, in its own tables in its own crate, in its own namespace engine_&lt;engine&gt; (engine_mysql.tables). Shared code (the model, the interface, the store, the server, the canvas) never names an engine, an engine table or an engine column; an engine never writes a cortex table's rows but through the interface, and never another engine's.</text>
     <breach>the architecture check (a database named outside its engine, an engine's table among them since each is named by its engine; and, from t03, every engine's field keys, kind ids, option keys, table and column names in shared code); the spec check (an engine table outside its engine's folder, or outside its engine's namespace); the kit</breach>
   </rule>
 
@@ -48,13 +48,13 @@
 
   <rule id="log-never-edited">
     <from>specs/root.xml decisions log-and-current-model, reject-keeps</from>
-    <text>The log (turns, operations, row_changes, value_changes, versions) is appended to and never updated or deleted, but a turn's state and its verdict; a change to the current model is written in the same transaction as the operation that records it, with every row and value it changed.</text>
+    <text>The log (branches, turns, operations, row_changes, savepoints, versions) is appended to and never updated or deleted, but a turn's state and its verdict and a branch's newest turn; a change to the design is written in the same transaction as the operation that records it, with every row it changed, before and after.</text>
     <breach>the store's tests; review</breach>
   </rule>
 
   <rule id="engine-neutral-shared-code">
     <from>the operator, 2026-11-23: "this is not acceptable and create a harness to stop you"</from>
-    <text>Shared code shows what an engine declares and never assumes one: no engine's connection field, kind, option, table or column is named in it. Every test of shared code runs on every engine of the test registry, and Quill, built unlike MySQL on purpose, is one of them; what each engine is tested on is data.</text>
+    <text>Shared code shows what an engine declares and never assumes one: no engine's connection field, kind, option, table or column is named in it. Every test of shared code runs on every engine of the registry, and the kit checks the interface on its own made-up example engine (crates/engine/tests/example); what each engine is tested on is data.</text>
     <breach>the architecture check's vocabulary guard (built by t03): every engine's field keys, kind ids, option keys, table and column names, read from what each declares, refused in shared code; the tests of shared code, run on every engine</breach>
   </rule>
 

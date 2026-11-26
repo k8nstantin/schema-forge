@@ -168,8 +168,8 @@ by meaning) and its problems (each a finding with its evidence). Ask in plain wo
 The database is **designed first and locked**, so coding agents fall into it instead of drifting from it
 ([the Database page](docs/pages/database.html), [docs/store.xml](https://k8nstantin.github.io/schema-forge/doc-store.html)):
 
-- **Every owner in its own namespace.** `cortex` is what every engine shares (objects, columns, relationships, keys,
-  indexes, the log); each engine brings `engine_<id>` (`engine_mysql.table_options`); each future feature brings its own
+- **Every owner in its own namespace.** `cortex` is what every engine shares (objects, columns, constraints, indexes,
+  dependencies, the log); each engine brings `engine_<id>` (`engine_mysql.tables`); each future feature brings its own
   (`insight`, `semantic`, `rules`, `pipelines`). Nothing reaches into another owner's tables.
 - **The database enforces it.** Every reference is a foreign key, every value typed and checked, every column documented
   in the database itself. A rule a foreign key cannot state is a view of the rows breaking it, which PostgreSQL turns into
@@ -196,8 +196,7 @@ database a plugin, Apache DataFusion at the center, the architecture checked by 
 engine interface with its registry and conformance kit, the layout every engine fills, the architecture check, and
 the first engine, [MySQL](https://k8nstantin.github.io/schema-forge/doc-mysql.html): dumps, DDL and the live database read, every kind of object and
 clause, written back in a form that loads into MySQL 8.0 to 26.10. Next, in the order of
-[the build spec](specs/root.xml): the spec check, the tables interface, Quill (the engine every shared test runs
-beside), MySQL's tables, MySQL's live read again (5.7 added, read by the person's choice, with the server's usage), PostgreSQL built for the store, the store, the operations, the server and the MCP, the
+[the build spec](specs/root.xml): the spec check, the tables interface, the registry of engines and the guard that shared code names no engine's word, MySQL's tables, MySQL's live read again (5.7 added, read by the person's choice, with the server's usage), PostgreSQL built for the store, the store, the operations, the server and the MCP, the
 canvas; and the engines: Apache Iceberg next, then PostgreSQL. Then schema management: drift against live databases,
 and migrations checked before they run. Follow it in the [Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7)
 milestone.

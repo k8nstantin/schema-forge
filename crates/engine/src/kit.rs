@@ -91,7 +91,6 @@ pub fn check(engine: &dyn Engine, samples: &Samples<'_>) -> Vec<String> {
     identity(engine, &mut out);
     declarations(engine, &mut out);
     live_fields(engine, &mut out);
-    tables_declared(engine, &mut out);
     types(engine, &mut out);
     portable(engine, &mut out);
     match (engine.read(), samples.files.is_empty()) {
@@ -357,9 +356,6 @@ fn sample_conforms(engine: &dyn Engine, read: &dyn Read, sample: &Sample<'_>, ou
     }
     if schema.engine.id != engine.id() {
         out.push(format!("{at}: it reads as a schema for `{}`", schema.engine.id));
-    }
-    if let Some(tables) = engine.tables() {
-        tables_round_trip(engine, tables, &at.to_string(), schema, out);
     }
     let version = schema.engine.version.as_str();
     if let Ok(section) = crate::sections::read::<crate::sections::SchemaSection>(&schema.engine_section)
@@ -827,108 +823,6 @@ fn portable(engine: &dyn Engine, out: &mut Vec<String>) {
             }
         }
     }
-}
-
-/// An engine's tables are in its own namespace, `engine_<engine id>`, as its card says.
-fn tables_declared(engine: &dyn Engine, out: &mut Vec<String>) {
-    let Some(tables) = engine.tables() else { return };
-    let own = format!("engine_{}", engine.id());
-    let card = tables
-        .card()
-        .lines()
-        .find_map(|l| l.trim().strip_prefix("namespace").and_then(|r| r.trim().strip_prefix('=')))
-        .map(|v| v.split('#').next().unwrap_or("").trim().trim_matches('"').to_string());
-    let card_ok = card.as_deref() == Some(own.as_str());
-    for f in tables.files() {
-        if !card_ok || !f.name.starts_with(&format!("{own}.")) {
-            out.push(format!("table {} is not in {}'s namespace {own}", f.name, engine.id()));
-        }
-    }
-}
-
-/// The rows of a sample's schema: only the engine's own tables and the counters, every value of its column's type,
-/// and the schema back from them the schema read.
-fn tables_round_trip(
-    engine: &dyn Engine,
-    tables: &dyn crate::tables::Tables,
-    at: &str,
-    schema: &schema_forge_model::Schema,
-    out: &mut Vec<String>,
-) {
-    use crate::tables::{Identity, cortex_rows, cortex_schema};
-    let types: std::collections::BTreeMap<&str, Vec<(String, String)>> =
-        tables.files().iter().map(|f| (f.name, crate::tables::columns_of(f.sql))).collect();
-    let own = match tables.rows(schema) {
-        Ok(r) => r,
-        Err(e) => return out.push(format!("{at}: {e}")),
-    };
-    for (table, rows) in &own {
-        let columns = if table == "cortex.id_counters" {
-            vec![("id".to_string(), "TEXT".to_string()), ("last".to_string(), "INTEGER".to_string())]
-        } else if let Some(c) = types.get(table.as_str()) {
-            c.clone()
-        } else {
-            out.push(format!("rows() writes {table}, which is not one of its tables"));
-            continue;
-        };
-        for row in rows {
-            for (column, value) in &row.values {
-                if let Some((_, ty)) = columns.iter().find(|(c, _)| c == column)
-                    && !value.is_of(ty)
-                {
-                    out.push(format!("{table} {}: {column} is not {ty}", row.id()));
-                }
-            }
-        }
-    }
-    let identity = Identity {
-        id: "01900000-0000-7000-8000-000000000000".to_string(),
-        name: "kit".to_string(),
-        comment: None,
-        created_at: "2026-01-01T00:00:00Z".to_string(),
-    };
-    let mut rows = match cortex_rows(schema, engine, &identity) {
-        Ok(r) => r,
-        Err(e) => return out.push(format!("{at}: {e}")),
-    };
-    for (table, r) in own {
-        rows.entry(table).or_default().extend(r);
-    }
-    let back = cortex_schema(&rows, engine).and_then(|mut s| tables.read(&rows, &mut s).map(|()| s));
-    let back = match back {
-        Ok(s) => s,
-        Err(e) => return out.push(format!("{at}: its tables do not give back the schema read: {e}")),
-    };
-    if let Some(id) = first_difference(schema, &back) {
-        out.push(format!("{at}: its tables do not give back the schema read: {id}"));
-    }
-}
-
-/// The id of the first part whose JSON differs between two schemas: namespaces, objects (each with its columns),
-/// links, areas, then `schema` for the schema's own fields and section.
-fn first_difference(a: &schema_forge_model::Schema, b: &schema_forge_model::Schema) -> Option<String> {
-    fn json<T: serde::Serialize>(v: &T) -> serde_json::Value {
-        serde_json::to_value(v).unwrap_or_default()
-    }
-    fn parts<T: serde::Serialize>(a: &[T], b: &[T], id: impl Fn(&T) -> String) -> Option<String> {
-        for i in 0..a.len().max(b.len()) {
-            match (a.get(i), b.get(i)) {
-                (Some(x), Some(y)) if json(x) == json(y) => {}
-                (Some(x), _) => return Some(id(x)),
-                (None, Some(y)) => return Some(id(y)),
-                (None, None) => {}
-            }
-        }
-        None
-    }
-    parts(&a.namespaces, &b.namespaces, |n| n.id.to_string())
-        .or_else(|| parts(&a.objects, &b.objects, |o| o.id.to_string()))
-        .or_else(|| parts(&a.links, &b.links, |l| l.id.to_string()))
-        .or_else(|| parts(&a.areas, &b.areas, |x| x.id.to_string()))
-        .or_else(|| {
-            (a.format != b.format || a.engine != b.engine || a.engine_section != b.engine_section)
-                .then(|| "schema".to_string())
-        })
 }
 
 /// A live part's connection fields: named, labelled, each key once, and at most one secret.

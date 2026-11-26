@@ -76,9 +76,12 @@ fn start(image: &str) -> Result<Container, String> {
         Ok(o) => return Err(String::from_utf8_lossy(&o.stderr).trim().to_string()),
         Err(e) => return Err(e.to_string()),
     }
+    // tests run in parallel in one process and the clock may tick in microseconds: a counter keeps each name new
+    static STARTED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let name = format!(
-        "schema-forge-specs-{}-{}",
+        "schema-forge-specs-{}-{}-{}",
         std::process::id(),
+        STARTED.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         std::time::UNIX_EPOCH.elapsed().map_or(0, |d| d.as_nanos())
     );
     let run = Command::new("docker")
@@ -205,7 +208,7 @@ pub fn check(root: &Path, found: &mut Vec<Finding>) {
             return;
         }
     };
-    let roles = "CREATE ROLE sf_owner NOLOGIN; CREATE ROLE sf_service LOGIN; CREATE ROLE sf_reader LOGIN;";
+    let roles = "CREATE ROLE sf_owner NOLOGIN; CREATE ROLE sf_service LOGIN; CREATE ROLE sf_agent LOGIN; CREATE ROLE sf_reader LOGIN;";
     if c.psql("postgres", roles).is_err() {
         finding(found, "docker", "not running: the roles could not be made");
         return;
@@ -319,12 +322,15 @@ fn seeds_again(c: &Container, db: &str, root: &Path, its: &[Owner], found: &mut 
 }
 
 fn service_cannot_change(c: &Container, db: &str, its: &[Owner], found: &mut Vec<Finding>) {
-    for o in its {
-        let ns = o.namespace();
-        let attempt = format!("SET ROLE sf_service; CREATE TABLE {ns}.specs_service_attempt (id text);");
-        if c.psql(db, &attempt).is_ok() {
-            finding(found, &o.root, "sf_service can change the schema");
-            let _ = c.psql(db, &format!("DROP TABLE {ns}.specs_service_attempt;"));
+    // the app's role and the coding agent's: each writes rows and neither may change the schema
+    for role in ["sf_service", "sf_agent"] {
+        for o in its {
+            let ns = o.namespace();
+            let attempt = format!("SET ROLE {role}; CREATE TABLE {ns}.specs_service_attempt (id text);");
+            if c.psql(db, &attempt).is_ok() {
+                finding(found, &o.root, format!("{role} can change the schema"));
+                let _ = c.psql(db, &format!("DROP TABLE {ns}.specs_service_attempt;"));
+            }
         }
     }
 }

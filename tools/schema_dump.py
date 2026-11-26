@@ -123,7 +123,7 @@ def dumps():
             time.sleep(0.25)
         else:
             raise SystemExit("docker: PostgreSQL did not answer within a minute")
-        psql(name, "postgres", "CREATE ROLE sf_owner NOLOGIN; CREATE ROLE sf_service LOGIN; CREATE ROLE sf_reader LOGIN;")
+        psql(name, "postgres", "CREATE ROLE sf_owner NOLOGIN; CREATE ROLE sf_service LOGIN; CREATE ROLE sf_agent LOGIN; CREATE ROLE sf_reader LOGIN;")
         out = {}
         for db, owners in databases().items():
             psql(name, "postgres", f"CREATE DATABASE sf_{db} OWNER sf_owner;")

@@ -4,7 +4,7 @@
 CREATE TABLE usage.index_usage (
   id             UUID    NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),  -- UUIDv7, issued by the database
   snapshot       UUID    NOT NULL REFERENCES usage.snapshots (id) ON DELETE CASCADE,                  -- the snapshot it is part of
-  "index"        TEXT    REFERENCES cortex.indexes (id) ON DELETE SET NULL,                           -- the design's index of that name when the snapshot was taken; NULL when the design has none, or for rows read with no index
+  "index"        BIGINT  REFERENCES cortex.indexes (id) ON DELETE SET NULL,                           -- the design's index of that name when the snapshot was taken; NULL when the design has none, or for rows read with no index
   object_schema  TEXT    NOT NULL CHECK (length(object_schema) >= 1),                                 -- the database its table is in, as the server names it (shop)
   object_name    TEXT    NOT NULL CHECK (length(object_name) >= 1),                                   -- its table, as the server names it (orders)
   index_name     TEXT,                                                                                -- the index, as the server names it (PRIMARY); NULL for the rows read with no index
