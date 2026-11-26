@@ -21,6 +21,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+from extract import SOURCE_DB  # noqa: E402  the database a PostgreSQL target's samples live in, never postgres
 PW = next(l.split('"')[1] for l in open(os.path.join(ROOT, "engines/mysql/tests/live.rs")) if l.startswith("const ROOT"))
 
 MYSQL = [("5.7", 33057), ("8.0", 33080), ("8.4", 33084), ("9.7", 33097)]
@@ -78,6 +79,7 @@ def samples(engine, version):
     mysql = engine == "mysql"
     files = ["shop.sql", "features.sql"] + (["features_replica.sql"] if mysql else []) \
         + (["servers.sql"] if mysql else []) + (["servers80.sql"] if mysql and version != "5.7" else []) \
+        + (["features57.sql"] if mysql and version == "5.7" else []) \
         + (["features80.sql"] if mysql and version != "5.7" else []) + (["features97.sql"] if mysql and version == "9.7" else []) + ["quoted_names.sql"]
     sql = "".join(open(os.path.join(d, f)).read() + "\n" for f in files)
     if mysql and version in ("5.7", "8.0"):
@@ -121,10 +123,13 @@ def main():
                    "-c", "ALTER SYSTEM SET track_functions = 'all'", "-c", "ALTER SYSTEM SET track_io_timing = on")
                 sh("docker", "restart", name)
                 pg_up(name, v, port)
-            sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "CREATE EXTENSION IF NOT EXISTS pg_stat_statements")
+            sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "DROP EXTENSION IF EXISTS pg_stat_statements")
+        # the samples live in their own database; earlier runs left them in postgres, the server's own: gone from there
         sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", 'DROP SCHEMA IF EXISTS shop, features, audit, "Quoted Names" CASCADE')
+        sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", f"DROP DATABASE IF EXISTS {SOURCE_DB} WITH (FORCE)")
         sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", "DROP ROLE IF EXISTS features_reader")
-        sh("docker", "exec", "-i", name, "psql", "-U", "postgres", "-q", "-v", "ON_ERROR_STOP=1", stdin=samples("postgresql", v))
+        sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", f"CREATE DATABASE {SOURCE_DB}")
+        sh("docker", "exec", "-i", name, "psql", "-U", "postgres", "-d", SOURCE_DB, "-q", "-v", "ON_ERROR_STOP=1", stdin=samples("postgresql", v))
         print(f"{name}: 127.0.0.1:{port}, lab samples loaded{', every statistic counted' if v == '18' else ', default statistics'}")
     pg_up(*STORE)
     print(f"{STORE[0]}: 127.0.0.1:{STORE[2]}, our own PostgreSQL {STORE[1]}, empty until a lab script makes its databases")

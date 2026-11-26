@@ -16,6 +16,7 @@ ROOT = os.path.dirname(HERE)
 PW = next(l.split('"')[1] for l in open(os.path.join(ROOT, "engines/mysql/tests/live.rs")) if l.startswith("const ROOT"))
 MYSQL = [("5.7", "sf-mysql-5.7"), ("8.0", "sf-mysql-8.0"), ("8.4", "sf-mysql-8.4"), ("9.7", "sf-mysql-9.7")]
 POSTGRES = [(v, f"sf-pg-{v}") for v in ("15", "16", "17", "18")]
+SOURCE_DB = "engine_postgresql"  # where a PostgreSQL target's schemas are read from: never postgres, the server's own
 SCHEMAS = tuple(os.environ.get("LAB_SCHEMAS", "shop,features,features_js,audit").split(","))  # the schemas a run reads
 OUT = os.path.expanduser(os.environ.get("LAB_OUT", os.path.join(HERE, "out")))  # private schemas go outside the repository
 
@@ -203,7 +204,7 @@ def extract_mysql(version, container):
 
 
 def pg(container, sql):
-    r = subprocess.run(["docker", "exec", "-i", container, "psql", "-U", "postgres", "-At", "-v", "ON_ERROR_STOP=1"],
+    r = subprocess.run(["docker", "exec", "-i", container, "psql", "-U", "postgres", "-d", SOURCE_DB, "-At", "-v", "ON_ERROR_STOP=1"],
                        input=sql, capture_output=True, text=True)
     if r.returncode:
         raise SystemExit(f"{container}: {r.stderr.strip()[-400:]}")

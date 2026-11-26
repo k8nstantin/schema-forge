@@ -103,7 +103,8 @@ def main():
     ns_a, ns_a2 = q(f"SELECT id FROM cortex.namespaces WHERE design = '{a}' ORDER BY position LIMIT 2").split()
     tab = q(f"SELECT id FROM cortex.objects WHERE design = '{a}' AND kind = 'table' ORDER BY position LIMIT 1")
     col = q(f"SELECT id FROM cortex.columns WHERE object = '{tab}' ORDER BY position LIMIT 1")
-    seq = f"INSERT INTO cortex.objects (id, design, namespace, kind, name, position) VALUES ('{NEW[0]}', '{a}', '{ns_a}', 'sequence', 's_new', 999999);\n"
+    # a kind MySQL declares (the guard check_kinds refuses any other first): the sequences row is what is under test
+    seq = f"INSERT INTO cortex.objects (id, design, namespace, kind, name, position) VALUES ('{NEW[0]}', '{a}', '{ns_a}', 'table', 's_new', 999999);\n"
     refused("a sequence owned by a column of the other design",
             seq + f"INSERT INTO cortex.sequences (id, design, owned_by) VALUES ('{NEW[0]}', '{a}', {T(col)});")
     plain = q(f"SELECT c.id FROM cortex.columns c WHERE c.design = '{a}' AND NOT EXISTS (SELECT 1 FROM cortex.column_identities i WHERE i.id = c.id) ORDER BY c.position LIMIT 1")

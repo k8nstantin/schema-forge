@@ -691,7 +691,7 @@ def main():
             try:
                 C.ready_pg(name)
                 sql = script(S.st)
-                r = subprocess.run(["docker", "exec", "-i", name, "psql", "-U", "postgres", "-q"], input=sql, capture_output=True, text=True)
+                r = subprocess.run(["docker", "exec", "-i", name, "psql", "-U", "postgres", "-d", C.SOURCE_DB, "-q"], input=sql, capture_output=True, text=True)
                 refused = [l for l in r.stderr.splitlines() if "ERROR:" in l]
                 saved, X.SCHEMAS = X.SCHEMAS, tuple(n["name"] for n in S.ns.values() if n["parent_id"])
                 again = X.extract_pg(version, name)

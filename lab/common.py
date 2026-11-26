@@ -9,6 +9,7 @@ import time
 
 import setup as S
 
+SOURCE_DB = S.SOURCE_DB
 SERVER = "sf-store"  # our own PostgreSQL, apart from the test targets
 DELIM = "$$sf$$"
 
@@ -79,6 +80,7 @@ def ready_pg(name):
             # the image's first server is a short-lived one that makes the cluster; wait for the real one to settle
             time.sleep(2)
             if S.sh("docker", "exec", name, "psql", "-U", "postgres", "-c", "SELECT 1", check=False).returncode == 0:
+                S.sh("docker", "exec", name, "psql", "-U", "postgres", "-qc", f"CREATE DATABASE {SOURCE_DB}")
                 return
         time.sleep(1)
     raise SystemExit(f"{name} did not answer")

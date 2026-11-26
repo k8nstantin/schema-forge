@@ -294,6 +294,27 @@
    }
   },
   {
+   "key": "features.ranks",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": "",
+    "ENGINE": "InnoDB",
+    "ROW_FORMAT": "Dynamic",
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": "utf8mb4_unicode_ci",
+    "TABLE_COMMENT": "",
+    "TABLE_NAME": "ranks",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "BASE TABLE",
+    "VERSION": 10,
+    "__index_order": [
+     "PRIMARY"
+    ],
+    "__show_create": "CREATE TABLE `ranks` (\n  `id` int(11) NOT NULL,\n  `rank` int(11) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+   }
+  },
+  {
    "key": "features.v_by_status",
    "kind": "table",
    "parent": "features",
@@ -305,6 +326,23 @@
     "TABLE_COLLATION": null,
     "TABLE_COMMENT": "VIEW",
     "TABLE_NAME": "v_by_status",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "VIEW",
+    "VERSION": null
+   }
+  },
+  {
+   "key": "features.v_grouped",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": null,
+    "ENGINE": null,
+    "ROW_FORMAT": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": null,
+    "TABLE_COMMENT": "VIEW",
+    "TABLE_NAME": "v_grouped",
     "TABLE_SCHEMA": "features",
     "TABLE_TYPE": "VIEW",
     "VERSION": null
@@ -1576,6 +1614,62 @@
    }
   },
   {
+   "key": "features.ranks.id",
+   "kind": "column",
+   "parent": "features.ranks",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": null,
+    "COLUMN_KEY": "PRI",
+    "COLUMN_NAME": "id",
+    "COLUMN_TYPE": "int(11)",
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "NO",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 1,
+    "PRIVILEGES": "select,insert,update,references",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "ranks",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.ranks.rank",
+   "kind": "column",
+   "parent": "features.ranks",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": null,
+    "COLUMN_KEY": "",
+    "COLUMN_NAME": "rank",
+    "COLUMN_TYPE": "int(11)",
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "NO",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 2,
+    "PRIVILEGES": "select,insert,update,references",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "ranks",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
    "key": "features.v_by_status.status",
    "kind": "column",
    "parent": "features.v_by_status",
@@ -1628,6 +1722,34 @@
     "PRIVILEGES": "select,insert,update,references",
     "TABLE_CATALOG": "def",
     "TABLE_NAME": "v_by_status",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.v_grouped.id",
+   "kind": "column",
+   "parent": "features.v_grouped",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": null,
+    "COLUMN_KEY": "",
+    "COLUMN_NAME": "id",
+    "COLUMN_TYPE": "int(11)",
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "NO",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 1,
+    "PRIVILEGES": "select,insert,update,references",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "v_grouped",
     "TABLE_SCHEMA": "features"
    }
   },
@@ -2720,6 +2842,28 @@
    }
   },
   {
+   "key": "features.ranks.PRIMARY.1",
+   "kind": "index_part",
+   "parent": "features.ranks.PRIMARY",
+   "props": {
+    "COLLATION": "A",
+    "COLUMN_NAME": "id",
+    "COMMENT": "",
+    "INDEX_COMMENT": "",
+    "INDEX_NAME": "PRIMARY",
+    "INDEX_SCHEMA": "features",
+    "INDEX_TYPE": "BTREE",
+    "NON_UNIQUE": 0,
+    "NULLABLE": "",
+    "PACKED": null,
+    "SEQ_IN_INDEX": 1,
+    "SUB_PART": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "ranks",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
    "key": "shop.customers.PRIMARY.1",
    "kind": "index_part",
    "parent": "shop.customers.PRIMARY",
@@ -3188,6 +3332,19 @@
     "CONSTRAINT_SCHEMA": "features",
     "CONSTRAINT_TYPE": "UNIQUE",
     "TABLE_NAME": "parent",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.ranks.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "features.ranks",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "TABLE_NAME": "ranks",
     "TABLE_SCHEMA": "features"
    }
   },
@@ -3670,6 +3827,25 @@
    }
   },
   {
+   "key": "features.ranks.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.ranks.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "ranks",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
    "key": "shop.customers.PRIMARY.1",
    "kind": "key_column",
    "parent": "shop.customers.PRIMARY",
@@ -3968,6 +4144,24 @@
    }
   },
   {
+   "key": "features.v_grouped",
+   "kind": "view",
+   "parent": "features",
+   "props": {
+    "CHARACTER_SET_CLIENT": "latin1",
+    "CHECK_OPTION": "NONE",
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "DEFINER": "root@localhost",
+    "IS_UPDATABLE": "NO",
+    "SECURITY_TYPE": "DEFINER",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "v_grouped",
+    "TABLE_SCHEMA": "features",
+    "VIEW_DEFINITION": "select `features`.`ranks`.`id` AS `id` from `features`.`ranks` group by `features`.`ranks`.`id` desc",
+    "__show_create": "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `features`.`v_grouped` AS select `features`.`ranks`.`id` AS `id` from `features`.`ranks` group by `features`.`ranks`.`id` desc"
+   }
+  },
+  {
    "key": "features.v_join",
    "kind": "view",
    "parent": "features",
@@ -4060,6 +4254,82 @@
    }
   },
   {
+   "key": "features.f_hash.FUNCTION",
+   "kind": "routine",
+   "parent": "features",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": 41,
+    "CHARACTER_OCTET_LENGTH": 41,
+    "CHARACTER_SET_CLIENT": "latin1",
+    "CHARACTER_SET_NAME": "latin1",
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "COLLATION_NAME": "latin1_swedish_ci",
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DATA_TYPE": "varchar",
+    "DATETIME_PRECISION": null,
+    "DEFINER": "root@localhost",
+    "DTD_IDENTIFIER": "varchar(41)",
+    "EXTERNAL_LANGUAGE": null,
+    "EXTERNAL_NAME": null,
+    "IS_DETERMINISTIC": "YES",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "PARAMETER_STYLE": "SQL",
+    "ROUTINE_BODY": "SQL",
+    "ROUTINE_CATALOG": "def",
+    "ROUTINE_COMMENT": "",
+    "ROUTINE_DEFINITION": "RETURN PASSWORD(p)",
+    "ROUTINE_NAME": "f_hash",
+    "ROUTINE_SCHEMA": "features",
+    "ROUTINE_TYPE": "FUNCTION",
+    "SECURITY_TYPE": "DEFINER",
+    "SPECIFIC_NAME": "f_hash",
+    "SQL_DATA_ACCESS": "NO SQL",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+    "SQL_PATH": null,
+    "__show_create": "CREATE DEFINER=`root`@`localhost` FUNCTION `f_hash`(p VARCHAR(40)) RETURNS varchar(41) CHARSET latin1\n    NO SQL\n    DETERMINISTIC\nRETURN PASSWORD(p)",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
+   "key": "features.p_cached.PROCEDURE",
+   "kind": "routine",
+   "parent": "features",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_CLIENT": "latin1",
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "COLLATION_NAME": null,
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DATA_TYPE": "",
+    "DATETIME_PRECISION": null,
+    "DEFINER": "root@localhost",
+    "DTD_IDENTIFIER": null,
+    "EXTERNAL_LANGUAGE": null,
+    "EXTERNAL_NAME": null,
+    "IS_DETERMINISTIC": "NO",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "PARAMETER_STYLE": "SQL",
+    "ROUTINE_BODY": "SQL",
+    "ROUTINE_CATALOG": "def",
+    "ROUTINE_COMMENT": "",
+    "ROUTINE_DEFINITION": "SELECT SQL_CACHE id FROM features.ranks",
+    "ROUTINE_NAME": "p_cached",
+    "ROUTINE_SCHEMA": "features",
+    "ROUTINE_TYPE": "PROCEDURE",
+    "SECURITY_TYPE": "DEFINER",
+    "SPECIFIC_NAME": "p_cached",
+    "SQL_DATA_ACCESS": "READS SQL DATA",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+    "SQL_PATH": null,
+    "__show_create": "CREATE DEFINER=`root`@`localhost` PROCEDURE `p_cached`()\n    READS SQL DATA\nSELECT SQL_CACHE id FROM features.ranks",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
    "key": "features.p_count.PROCEDURE",
    "kind": "routine",
    "parent": "features",
@@ -4132,6 +4402,44 @@
     "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
     "SQL_PATH": null,
     "__show_create": "CREATE DEFINER=`root`@`localhost` PROCEDURE `p_purge`(IN p_before INT)\n    MODIFIES SQL DATA\nDELETE FROM features.myisam_log WHERE id < p_before",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
+   "key": "features.p_top.PROCEDURE",
+   "kind": "routine",
+   "parent": "features",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_CLIENT": "latin1",
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "COLLATION_NAME": null,
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DATA_TYPE": "",
+    "DATETIME_PRECISION": null,
+    "DEFINER": "root@localhost",
+    "DTD_IDENTIFIER": null,
+    "EXTERNAL_LANGUAGE": null,
+    "EXTERNAL_NAME": null,
+    "IS_DETERMINISTIC": "NO",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "PARAMETER_STYLE": "SQL",
+    "ROUTINE_BODY": "SQL",
+    "ROUTINE_CATALOG": "def",
+    "ROUTINE_COMMENT": "",
+    "ROUTINE_DEFINITION": "SELECT id, rank FROM features.ranks ORDER BY rank",
+    "ROUTINE_NAME": "p_top",
+    "ROUTINE_SCHEMA": "features",
+    "ROUTINE_TYPE": "PROCEDURE",
+    "SECURITY_TYPE": "DEFINER",
+    "SPECIFIC_NAME": "p_top",
+    "SQL_DATA_ACCESS": "READS SQL DATA",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+    "SQL_PATH": null,
+    "__show_create": "CREATE DEFINER=`root`@`localhost` PROCEDURE `p_top`()\n    READS SQL DATA\nSELECT id, rank FROM features.ranks ORDER BY rank",
     "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
    }
   },
@@ -4216,6 +4524,52 @@
     "ROUTINE_TYPE": "FUNCTION",
     "SPECIFIC_CATALOG": "def",
     "SPECIFIC_NAME": "f_cents",
+    "SPECIFIC_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.f_hash.FUNCTION.0",
+   "kind": "parameter",
+   "parent": "features.f_hash",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": 41,
+    "CHARACTER_OCTET_LENGTH": 41,
+    "CHARACTER_SET_NAME": "latin1",
+    "COLLATION_NAME": "latin1_swedish_ci",
+    "DATA_TYPE": "varchar",
+    "DATETIME_PRECISION": null,
+    "DTD_IDENTIFIER": "varchar(41)",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "ORDINAL_POSITION": 0,
+    "PARAMETER_MODE": null,
+    "PARAMETER_NAME": null,
+    "ROUTINE_TYPE": "FUNCTION",
+    "SPECIFIC_CATALOG": "def",
+    "SPECIFIC_NAME": "f_hash",
+    "SPECIFIC_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.f_hash.FUNCTION.1",
+   "kind": "parameter",
+   "parent": "features.f_hash",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": 40,
+    "CHARACTER_OCTET_LENGTH": 160,
+    "CHARACTER_SET_NAME": "utf8mb4",
+    "COLLATION_NAME": "utf8mb4_unicode_ci",
+    "DATA_TYPE": "varchar",
+    "DATETIME_PRECISION": null,
+    "DTD_IDENTIFIER": "varchar(40)",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "ORDINAL_POSITION": 1,
+    "PARAMETER_MODE": "IN",
+    "PARAMETER_NAME": "p",
+    "ROUTINE_TYPE": "FUNCTION",
+    "SPECIFIC_CATALOG": "def",
+    "SPECIFIC_NAME": "f_hash",
     "SPECIFIC_SCHEMA": "features"
    }
   },
@@ -4402,6 +4756,35 @@
    }
   },
   {
+   "key": "features.e_replica_off",
+   "kind": "event",
+   "parent": "features",
+   "props": {
+    "CHARACTER_SET_CLIENT": "latin1",
+    "COLLATION_CONNECTION": "latin1_swedish_ci",
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DEFINER": "root@localhost",
+    "ENDS": null,
+    "EVENT_BODY": "SQL",
+    "EVENT_CATALOG": "def",
+    "EVENT_COMMENT": "",
+    "EVENT_DEFINITION": "DELETE FROM features.myisam_log WHERE id < -1",
+    "EVENT_NAME": "e_replica_off",
+    "EVENT_SCHEMA": "features",
+    "EVENT_TYPE": "RECURRING",
+    "EXECUTE_AT": null,
+    "INTERVAL_FIELD": "HOUR",
+    "INTERVAL_VALUE": "1",
+    "ON_COMPLETION": "NOT PRESERVE",
+    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+    "STARTS": "2030-01-01 00:00:00.000000",
+    "STATUS": "SLAVESIDE_DISABLED",
+    "TIME_ZONE": "SYSTEM",
+    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `e_replica_off` ON SCHEDULE EVERY 1 HOUR STARTS '2030-01-01 00:00:00' ON COMPLETION NOT PRESERVE DISABLE ON SLAVE DO DELETE FROM features.myisam_log WHERE id < -1",
+    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
+   }
+  },
+  {
    "key": "shop.nightly",
    "kind": "event",
    "parent": "shop",
@@ -4423,10 +4806,10 @@
     "INTERVAL_VALUE": "1",
     "ON_COMPLETION": "NOT PRESERVE",
     "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
-    "STARTS": "2026-11-26 17:29:02.000000",
+    "STARTS": "2026-11-26 17:53:41.000000",
     "STATUS": "ENABLED",
     "TIME_ZONE": "SYSTEM",
-    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `nightly` ON SCHEDULE EVERY 1 DAY STARTS '2026-11-26 17:29:02' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM shop.order_items WHERE qty = 0",
+    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `nightly` ON SCHEDULE EVERY 1 DAY STARTS '2026-11-26 17:53:41' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM shop.order_items WHERE qty = 0",
     "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
    }
   },
@@ -4456,35 +4839,6 @@
     "STATUS": "DISABLED",
     "TIME_ZONE": "SYSTEM",
     "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `e_purge` ON SCHEDULE EVERY 1 DAY STARTS '2030-01-01 00:00:00' ON COMPLETION PRESERVE DISABLE COMMENT 'nightly' DO DELETE FROM features.myisam_log WHERE id < 0",
-    "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
-   }
-  },
-  {
-   "key": "features.e_replica_off",
-   "kind": "event",
-   "parent": "features",
-   "props": {
-    "CHARACTER_SET_CLIENT": "latin1",
-    "COLLATION_CONNECTION": "latin1_swedish_ci",
-    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
-    "DEFINER": "root@localhost",
-    "ENDS": null,
-    "EVENT_BODY": "SQL",
-    "EVENT_CATALOG": "def",
-    "EVENT_COMMENT": "",
-    "EVENT_DEFINITION": "DELETE FROM features.myisam_log WHERE id < -1",
-    "EVENT_NAME": "e_replica_off",
-    "EVENT_SCHEMA": "features",
-    "EVENT_TYPE": "RECURRING",
-    "EXECUTE_AT": null,
-    "INTERVAL_FIELD": "HOUR",
-    "INTERVAL_VALUE": "1",
-    "ON_COMPLETION": "NOT PRESERVE",
-    "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
-    "STARTS": "2030-01-01 00:00:00.000000",
-    "STATUS": "SLAVESIDE_DISABLED",
-    "TIME_ZONE": "SYSTEM",
-    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `e_replica_off` ON SCHEDULE EVERY 1 HOUR STARTS '2030-01-01 00:00:00' ON COMPLETION NOT PRESERVE DISABLE ON SLAVE DO DELETE FROM features.myisam_log WHERE id < -1",
     "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
    }
   },

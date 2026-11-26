@@ -47,7 +47,7 @@ def dump_for(version):
 
 
 def psql(container, sql):
-    r = subprocess.run(["docker", "exec", "-i", container, "psql", "-U", "postgres", "-q", "-v", "ON_ERROR_STOP=1"], input=sql,
+    r = subprocess.run(["docker", "exec", "-i", container, "psql", "-U", "postgres", "-d", X.SOURCE_DB, "-q", "-v", "ON_ERROR_STOP=1"], input=sql,
                        capture_output=True, text=True)
     if r.returncode:
         raise SystemExit(f"{container}: {r.stderr.strip()[-600:]}")

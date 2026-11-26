@@ -298,6 +298,8 @@ def from_locked(st):
             sets.setdefault(cc["constraint"], []).append(cc["column"])
     for c in st["engine_postgresql.constraints"].values():
         out["engine_postgresql.constraint"][c["id"]] = {**{k: v for k, v in c.items() if k != "design"}, "delete_set_columns": sets.get(c["id"])}
+    for cid, cols in sets.items():   # a SET NULL (columns) on a key with no other option of PostgreSQL's own
+        out["engine_postgresql.constraint"].setdefault(cid, {"id": cid, "delete_set_columns": cols})
     for r in st["engine_postgresql.routines"].values():
         out["engine_postgresql.routine"][r["id"]] = {**{k: v for k, v in r.items() if k != "design"}, "volatility": VO[r["volatility"]],
                                                      "parallel": PA[r["parallel"]]}
@@ -373,7 +375,7 @@ def main():
             try:
                 C.ready_pg(name)
                 sql = snap.get("prelude", "") + P.script(S.st)  # what the server needs before the schema: its roles, a stand-in
-                r = subprocess.run(["docker", "exec", "-i", name, "psql", "-U", "postgres", "-q"], input=sql, capture_output=True, text=True)
+                r = subprocess.run(["docker", "exec", "-i", name, "psql", "-U", "postgres", "-d", C.SOURCE_DB, "-q"], input=sql, capture_output=True, text=True)
                 refused = [line for line in r.stderr.splitlines() if "ERROR:" in line]
                 saved, X.SCHEMAS = X.SCHEMAS, tuple(n["name"] for n in S.ns.values() if n["parent_id"])
                 again = X.extract_pg(version, name)

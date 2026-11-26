@@ -298,7 +298,8 @@ def twin(rows, name):
 
 
 def copy_sql(table, rows):
-    cols = list(rows[0])
+    cols = list(dict.fromkeys(c for r in rows for c in r))   # every row's columns, not the first row's alone
+    rows = [{c: r.get(c, DEFAULT.get(c)) for c in cols} for r in rows]
     buf = io.StringIO()
     w = csv.writer(buf, quoting=csv.QUOTE_ALL, lineterminator="\n")
     for r in rows:
@@ -307,6 +308,7 @@ def copy_sql(table, rows):
     return f"COPY {table} ({', '.join(chr(34) + c + chr(34) for c in cols)}) FROM STDIN WITH (FORMAT csv, NULL '\\N');\n{body}\\.\n"
 
 
+DEFAULT = {"options": "{}"}   # a column some rows leave out: what the table's own default is
 import options_layout as OL  # noqa: E402  the readers' engine rows as the locked design's options (decision declared-options)
 MOVED = OL.MOVED
 
