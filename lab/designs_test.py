@@ -111,13 +111,9 @@ def main():
     refused("a table placed in a subject area of the other design",
             f"INSERT INTO ui.subject_areas (id, design, name, position) VALUES ({NEW}, '{b}', 'orders', 1);\n"
             f"INSERT INTO ui.object_places (id, design, area) VALUES ({tab}, '{a}', {NEW});")
-    refused("a usage snapshot naming a table of the other design",
-            f"INSERT INTO cortex.source_reads (id, design, connection_name, database_name, scope, server_version, read_as, usage_available, started_at) "
-            f"VALUES ('01900000-0000-7000-8000-000000000001', '{a}', 'local', 'shop', '{{}}', '8.4.0', 'reader', true, now());\n"
-            f"INSERT INTO usage.snapshots (id, design, source_read, source, taken_at, server_uptime) VALUES "
-            f"('01900000-0000-7000-8000-000000000002', '{a}', '01900000-0000-7000-8000-000000000001', 'performance_schema', now(), 1);\n"
-            f"INSERT INTO usage.object_usage (design, snapshot, object, object_schema, object_name, source_rows) VALUES "
-            f"('{a}', '01900000-0000-7000-8000-000000000002', {int(tab) + OFF}, 'shop', 'orders', '{{}}');")
+    refused("a choice of what to read listing a kind under the other design's choice",
+            f"INSERT INTO cortex.read_scopes (id, design, everything, made_by) VALUES ({NEW}, '{b}', false, 'lab');\n"
+            f"INSERT INTO cortex.read_scope_kinds (design, scope, kind) VALUES ('{a}', {NEW}, 'table');")
     refused("an inherited parent in the other design",
             f"INSERT INTO engine_postgresql.inheritance (design, object, parent, position) VALUES ('{a}', {tab}, {int(tab) + OFF}, 1);")
     refused("a row of one design claiming the other's design",

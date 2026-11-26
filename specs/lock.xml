@@ -3,7 +3,7 @@
   The schema lock: the SHA-256 of every file that makes up the database's design. Written only in a design
   session, by tools/schema_lock.py with its write option; tools/check.sh refuses any locked file that differs.
 -->
-<lock product="SchemaForge" files="103">
+<lock product="SchemaForge" files="101">
   <file path="docs/owner-template/README.xml" sha256="336271195f4c3f3532581ab1238b3fb2a5a8945df9aeede7975b7206050a9c01"/>
   <file path="docs/owner-template/owner.toml" sha256="cc6f9817675670ceefa5592dff30c24a0ac38afc63eddd92ebde0efda4275567"/>
   <file path="docs/owner-template/schema/column_codecs.sql" sha256="0c994e3388f36dcb7adf915473f2d11778ea36d7779e52e3c958c615e53dac29"/>
@@ -44,15 +44,10 @@
   <file path="engines/postgresql/schema/sequences.sql" sha256="6ba2b5331fecffb6473b2be56a9899d624a9e7b55d241a4b5dab285701db67ff"/>
   <file path="engines/postgresql/schema/triggers.sql" sha256="68697cd84b3bda5d5bb75499aa1b68586f2ec3a42603b8938c0d2b23ec251c6c"/>
   <file path="engines/postgresql/schema/types.sql" sha256="e39ad10ee0fd06017e9c0c1a2baa4791bcc577b1bd50507de6d0bb7a6ec55709"/>
-  <file path="features/usage/owner.toml" sha256="0a58930aeab0f8cd5d3afb2f46669dc5f55e7a63ffbc31b16e33fc41ef2e41c8"/>
-  <file path="features/usage/schema/index_usage.sql" sha256="12c7eae0cc9a6aa7b58f2bcba3b74c88a9072781854cf929be862ef198e14d8c"/>
-  <file path="features/usage/schema/object_usage.sql" sha256="8defb89b07835a196573afa158c719101fa4d9f92a4c5ac17069defbb3618ce7"/>
-  <file path="features/usage/schema/query_digests.sql" sha256="945b6887b905099ed93e319585b299cc8efb8c8084809579f7b4507ce2ea734d"/>
-  <file path="features/usage/schema/snapshots.sql" sha256="d6a664d4a5733ee2b447f33991acfac004b79afff0a85a3dbf3e62b48404bf01"/>
   <file path="postgres/manifest.toml" sha256="d8e75bb68508d4aa724ca0d43c7b8a50a6d70c449e620f8d0c01cd0db634aad1"/>
   <file path="schema/accounts.py" sha256="56a019aaabee5f23ee9dffb45b589dc9f5233716fed2df59664ebf8e05367190"/>
   <file path="schema/cortex/branches.sql" sha256="303b8af9d444e8ee993824d6bda737a176bc946eda64f757f5ce7a782012e0cd"/>
-  <file path="schema/cortex/catalog_sources.sql" sha256="e6694ac330e1aa2d8050769ae9d2b22b3d143fe14e0b566e952816ed3e491d58"/>
+  <file path="schema/cortex/catalog_sources.sql" sha256="652d77aabe6a7fb647ec0d46bd1e17582e497688c0bb1397b36a489f3ed2bfc8"/>
   <file path="schema/cortex/column_identities.sql" sha256="d4aa823ac91ecf2be090c797fe8df6edc1d05f70b77a900bc9ddd1237a1c2240"/>
   <file path="schema/cortex/columns.sql" sha256="850fe7a4a78d0d47e55dcc75cd8a287dc10ccca43f219ee0d56e6849feb54a79"/>
   <file path="schema/cortex/constraint_columns.sql" sha256="d7d63028b71890db6ac97f6da6e30e8f44d19eb02e1f143e28658ab3b00a4ae5"/>
@@ -64,7 +59,7 @@
   <file path="schema/cortex/engine_features.sql" sha256="f1535a04aff75ede3cdd6366ebb5df9716d9bdac6ffd0a9beaa1422ebf564660"/>
   <file path="schema/cortex/engine_versions.sql" sha256="e0cfe573c659ca1a5d16618b7dbc7bdd1f4372c7cc638977b4fc76c7e971d5b9"/>
   <file path="schema/cortex/enum_values.sql" sha256="2b96bd2018d25bdc4151fe27b41187826250bbe39e8ceeaad965d56e408bdcfb"/>
-  <file path="schema/cortex/grant_roles.sql" sha256="6cea32ac4dd37cb27f1dece206020cf2e317fb5853145123caeefe2e054b018b"/>
+  <file path="schema/cortex/grant_roles.sql" sha256="5bb29fada34da30cc0019727ab4a9c5da74ffc788f27792a7fa7180c5b20602c"/>
   <file path="schema/cortex/index_parts.sql" sha256="9f14e2e36f77725b6b736fb79780dc156b77d68876634f43524eded3f645315b"/>
   <file path="schema/cortex/indexes.sql" sha256="5a0555b1d77e764faa7db2bf809f36fc73bf2bd6b935b109d5edff5ee7caa4e9"/>
   <file path="schema/cortex/locked_versions.sql" sha256="aae38cb5744ae4380d3c4838dbe6bff610db2d8c18c3624427d9aa08053bf0eb"/>
@@ -77,16 +72,19 @@
   <file path="schema/cortex/owner.toml" sha256="a19468b5390474700ec3bad09d80e8af5c956f2f31ce709a6824a710707c1670"/>
   <file path="schema/cortex/partitionings.sql" sha256="1c9930011f791f0f4d285c1abda192015598c604ae2c781fbd732c9fc4dc1e0c"/>
   <file path="schema/cortex/partitions.sql" sha256="885598b03cc13b129b8bc26d87b63a0bdc0777a24ddbaff4201f71561fb824c5"/>
+  <file path="schema/cortex/read_scope_kinds.sql" sha256="086f81fd045210d4ef69ddcd21f20af55b4b29a1b4390e912dcc49afb7265b55"/>
+  <file path="schema/cortex/read_scope_objects.sql" sha256="1230aec2dcf628f9275305efdc506b058c955de9aa4c54118348387b5d1b14bd"/>
+  <file path="schema/cortex/read_scopes.sql" sha256="df9306e6ab58921aa550ea1fd9f89dedd3cb85c02c9ec7afb3be4d41f53aeaf5"/>
   <file path="schema/cortex/required_extensions.sql" sha256="eaab6abd9c9a5570731d7adf9c61c0d47a163d0d4bfc2a33025824424cd4a218"/>
   <file path="schema/cortex/routine_parameters.sql" sha256="3df5b56da6cd826178ed4cbd081fa4b91595ff1ce1bc97629d96705effe50dd2"/>
   <file path="schema/cortex/routines.sql" sha256="1275ecdab116a72f767d82d74637aaa5f37b8d2f6c09eda4b8dea26acd9c412a"/>
   <file path="schema/cortex/row_changes.sql" sha256="213371609bdebfecac7cee2397ae1aaa453036f13f9ee443ebaacc0b30b32eab"/>
   <file path="schema/cortex/savepoints.sql" sha256="298eccf62bd079ed02551f2859e6ed403c75f9b3c64f668dd64b8ed62c22902c"/>
   <file path="schema/cortex/schema_migrations.sql" sha256="01561a6007bcce36356c0ed8ec118ea49777013836b95034817f22b8c9998599"/>
-  <file path="schema/cortex/seeds/workspace_parameters.sql" sha256="ab8febbcd002c7c149f28f5c261c2c726730343123b3490d9a7ab91a58ba9bd3"/>
+  <file path="schema/cortex/seeds/workspace_parameters.sql" sha256="06ecb5a3d97479b61557be1c4655b9f1bf228d2c7f00b0580a3ea1391c5a15aa"/>
   <file path="schema/cortex/sequences.sql" sha256="09c42e58f5e7aafd918d36abef4a375b4e16a4ad698b4db1ad9ab2f981182a1f"/>
   <file path="schema/cortex/sort_fields.sql" sha256="d8ef0a1f9145a618ba4f84587028221228ef679bae0010fe72640d7646d10c7f"/>
-  <file path="schema/cortex/source_reads.sql" sha256="2b833c081a6dd2fb499e53ea391237df423dc947d40f335aa547cbbfe75f66d4"/>
+  <file path="schema/cortex/source_reads.sql" sha256="eef110b6b198652a2e88871bef3655da0e166518c08124d7208f51ef75630f62"/>
   <file path="schema/cortex/triggers.sql" sha256="b5ce4dd1d3aadcce5170fb385c955f8f86208f8af9ecd6350c766b3a4ab32fc9"/>
   <file path="schema/cortex/turns.sql" sha256="b055809d77414362aa02722539a76bae2c0438ffc022a87721b602cfd3687c8f"/>
   <file path="schema/cortex/verbatim_statements.sql" sha256="44751edffecd0904d0bbd5dd37cf319ea083c44d4755135cdc0534ff5e1c7df0"/>
@@ -95,10 +93,10 @@
   <file path="schema/cortex/workspace_connection_tests.sql" sha256="4c81eb09853abe6e17a25337e5ed65eb90b0346769b05f3b35653ed43eef9415"/>
   <file path="schema/cortex/workspace_connection_values.sql" sha256="4a1f4b3ae78d655153ae44c6cbf991c2092e7418fe6bd59a543aacf54070e4cc"/>
   <file path="schema/cortex/workspace_connections.sql" sha256="cccf6659919ad699dc81c18673f47dd27f94f5b525dadd22f5d69b42f50f7297"/>
-  <file path="schema/cortex/workspace_design_connections.sql" sha256="4f31e8832c3647627c8a4c94c7d9f9a0fd3176d7a2a154cda663c03f9827fdcd"/>
+  <file path="schema/cortex/workspace_design_connections.sql" sha256="63707f8a9fd396a6a522aab5a874996d8cd5cb248644865d91a9db14695d819d"/>
   <file path="schema/cortex/workspace_identity.sql" sha256="54c4f0cdf87499196055275d9da3827fde725d8991ff1f96225d4e353bc2e564"/>
   <file path="schema/cortex/workspace_parameters.sql" sha256="c71f1706cfaa5a9d7e0b108c043e9991b0b057d4d60fe95803dce98de9e02646"/>
-  <file path="schema/dump/schema_forge.sql" sha256="48c4d5e14ea364f8e63a7caca7b31a67dae9ef9ea615eb961564f32cf4e44017"/>
+  <file path="schema/dump/schema_forge.sql" sha256="60db67727da9e02c5f3cd23d4361041af1dc767183452c3f50ecda6619dcc70b"/>
   <file path="schema/install.py" sha256="8217deef60f05da7dcdfb44115ee6805a0dfe94a909c5bf1d9eacaaa9d159910"/>
   <file path="schema/ui/custom_perspectives.sql" sha256="2b3bfb11804a93ea7212f8e31060763e11c5df67dda37f55b5099bb794716d45"/>
   <file path="schema/ui/layout_pins.sql" sha256="fd7ab01c879d1a33a28f72fce784f629254cea464d07ee6abee5e1fed7a49cd6"/>
