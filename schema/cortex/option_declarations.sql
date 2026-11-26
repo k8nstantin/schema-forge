@@ -10,7 +10,10 @@ CREATE TABLE cortex.option_declarations (
   since       TEXT REFERENCES cortex.engine_versions (id) DEFERRABLE INITIALLY DEFERRED,                                                                                                                                                                                                            -- the first version that has it; NULL for every version from the oldest
   "until"     TEXT REFERENCES cortex.engine_versions (id) DEFERRABLE INITIALLY DEFERRED,                                                                                                                                                                                                            -- the last version that has it; NULL for every version to the newest
   about       TEXT NOT NULL CHECK (length(about) >= 1),                                                                                                                                                                                                                                             -- what it is, in words the canvas shows beside it
+  flavor      TEXT,                                                                                                                                                                                                                                                                                 -- the one flavor that has it (postgresql/spanner's ttl_interval); NULL for every flavor of the engine
   UNIQUE (engine, part, name),
+  FOREIGN KEY (flavor) REFERENCES cortex.engine_flavors (id) DEFERRABLE INITIALLY DEFERRED,
+  CHECK (flavor LIKE engine || '/%'),
   CHECK (id = engine || '/' || part || '/' || name),
   CHECK (choices IS NULL OR jsonb_typeof(choices) = 'array')
 );
@@ -26,3 +29,4 @@ COMMENT ON COLUMN cortex.option_declarations.choices IS 'the only values it may 
 COMMENT ON COLUMN cortex.option_declarations.since IS 'the first version that has it; NULL for every version from the oldest';
 COMMENT ON COLUMN cortex.option_declarations."until" IS 'the last version that has it; NULL for every version to the newest';
 COMMENT ON COLUMN cortex.option_declarations.about IS 'what it is, in words the canvas shows beside it';
+COMMENT ON COLUMN cortex.option_declarations.flavor IS 'the one flavor that has it (postgresql/spanner''s ttl_interval); NULL for every flavor of the engine';

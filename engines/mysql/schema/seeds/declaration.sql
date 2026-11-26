@@ -20,17 +20,25 @@ INSERT INTO cortex.engine_features (id, engine, feature, what, since, "until", d
   ('mysql/libraries', 'mysql', 'libraries', 'JavaScript and WASM libraries and stored programs', 'mysql/9.7', NULL, '9.0, 9.2')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO cortex.object_kinds (id, engine, kind, name, position, scope) VALUES
-  ('mysql/table', 'mysql', 'table', 'Table', 1, 'namespace'),
-  ('mysql/view', 'mysql', 'view', 'View', 2, 'namespace'),
-  ('mysql/procedure', 'mysql', 'procedure', 'Procedure', 3, 'namespace'),
-  ('mysql/function', 'mysql', 'function', 'Function', 4, 'namespace'),
-  ('mysql/loadable_function', 'mysql', 'loadable_function', 'Loadable function', 5, 'server'),
-  ('mysql/library', 'mysql', 'library', 'Library', 6, 'namespace'),
-  ('mysql/trigger', 'mysql', 'trigger', 'Trigger', 7, 'namespace'),
-  ('mysql/event', 'mysql', 'event', 'Event', 8, 'namespace'),
-  ('mysql/tablespace', 'mysql', 'tablespace', 'Tablespace', 9, 'server'),
-  ('mysql/spatial_reference_system', 'mysql', 'spatial_reference_system', 'Spatial reference system', 10, 'server')
+
+-- the managed flavors of the engine (decision schema-per-engine), and what each lacks, each fact with the page it was read on
+INSERT INTO cortex.engine_flavors (id, engine, flavor, name, position, about) VALUES
+  ('mysql/rds', 'mysql', 'rds', 'Amazon RDS for MySQL', 1, 'MySQL run by Amazon RDS: the community server''s versions, without some engines and plugins'),
+  ('mysql/aurora', 'mysql', 'aurora', 'Amazon Aurora MySQL', 2, 'Amazon''s MySQL-compatible engine on its own storage: version 2 follows MySQL 5.7, version 3 MySQL 8.0'),
+  ('mysql/cloudsql', 'mysql', 'cloudsql', 'Cloud SQL for MySQL', 3, 'MySQL run by Google Cloud SQL: InnoDB alone, no plugins or server-side files')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO cortex.object_kinds (id, engine, kind, name, position, scope, since) VALUES
+  ('mysql/table', 'mysql', 'table', 'Table', 1, 'namespace', NULL),
+  ('mysql/view', 'mysql', 'view', 'View', 2, 'namespace', NULL),
+  ('mysql/procedure', 'mysql', 'procedure', 'Procedure', 3, 'namespace', NULL),
+  ('mysql/function', 'mysql', 'function', 'Function', 4, 'namespace', NULL),
+  ('mysql/loadable_function', 'mysql', 'loadable_function', 'Loadable function', 5, 'server', NULL),
+  ('mysql/library', 'mysql', 'library', 'Library', 6, 'namespace', 'mysql/9.7'),
+  ('mysql/trigger', 'mysql', 'trigger', 'Trigger', 7, 'namespace', NULL),
+  ('mysql/event', 'mysql', 'event', 'Event', 8, 'namespace', NULL),
+  ('mysql/tablespace', 'mysql', 'tablespace', 'Tablespace', 9, 'server', NULL),
+  ('mysql/spatial_reference_system', 'mysql', 'spatial_reference_system', 'Spatial reference system', 10, 'server', 'mysql/8.0')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, since, about) VALUES
@@ -97,4 +105,27 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('mysql/objects/insert_method', 'mysql', 'objects', 'insert_method', 'string', true, NULL, 'a MERGE table''s INSERT_METHOD; its tables are dependencies, in order'),
   ('mysql/views/algorithm', 'mysql', 'views', 'algorithm', 'string', false, '["UNDEFINED", "MERGE", "TEMPTABLE"]', 'how its query is run: SHOW CREATE VIEW alone holds it'),
   ('mysql/views/security', 'mysql', 'views', 'security', 'string', false, '["DEFINER", "INVOKER"]', 'whose rights it runs with')
+ON CONFLICT (id) DO NOTHING;
+
+-- what each flavor lacks
+INSERT INTO cortex.flavor_limits (id, flavor, what, kind, option, value, name, since, "until", severity, about, source) VALUES
+  ('mysql/cloudsql/kind/loadable_function', 'mysql/cloudsql', 'kind', 'mysql/loadable_function', NULL, NULL, NULL, NULL, NULL, 'refused', 'CREATE FUNCTION ... SONAME is not supported: no library can be loaded', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/cloudsql/value/objects.engine.MyISAM', 'mysql/cloudsql', 'value', NULL, 'mysql/objects/engine', '"MyISAM"', NULL, NULL, NULL, 'refused', 'InnoDB is the only storage engine it supports: a MyISAM table must become InnoDB', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/cloudsql/value/objects.engine.MEMORY', 'mysql/cloudsql', 'value', NULL, 'mysql/objects/engine', '"MEMORY"', NULL, NULL, NULL, 'refused', 'InnoDB is the only storage engine it supports: a MEMORY table must become InnoDB', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/cloudsql/value/objects.engine.FEDERATED', 'mysql/cloudsql', 'value', NULL, 'mysql/objects/engine', '"FEDERATED"', NULL, NULL, NULL, 'refused', 'InnoDB is the only storage engine it supports: a FEDERATED table must become InnoDB', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/cloudsql/value/objects.engine.MRG_MyISAM', 'mysql/cloudsql', 'value', NULL, 'mysql/objects/engine', '"MRG_MyISAM"', NULL, NULL, NULL, 'refused', 'InnoDB is the only storage engine it supports: a MRG_MyISAM table must become InnoDB', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/cloudsql/value/objects.engine.ARCHIVE', 'mysql/cloudsql', 'value', NULL, 'mysql/objects/engine', '"ARCHIVE"', NULL, NULL, NULL, 'refused', 'InnoDB is the only storage engine it supports: a ARCHIVE table must become InnoDB', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/cloudsql/value/objects.engine.CSV', 'mysql/cloudsql', 'value', NULL, 'mysql/objects/engine', '"CSV"', NULL, NULL, NULL, 'refused', 'InnoDB is the only storage engine it supports: a CSV table must become InnoDB', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/cloudsql/value/objects.engine.BLACKHOLE', 'mysql/cloudsql', 'value', NULL, 'mysql/objects/engine', '"BLACKHOLE"', NULL, NULL, NULL, 'refused', 'InnoDB is the only storage engine it supports: a BLACKHOLE table must become InnoDB', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/cloudsql/value/objects.encryption.Y', 'mysql/cloudsql', 'value', NULL, 'mysql/objects/encryption', '"Y"', NULL, NULL, NULL, 'refused', 'InnoDB data-at-rest encryption is not supported', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/cloudsql/value/namespaces.encryption.true', 'mysql/cloudsql', 'value', NULL, 'mysql/namespaces/encryption', 'true', NULL, NULL, NULL, 'refused', 'InnoDB data-at-rest encryption is not supported', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/cloudsql/function/LOAD_FILE', 'mysql/cloudsql', 'function', NULL, NULL, NULL, 'LOAD_FILE', NULL, NULL, 'refused', 'LOAD_FILE() is not supported: a routine that calls it fails when run', 'https://docs.cloud.google.com/sql/docs/mysql/features'),
+  ('mysql/rds/value/objects.engine.FEDERATED', 'mysql/rds', 'value', NULL, 'mysql/objects/engine', '"FEDERATED"', NULL, NULL, NULL, 'refused', 'the Federated storage engine is not supported', 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.FeatureSupport.html'),
+  ('mysql/rds/value/objects.engine.MyISAM', 'mysql/rds', 'value', NULL, 'mysql/objects/engine', '"MyISAM"', NULL, NULL, NULL, 'warned', 'MyISAM tables are taken, but do not recover reliably: point-in-time and snapshot restores may lose or corrupt them', 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.FeatureSupport.html'),
+  ('mysql/rds/value/objects.encryption.Y', 'mysql/rds', 'value', NULL, 'mysql/objects/encryption', '"Y"', NULL, NULL, NULL, 'refused', 'InnoDB tablespace encryption is not supported', 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.FeatureSupport.html'),
+  ('mysql/rds/value/namespaces.encryption.true', 'mysql/rds', 'value', NULL, 'mysql/namespaces/encryption', 'true', NULL, NULL, NULL, 'refused', 'InnoDB tablespace encryption is not supported', 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.FeatureSupport.html'),
+  ('mysql/rds/function/MD5', 'mysql/rds', 'function', NULL, NULL, NULL, 'MD5', 'mysql/9.7', NULL, 'refused', 'MD5() is not available on RDS for MySQL 9.7; the upgrade precheck blocks a routine, view, trigger, event, default or index that uses it', 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.FeatureSupport.html'),
+  ('mysql/rds/function/SHA1', 'mysql/rds', 'function', NULL, NULL, NULL, 'SHA1', 'mysql/9.7', NULL, 'refused', 'SHA1() is not available on RDS for MySQL 9.7; the upgrade precheck blocks a routine, view, trigger, event, default or index that uses it', 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.FeatureSupport.html'),
+  ('mysql/rds/function/SHA', 'mysql/rds', 'function', NULL, NULL, NULL, 'SHA', 'mysql/9.7', NULL, 'refused', 'SHA() is not available on RDS for MySQL 9.7; the upgrade precheck blocks a routine, view, trigger, event, default or index that uses it', 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.FeatureSupport.html'),
+  ('mysql/aurora/kind/tablespace', 'mysql/aurora', 'kind', 'mysql/tablespace', NULL, NULL, NULL, NULL, 'mysql/5.7', 'refused', 'Aurora MySQL version 2 (MySQL 5.7) does not support CREATE TABLESPACE', 'https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraMySQL.CompareMySQL57.html')
 ON CONFLICT (id) DO NOTHING;

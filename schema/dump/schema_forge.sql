@@ -55,6 +55,28 @@ CREATE SCHEMA ui;
 ALTER SCHEMA ui OWNER TO sf_owner;
 
 --
+-- Name: check_designs(); Type: FUNCTION; Schema: cortex; Owner: sf_owner
+--
+
+CREATE FUNCTION cortex.check_designs() RETURNS trigger
+    LANGUAGE plpgsql STABLE
+    AS $$
+DECLARE
+  lim cortex.flavor_limits;
+BEGIN
+  IF NEW.flavor IS NULL THEN RETURN NEW; END IF;
+  SELECT * INTO lim FROM cortex.flavor_limits
+   WHERE flavor = NEW.flavor AND what = 'version' AND version = NEW.engine || '/' || NEW.engine_version AND severity = 'refused' LIMIT 1;
+  IF lim.id IS NOT NULL THEN
+    RAISE EXCEPTION '% does not offer % %: %', NEW.flavor, NEW.engine, NEW.engine_version, lim.about USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION cortex.check_designs() OWNER TO sf_owner;
+
+--
 -- Name: check_kinds(); Type: FUNCTION; Schema: cortex; Owner: sf_owner
 --
 
@@ -62,21 +84,43 @@ CREATE FUNCTION cortex.check_kinds() RETURNS trigger
     LANGUAGE plpgsql STABLE
     AS $$
 DECLARE
-  k cortex.object_kinds;
-  e text;
+  bad record;
 BEGIN
-  SELECT engine INTO e FROM cortex.designs WHERE id = NEW.design;
-  SELECT * INTO k FROM cortex.object_kinds WHERE engine = e AND kind = NEW.kind;
-  IF k.id IS NULL THEN
-    RAISE EXCEPTION 'kind % is not declared for %', NEW.kind, e USING ERRCODE = 'check_violation';
+  SELECT n.kind, n.namespace, d.engine, d.engine_version, d.flavor, k.id AS kid, k.scope, k.flavor AS kflavor, l.about AS lacks,
+         (k.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = k.since)
+          OR k."until" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = k."until")) AS out_of_version
+    INTO bad
+    FROM new_objects n
+    JOIN cortex.designs d ON d.id = n.design
+    LEFT JOIN cortex.object_kinds k ON k.engine = d.engine AND k.kind = n.kind
+    LEFT JOIN cortex.engine_versions v ON v.engine = d.engine AND v.version = d.engine_version
+    LEFT JOIN LATERAL (
+      SELECT l.about FROM cortex.flavor_limits l
+       WHERE l.flavor = d.flavor AND l.severity = 'refused' AND l.what = 'kind' AND l.kind = k.id
+         AND (l.since IS NULL OR v.position >= (SELECT s.position FROM cortex.engine_versions s WHERE s.id = l.since))
+         AND (l."until" IS NULL OR v.position <= (SELECT u.position FROM cortex.engine_versions u WHERE u.id = l."until"))
+       LIMIT 1) l ON true
+   WHERE k.id IS NULL
+      OR k.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = k.since)
+      OR k."until" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = k."until")
+      OR k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM d.flavor
+      OR l.about IS NOT NULL
+      OR (k.scope = 'namespace') = (n.namespace IS NULL)
+   LIMIT 1;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  IF bad.kid IS NULL THEN
+    RAISE EXCEPTION 'kind % is not declared for %', bad.kind, bad.engine USING ERRCODE = 'check_violation';
+  ELSIF bad.out_of_version THEN
+    RAISE EXCEPTION 'a % is not in % %', bad.kind, bad.engine, bad.engine_version USING ERRCODE = 'check_violation';
+  ELSIF bad.kflavor IS NOT NULL AND bad.kflavor IS DISTINCT FROM bad.flavor THEN
+    RAISE EXCEPTION 'a % is %''s alone', bad.kind, bad.kflavor USING ERRCODE = 'check_violation';
+  ELSIF bad.lacks IS NOT NULL THEN
+    RAISE EXCEPTION '% has no %: %', bad.flavor, bad.kind, bad.lacks USING ERRCODE = 'check_violation';
+  ELSIF bad.scope = 'namespace' THEN
+    RAISE EXCEPTION 'a % lives in a namespace', bad.kind USING ERRCODE = 'check_violation';
+  ELSE
+    RAISE EXCEPTION 'a % lives in the %, in no namespace', bad.kind, bad.scope USING ERRCODE = 'check_violation';
   END IF;
-  IF k.scope = 'server' AND NEW.namespace IS NOT NULL THEN
-    RAISE EXCEPTION 'a % lives in the server, in no namespace', NEW.kind USING ERRCODE = 'check_violation';
-  END IF;
-  IF k.scope = 'namespace' AND NEW.namespace IS NULL THEN
-    RAISE EXCEPTION 'a % lives in a namespace', NEW.kind USING ERRCODE = 'check_violation';
-  END IF;
-  RETURN NEW;
 END $$;
 
 
@@ -90,41 +134,58 @@ CREATE FUNCTION cortex.check_options() RETURNS trigger
     LANGUAGE plpgsql STABLE
     AS $$
 DECLARE
-  d cortex.designs;
-  o record;
-  dec cortex.option_declarations;
-  at numeric;
+  bad record;
 BEGIN
-  IF NEW.options = '{}'::jsonb THEN RETURN NEW; END IF;
-  IF jsonb_typeof(NEW.options) <> 'object' THEN
-    RAISE EXCEPTION 'options must be an object, not %', jsonb_typeof(NEW.options) USING ERRCODE = 'check_violation';
+  SELECT jsonb_typeof(r.options) AS shape, x.key, x.value, d.engine, d.engine_version, d.flavor,
+         dec.id AS did, dec.flavor AS dflavor, dec.nullable, dec.value_type, dec.choices,
+         (dec.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = dec.since)
+          OR dec."until" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec."until")) AS out_of_version,
+         l.about AS lacks
+    INTO bad
+    FROM new_rows r
+    JOIN cortex.designs d ON d.id = r.design
+    LEFT JOIN cortex.engine_versions v ON v.engine = d.engine AND v.version = d.engine_version
+    LEFT JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(r.options) = 'object' THEN r.options END) x ON true
+    LEFT JOIN cortex.option_declarations dec ON dec.engine = d.engine AND dec.part = TG_TABLE_NAME AND dec.name = x.key
+    LEFT JOIN LATERAL (
+      SELECT l.about FROM cortex.flavor_limits l
+       WHERE l.flavor = d.flavor AND l.severity = 'refused' AND l.option = dec.id
+         AND (l.what = 'option' OR l.what = 'value' AND l.value = x.value)
+         AND (l.since IS NULL OR v.position >= (SELECT s.position FROM cortex.engine_versions s WHERE s.id = l.since))
+         AND (l."until" IS NULL OR v.position <= (SELECT u.position FROM cortex.engine_versions u WHERE u.id = l."until"))
+       LIMIT 1) l ON true
+   WHERE r.options <> '{}'::jsonb AND (
+         jsonb_typeof(r.options) <> 'object'
+      OR dec.id IS NULL
+      OR dec.flavor IS NOT NULL AND dec.flavor IS DISTINCT FROM d.flavor
+      OR jsonb_typeof(x.value) = 'null' AND NOT dec.nullable
+      OR jsonb_typeof(x.value) <> 'null' AND (
+           dec.value_type = 'json' AND jsonb_typeof(x.value) NOT IN ('array', 'object')
+        OR dec.value_type <> 'json' AND jsonb_typeof(x.value) <> dec.value_type
+        OR dec.choices IS NOT NULL AND NOT dec.choices @> jsonb_build_array(x.value)
+        OR dec.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = dec.since)
+        OR dec."until" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec."until")
+        OR l.about IS NOT NULL))
+   LIMIT 1;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  IF bad.shape <> 'object' THEN
+    RAISE EXCEPTION 'options must be an object, not %', bad.shape USING ERRCODE = 'check_violation';
+  ELSIF bad.did IS NULL THEN
+    RAISE EXCEPTION 'option % is not declared for % %', bad.key, bad.engine, TG_TABLE_NAME USING ERRCODE = 'check_violation';
+  ELSIF bad.dflavor IS NOT NULL AND bad.dflavor IS DISTINCT FROM bad.flavor THEN
+    RAISE EXCEPTION 'option % is %''s alone', bad.key, bad.dflavor USING ERRCODE = 'check_violation';
+  ELSIF jsonb_typeof(bad.value) = 'null' THEN
+    RAISE EXCEPTION 'option % may not be null', bad.key USING ERRCODE = 'check_violation';
+  ELSIF bad.value_type = 'json' AND jsonb_typeof(bad.value) NOT IN ('array', 'object')
+     OR bad.value_type <> 'json' AND jsonb_typeof(bad.value) <> bad.value_type THEN
+    RAISE EXCEPTION 'option % is a %, not a %', bad.key, bad.value_type, jsonb_typeof(bad.value) USING ERRCODE = 'check_violation';
+  ELSIF bad.choices IS NOT NULL AND NOT bad.choices @> jsonb_build_array(bad.value) THEN
+    RAISE EXCEPTION 'option % may be one of %, not %', bad.key, bad.choices, bad.value USING ERRCODE = 'check_violation';
+  ELSIF bad.out_of_version THEN
+    RAISE EXCEPTION 'option % is not in % %', bad.key, bad.engine, bad.engine_version USING ERRCODE = 'check_violation';
+  ELSE
+    RAISE EXCEPTION '% lacks option % = %: %', bad.flavor, bad.key, bad.value, bad.lacks USING ERRCODE = 'check_violation';
   END IF;
-  SELECT * INTO d FROM cortex.designs WHERE id = NEW.design;
-  SELECT position INTO at FROM cortex.engine_versions WHERE engine = d.engine AND version = d.engine_version;
-  FOR o IN SELECT key, value FROM jsonb_each(NEW.options) LOOP
-    SELECT * INTO dec FROM cortex.option_declarations WHERE engine = d.engine AND part = TG_TABLE_NAME AND name = o.key;
-    IF dec.id IS NULL THEN
-      RAISE EXCEPTION 'option % is not declared for % %', o.key, d.engine, TG_TABLE_NAME USING ERRCODE = 'check_violation';
-    END IF;
-    IF jsonb_typeof(o.value) = 'null' THEN
-      IF NOT dec.nullable THEN
-        RAISE EXCEPTION 'option % may not be null', o.key USING ERRCODE = 'check_violation';
-      END IF;
-      CONTINUE;
-    END IF;
-    IF dec.value_type = 'json' AND jsonb_typeof(o.value) NOT IN ('array', 'object')
-       OR dec.value_type <> 'json' AND jsonb_typeof(o.value) <> dec.value_type THEN
-      RAISE EXCEPTION 'option % is a %, not a %', o.key, dec.value_type, jsonb_typeof(o.value) USING ERRCODE = 'check_violation';
-    END IF;
-    IF dec.choices IS NOT NULL AND NOT dec.choices @> jsonb_build_array(o.value) THEN
-      RAISE EXCEPTION 'option % may be one of %, not %', o.key, dec.choices, o.value USING ERRCODE = 'check_violation';
-    END IF;
-    IF dec.since IS NOT NULL AND at < (SELECT position FROM cortex.engine_versions WHERE id = dec.since)
-       OR dec."until" IS NOT NULL AND at > (SELECT position FROM cortex.engine_versions WHERE id = dec."until") THEN
-      RAISE EXCEPTION 'option % is not in % %', o.key, d.engine, d.engine_version USING ERRCODE = 'check_violation';
-    END IF;
-  END LOOP;
-  RETURN NEW;
 END $$;
 
 
@@ -201,7 +262,7 @@ BEGIN
   IF owner = 'cortex' THEN
     -- what the agent reads only: the designs themselves, the engines' declarations, the workspace, what a person chose
     -- to read, what was applied, read and locked
-    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations',
+    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors', 'flavor_limits',
                              'workspace_identity', 'workspace_parameters', 'workspace_connections', 'workspace_connection_values',
                              'workspace_connection_tests', 'workspace_connection_test_steps', 'workspace_design_connections',
                              'read_scopes', 'read_scope_kinds', 'read_scope_objects',
@@ -224,6 +285,61 @@ ALTER FUNCTION cortex.grant_roles(owner text) OWNER TO sf_owner;
 
 COMMENT ON FUNCTION cortex.grant_roles(owner text) IS 'gives an owner''s namespace to sf_service (rows, the rules), sf_agent (the design''s rows) and sf_reader (reading), so the schema changes only as sf_owner';
 
+
+--
+-- Name: misfits(uuid, text, text); Type: FUNCTION; Schema: cortex; Owner: sf_owner
+--
+
+CREATE FUNCTION cortex.misfits(p_design uuid, p_version text, p_flavor text DEFAULT NULL::text) RETURNS TABLE(part text, row_id uuid, what text, name text, severity text, about text, source text)
+    LANGUAGE plpgsql STABLE
+    AS $_$
+DECLARE
+  e text;
+  at numeric;
+  p text;
+BEGIN
+  SELECT engine INTO e FROM cortex.designs WHERE id = p_design;
+  SELECT position INTO at FROM cortex.engine_versions WHERE engine = e AND version = p_version;
+  IF at IS NULL THEN
+    RAISE EXCEPTION '% has no version %', e, p_version USING ERRCODE = 'check_violation';
+  END IF;
+  -- the target itself: a flavor that does not offer the version
+  RETURN QUERY SELECT 'designs'::text, p_design, 'version'::text, p_version, l.severity, l.about, l.source
+    FROM cortex.flavor_limits l WHERE l.flavor = p_flavor AND l.what = 'version' AND l.version = e || '/' || p_version;
+  -- objects of a kind the target lacks, or another flavor's alone
+  RETURN QUERY SELECT 'objects'::text, o.id, 'kind'::text, o.kind, coalesce(l.severity, 'refused'),
+      coalesce(l.about, CASE WHEN k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor THEN k.flavor || '''s alone'
+                             ELSE 'not in ' || e || ' ' || p_version END), l.source
+    FROM cortex.objects o JOIN cortex.object_kinds k ON k.engine = e AND k.kind = o.kind
+    LEFT JOIN cortex.flavor_limits l ON l.flavor = p_flavor AND l.what = 'kind' AND l.kind = k.id
+      AND (l.since IS NULL OR at >= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.since))
+      AND (l."until" IS NULL OR at <= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l."until"))
+    WHERE o.design = p_design AND (l.id IS NOT NULL OR k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor
+       OR k.since IS NOT NULL AND at < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.since)
+       OR k."until" IS NOT NULL AND at > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k."until"));
+  -- every option of every part: one the target version does not have, another flavor's alone, or one the flavor lacks
+  FOR p IN SELECT DISTINCT d.part FROM cortex.option_declarations d WHERE d.engine = e LOOP
+    RETURN QUERY EXECUTE format($q$
+      SELECT %1$L::text, r.id, CASE WHEN l.what = 'value' THEN 'value' ELSE 'option' END, x.key || CASE WHEN l.what = 'value' THEN ' = ' || x.value::text ELSE '' END,
+             coalesce(l.severity, 'refused'),
+             coalesce(l.about, CASE WHEN d.id IS NULL THEN 'not declared'
+                                    WHEN d.flavor IS NOT NULL AND d.flavor IS DISTINCT FROM $3 THEN d.flavor || '''s alone'
+                                    ELSE 'not in ' || $4 || ' ' || $2 END), l.source
+        FROM cortex.%1$I r CROSS JOIN LATERAL jsonb_each(r.options) x
+        LEFT JOIN cortex.option_declarations d ON d.engine = $4 AND d.part = %1$L AND d.name = x.key
+        LEFT JOIN cortex.flavor_limits l ON l.flavor = $3 AND l.option = d.id AND (l.what = 'option' OR l.what = 'value' AND l.value = x.value)
+          AND (l.since IS NULL OR $5 >= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l.since))
+          AND (l."until" IS NULL OR $5 <= (SELECT v.position FROM cortex.engine_versions v WHERE v.id = l."until"))
+       WHERE r.design = $1 AND (d.id IS NULL OR l.id IS NOT NULL
+          OR d.flavor IS NOT NULL AND d.flavor IS DISTINCT FROM $3
+          OR d.since IS NOT NULL AND $5 < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = d.since)
+          OR d."until" IS NOT NULL AND $5 > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = d."until"))$q$, p)
+      USING p_design, p_version, p_flavor, e, at;
+  END LOOP;
+END $_$;
+
+
+ALTER FUNCTION cortex.misfits(p_design uuid, p_version text, p_flavor text) OWNER TO sf_owner;
 
 --
 -- Name: notify_turns(); Type: FUNCTION; Schema: cortex; Owner: sf_owner
@@ -989,8 +1105,10 @@ CREATE TABLE cortex.designs (
     name text NOT NULL,
     engine text NOT NULL,
     engine_version text NOT NULL,
+    flavor text,
     comment text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT designs_check CHECK ((flavor ~~ (engine || '/%'::text))),
     CONSTRAINT designs_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT designs_name_check CHECK (((length(name) >= 1) AND (length(name) <= 100)))
 );
@@ -1031,6 +1149,13 @@ COMMENT ON COLUMN cortex.designs.engine IS 'the id of the engine it is designed 
 --
 
 COMMENT ON COLUMN cortex.designs.engine_version IS 'one of the engine''s versions; it decides which features the design is offered (8.4)';
+
+
+--
+-- Name: COLUMN designs.flavor; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.designs.flavor IS 'the managed flavor of its engine it is designed for (mysql/rds, postgresql/alloydb); NULL for the engine''s own server';
 
 
 --
@@ -1199,6 +1324,77 @@ COMMENT ON COLUMN cortex.engine_features.detail IS 'what a version alone does no
 
 
 --
+-- Name: engine_flavors; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.engine_flavors (
+    id text NOT NULL,
+    engine text NOT NULL,
+    flavor text NOT NULL,
+    name text NOT NULL,
+    "position" numeric NOT NULL,
+    about text NOT NULL,
+    CONSTRAINT engine_flavors_about_check CHECK ((length(about) >= 1)),
+    CONSTRAINT engine_flavors_check CHECK ((id = ((engine || '/'::text) || flavor))),
+    CONSTRAINT engine_flavors_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
+    CONSTRAINT engine_flavors_flavor_check CHECK ((flavor ~ '^[a-z0-9_]+$'::text)),
+    CONSTRAINT engine_flavors_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT engine_flavors_position_check CHECK (("position" > (0)::numeric))
+);
+
+
+ALTER TABLE cortex.engine_flavors OWNER TO sf_owner;
+
+--
+-- Name: TABLE engine_flavors; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.engine_flavors IS 'the managed services an engine runs as (Amazon RDS, Aurora, Cloud SQL, AlloyDB, Spanner), each a flavor of its engine: mostly what the engine has, less what cortex.flavor_limits says it lacks, and more what the engine''s kinds and options declare for it alone.';
+
+
+--
+-- Name: COLUMN engine_flavors.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_flavors.id IS '<engine>/<flavor>: mysql/rds';
+
+
+--
+-- Name: COLUMN engine_flavors.engine; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_flavors.engine IS 'the engine it is a flavor of (mysql)';
+
+
+--
+-- Name: COLUMN engine_flavors.flavor; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_flavors.flavor IS 'as the engine''s seeds name it (rds, aurora, cloudsql, alloydb, spanner)';
+
+
+--
+-- Name: COLUMN engine_flavors.name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_flavors.name IS 'as people say it (Amazon RDS for MySQL)';
+
+
+--
+-- Name: COLUMN engine_flavors."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_flavors."position" IS 'its place among its engine''s flavors, for listing';
+
+
+--
+-- Name: COLUMN engine_flavors.about; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.engine_flavors.about IS 'what it is, and how its versions follow the engine''s';
+
+
+--
 -- Name: engine_versions; Type: TABLE; Schema: cortex; Owner: sf_owner
 --
 
@@ -1333,6 +1529,137 @@ COMMENT ON COLUMN cortex.enum_values.value IS 'the value';
 --
 
 COMMENT ON COLUMN cortex.enum_values.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';
+
+
+--
+-- Name: flavor_limits; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.flavor_limits (
+    id text NOT NULL,
+    flavor text NOT NULL,
+    what text NOT NULL,
+    kind text,
+    option text,
+    value jsonb,
+    name text,
+    version text,
+    since text,
+    until text,
+    severity text DEFAULT 'refused'::text NOT NULL,
+    about text NOT NULL,
+    source text NOT NULL,
+    CONSTRAINT flavor_limits_about_check CHECK ((length(about) >= 1)),
+    CONSTRAINT flavor_limits_check CHECK (((what = 'kind'::text) = (kind IS NOT NULL))),
+    CONSTRAINT flavor_limits_check1 CHECK (((what = ANY (ARRAY['option'::text, 'value'::text])) = (option IS NOT NULL))),
+    CONSTRAINT flavor_limits_check2 CHECK (((what = 'value'::text) = (value IS NOT NULL))),
+    CONSTRAINT flavor_limits_check3 CHECK (((what = ANY (ARRAY['function'::text, 'extension'::text])) = (name IS NOT NULL))),
+    CONSTRAINT flavor_limits_check4 CHECK (((what = 'version'::text) = (version IS NOT NULL))),
+    CONSTRAINT flavor_limits_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT flavor_limits_severity_check CHECK ((severity = ANY (ARRAY['refused'::text, 'warned'::text]))),
+    CONSTRAINT flavor_limits_source_check CHECK ((source ~ '^https://'::text)),
+    CONSTRAINT flavor_limits_what_check CHECK ((what = ANY (ARRAY['kind'::text, 'option'::text, 'value'::text, 'function'::text, 'extension'::text, 'version'::text])))
+);
+
+
+ALTER TABLE cortex.flavor_limits OWNER TO sf_owner;
+
+--
+-- Name: TABLE flavor_limits; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.flavor_limits IS 'what a flavor lacks of its engine, one fact a row, each with where it was read: a kind of object, an option, one value of an option, a function a routine may call, an extension, or a version. The guard refuses what a design''s flavor lacks (severity refused); cortex.misfits lists both kinds for a design and a target.';
+
+
+--
+-- Name: COLUMN flavor_limits.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.id IS '<flavor>/<what>/<name>: mysql/cloudsql/kind/loadable_function';
+
+
+--
+-- Name: COLUMN flavor_limits.flavor; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.flavor IS 'the flavor that lacks it';
+
+
+--
+-- Name: COLUMN flavor_limits.what; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.what IS 'what sort of thing it lacks';
+
+
+--
+-- Name: COLUMN flavor_limits.kind; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.kind IS 'the kind it lacks (what kind); NULL otherwise';
+
+
+--
+-- Name: COLUMN flavor_limits.option; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.option IS 'the option it lacks, or whose value it lacks (what option, value); NULL otherwise';
+
+
+--
+-- Name: COLUMN flavor_limits.value; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.value IS 'the option''s value it lacks (what value): "MyISAM"; NULL otherwise';
+
+
+--
+-- Name: COLUMN flavor_limits.name; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.name IS 'the function or extension it lacks, as SQL names it (LOAD_FILE, plpython3u); NULL otherwise';
+
+
+--
+-- Name: COLUMN flavor_limits.version; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.version IS 'the engine version it does not offer (what version); NULL otherwise';
+
+
+--
+-- Name: COLUMN flavor_limits.since; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.since IS 'the first engine version it lacks it in; NULL for every one';
+
+
+--
+-- Name: COLUMN flavor_limits.until; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.until IS 'the last engine version it lacks it in; NULL for every later one';
+
+
+--
+-- Name: COLUMN flavor_limits.severity; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.severity IS 'refused: the flavor will not take it, and the guard refuses it; warned: it takes it with a cost the about states';
+
+
+--
+-- Name: COLUMN flavor_limits.about; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.about IS 'what it means for a design, in a sentence';
+
+
+--
+-- Name: COLUMN flavor_limits.source; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.source IS 'the page of the flavor''s documentation that says so';
 
 
 --
@@ -1724,12 +2051,16 @@ CREATE TABLE cortex.object_kinds (
     name text NOT NULL,
     "position" numeric NOT NULL,
     scope text DEFAULT 'namespace'::text NOT NULL,
-    CONSTRAINT object_kinds_check CHECK ((id = ((engine || '/'::text) || kind))),
+    flavor text,
+    since text,
+    until text,
+    CONSTRAINT object_kinds_check CHECK ((flavor ~~ (engine || '/%'::text))),
+    CONSTRAINT object_kinds_check1 CHECK ((id = ((engine || '/'::text) || kind))),
     CONSTRAINT object_kinds_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
     CONSTRAINT object_kinds_kind_check CHECK ((kind ~ '^[a-z0-9_]+$'::text)),
     CONSTRAINT object_kinds_name_check CHECK ((length(name) >= 1)),
     CONSTRAINT object_kinds_position_check CHECK (("position" > (0)::numeric)),
-    CONSTRAINT object_kinds_scope_check CHECK ((scope = ANY (ARRAY['namespace'::text, 'server'::text])))
+    CONSTRAINT object_kinds_scope_check CHECK ((scope = ANY (ARRAY['namespace'::text, 'database'::text, 'server'::text])))
 );
 
 
@@ -1781,7 +2112,28 @@ COMMENT ON COLUMN cortex.object_kinds."position" IS 'its place in the engine''s 
 -- Name: COLUMN object_kinds.scope; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.object_kinds.scope IS 'where its objects live: in a namespace (a table), or in the server beside the namespaces, in none (a MySQL tablespace)';
+COMMENT ON COLUMN cortex.object_kinds.scope IS 'where its objects live: in a namespace (a table), in the database outside any (a PostgreSQL cast), or in the server (a MySQL tablespace)';
+
+
+--
+-- Name: COLUMN object_kinds.flavor; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.object_kinds.flavor IS 'the one flavor that has it (postgresql/spanner''s change streams); NULL for every flavor of the engine';
+
+
+--
+-- Name: COLUMN object_kinds.since; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.object_kinds.since IS 'the first version that has it (mysql/9.7 for a library); NULL for every one';
+
+
+--
+-- Name: COLUMN object_kinds.until; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.object_kinds.until IS 'the last version that has it; NULL for every later one';
 
 
 --
@@ -2036,8 +2388,10 @@ CREATE TABLE cortex.option_declarations (
     since text,
     until text,
     about text NOT NULL,
+    flavor text,
     CONSTRAINT option_declarations_about_check CHECK ((length(about) >= 1)),
-    CONSTRAINT option_declarations_check CHECK ((id = ((((engine || '/'::text) || part) || '/'::text) || name))),
+    CONSTRAINT option_declarations_check CHECK ((flavor ~~ (engine || '/%'::text))),
+    CONSTRAINT option_declarations_check1 CHECK ((id = ((((engine || '/'::text) || part) || '/'::text) || name))),
     CONSTRAINT option_declarations_choices_check CHECK (((choices IS NULL) OR (jsonb_typeof(choices) = 'array'::text))),
     CONSTRAINT option_declarations_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
     CONSTRAINT option_declarations_name_check CHECK ((name ~ '^[a-z0-9_]+$'::text)),
@@ -2123,6 +2477,13 @@ COMMENT ON COLUMN cortex.option_declarations.until IS 'the last version that has
 --
 
 COMMENT ON COLUMN cortex.option_declarations.about IS 'what it is, in words the canvas shows beside it';
+
+
+--
+-- Name: COLUMN option_declarations.flavor; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.option_declarations.flavor IS 'the one flavor that has it (postgresql/spanner''s ttl_interval); NULL for every flavor of the engine';
 
 
 --
@@ -5036,6 +5397,30 @@ ALTER TABLE ONLY cortex.engine_features
 
 
 --
+-- Name: engine_flavors engine_flavors_engine_flavor_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.engine_flavors
+    ADD CONSTRAINT engine_flavors_engine_flavor_key UNIQUE (engine, flavor);
+
+
+--
+-- Name: engine_flavors engine_flavors_engine_position_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.engine_flavors
+    ADD CONSTRAINT engine_flavors_engine_position_key UNIQUE (engine, "position");
+
+
+--
+-- Name: engine_flavors engine_flavors_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.engine_flavors
+    ADD CONSTRAINT engine_flavors_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: engine_versions engine_versions_engine_position_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
@@ -5089,6 +5474,14 @@ ALTER TABLE ONLY cortex.enum_values
 
 ALTER TABLE ONLY cortex.enum_values
     ADD CONSTRAINT enum_values_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: flavor_limits flavor_limits_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.flavor_limits
+    ADD CONSTRAINT flavor_limits_pkey PRIMARY KEY (id);
 
 
 --
@@ -6169,6 +6562,13 @@ CREATE INDEX enum_values_object ON cortex.enum_values USING btree (design, objec
 
 
 --
+-- Name: flavor_limits_flavor; Type: INDEX; Schema: cortex; Owner: sf_owner
+--
+
+CREATE INDEX flavor_limits_flavor ON cortex.flavor_limits USING btree (flavor, what);
+
+
+--
 -- Name: index_parts_column; Type: INDEX; Schema: cortex; Owner: sf_owner
 --
 
@@ -6508,7 +6908,14 @@ CREATE INDEX pinned_notes_turn ON ui.pinned_notes USING btree (design, turn);
 -- Name: objects kinds; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER kinds BEFORE INSERT OR UPDATE OF kind, namespace ON cortex.objects FOR EACH ROW EXECUTE FUNCTION cortex.check_kinds();
+CREATE TRIGGER kinds AFTER INSERT ON cortex.objects REFERENCING NEW TABLE AS new_objects FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_kinds();
+
+
+--
+-- Name: objects kinds_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER kinds_changed AFTER UPDATE ON cortex.objects REFERENCING NEW TABLE AS new_objects FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_kinds();
 
 
 --
@@ -6522,126 +6929,259 @@ CREATE TRIGGER notify_turns AFTER INSERT OR UPDATE OF seq ON cortex.turns FOR EA
 -- Name: column_identities options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.column_identities FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.column_identities REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: columns options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.columns FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: constraint_columns options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.constraint_columns FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.constraint_columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: constraints options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.constraints FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.constraints REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: dependencies options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.dependencies FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.dependencies REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: domains options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.domains FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.domains REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: enum_values options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.enum_values FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.enum_values REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: index_parts options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.index_parts FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.index_parts REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: indexes options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.indexes FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.indexes REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: namespaces options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.namespaces FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.namespaces REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: objects options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.objects FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.objects REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: partitionings options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.partitionings FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.partitionings REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: partitions options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.partitions FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.partitions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: routine_parameters options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.routine_parameters FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.routine_parameters REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: routines options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.routines FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.routines REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: sequences options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.sequences FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.sequences REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: triggers options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.triggers FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.triggers REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
 
 
 --
 -- Name: views options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.views FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
+CREATE TRIGGER options AFTER INSERT ON cortex.views REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: column_identities options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.column_identities REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: columns options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: constraint_columns options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.constraint_columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: constraints options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.constraints REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: dependencies options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.dependencies REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: domains options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.domains REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: enum_values options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.enum_values REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: index_parts options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.index_parts REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: indexes options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.indexes REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: namespaces options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.namespaces REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: objects options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.objects REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: partitionings options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.partitionings REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: partitions options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.partitions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: routine_parameters options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.routine_parameters REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: routines options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.routines REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: sequences options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.sequences REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: triggers options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.triggers REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: views options_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER options_changed AFTER UPDATE ON cortex.views REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_options();
+
+
+--
+-- Name: designs target; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER target BEFORE INSERT OR UPDATE OF engine_version, flavor ON cortex.designs FOR EACH ROW EXECUTE FUNCTION cortex.check_designs();
 
 
 --
@@ -6789,6 +7329,14 @@ ALTER TABLE ONLY cortex.dependencies
 
 
 --
+-- Name: designs designs_flavor_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.designs
+    ADD CONSTRAINT designs_flavor_fkey FOREIGN KEY (flavor) REFERENCES cortex.engine_flavors(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: domains domains_design_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
@@ -6834,6 +7382,54 @@ ALTER TABLE ONLY cortex.enum_values
 
 ALTER TABLE ONLY cortex.enum_values
     ADD CONSTRAINT enum_values_design_object_fkey FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: flavor_limits flavor_limits_flavor_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.flavor_limits
+    ADD CONSTRAINT flavor_limits_flavor_fkey FOREIGN KEY (flavor) REFERENCES cortex.engine_flavors(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: flavor_limits flavor_limits_kind_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.flavor_limits
+    ADD CONSTRAINT flavor_limits_kind_fkey FOREIGN KEY (kind) REFERENCES cortex.object_kinds(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: flavor_limits flavor_limits_option_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.flavor_limits
+    ADD CONSTRAINT flavor_limits_option_fkey FOREIGN KEY (option) REFERENCES cortex.option_declarations(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: flavor_limits flavor_limits_since_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.flavor_limits
+    ADD CONSTRAINT flavor_limits_since_fkey FOREIGN KEY (since) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: flavor_limits flavor_limits_until_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.flavor_limits
+    ADD CONSTRAINT flavor_limits_until_fkey FOREIGN KEY (until) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: flavor_limits flavor_limits_version_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.flavor_limits
+    ADD CONSTRAINT flavor_limits_version_fkey FOREIGN KEY (version) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6917,6 +7513,30 @@ ALTER TABLE ONLY cortex.namespaces
 
 
 --
+-- Name: object_kinds object_kinds_flavor_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.object_kinds
+    ADD CONSTRAINT object_kinds_flavor_fkey FOREIGN KEY (flavor) REFERENCES cortex.engine_flavors(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: object_kinds object_kinds_since_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.object_kinds
+    ADD CONSTRAINT object_kinds_since_fkey FOREIGN KEY (since) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: object_kinds object_kinds_until_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.object_kinds
+    ADD CONSTRAINT object_kinds_until_fkey FOREIGN KEY (until) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: object_tags object_tags_design_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
@@ -6970,6 +7590,14 @@ ALTER TABLE ONLY cortex.operations
 
 ALTER TABLE ONLY cortex.operations
     ADD CONSTRAINT operations_design_turn_fkey FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: option_declarations option_declarations_flavor_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.option_declarations
+    ADD CONSTRAINT option_declarations_flavor_fkey FOREIGN KEY (flavor) REFERENCES cortex.engine_flavors(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7649,6 +8277,14 @@ GRANT USAGE ON SCHEMA ui TO sf_reader;
 
 
 --
+-- Name: FUNCTION check_designs(); Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT ALL ON FUNCTION cortex.check_designs() TO sf_service;
+GRANT ALL ON FUNCTION cortex.check_designs() TO sf_agent;
+
+
+--
 -- Name: FUNCTION check_kinds(); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
@@ -7678,6 +8314,14 @@ GRANT ALL ON FUNCTION cortex.enforce_rules(owner text) TO sf_agent;
 
 GRANT ALL ON FUNCTION cortex.grant_roles(owner text) TO sf_service;
 GRANT ALL ON FUNCTION cortex.grant_roles(owner text) TO sf_agent;
+
+
+--
+-- Name: FUNCTION misfits(p_design uuid, p_version text, p_flavor text); Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT ALL ON FUNCTION cortex.misfits(p_design uuid, p_version text, p_flavor text) TO sf_service;
+GRANT ALL ON FUNCTION cortex.misfits(p_design uuid, p_version text, p_flavor text) TO sf_agent;
 
 
 --
@@ -7803,6 +8447,15 @@ GRANT SELECT ON TABLE cortex.engine_features TO sf_reader;
 
 
 --
+-- Name: TABLE engine_flavors; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.engine_flavors TO sf_service;
+GRANT SELECT ON TABLE cortex.engine_flavors TO sf_agent;
+GRANT SELECT ON TABLE cortex.engine_flavors TO sf_reader;
+
+
+--
 -- Name: TABLE engine_versions; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
@@ -7818,6 +8471,15 @@ GRANT SELECT ON TABLE cortex.engine_versions TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.enum_values TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.enum_values TO sf_agent;
 GRANT SELECT ON TABLE cortex.enum_values TO sf_reader;
+
+
+--
+-- Name: TABLE flavor_limits; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.flavor_limits TO sf_service;
+GRANT SELECT ON TABLE cortex.flavor_limits TO sf_agent;
+GRANT SELECT ON TABLE cortex.flavor_limits TO sf_reader;
 
 
 --

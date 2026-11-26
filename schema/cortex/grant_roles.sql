@@ -24,7 +24,7 @@ BEGIN
   IF owner = 'cortex' THEN
     -- what the agent reads only: the designs themselves, the engines' declarations, the workspace, what a person chose
     -- to read, what was applied, read and locked
-    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations',
+    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors', 'flavor_limits',
                              'workspace_identity', 'workspace_parameters', 'workspace_connections', 'workspace_connection_values',
                              'workspace_connection_tests', 'workspace_connection_test_steps', 'workspace_design_connections',
                              'read_scopes', 'read_scope_kinds', 'read_scope_objects',

@@ -9,18 +9,32 @@ INSERT INTO cortex.engine_versions (id, engine, version, name, position, support
   ('postgresql/18', 'postgresql', '18', 'PostgreSQL 18', 4, NULL)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO cortex.object_kinds (id, engine, kind, name, position) VALUES
-  ('postgresql/table', 'postgresql', 'table', 'Table', 1),
-  ('postgresql/view', 'postgresql', 'view', 'View', 2),
-  ('postgresql/materialized_view', 'postgresql', 'materialized_view', 'Materialized view', 3),
-  ('postgresql/sequence', 'postgresql', 'sequence', 'Sequence', 4),
-  ('postgresql/enum', 'postgresql', 'enum', 'Enum type', 5),
-  ('postgresql/composite', 'postgresql', 'composite', 'Composite type', 6),
-  ('postgresql/domain', 'postgresql', 'domain', 'Domain', 7),
-  ('postgresql/range', 'postgresql', 'range', 'Range type', 8),
-  ('postgresql/function', 'postgresql', 'function', 'Function', 9),
-  ('postgresql/procedure', 'postgresql', 'procedure', 'Procedure', 10),
-  ('postgresql/trigger', 'postgresql', 'trigger', 'Trigger', 11)
+
+-- the managed flavors of the engine (decision schema-per-engine), and what each lacks, each fact with the page it was read on
+INSERT INTO cortex.engine_flavors (id, engine, flavor, name, position, about) VALUES
+  ('postgresql/rds', 'postgresql', 'rds', 'Amazon RDS for PostgreSQL', 1, 'PostgreSQL run by Amazon RDS: the community server''s versions, without SUPERUSER'),
+  ('postgresql/aurora', 'postgresql', 'aurora', 'Amazon Aurora PostgreSQL', 2, 'Amazon''s PostgreSQL-compatible engine on its own storage, following the community''s major versions'),
+  ('postgresql/cloudsql', 'postgresql', 'cloudsql', 'Cloud SQL for PostgreSQL', 3, 'PostgreSQL run by Google Cloud SQL: no SUPERUSER, no custom tablespaces, its own list of extensions'),
+  ('postgresql/alloydb', 'postgresql', 'alloydb', 'AlloyDB for PostgreSQL', 4, 'Google''s PostgreSQL-compatible engine: PostgreSQL, with a columnar engine and Google''s extensions added'),
+  ('postgresql/spanner', 'postgresql', 'spanner', 'Spanner, PostgreSQL interface', 5, 'Google Spanner spoken through a subset of PostgreSQL''s language, with Spanner''s own objects added; not a PostgreSQL server, so no major version of its own')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO cortex.object_kinds (id, engine, kind, name, position, scope, flavor) VALUES
+  ('postgresql/table', 'postgresql', 'table', 'Table', 1, 'namespace', NULL),
+  ('postgresql/view', 'postgresql', 'view', 'View', 2, 'namespace', NULL),
+  ('postgresql/materialized_view', 'postgresql', 'materialized_view', 'Materialized view', 3, 'namespace', NULL),
+  ('postgresql/sequence', 'postgresql', 'sequence', 'Sequence', 4, 'namespace', NULL),
+  ('postgresql/enum', 'postgresql', 'enum', 'Enum type', 5, 'namespace', NULL),
+  ('postgresql/composite', 'postgresql', 'composite', 'Composite type', 6, 'namespace', NULL),
+  ('postgresql/domain', 'postgresql', 'domain', 'Domain', 7, 'namespace', NULL),
+  ('postgresql/range', 'postgresql', 'range', 'Range type', 8, 'namespace', NULL),
+  ('postgresql/function', 'postgresql', 'function', 'Function', 9, 'namespace', NULL),
+  ('postgresql/procedure', 'postgresql', 'procedure', 'Procedure', 10, 'namespace', NULL),
+  ('postgresql/trigger', 'postgresql', 'trigger', 'Trigger', 11, 'namespace', NULL),
+  ('postgresql/change_stream', 'postgresql', 'change_stream', 'Change stream', 12, 'database', 'postgresql/spanner'),
+  ('postgresql/locality_group', 'postgresql', 'locality_group', 'Locality group', 13, 'database', 'postgresql/spanner'),
+  ('postgresql/placement', 'postgresql', 'placement', 'Placement', 14, 'database', 'postgresql/spanner'),
+  ('postgresql/queue', 'postgresql', 'queue', 'Queue', 15, 'namespace', 'postgresql/spanner')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, about) VALUES
@@ -74,4 +88,16 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('postgresql/triggers/initially_deferred', 'postgresql', 'triggers', 'initially_deferred', 'boolean', false, NULL, 'a deferrable one that waits for the commit unless told otherwise (INITIALLY DEFERRED)'),
   ('postgresql/objects/range_subtype', 'postgresql', 'objects', 'range_subtype', 'string', true, NULL, 'a range type''s element type; NULL otherwise'),
   ('postgresql/objects/multirange', 'postgresql', 'objects', 'multirange', 'string', true, NULL, 'a range type''s multirange type name; NULL otherwise')
+ON CONFLICT (id) DO NOTHING;
+
+-- what each flavor lacks
+INSERT INTO cortex.flavor_limits (id, flavor, what, kind, option, value, name, since, "until", severity, about, source) VALUES
+  ('postgresql/spanner/kind/trigger', 'postgresql/spanner', 'kind', 'postgresql/trigger', NULL, NULL, NULL, NULL, NULL, 'refused', 'triggers are not supported', 'https://docs.cloud.google.com/spanner/docs/postgresql-interface'),
+  ('postgresql/spanner/kind/enum', 'postgresql/spanner', 'kind', 'postgresql/enum', NULL, NULL, NULL, NULL, NULL, 'refused', 'user-defined data types are not supported', 'https://docs.cloud.google.com/spanner/docs/postgresql-interface'),
+  ('postgresql/spanner/kind/composite', 'postgresql/spanner', 'kind', 'postgresql/composite', NULL, NULL, NULL, NULL, NULL, 'refused', 'user-defined data types are not supported', 'https://docs.cloud.google.com/spanner/docs/postgresql-interface'),
+  ('postgresql/spanner/kind/domain', 'postgresql/spanner', 'kind', 'postgresql/domain', NULL, NULL, NULL, NULL, NULL, 'refused', 'user-defined data types are not supported', 'https://docs.cloud.google.com/spanner/docs/postgresql-interface'),
+  ('postgresql/spanner/kind/range', 'postgresql/spanner', 'kind', 'postgresql/range', NULL, NULL, NULL, NULL, NULL, 'refused', 'user-defined data types are not supported', 'https://docs.cloud.google.com/spanner/docs/postgresql-interface'),
+  ('postgresql/spanner/kind/procedure', 'postgresql/spanner', 'kind', 'postgresql/procedure', NULL, NULL, NULL, NULL, NULL, 'refused', 'user-defined stored procedures are not supported', 'https://docs.cloud.google.com/spanner/docs/postgresql-interface'),
+  ('postgresql/spanner/kind/function', 'postgresql/spanner', 'kind', 'postgresql/function', NULL, NULL, NULL, NULL, NULL, 'refused', 'its DDL has no CREATE FUNCTION: a function is one Spanner ships', 'https://docs.cloud.google.com/spanner/docs/reference/postgresql/data-definition-language'),
+  ('postgresql/spanner/kind/materialized_view', 'postgresql/spanner', 'kind', 'postgresql/materialized_view', NULL, NULL, NULL, NULL, NULL, 'refused', 'its DDL has no CREATE MATERIALIZED VIEW', 'https://docs.cloud.google.com/spanner/docs/reference/postgresql/data-definition-language')
 ON CONFLICT (id) DO NOTHING;

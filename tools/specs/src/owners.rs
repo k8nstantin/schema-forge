@@ -18,16 +18,20 @@ const NOT_A_DESIGN: &[&str] = &[
     "cortex.catalog_sources",
     "cortex.object_kinds",
     "cortex.option_declarations",
+    "cortex.engine_flavors",
+    "cortex.flavor_limits",
     "cortex.schema_migrations",
 ];
 
-/// The cortex's tables an engine's seeds declare it in: its versions, features, kinds, options and catalog sources.
+/// The cortex's tables an engine's seeds declare it in: its versions, features, kinds, options, catalog sources, flavors and what each flavor lacks.
 const DECLARATIONS: &[&str] = &[
     "cortex.engine_versions",
     "cortex.engine_features",
     "cortex.object_kinds",
     "cortex.option_declarations",
     "cortex.catalog_sources",
+    "cortex.engine_flavors",
+    "cortex.flavor_limits",
 ];
 
 /// Whether a table holds a design's rows.
@@ -173,7 +177,12 @@ fn sql_file(root: &Path, owner: &Owner, file: &Path, found: &mut Vec<Finding>) {
         let allowed = owner.id == "cortex"
             && matches!(
                 name(file).as_str(),
-                "enforce_rules.sql" | "check_options.sql" | "check_kinds.sql" | "notify_turns.sql" | "grant_roles.sql"
+                "enforce_rules.sql"
+                    | "check_options.sql"
+                    | "check_kinds.sql"
+                    | "misfits.sql"
+                    | "notify_turns.sql"
+                    | "grant_roles.sql"
             );
         if !allowed {
             finding(found, &at, "neither a table file nor a file the method names");

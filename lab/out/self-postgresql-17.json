@@ -86,7 +86,7 @@
    }
   },
   {
-   "key": "cortex.dependencies",
+   "key": "cortex.columns",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -97,7 +97,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "what an object uses: a view's tables, a MERGE table's tables, a routine's tables where the engine says, the libraries a routine uses (MySQL 9.7's USING), in order. A used object cannot be dropped before what uses it, and an edit names what it would break; a body is text, so a rename never reaches into it.",
+    "comment": "the columns of a table, a view or a composite type, in order, with what every engine says of a column.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -110,131 +110,7 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "dependencies",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.engine_features",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "what a version of an engine's database has or lacks (a type, a kind of object, an option, a clause), with the first and last version that has it.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "engine_features",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.index_parts",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the parts of an index, in order: each a column or an expression, ordered or only included.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "index_parts",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.engine_versions",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the versions of their databases the engines support, in order, as each engine declares them.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "engine_versions",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.constraint_columns",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the columns of a key or a link, in order; for a link, each with the column it refers to.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "constraint_columns",
+    "relname": "columns",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -272,7 +148,38 @@
    }
   },
   {
-   "key": "cortex.indexes",
+   "key": "cortex.engine_features",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "what a version of an engine's database has or lacks (a type, a kind of object, an option, a clause), with the first and last version that has it.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "engine_features",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.constraints",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -283,7 +190,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "an index of a table, in the order the table lists them.",
+    "comment": "a table's keys and checks, a domain's checks, and the links between tables: the ones the database enforces and the ones the design only draws.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -296,7 +203,7 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "indexes",
+    "relname": "constraints",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -334,38 +241,7 @@
    }
   },
   {
-   "key": "cortex.catalog_sources",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "what an engine's live read asks a server of each version, what it gives, and the grant it needs.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "catalog_sources",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.columns",
+   "key": "cortex.column_identities",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -376,7 +252,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "the columns of a table, a view or a composite type, in order, with what every engine says of a column.",
+    "comment": "a column the database numbers itself, and how.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -389,14 +265,14 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "columns",
+    "relname": "column_identities",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
    }
   },
   {
-   "key": "cortex.object_kinds",
+   "key": "cortex.option_declarations",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -407,7 +283,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "the kinds of object each engine has, as it declares them; an object of a kind its design's engine does not declare is refused.",
+    "comment": "every option an engine adds to a part of the model, as the engine declares it: its type, the values it may take, and the versions that have it; a new option, or a new engine, is new rows, never a new column (decision declared-options).",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -420,7 +296,131 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "object_kinds",
+    "relname": "option_declarations",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.read_scope_kinds",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "a kind of object a choice reads, as the design's engine names its kinds (table, view, procedure); a choice that lists none reads every kind of the objects it lists.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "read_scope_kinds",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.locked_versions",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "a locked version of the schema: the log up to one turn, its number and its hash.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "locked_versions",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.object_tags",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "the tags of an object (scd2, pii), in order.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "object_tags",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.namespaces",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "the levels that hold objects, each under its parent or at the top: a MySQL database; a PostgreSQL database and its schemas.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "namespaces",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -489,69 +489,7 @@
    }
   },
   {
-   "key": "cortex.read_scope_objects",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "an object a choice reads, by its namespace and a name or a pattern, as the server names them; a choice that lists none reads every object of the kinds it lists.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "read_scope_objects",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.operations",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=ar/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "what a turn did, one operation at a time, each of a kind the agent and the canvas name (added table orders).",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=ar/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "operations",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.partitions",
+   "key": "cortex.index_parts",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -562,7 +500,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "the partitions of a table, in order, with their bounds; where the engine makes a partition a table of its own, that table.",
+    "comment": "the parts of an index, in order: each a column or an expression, ordered or only included.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -575,14 +513,14 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "partitions",
+    "relname": "index_parts",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
    }
   },
   {
-   "key": "cortex.read_scopes",
+   "key": "cortex.engine_versions",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -593,7 +531,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "what a person chose to read from a design's database (decision read-scope): everything, or the kinds of object and the objects listed under it; a choice is never changed, a new choice is a new row, so every read names the choice it ran with.",
+    "comment": "the versions of their databases the engines support, in order, as each engine declares them.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -606,38 +544,7 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "read_scopes",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.locked_versions",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "a locked version of the schema: the log up to one turn, its number and its hash.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "locked_versions",
+    "relname": "engine_versions",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -706,6 +613,68 @@
    }
   },
   {
+   "key": "cortex.required_extensions",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "what the database must have installed for the design (an extension, a plugin), in order.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "required_extensions",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.routines",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "a procedure or a function: what it returns, how it runs, and its body exactly as the server holds it.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "routines",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
    "key": "cortex.views",
    "kind": "relation",
    "parent": "cortex",
@@ -731,37 +700,6 @@
     "relisshared": false,
     "relkind": "r",
     "relname": "views",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.workspace_connection_values",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the value of each field a connection's engine declares, by the field's key; never a field the engine declares secret.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "workspace_connection_values",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -830,7 +768,7 @@
    }
   },
   {
-   "key": "cortex.workspace_connection_test_steps",
+   "key": "cortex.read_scope_objects",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -841,7 +779,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "each step of a connection test, in order, and what it said (docs/connections.xml).",
+    "comment": "an object a choice reads, by its namespace and a name or a pattern, as the server names them; a choice that lists none reads every object of the kinds it lists.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -854,7 +792,7 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "workspace_connection_test_steps",
+    "relname": "read_scope_objects",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -892,38 +830,7 @@
    }
   },
   {
-   "key": "cortex.routine_parameters",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the parameters of a routine, in order, as the server reads them: for search and the canvas.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "routine_parameters",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.workspace_identity",
+   "key": "cortex.workspace_design_connections",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -934,7 +841,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "the workspace this database is, exactly one row: its saved connections and every design are in this database.",
+    "comment": "the saved connection a design is read from, which database on it, and what is read each time.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -947,38 +854,7 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "workspace_identity",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "ui.perspective_members",
-   "kind": "relation",
-   "parent": "ui",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the tables and columns a custom perspective shows, in order.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "perspective_members",
+    "relname": "workspace_design_connections",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -1016,6 +892,37 @@
    }
   },
   {
+   "key": "cortex.workspace_identity",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "the workspace this database is, exactly one row: its saved connections and every design are in this database.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "workspace_identity",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
    "key": "engine_postgresql.collations",
    "kind": "relation",
    "parent": "engine_postgresql",
@@ -1047,23 +954,23 @@
    }
   },
   {
-   "key": "ui.custom_perspectives",
+   "key": "cortex.workspace_connection_values",
    "kind": "relation",
-   "parent": "ui",
+   "parent": "cortex",
    "props": {
     "acl": [
      "sf_owner=arwdDxtm/sf_owner",
      "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "a perspective someone saved: their own choice of tables and columns, grouped and coloured their way.",
+    "comment": "the value of each field a connection's engine declares, by the field's key; never a field the engine declares secret.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
      "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
     "relforcerowsecurity": false,
@@ -1071,7 +978,38 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "custom_perspectives",
+    "relname": "workspace_connection_values",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.workspace_connection_test_steps",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "each step of a connection test, in order, and what it said (docs/connections.xml).",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "workspace_connection_test_steps",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -1109,6 +1047,37 @@
    }
   },
   {
+   "key": "ui.custom_perspectives",
+   "kind": "relation",
+   "parent": "ui",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "a perspective someone saved: their own choice of tables and columns, grouped and coloured their way.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "custom_perspectives",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
    "key": "engine_postgresql.rules",
    "kind": "relation",
    "parent": "engine_postgresql",
@@ -1134,6 +1103,192 @@
     "relisshared": false,
     "relkind": "r",
     "relname": "rules",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "ui.subject_areas",
+   "kind": "relation",
+   "parent": "ui",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "groups of objects by subject (billing, catalog), across namespaces, as the canvas groups and colours them.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "subject_areas",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "ui.perspective_members",
+   "kind": "relation",
+   "parent": "ui",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "the tables and columns a custom perspective shows, in order.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "perspective_members",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.catalog_sources",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "what an engine's live read asks a server of each version, what it gives, and the grant it needs.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "catalog_sources",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.partitions",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "the partitions of a table, in order, with their bounds; where the engine makes a partition a table of its own, that table.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "partitions",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.constraint_columns",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "the columns of a key or a link, in order; for a link, each with the column it refers to.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "constraint_columns",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.dependencies",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "what an object uses: a view's tables, a MERGE table's tables, a routine's tables where the engine says, the libraries a routine uses (MySQL 9.7's USING), in order. A used object cannot be dropped before what uses it, and an edit names what it would break; a body is text, so a rename never reaches into it.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "dependencies",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -1171,7 +1326,38 @@
    }
   },
   {
-   "key": "cortex.workspace_connections",
+   "key": "cortex.domains",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "a type narrowed by a default, a not null and checks (its checks are in constraints).",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "domains",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.read_scopes",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -1182,7 +1368,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "a saved connection to a live database: a name and an engine; its values are in workspace_connection_values, never its secret.",
+    "comment": "what a person chose to read from a design's database (decision read-scope): everything, or the kinds of object and the objects listed under it; a choice is never changed, a new choice is a new row, so every read names the choice it ran with.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -1195,14 +1381,14 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "workspace_connections",
+    "relname": "read_scopes",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
    }
   },
   {
-   "key": "cortex.routines",
+   "key": "cortex.enum_values",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -1213,7 +1399,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "a procedure or a function: what it returns, how it runs, and its body exactly as the server holds it.",
+    "comment": "the values of an enumerated type, in order.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -1226,14 +1412,14 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "routines",
+    "relname": "enum_values",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
    }
   },
   {
-   "key": "cortex.column_identities",
+   "key": "cortex.indexes",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -1244,7 +1430,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "a column the database numbers itself, and how.",
+    "comment": "an index of a table, in the order the table lists them.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -1257,7 +1443,131 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "column_identities",
+    "relname": "indexes",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.verbatim_statements",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "what the schema holds that the model does not describe (an account, a grant, a statement not understood), kept exactly as written and written back in its place.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "verbatim_statements",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.object_kinds",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "the kinds of object each engine has, as it declares them; an object of a kind its design's engine does not declare is refused.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "object_kinds",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.routine_parameters",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "the parameters of a routine, in order, as the server reads them: for search and the canvas.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "routine_parameters",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
+   "key": "cortex.operations",
+   "kind": "relation",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=ar/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "what a turn did, one operation at a time, each of a kind the agent and the canvas name (added table orders).",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=ar/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "operations",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -1326,23 +1636,23 @@
    }
   },
   {
-   "key": "cortex.constraints",
+   "key": "cortex.workspace_connection_tests",
    "kind": "relation",
    "parent": "cortex",
    "props": {
     "acl": [
      "sf_owner=arwdDxtm/sf_owner",
      "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "a table's keys and checks, a domain's checks, and the links between tables: the ones the database enforces and the ones the design only draws.",
+    "comment": "each test of a saved connection, and how it went.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
      "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
+     "sf_agent=r/sf_owner",
      "sf_reader=r/sf_owner"
     ],
     "relforcerowsecurity": false,
@@ -1350,69 +1660,7 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "constraints",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.domains",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "a type narrowed by a default, a not null and checks (its checks are in constraints).",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "domains",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.enum_values",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the values of an enumerated type, in order.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "enum_values",
+    "relname": "workspace_connection_tests",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -1450,100 +1698,7 @@
    }
   },
   {
-   "key": "cortex.namespaces",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the levels that hold objects, each under its parent or at the top: a MySQL database; a PostgreSQL database and its schemas.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "namespaces",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.object_tags",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the tags of an object (scd2, pii), in order.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "object_tags",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "ui.pinned_notes",
-   "kind": "relation",
-   "parent": "ui",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "a note pinned to one thing of the design or the tool, or to the whole design, for people and the agent; it goes when what it is pinned to goes.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "pinned_notes",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.option_declarations",
+   "key": "cortex.workspace_connections",
    "kind": "relation",
    "parent": "cortex",
    "props": {
@@ -1554,7 +1709,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "every option an engine adds to a part of the model, as the engine declares it: its type, the values it may take, and the versions that have it; a new option, or a new engine, is new rows, never a new column (decision declared-options).",
+    "comment": "a saved connection to a live database: a name and an engine; its values are in workspace_connection_values, never its secret.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -1567,193 +1722,7 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "option_declarations",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.verbatim_statements",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "what the schema holds that the model does not describe (an account, a grant, a statement not understood), kept exactly as written and written back in its place.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "verbatim_statements",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.read_scope_kinds",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "a kind of object a choice reads, as the design's engine names its kinds (table, view, procedure); a choice that lists none reads every kind of the objects it lists.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "read_scope_kinds",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.required_extensions",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "what the database must have installed for the design (an extension, a plugin), in order.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "required_extensions",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "engine_postgresql.inheritance",
-   "kind": "relation",
-   "parent": "engine_postgresql",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the tables a table inherits from, in order (INHERITS); partitions are cortex.partitions.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=arwd/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "inheritance",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.workspace_connection_tests",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "each test of a saved connection, and how it went.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "workspace_connection_tests",
-    "relpersistence": "p",
-    "relreplident": "d",
-    "relrowsecurity": false
-   }
-  },
-  {
-   "key": "cortex.workspace_design_connections",
-   "kind": "relation",
-   "parent": "cortex",
-   "props": {
-    "acl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "am": "heap",
-    "comment": "the saved connection a design is read from, which database on it, and what is read each time.",
-    "owner": "sf_owner",
-    "relacl": [
-     "sf_owner=arwdDxtm/sf_owner",
-     "sf_service=arwd/sf_owner",
-     "sf_agent=r/sf_owner",
-     "sf_reader=r/sf_owner"
-    ],
-    "relforcerowsecurity": false,
-    "relispartition": false,
-    "relispopulated": true,
-    "relisshared": false,
-    "relkind": "r",
-    "relname": "workspace_design_connections",
+    "relname": "workspace_connections",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -1791,6 +1760,37 @@
    }
   },
   {
+   "key": "engine_postgresql.inheritance",
+   "kind": "relation",
+   "parent": "engine_postgresql",
+   "props": {
+    "acl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "am": "heap",
+    "comment": "the tables a table inherits from, in order (INHERITS); partitions are cortex.partitions.",
+    "owner": "sf_owner",
+    "relacl": [
+     "sf_owner=arwdDxtm/sf_owner",
+     "sf_service=arwd/sf_owner",
+     "sf_agent=arwd/sf_owner",
+     "sf_reader=r/sf_owner"
+    ],
+    "relforcerowsecurity": false,
+    "relispartition": false,
+    "relispopulated": true,
+    "relisshared": false,
+    "relkind": "r",
+    "relname": "inheritance",
+    "relpersistence": "p",
+    "relreplident": "d",
+    "relrowsecurity": false
+   }
+  },
+  {
    "key": "ui.object_places",
    "kind": "relation",
    "parent": "ui",
@@ -1822,7 +1822,7 @@
    }
   },
   {
-   "key": "ui.subject_areas",
+   "key": "ui.pinned_notes",
    "kind": "relation",
    "parent": "ui",
    "props": {
@@ -1833,7 +1833,7 @@
      "sf_reader=r/sf_owner"
     ],
     "am": "heap",
-    "comment": "groups of objects by subject (billing, catalog), across namespaces, as the canvas groups and colours them.",
+    "comment": "a note pinned to one thing of the design or the tool, or to the whole design, for people and the agent; it goes when what it is pinned to goes.",
     "owner": "sf_owner",
     "relacl": [
      "sf_owner=arwdDxtm/sf_owner",
@@ -1846,7 +1846,7 @@
     "relispopulated": true,
     "relisshared": false,
     "relkind": "r",
-    "relname": "subject_areas",
+    "relname": "pinned_notes",
     "relpersistence": "p",
     "relreplident": "d",
     "relrowsecurity": false
@@ -2708,6 +2708,44 @@
    }
   },
   {
+   "key": "cortex.constraints.id",
+   "kind": "column",
+   "parent": "cortex.constraints",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "comment": "UUIDv7, made with the row",
+    "default": "uuidv7()",
+    "type": "uuid"
+   }
+  },
+  {
+   "key": "cortex.constraints.in_database",
+   "kind": "column",
+   "parent": "cortex.constraints",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "in_database",
+    "attnotnull": true,
+    "attnum": 6,
+    "attstorage": "p",
+    "comment": "false for a link the design draws that the database does not hold",
+    "default": "true",
+    "type": "boolean"
+   }
+  },
+  {
    "key": "cortex.constraints.on_delete",
    "kind": "column",
    "parent": "cortex.constraints",
@@ -2777,44 +2815,6 @@
     "attstorage": "m",
     "comment": "its place among the object's constraints; an order key: one put between two takes their midpoint, so nothing is renumbered",
     "type": "numeric"
-   }
-  },
-  {
-   "key": "cortex.constraints.id",
-   "kind": "column",
-   "parent": "cortex.constraints",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "id",
-    "attnotnull": true,
-    "attnum": 1,
-    "attstorage": "p",
-    "comment": "UUIDv7, made with the row",
-    "default": "uuidv7()",
-    "type": "uuid"
-   }
-  },
-  {
-   "key": "cortex.constraints.in_database",
-   "kind": "column",
-   "parent": "cortex.constraints",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "in_database",
-    "attnotnull": true,
-    "attnum": 6,
-    "attstorage": "p",
-    "comment": "false for a link the design draws that the database does not hold",
-    "default": "true",
-    "type": "boolean"
    }
   },
   {
@@ -3824,6 +3824,44 @@
    }
   },
   {
+   "key": "cortex.indexes.id",
+   "kind": "column",
+   "parent": "cortex.indexes",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "comment": "UUIDv7, made with the row",
+    "default": "uuidv7()",
+    "type": "uuid"
+   }
+  },
+  {
+   "key": "cortex.indexes.unique",
+   "kind": "column",
+   "parent": "cortex.indexes",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "unique",
+    "attnotnull": true,
+    "attnum": 6,
+    "attstorage": "p",
+    "comment": "true for a unique index",
+    "default": "false",
+    "type": "boolean"
+   }
+  },
+  {
    "key": "cortex.indexes.method",
    "kind": "column",
    "parent": "cortex.indexes",
@@ -3893,44 +3931,6 @@
     "attstorage": "p",
     "comment": "the partitioned table's index it is part of; NULL for none",
     "type": "uuid"
-   }
-  },
-  {
-   "key": "cortex.indexes.id",
-   "kind": "column",
-   "parent": "cortex.indexes",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "id",
-    "attnotnull": true,
-    "attnum": 1,
-    "attstorage": "p",
-    "comment": "UUIDv7, made with the row",
-    "default": "uuidv7()",
-    "type": "uuid"
-   }
-  },
-  {
-   "key": "cortex.indexes.unique",
-   "kind": "column",
-   "parent": "cortex.indexes",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "unique",
-    "attnotnull": true,
-    "attnum": 6,
-    "attstorage": "p",
-    "comment": "true for a unique index",
-    "default": "false",
-    "type": "boolean"
    }
   },
   {
@@ -5829,6 +5829,24 @@
    }
   },
   {
+   "key": "cortex.routines.body",
+   "kind": "column",
+   "parent": "cortex.routines",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "body",
+    "attnotnull": true,
+    "attnum": 7,
+    "attstorage": "x",
+    "comment": "its body, exactly as the server holds it (SHOW CREATE, prosrc): information_schema's copy is not it",
+    "type": "text"
+   }
+  },
+  {
    "key": "cortex.routines.deterministic",
    "kind": "column",
    "parent": "cortex.routines",
@@ -5863,24 +5881,6 @@
     "attstorage": "x",
     "comment": "whose rights it runs with",
     "default": "'definer'::text",
-    "type": "text"
-   }
-  },
-  {
-   "key": "cortex.routines.body",
-   "kind": "column",
-   "parent": "cortex.routines",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "body",
-    "attnotnull": true,
-    "attnum": 7,
-    "attstorage": "x",
-    "comment": "its body, exactly as the server holds it (SHOW CREATE, prosrc): information_schema's copy is not it",
     "type": "text"
    }
   },
@@ -7689,24 +7689,6 @@
    }
   },
   {
-   "key": "cortex.workspace_design_connections.scope",
-   "kind": "column",
-   "parent": "cortex.workspace_design_connections",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "scope",
-    "attnotnull": true,
-    "attnum": 5,
-    "attstorage": "p",
-    "comment": "what is read from it each time, the design's newest choice (decision read-scope)",
-    "type": "uuid"
-   }
-  },
-  {
    "key": "cortex.workspace_design_connections.id",
    "kind": "column",
    "parent": "cortex.workspace_design_connections",
@@ -7722,6 +7704,24 @@
     "attstorage": "p",
     "comment": "UUIDv7",
     "default": "uuidv7()",
+    "type": "uuid"
+   }
+  },
+  {
+   "key": "cortex.workspace_design_connections.scope",
+   "kind": "column",
+   "parent": "cortex.workspace_design_connections",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "scope",
+    "attnotnull": true,
+    "attnum": 5,
+    "attstorage": "p",
+    "comment": "what is read from it each time, the design's newest choice (decision read-scope)",
     "type": "uuid"
    }
   },
@@ -9255,6 +9255,25 @@
    }
   },
   {
+   "key": "ui.pinned_notes.id",
+   "kind": "column",
+   "parent": "ui.pinned_notes",
+   "props": {
+    "attgenerated": "",
+    "attidentity": "",
+    "attinhcount": 0,
+    "attisdropped": false,
+    "attislocal": true,
+    "attname": "id",
+    "attnotnull": true,
+    "attnum": 1,
+    "attstorage": "p",
+    "comment": "UUIDv7, made with the row",
+    "default": "uuidv7()",
+    "type": "uuid"
+   }
+  },
+  {
    "key": "ui.pinned_notes.position",
    "kind": "column",
    "parent": "ui.pinned_notes",
@@ -9306,25 +9325,6 @@
     "attstorage": "x",
     "comment": "who wrote it: a person's name or the agent's label",
     "type": "text"
-   }
-  },
-  {
-   "key": "ui.pinned_notes.id",
-   "kind": "column",
-   "parent": "ui.pinned_notes",
-   "props": {
-    "attgenerated": "",
-    "attidentity": "",
-    "attinhcount": 0,
-    "attisdropped": false,
-    "attislocal": true,
-    "attname": "id",
-    "attnotnull": true,
-    "attnum": 1,
-    "attstorage": "p",
-    "comment": "UUIDv7, made with the row",
-    "default": "uuidv7()",
-    "type": "uuid"
    }
   },
   {
@@ -9435,301 +9435,6 @@
     "comment": "UUIDv7, made with the row",
     "default": "uuidv7()",
     "type": "uuid"
-   }
-  },
-  {
-   "key": "cortex.enum_values_object_position_key",
-   "kind": "index",
-   "parent": "cortex.enum_values",
-   "props": {
-    "am": "btree",
-    "constraint": "enum_values_object_position_key",
-    "definition": "CREATE UNIQUE INDEX enum_values_object_position_key ON cortex.enum_values USING btree (object, \"position\")",
-    "indcheckxmin": false,
-    "indimmediate": false,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "object",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "position",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.enum_values_object_value_key",
-   "kind": "index",
-   "parent": "cortex.enum_values",
-   "props": {
-    "am": "btree",
-    "constraint": "enum_values_object_value_key",
-    "definition": "CREATE UNIQUE INDEX enum_values_object_value_key ON cortex.enum_values USING btree (object, value)",
-    "indcheckxmin": false,
-    "indimmediate": false,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "object",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "value",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.branches_design_id_key",
-   "kind": "index",
-   "parent": "cortex.branches",
-   "props": {
-    "am": "btree",
-    "constraint": "branches_design_id_key",
-    "definition": "CREATE UNIQUE INDEX branches_design_id_key ON cortex.branches USING btree (design, id)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "id",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.branches_design_name_key",
-   "kind": "index",
-   "parent": "cortex.branches",
-   "props": {
-    "am": "btree",
-    "constraint": "branches_design_name_key",
-    "definition": "CREATE UNIQUE INDEX branches_design_name_key ON cortex.branches USING btree (design, name)",
-    "indcheckxmin": false,
-    "indimmediate": false,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "name",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.branches_pkey",
-   "kind": "index",
-   "parent": "cortex.branches",
-   "props": {
-    "am": "btree",
-    "constraint": "branches_pkey",
-    "definition": "CREATE UNIQUE INDEX branches_pkey ON cortex.branches USING btree (id)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": true,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 1,
-    "indnkeyatts": 1,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "id",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.catalog_sources_pkey",
-   "kind": "index",
-   "parent": "cortex.catalog_sources",
-   "props": {
-    "am": "btree",
-    "constraint": "catalog_sources_pkey",
-    "definition": "CREATE UNIQUE INDEX catalog_sources_pkey ON cortex.catalog_sources USING btree (id)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": true,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 1,
-    "indnkeyatts": 1,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "id",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.catalog_sources_version_position_key",
-   "kind": "index",
-   "parent": "cortex.catalog_sources",
-   "props": {
-    "am": "btree",
-    "constraint": "catalog_sources_version_position_key",
-    "definition": "CREATE UNIQUE INDEX catalog_sources_version_position_key ON cortex.catalog_sources USING btree (version, \"position\")",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "version",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "position",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
    }
   },
   {
@@ -10052,6 +9757,211 @@
      {
       "collation": null,
       "column": "constraint",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "position",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.branches_design_id_key",
+   "kind": "index",
+   "parent": "cortex.branches",
+   "props": {
+    "am": "btree",
+    "constraint": "branches_design_id_key",
+    "definition": "CREATE UNIQUE INDEX branches_design_id_key ON cortex.branches USING btree (design, id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.branches_design_name_key",
+   "kind": "index",
+   "parent": "cortex.branches",
+   "props": {
+    "am": "btree",
+    "constraint": "branches_design_name_key",
+    "definition": "CREATE UNIQUE INDEX branches_design_name_key ON cortex.branches USING btree (design, name)",
+    "indcheckxmin": false,
+    "indimmediate": false,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "name",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.branches_pkey",
+   "kind": "index",
+   "parent": "cortex.branches",
+   "props": {
+    "am": "btree",
+    "constraint": "branches_pkey",
+    "definition": "CREATE UNIQUE INDEX branches_pkey ON cortex.branches USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.catalog_sources_pkey",
+   "kind": "index",
+   "parent": "cortex.catalog_sources",
+   "props": {
+    "am": "btree",
+    "constraint": "catalog_sources_pkey",
+    "definition": "CREATE UNIQUE INDEX catalog_sources_pkey ON cortex.catalog_sources USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.catalog_sources_version_position_key",
+   "kind": "index",
+   "parent": "cortex.catalog_sources",
+   "props": {
+    "am": "btree",
+    "constraint": "catalog_sources_version_position_key",
+    "definition": "CREATE UNIQUE INDEX catalog_sources_version_position_key ON cortex.catalog_sources USING btree (version, \"position\")",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "version",
       "descending": false,
       "expression": null,
       "key": true,
@@ -10792,6 +10702,96 @@
      {
       "collation": null,
       "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.enum_values_object_position_key",
+   "kind": "index",
+   "parent": "cortex.enum_values",
+   "props": {
+    "am": "btree",
+    "constraint": "enum_values_object_position_key",
+    "definition": "CREATE UNIQUE INDEX enum_values_object_position_key ON cortex.enum_values USING btree (object, \"position\")",
+    "indcheckxmin": false,
+    "indimmediate": false,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "object",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "position",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.enum_values_object_value_key",
+   "kind": "index",
+   "parent": "cortex.enum_values",
+   "props": {
+    "am": "btree",
+    "constraint": "enum_values_object_value_key",
+    "definition": "CREATE UNIQUE INDEX enum_values_object_value_key ON cortex.enum_values USING btree (object, value)",
+    "indcheckxmin": false,
+    "indimmediate": false,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "object",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "value",
       "descending": false,
       "expression": null,
       "key": true,
@@ -14883,6 +14883,41 @@
    }
   },
   {
+   "key": "engine_postgresql.policies_pkey",
+   "kind": "index",
+   "parent": "engine_postgresql.policies",
+   "props": {
+    "am": "btree",
+    "constraint": "policies_pkey",
+    "definition": "CREATE UNIQUE INDEX policies_pkey ON engine_postgresql.policies USING btree (id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": true,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": true,
+    "indisvalid": true,
+    "indnatts": 1,
+    "indnkeyatts": 1,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     }
+    ]
+   }
+  },
+  {
    "key": "engine_postgresql.rules_design_id_key",
    "kind": "index",
    "parent": "engine_postgresql.rules",
@@ -15263,41 +15298,6 @@
       "nulls_first": false,
       "opclass": null,
       "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "engine_postgresql.policies_pkey",
-   "kind": "index",
-   "parent": "engine_postgresql.policies",
-   "props": {
-    "am": "btree",
-    "constraint": "policies_pkey",
-    "definition": "CREATE UNIQUE INDEX policies_pkey ON engine_postgresql.policies USING btree (id)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": true,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": true,
-    "indisvalid": true,
-    "indnatts": 1,
-    "indnkeyatts": 1,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "id",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
      }
     ]
    }
@@ -16733,6 +16733,544 @@
    }
   },
   {
+   "key": "cortex.locked_versions_turn",
+   "kind": "index",
+   "parent": "cortex.locked_versions",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX locked_versions_turn ON cortex.locked_versions USING btree (design, turn)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "turn",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.namespaces_parent",
+   "kind": "index",
+   "parent": "cortex.namespaces",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX namespaces_parent ON cortex.namespaces USING btree (design, parent)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "parent",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.object_tags_object",
+   "kind": "index",
+   "parent": "cortex.object_tags",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX object_tags_object ON cortex.object_tags USING btree (design, object)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "object",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.objects_namespace",
+   "kind": "index",
+   "parent": "cortex.objects",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX objects_namespace ON cortex.objects USING btree (design, namespace)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "namespace",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.objects_parent",
+   "kind": "index",
+   "parent": "cortex.objects",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX objects_parent ON cortex.objects USING btree (design, parent)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "parent",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.operations_turn",
+   "kind": "index",
+   "parent": "cortex.operations",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX operations_turn ON cortex.operations USING btree (design, turn)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "turn",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.partitions_partitioning",
+   "kind": "index",
+   "parent": "cortex.partitions",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX partitions_partitioning ON cortex.partitions USING btree (design, partitioning)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "partitioning",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.partitions_table_object",
+   "kind": "index",
+   "parent": "cortex.partitions",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX partitions_table_object ON cortex.partitions USING btree (design, table_object)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "table_object",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.read_scope_kinds_scope",
+   "kind": "index",
+   "parent": "cortex.read_scope_kinds",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX read_scope_kinds_scope ON cortex.read_scope_kinds USING btree (design, scope)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "scope",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.read_scope_objects_scope",
+   "kind": "index",
+   "parent": "cortex.read_scope_objects",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX read_scope_objects_scope ON cortex.read_scope_objects USING btree (design, scope)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "scope",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.routine_parameters_routine",
+   "kind": "index",
+   "parent": "cortex.routine_parameters",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX routine_parameters_routine ON cortex.routine_parameters USING btree (design, routine)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 2,
+    "indnkeyatts": 2,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "routine",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     }
+    ]
+   }
+  },
+  {
+   "key": "cortex.row_changes_operation",
+   "kind": "index",
+   "parent": "cortex.row_changes",
+   "props": {
+    "am": "btree",
+    "definition": "CREATE INDEX row_changes_operation ON cortex.row_changes USING btree (design, operation, id)",
+    "indcheckxmin": false,
+    "indimmediate": true,
+    "indisclustered": false,
+    "indisexclusion": false,
+    "indislive": true,
+    "indisprimary": false,
+    "indisready": true,
+    "indisreplident": false,
+    "indisunique": false,
+    "indisvalid": true,
+    "indnatts": 3,
+    "indnkeyatts": 3,
+    "indnullsnotdistinct": false,
+    "parts": [
+     {
+      "collation": null,
+      "column": "design",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 1
+     },
+     {
+      "collation": null,
+      "column": "operation",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 2
+     },
+     {
+      "collation": null,
+      "column": "id",
+      "descending": false,
+      "expression": null,
+      "key": true,
+      "nulls_first": false,
+      "opclass": null,
+      "position": 3
+     }
+    ]
+   }
+  },
+  {
    "key": "cortex.savepoints_turn",
    "kind": "index",
    "parent": "cortex.savepoints",
@@ -17217,94 +17755,6 @@
    }
   },
   {
-   "key": "cortex.locked_versions_turn",
-   "kind": "index",
-   "parent": "cortex.locked_versions",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX locked_versions_turn ON cortex.locked_versions USING btree (design, turn)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "turn",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.namespaces_parent",
-   "kind": "index",
-   "parent": "cortex.namespaces",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX namespaces_parent ON cortex.namespaces USING btree (design, parent)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "parent",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
    "key": "engine_postgresql.collations_namespace",
    "kind": "index",
    "parent": "engine_postgresql.collations",
@@ -17338,182 +17788,6 @@
      {
       "collation": null,
       "column": "namespace",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.object_tags_object",
-   "kind": "index",
-   "parent": "cortex.object_tags",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX object_tags_object ON cortex.object_tags USING btree (design, object)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "object",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.objects_namespace",
-   "kind": "index",
-   "parent": "cortex.objects",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX objects_namespace ON cortex.objects USING btree (design, namespace)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "namespace",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.objects_parent",
-   "kind": "index",
-   "parent": "cortex.objects",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX objects_parent ON cortex.objects USING btree (design, parent)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "parent",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.operations_turn",
-   "kind": "index",
-   "parent": "cortex.operations",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX operations_turn ON cortex.operations USING btree (design, turn)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "turn",
       "descending": false,
       "expression": null,
       "key": true,
@@ -17602,50 +17876,6 @@
      {
       "collation": null,
       "column": "parent",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.partitions_partitioning",
-   "kind": "index",
-   "parent": "cortex.partitions",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX partitions_partitioning ON cortex.partitions USING btree (design, partitioning)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "partitioning",
       "descending": false,
       "expression": null,
       "key": true,
@@ -17877,94 +18107,6 @@
    }
   },
   {
-   "key": "cortex.partitions_table_object",
-   "kind": "index",
-   "parent": "cortex.partitions",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX partitions_table_object ON cortex.partitions USING btree (design, table_object)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "table_object",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.read_scope_kinds_scope",
-   "kind": "index",
-   "parent": "cortex.read_scope_kinds",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX read_scope_kinds_scope ON cortex.read_scope_kinds USING btree (design, scope)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "scope",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
    "key": "ui.layout_pins_perspective",
    "kind": "index",
    "parent": "ui.layout_pins",
@@ -18048,148 +18190,6 @@
       "nulls_first": false,
       "opclass": null,
       "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.read_scope_objects_scope",
-   "kind": "index",
-   "parent": "cortex.read_scope_objects",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX read_scope_objects_scope ON cortex.read_scope_objects USING btree (design, scope)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "scope",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.routine_parameters_routine",
-   "kind": "index",
-   "parent": "cortex.routine_parameters",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX routine_parameters_routine ON cortex.routine_parameters USING btree (design, routine)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 2,
-    "indnkeyatts": 2,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "routine",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     }
-    ]
-   }
-  },
-  {
-   "key": "cortex.row_changes_operation",
-   "kind": "index",
-   "parent": "cortex.row_changes",
-   "props": {
-    "am": "btree",
-    "definition": "CREATE INDEX row_changes_operation ON cortex.row_changes USING btree (design, operation, id)",
-    "indcheckxmin": false,
-    "indimmediate": true,
-    "indisclustered": false,
-    "indisexclusion": false,
-    "indislive": true,
-    "indisprimary": false,
-    "indisready": true,
-    "indisreplident": false,
-    "indisunique": false,
-    "indisvalid": true,
-    "indnatts": 3,
-    "indnkeyatts": 3,
-    "indnullsnotdistinct": false,
-    "parts": [
-     {
-      "collation": null,
-      "column": "design",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 1
-     },
-     {
-      "collation": null,
-      "column": "operation",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 2
-     },
-     {
-      "collation": null,
-      "column": "id",
-      "descending": false,
-      "expression": null,
-      "key": true,
-      "nulls_first": false,
-      "opclass": null,
-      "position": 3
      }
     ]
    }
@@ -18819,32 +18819,50 @@
    }
   },
   {
-   "key": "ui.layout_pins.layout_pins_design_object_fkey",
+   "key": "cortex.operations.operations_design_id_key",
    "kind": "constraint",
-   "parent": "ui.layout_pins",
+   "parent": "cortex.operations",
    "props": {
     "columns": [
      "design",
-     "object"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "layout_pins_design_object_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "objects_design_id_key",
-    "ref_columns": [
-     "design",
      "id"
     ],
-    "ref_table": "cortex.objects"
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "operations_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "operations_design_id_key"
+   }
+  },
+  {
+   "key": "cortex.operations.operations_pkey",
+   "kind": "constraint",
+   "parent": "cortex.operations",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "operations_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "operations_pkey"
    }
   },
   {
@@ -19057,91 +19075,74 @@
    }
   },
   {
-   "key": "ui.layout_pins.layout_pins_design_perspective_fkey",
+   "key": "cortex.engine_features.engine_features_engine_check",
    "kind": "constraint",
-   "parent": "ui.layout_pins",
+   "parent": "cortex.engine_features",
    "props": {
     "columns": [
-     "design",
-     "perspective"
+     "engine"
     ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "layout_pins_design_perspective_fkey",
-    "connoinherit": true,
-    "contype": "f",
+    "conname": "engine_features_engine_check",
+    "connoinherit": false,
+    "contype": "c",
     "convalidated": true,
-    "definition": "FOREIGN KEY (design, perspective) REFERENCES ui.custom_perspectives(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "custom_perspectives_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "ui.custom_perspectives"
+    "definition": "CHECK ((engine ~ '^[a-z0-9_]+$'::text))",
+    "expression": "(engine ~ '^[a-z0-9_]+$'::text)"
    }
   },
   {
-   "key": "ui.object_places.object_places_design_area_fkey",
+   "key": "cortex.option_declarations.option_declarations_engine_part_name_key",
    "kind": "constraint",
-   "parent": "ui.object_places",
+   "parent": "cortex.option_declarations",
    "props": {
     "columns": [
-     "design",
-     "area"
+     "engine",
+     "part",
+     "name"
     ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "n",
-    "confmatchtype": "s",
-    "confupdtype": "a",
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "object_places_design_area_fkey",
+    "conname": "option_declarations_engine_part_name_key",
     "connoinherit": true,
-    "contype": "f",
+    "contype": "u",
     "convalidated": true,
-    "definition": "FOREIGN KEY (design, area) REFERENCES ui.subject_areas(design, id) ON DELETE SET NULL (area) DEFERRABLE INITIALLY DEFERRED",
-    "delete_set_columns": [
-     "area"
-    ],
-    "index": "subject_areas_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "ui.subject_areas"
+    "definition": "UNIQUE (engine, part, name)",
+    "index": "option_declarations_engine_part_name_key"
    }
   },
   {
-   "key": "ui.object_places.object_places_design_fkey",
+   "key": "cortex.option_declarations.option_declarations_pkey",
    "kind": "constraint",
-   "parent": "ui.object_places",
+   "parent": "cortex.option_declarations",
    "props": {
     "columns": [
-     "design"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_places_design_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "designs_pkey",
-    "ref_columns": [
      "id"
     ],
-    "ref_table": "cortex.designs"
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "option_declarations_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "option_declarations_pkey"
    }
   },
   {
@@ -19285,117 +19286,121 @@
    }
   },
   {
-   "key": "ui.object_places.object_places_design_id_fkey",
+   "key": "cortex.engine_features.engine_features_feature_check",
    "kind": "constraint",
-   "parent": "ui.object_places",
+   "parent": "cortex.engine_features",
    "props": {
     "columns": [
-     "design",
-     "id"
+     "feature"
     ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "object_places_design_id_fkey",
-    "connoinherit": true,
-    "contype": "f",
+    "conname": "engine_features_feature_check",
+    "connoinherit": false,
+    "contype": "c",
     "convalidated": true,
-    "definition": "FOREIGN KEY (design, id) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "objects_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "cortex.objects"
+    "definition": "CHECK ((feature ~ '^[a-z0-9_]+$'::text))",
+    "expression": "(feature ~ '^[a-z0-9_]+$'::text)"
    }
   },
   {
-   "key": "ui.perspective_members.perspective_members_design_column_fkey",
+   "key": "cortex.partitionings.partitionings_design_id_key",
    "kind": "constraint",
-   "parent": "ui.perspective_members",
+   "parent": "cortex.partitionings",
    "props": {
     "columns": [
      "design",
-     "column"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "perspective_members_design_column_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, \"column\") REFERENCES cortex.columns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "columns_design_id_key",
-    "ref_columns": [
-     "design",
      "id"
     ],
-    "ref_table": "cortex.columns"
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "partitionings_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "partitionings_design_id_key"
    }
   },
   {
-   "key": "ui.perspective_members.perspective_members_design_fkey",
+   "key": "cortex.partitionings.partitionings_pkey",
    "kind": "constraint",
-   "parent": "ui.perspective_members",
+   "parent": "cortex.partitionings",
    "props": {
     "columns": [
-     "design"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "perspective_members_design_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "designs_pkey",
-    "ref_columns": [
      "id"
     ],
-    "ref_table": "cortex.designs"
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "partitionings_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "partitionings_pkey"
    }
   },
   {
-   "key": "ui.perspective_members.perspective_members_design_object_fkey",
+   "key": "cortex.partitions.partitions_design_id_key",
    "kind": "constraint",
-   "parent": "ui.perspective_members",
+   "parent": "cortex.partitions",
    "props": {
     "columns": [
      "design",
-     "object"
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "partitions_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "partitions_design_id_key"
+   }
+  },
+  {
+   "key": "cortex.partitions.partitions_partitioning_name_key",
+   "kind": "constraint",
+   "parent": "cortex.partitions",
+   "props": {
+    "columns": [
+     "partitioning",
+     "name"
     ],
     "condeferrable": true,
     "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
     "coninhcount": 0,
     "conislocal": true,
-    "conname": "perspective_members_design_object_fkey",
+    "conname": "partitions_partitioning_name_key",
     "connoinherit": true,
-    "contype": "f",
+    "contype": "u",
     "convalidated": true,
-    "definition": "FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "objects_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "cortex.objects"
+    "definition": "UNIQUE (partitioning, name) DEFERRABLE INITIALLY DEFERRED",
+    "index": "partitions_partitioning_name_key"
    }
   },
   {
@@ -19609,52 +19614,6 @@
    }
   },
   {
-   "key": "cortex.engine_features.engine_features_engine_check",
-   "kind": "constraint",
-   "parent": "cortex.engine_features",
-   "props": {
-    "columns": [
-     "engine"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "engine_features_engine_check",
-    "connoinherit": false,
-    "contype": "c",
-    "convalidated": true,
-    "definition": "CHECK ((engine ~ '^[a-z0-9_]+$'::text))",
-    "expression": "(engine ~ '^[a-z0-9_]+$'::text)"
-   }
-  },
-  {
-   "key": "cortex.engine_features.engine_features_feature_check",
-   "kind": "constraint",
-   "parent": "cortex.engine_features",
-   "props": {
-    "columns": [
-     "feature"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "engine_features_feature_check",
-    "connoinherit": false,
-    "contype": "c",
-    "convalidated": true,
-    "definition": "CHECK ((feature ~ '^[a-z0-9_]+$'::text))",
-    "expression": "(feature ~ '^[a-z0-9_]+$'::text)"
-   }
-  },
-  {
    "key": "cortex.engine_features.engine_features_what_check",
    "kind": "constraint",
    "parent": "cortex.engine_features",
@@ -19838,35 +19797,6 @@
     "convalidated": true,
     "definition": "CHECK ((\"position\" > (0)::numeric))",
     "expression": "(\"position\" > (0)::numeric)"
-   }
-  },
-  {
-   "key": "ui.perspective_members.perspective_members_design_perspective_fkey",
-   "kind": "constraint",
-   "parent": "ui.perspective_members",
-   "props": {
-    "columns": [
-     "design",
-     "perspective"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "perspective_members_design_perspective_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, perspective) REFERENCES ui.custom_perspectives(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "custom_perspectives_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "ui.custom_perspectives"
    }
   },
   {
@@ -20101,35 +20031,6 @@
    }
   },
   {
-   "key": "ui.pinned_notes.pinned_notes_design_area_fkey",
-   "kind": "constraint",
-   "parent": "ui.pinned_notes",
-   "props": {
-    "columns": [
-     "design",
-     "area"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "pinned_notes_design_area_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, area) REFERENCES ui.subject_areas(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "subject_areas_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "ui.subject_areas"
-   }
-  },
-  {
    "key": "cortex.locked_versions.locked_versions_number_check",
    "kind": "constraint",
    "parent": "cortex.locked_versions",
@@ -20173,6 +20074,77 @@
     "convalidated": true,
     "definition": "CHECK ((uuid_extract_version(id) = 7))",
     "expression": "(uuid_extract_version(id) = 7)"
+   }
+  },
+  {
+   "key": "cortex.partitions.partitions_partitioning_position_key",
+   "kind": "constraint",
+   "parent": "cortex.partitions",
+   "props": {
+    "columns": [
+     "partitioning",
+     "position"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "partitions_partitioning_position_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (partitioning, \"position\") DEFERRABLE INITIALLY DEFERRED",
+    "index": "partitions_partitioning_position_key"
+   }
+  },
+  {
+   "key": "cortex.partitions.partitions_pkey",
+   "kind": "constraint",
+   "parent": "cortex.partitions",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "partitions_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "partitions_pkey"
+   }
+  },
+  {
+   "key": "cortex.read_scope_kinds.read_scope_kinds_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.read_scope_kinds",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "read_scope_kinds_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "read_scope_kinds_design_id_key"
    }
   },
   {
@@ -20408,6 +20380,77 @@
    }
   },
   {
+   "key": "cortex.read_scope_kinds.read_scope_kinds_pkey",
+   "kind": "constraint",
+   "parent": "cortex.read_scope_kinds",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "read_scope_kinds_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "read_scope_kinds_pkey"
+   }
+  },
+  {
+   "key": "cortex.read_scope_kinds.read_scope_kinds_scope_kind_key",
+   "kind": "constraint",
+   "parent": "cortex.read_scope_kinds",
+   "props": {
+    "columns": [
+     "scope",
+     "kind"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "read_scope_kinds_scope_kind_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (scope, kind)",
+    "index": "read_scope_kinds_scope_kind_key"
+   }
+  },
+  {
+   "key": "cortex.read_scope_objects.read_scope_objects_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.read_scope_objects",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "read_scope_objects_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "read_scope_objects_design_id_key"
+   }
+  },
+  {
    "key": "cortex.object_tags.object_tags_tag_check",
    "kind": "constraint",
    "parent": "cortex.object_tags",
@@ -20615,120 +20658,6 @@
    }
   },
   {
-   "key": "ui.pinned_notes.pinned_notes_design_column_fkey",
-   "kind": "constraint",
-   "parent": "ui.pinned_notes",
-   "props": {
-    "columns": [
-     "design",
-     "column"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "pinned_notes_design_column_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, \"column\") REFERENCES cortex.columns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "columns_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "cortex.columns"
-   }
-  },
-  {
-   "key": "ui.pinned_notes.pinned_notes_design_constraint_fkey",
-   "kind": "constraint",
-   "parent": "ui.pinned_notes",
-   "props": {
-    "columns": [
-     "design",
-     "constraint"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "pinned_notes_design_constraint_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, \"constraint\") REFERENCES cortex.constraints(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "constraints_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "cortex.constraints"
-   }
-  },
-  {
-   "key": "ui.pinned_notes.pinned_notes_design_fkey",
-   "kind": "constraint",
-   "parent": "ui.pinned_notes",
-   "props": {
-    "columns": [
-     "design"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "pinned_notes_design_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "designs_pkey",
-    "ref_columns": [
-     "id"
-    ],
-    "ref_table": "cortex.designs"
-   }
-  },
-  {
-   "key": "ui.pinned_notes.pinned_notes_design_index_fkey",
-   "kind": "constraint",
-   "parent": "ui.pinned_notes",
-   "props": {
-    "columns": [
-     "design",
-     "index"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "pinned_notes_design_index_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, index) REFERENCES cortex.indexes(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "indexes_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "cortex.indexes"
-   }
-  },
-  {
    "key": "cortex.option_declarations.option_declarations_check",
    "kind": "constraint",
    "parent": "cortex.option_declarations",
@@ -20752,6 +20681,29 @@
     "convalidated": true,
     "definition": "CHECK ((id = ((((engine || '/'::text) || part) || '/'::text) || name)))",
     "expression": "(id = ((((engine || '/'::text) || part) || '/'::text) || name))"
+   }
+  },
+  {
+   "key": "cortex.read_scope_objects.read_scope_objects_pkey",
+   "kind": "constraint",
+   "parent": "cortex.read_scope_objects",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "read_scope_objects_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "read_scope_objects_pkey"
    }
   },
   {
@@ -20985,6 +20937,55 @@
    }
   },
   {
+   "key": "cortex.read_scope_objects.read_scope_objects_scope_namespace_name_pattern_key",
+   "kind": "constraint",
+   "parent": "cortex.read_scope_objects",
+   "props": {
+    "columns": [
+     "scope",
+     "namespace_name",
+     "pattern"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "read_scope_objects_scope_namespace_name_pattern_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (scope, namespace_name, pattern)",
+    "index": "read_scope_objects_scope_namespace_name_pattern_key"
+   }
+  },
+  {
+   "key": "cortex.read_scope_objects.read_scope_objects_scope_position_key",
+   "kind": "constraint",
+   "parent": "cortex.read_scope_objects",
+   "props": {
+    "columns": [
+     "scope",
+     "position"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "read_scope_objects_scope_position_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (scope, \"position\")",
+    "index": "read_scope_objects_scope_position_key"
+   }
+  },
+  {
    "key": "cortex.read_scope_objects.read_scope_objects_id_check",
    "kind": "constraint",
    "parent": "cortex.read_scope_objects",
@@ -21192,35 +21193,6 @@
    }
   },
   {
-   "key": "ui.pinned_notes.pinned_notes_design_namespace_fkey",
-   "kind": "constraint",
-   "parent": "ui.pinned_notes",
-   "props": {
-    "columns": [
-     "design",
-     "namespace"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "pinned_notes_design_namespace_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, namespace) REFERENCES cortex.namespaces(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "namespaces_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "cortex.namespaces"
-   }
-  },
-  {
    "key": "cortex.routine_parameters.routine_parameters_id_check",
    "kind": "constraint",
    "parent": "cortex.routine_parameters",
@@ -21241,6 +21213,53 @@
     "convalidated": true,
     "definition": "CHECK ((uuid_extract_version(id) = 7))",
     "expression": "(uuid_extract_version(id) = 7)"
+   }
+  },
+  {
+   "key": "cortex.row_changes.row_changes_table_name_check",
+   "kind": "constraint",
+   "parent": "cortex.row_changes",
+   "props": {
+    "columns": [
+     "table_name"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "row_changes_table_name_check",
+    "connoinherit": false,
+    "contype": "c",
+    "convalidated": true,
+    "definition": "CHECK ((table_name ~ '^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$'::text))",
+    "expression": "(table_name ~ '^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$'::text)"
+   }
+  },
+  {
+   "key": "cortex.read_scopes.read_scopes_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.read_scopes",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "read_scopes_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "read_scopes_design_id_key"
    }
   },
   {
@@ -21450,29 +21469,6 @@
     "convalidated": true,
     "definition": "CHECK ((uuid_extract_version(id) = 7))",
     "expression": "(uuid_extract_version(id) = 7)"
-   }
-  },
-  {
-   "key": "cortex.row_changes.row_changes_table_name_check",
-   "kind": "constraint",
-   "parent": "cortex.row_changes",
-   "props": {
-    "columns": [
-     "table_name"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "row_changes_table_name_check",
-    "connoinherit": false,
-    "contype": "c",
-    "convalidated": true,
-    "definition": "CHECK ((table_name ~ '^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$'::text))",
-    "expression": "(table_name ~ '^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$'::text)"
    }
   },
   {
@@ -22151,35 +22147,6 @@
    }
   },
   {
-   "key": "ui.pinned_notes.pinned_notes_design_object_fkey",
-   "kind": "constraint",
-   "parent": "ui.pinned_notes",
-   "props": {
-    "columns": [
-     "design",
-     "object"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "pinned_notes_design_object_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "objects_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "cortex.objects"
-   }
-  },
-  {
    "key": "cortex.verbatim_statements.verbatim_statements_id_check",
    "kind": "constraint",
    "parent": "cortex.verbatim_statements",
@@ -22223,6 +22190,55 @@
     "convalidated": true,
     "definition": "CHECK ((length(kind) >= 1))",
     "expression": "(length(kind) >= 1)"
+   }
+  },
+  {
+   "key": "cortex.namespaces.namespaces_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.namespaces",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "namespaces_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "namespaces_design_id_key"
+   }
+  },
+  {
+   "key": "cortex.namespaces.namespaces_design_parent_name_key",
+   "kind": "constraint",
+   "parent": "cortex.namespaces",
+   "props": {
+    "columns": [
+     "design",
+     "parent",
+     "name"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "namespaces_design_parent_name_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE NULLS NOT DISTINCT (design, parent, name) DEFERRABLE INITIALLY DEFERRED",
+    "index": "namespaces_design_parent_name_key"
    }
   },
   {
@@ -22384,35 +22400,6 @@
     "convalidated": true,
     "definition": "CHECK ((uuid_extract_version(id) = 7))",
     "expression": "(uuid_extract_version(id) = 7)"
-   }
-  },
-  {
-   "key": "ui.pinned_notes.pinned_notes_design_perspective_fkey",
-   "kind": "constraint",
-   "parent": "ui.pinned_notes",
-   "props": {
-    "columns": [
-     "design",
-     "perspective"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "pinned_notes_design_perspective_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, perspective) REFERENCES ui.custom_perspectives(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "custom_perspectives_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "ui.custom_perspectives"
    }
   },
   {
@@ -22669,6 +22656,53 @@
    }
   },
   {
+   "key": "cortex.namespaces.namespaces_design_position_key",
+   "kind": "constraint",
+   "parent": "cortex.namespaces",
+   "props": {
+    "columns": [
+     "design",
+     "position"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "namespaces_design_position_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, \"position\") DEFERRABLE INITIALLY DEFERRED",
+    "index": "namespaces_design_position_key"
+   }
+  },
+  {
+   "key": "cortex.namespaces.namespaces_pkey",
+   "kind": "constraint",
+   "parent": "cortex.namespaces",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "namespaces_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "namespaces_pkey"
+   }
+  },
+  {
    "key": "cortex.workspace_parameters.workspace_parameters_about_check",
    "kind": "constraint",
    "parent": "cortex.workspace_parameters",
@@ -22854,62 +22888,6 @@
    }
   },
   {
-   "key": "ui.pinned_notes.pinned_notes_design_turn_fkey",
-   "kind": "constraint",
-   "parent": "ui.pinned_notes",
-   "props": {
-    "columns": [
-     "design",
-     "turn"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "pinned_notes_design_turn_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "turns_design_id_key",
-    "ref_columns": [
-     "design",
-     "id"
-    ],
-    "ref_table": "cortex.turns"
-   }
-  },
-  {
-   "key": "ui.subject_areas.subject_areas_design_fkey",
-   "kind": "constraint",
-   "parent": "ui.subject_areas",
-   "props": {
-    "columns": [
-     "design"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": "c",
-    "confmatchtype": "s",
-    "confupdtype": "a",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "subject_areas_design_fkey",
-    "connoinherit": true,
-    "contype": "f",
-    "convalidated": true,
-    "definition": "FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
-    "index": "designs_pkey",
-    "ref_columns": [
-     "id"
-    ],
-    "ref_table": "cortex.designs"
-   }
-  },
-  {
    "key": "engine_postgresql.collations.collations_provider_check",
    "kind": "constraint",
    "parent": "engine_postgresql.collations",
@@ -22953,6 +22931,101 @@
     "convalidated": true,
     "definition": "CHECK ((uuid_extract_version(id) = 7))",
     "expression": "(uuid_extract_version(id) = 7)"
+   }
+  },
+  {
+   "key": "cortex.object_kinds.object_kinds_engine_kind_key",
+   "kind": "constraint",
+   "parent": "cortex.object_kinds",
+   "props": {
+    "columns": [
+     "engine",
+     "kind"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_kinds_engine_kind_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (engine, kind)",
+    "index": "object_kinds_engine_kind_key"
+   }
+  },
+  {
+   "key": "cortex.object_kinds.object_kinds_engine_position_key",
+   "kind": "constraint",
+   "parent": "cortex.object_kinds",
+   "props": {
+    "columns": [
+     "engine",
+     "position"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_kinds_engine_position_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (engine, \"position\")",
+    "index": "object_kinds_engine_position_key"
+   }
+  },
+  {
+   "key": "cortex.object_kinds.object_kinds_pkey",
+   "kind": "constraint",
+   "parent": "cortex.object_kinds",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_kinds_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "object_kinds_pkey"
+   }
+  },
+  {
+   "key": "cortex.object_tags.object_tags_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.object_tags",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_tags_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "object_tags_design_id_key"
    }
   },
   {
@@ -23160,6 +23233,77 @@
     "convalidated": true,
     "definition": "CHECK ((colour_by = ANY (ARRAY['namespace'::text, 'family'::text, 'area'::text, 'none'::text])))",
     "expression": "(colour_by = ANY (ARRAY['namespace'::text, 'family'::text, 'area'::text, 'none'::text]))"
+   }
+  },
+  {
+   "key": "cortex.object_tags.object_tags_object_tag_key",
+   "kind": "constraint",
+   "parent": "cortex.object_tags",
+   "props": {
+    "columns": [
+     "object",
+     "tag"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_tags_object_tag_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (object, tag) DEFERRABLE INITIALLY DEFERRED",
+    "index": "object_tags_object_tag_key"
+   }
+  },
+  {
+   "key": "cortex.object_tags.object_tags_pkey",
+   "kind": "constraint",
+   "parent": "cortex.object_tags",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_tags_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "object_tags_pkey"
+   }
+  },
+  {
+   "key": "cortex.objects.objects_design_id_key",
+   "kind": "constraint",
+   "parent": "cortex.objects",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "objects_design_id_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE (design, id)",
+    "index": "objects_design_id_key"
    }
   },
   {
@@ -23391,6 +23535,82 @@
     "convalidated": true,
     "definition": "CHECK ((colour ~ '^#[0-9a-f]{6}$'::text))",
     "expression": "(colour ~ '^#[0-9a-f]{6}$'::text)"
+   }
+  },
+  {
+   "key": "cortex.objects.objects_design_namespace_parent_kind_name_signature_key",
+   "kind": "constraint",
+   "parent": "cortex.objects",
+   "props": {
+    "columns": [
+     "design",
+     "namespace",
+     "parent",
+     "kind",
+     "name",
+     "signature"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "objects_design_namespace_parent_kind_name_signature_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE NULLS NOT DISTINCT (design, namespace, parent, kind, name, signature) DEFERRABLE INITIALLY DEFERRED",
+    "index": "objects_design_namespace_parent_kind_name_signature_key"
+   }
+  },
+  {
+   "key": "cortex.objects.objects_design_namespace_position_key",
+   "kind": "constraint",
+   "parent": "cortex.objects",
+   "props": {
+    "columns": [
+     "design",
+     "namespace",
+     "position"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "objects_design_namespace_position_key",
+    "connoinherit": true,
+    "contype": "u",
+    "convalidated": true,
+    "definition": "UNIQUE NULLS NOT DISTINCT (design, namespace, \"position\") DEFERRABLE INITIALLY DEFERRED",
+    "index": "objects_design_namespace_position_key"
+   }
+  },
+  {
+   "key": "cortex.objects.objects_pkey",
+   "kind": "constraint",
+   "parent": "cortex.objects",
+   "props": {
+    "columns": [
+     "id"
+    ],
+    "condeferrable": false,
+    "condeferred": false,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "objects_pkey",
+    "connoinherit": true,
+    "contype": "p",
+    "convalidated": true,
+    "definition": "PRIMARY KEY (id)",
+    "index": "objects_pkey"
    }
   },
   {
@@ -24714,772 +24934,6 @@
     "convalidated": true,
     "definition": "UNIQUE (turn)",
     "index": "locked_versions_turn_key"
-   }
-  },
-  {
-   "key": "cortex.namespaces.namespaces_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.namespaces",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "namespaces_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "namespaces_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.namespaces.namespaces_design_parent_name_key",
-   "kind": "constraint",
-   "parent": "cortex.namespaces",
-   "props": {
-    "columns": [
-     "design",
-     "parent",
-     "name"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "namespaces_design_parent_name_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE NULLS NOT DISTINCT (design, parent, name) DEFERRABLE INITIALLY DEFERRED",
-    "index": "namespaces_design_parent_name_key"
-   }
-  },
-  {
-   "key": "cortex.namespaces.namespaces_design_position_key",
-   "kind": "constraint",
-   "parent": "cortex.namespaces",
-   "props": {
-    "columns": [
-     "design",
-     "position"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "namespaces_design_position_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, \"position\") DEFERRABLE INITIALLY DEFERRED",
-    "index": "namespaces_design_position_key"
-   }
-  },
-  {
-   "key": "cortex.namespaces.namespaces_pkey",
-   "kind": "constraint",
-   "parent": "cortex.namespaces",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "namespaces_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "namespaces_pkey"
-   }
-  },
-  {
-   "key": "cortex.object_kinds.object_kinds_engine_kind_key",
-   "kind": "constraint",
-   "parent": "cortex.object_kinds",
-   "props": {
-    "columns": [
-     "engine",
-     "kind"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_kinds_engine_kind_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (engine, kind)",
-    "index": "object_kinds_engine_kind_key"
-   }
-  },
-  {
-   "key": "cortex.object_kinds.object_kinds_engine_position_key",
-   "kind": "constraint",
-   "parent": "cortex.object_kinds",
-   "props": {
-    "columns": [
-     "engine",
-     "position"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_kinds_engine_position_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (engine, \"position\")",
-    "index": "object_kinds_engine_position_key"
-   }
-  },
-  {
-   "key": "cortex.object_kinds.object_kinds_pkey",
-   "kind": "constraint",
-   "parent": "cortex.object_kinds",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_kinds_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "object_kinds_pkey"
-   }
-  },
-  {
-   "key": "cortex.object_tags.object_tags_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.object_tags",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_tags_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "object_tags_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.object_tags.object_tags_object_tag_key",
-   "kind": "constraint",
-   "parent": "cortex.object_tags",
-   "props": {
-    "columns": [
-     "object",
-     "tag"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_tags_object_tag_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (object, tag) DEFERRABLE INITIALLY DEFERRED",
-    "index": "object_tags_object_tag_key"
-   }
-  },
-  {
-   "key": "cortex.object_tags.object_tags_pkey",
-   "kind": "constraint",
-   "parent": "cortex.object_tags",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "object_tags_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "object_tags_pkey"
-   }
-  },
-  {
-   "key": "cortex.objects.objects_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.objects",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "objects_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "objects_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.objects.objects_design_namespace_parent_kind_name_signature_key",
-   "kind": "constraint",
-   "parent": "cortex.objects",
-   "props": {
-    "columns": [
-     "design",
-     "namespace",
-     "parent",
-     "kind",
-     "name",
-     "signature"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "objects_design_namespace_parent_kind_name_signature_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE NULLS NOT DISTINCT (design, namespace, parent, kind, name, signature) DEFERRABLE INITIALLY DEFERRED",
-    "index": "objects_design_namespace_parent_kind_name_signature_key"
-   }
-  },
-  {
-   "key": "cortex.objects.objects_design_namespace_position_key",
-   "kind": "constraint",
-   "parent": "cortex.objects",
-   "props": {
-    "columns": [
-     "design",
-     "namespace",
-     "position"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "objects_design_namespace_position_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE NULLS NOT DISTINCT (design, namespace, \"position\") DEFERRABLE INITIALLY DEFERRED",
-    "index": "objects_design_namespace_position_key"
-   }
-  },
-  {
-   "key": "cortex.objects.objects_pkey",
-   "kind": "constraint",
-   "parent": "cortex.objects",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "objects_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "objects_pkey"
-   }
-  },
-  {
-   "key": "cortex.operations.operations_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.operations",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "operations_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "operations_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.operations.operations_pkey",
-   "kind": "constraint",
-   "parent": "cortex.operations",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "operations_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "operations_pkey"
-   }
-  },
-  {
-   "key": "cortex.option_declarations.option_declarations_engine_part_name_key",
-   "kind": "constraint",
-   "parent": "cortex.option_declarations",
-   "props": {
-    "columns": [
-     "engine",
-     "part",
-     "name"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "option_declarations_engine_part_name_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (engine, part, name)",
-    "index": "option_declarations_engine_part_name_key"
-   }
-  },
-  {
-   "key": "cortex.option_declarations.option_declarations_pkey",
-   "kind": "constraint",
-   "parent": "cortex.option_declarations",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "option_declarations_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "option_declarations_pkey"
-   }
-  },
-  {
-   "key": "cortex.partitionings.partitionings_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.partitionings",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "partitionings_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "partitionings_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.partitionings.partitionings_pkey",
-   "kind": "constraint",
-   "parent": "cortex.partitionings",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "partitionings_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "partitionings_pkey"
-   }
-  },
-  {
-   "key": "cortex.partitions.partitions_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.partitions",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "partitions_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "partitions_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.partitions.partitions_partitioning_name_key",
-   "kind": "constraint",
-   "parent": "cortex.partitions",
-   "props": {
-    "columns": [
-     "partitioning",
-     "name"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "partitions_partitioning_name_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (partitioning, name) DEFERRABLE INITIALLY DEFERRED",
-    "index": "partitions_partitioning_name_key"
-   }
-  },
-  {
-   "key": "cortex.partitions.partitions_partitioning_position_key",
-   "kind": "constraint",
-   "parent": "cortex.partitions",
-   "props": {
-    "columns": [
-     "partitioning",
-     "position"
-    ],
-    "condeferrable": true,
-    "condeferred": true,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "partitions_partitioning_position_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (partitioning, \"position\") DEFERRABLE INITIALLY DEFERRED",
-    "index": "partitions_partitioning_position_key"
-   }
-  },
-  {
-   "key": "cortex.partitions.partitions_pkey",
-   "kind": "constraint",
-   "parent": "cortex.partitions",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "partitions_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "partitions_pkey"
-   }
-  },
-  {
-   "key": "cortex.read_scope_kinds.read_scope_kinds_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.read_scope_kinds",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "read_scope_kinds_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "read_scope_kinds_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.read_scope_kinds.read_scope_kinds_pkey",
-   "kind": "constraint",
-   "parent": "cortex.read_scope_kinds",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "read_scope_kinds_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "read_scope_kinds_pkey"
-   }
-  },
-  {
-   "key": "cortex.read_scope_kinds.read_scope_kinds_scope_kind_key",
-   "kind": "constraint",
-   "parent": "cortex.read_scope_kinds",
-   "props": {
-    "columns": [
-     "scope",
-     "kind"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "read_scope_kinds_scope_kind_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (scope, kind)",
-    "index": "read_scope_kinds_scope_kind_key"
-   }
-  },
-  {
-   "key": "cortex.read_scope_objects.read_scope_objects_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.read_scope_objects",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "read_scope_objects_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "read_scope_objects_design_id_key"
-   }
-  },
-  {
-   "key": "cortex.read_scope_objects.read_scope_objects_pkey",
-   "kind": "constraint",
-   "parent": "cortex.read_scope_objects",
-   "props": {
-    "columns": [
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "read_scope_objects_pkey",
-    "connoinherit": true,
-    "contype": "p",
-    "convalidated": true,
-    "definition": "PRIMARY KEY (id)",
-    "index": "read_scope_objects_pkey"
-   }
-  },
-  {
-   "key": "cortex.read_scope_objects.read_scope_objects_scope_namespace_name_pattern_key",
-   "kind": "constraint",
-   "parent": "cortex.read_scope_objects",
-   "props": {
-    "columns": [
-     "scope",
-     "namespace_name",
-     "pattern"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "read_scope_objects_scope_namespace_name_pattern_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (scope, namespace_name, pattern)",
-    "index": "read_scope_objects_scope_namespace_name_pattern_key"
-   }
-  },
-  {
-   "key": "cortex.read_scope_objects.read_scope_objects_scope_position_key",
-   "kind": "constraint",
-   "parent": "cortex.read_scope_objects",
-   "props": {
-    "columns": [
-     "scope",
-     "position"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "read_scope_objects_scope_position_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (scope, \"position\")",
-    "index": "read_scope_objects_scope_position_key"
-   }
-  },
-  {
-   "key": "cortex.read_scopes.read_scopes_design_id_key",
-   "kind": "constraint",
-   "parent": "cortex.read_scopes",
-   "props": {
-    "columns": [
-     "design",
-     "id"
-    ],
-    "condeferrable": false,
-    "condeferred": false,
-    "confdeltype": " ",
-    "confmatchtype": " ",
-    "confupdtype": " ",
-    "coninhcount": 0,
-    "conislocal": true,
-    "conname": "read_scopes_design_id_key",
-    "connoinherit": true,
-    "contype": "u",
-    "convalidated": true,
-    "definition": "UNIQUE (design, id)",
-    "index": "read_scopes_design_id_key"
    }
   },
   {
@@ -30285,84 +29739,549 @@
    }
   },
   {
-   "key": "cortex.enforce_rules(owner text)",
-   "kind": "routine",
-   "parent": "cortex",
+   "key": "ui.layout_pins.layout_pins_design_object_fkey",
+   "kind": "constraint",
+   "parent": "ui.layout_pins",
    "props": {
-    "acl": [
-     "=X/sf_owner",
-     "sf_owner=X/sf_owner",
-     "sf_service=X/sf_owner",
-     "sf_agent=X/sf_owner"
+    "columns": [
+     "design",
+     "object"
     ],
-    "argument_types": [
-     "text"
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "layout_pins_design_object_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "objects_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
     ],
-    "arguments": "owner text",
-    "comment": "puts the triggers of every rule view of a namespace on each table the view reads; returns how many tables it guarded",
-    "create": "CREATE OR REPLACE FUNCTION cortex.enforce_rules(owner text)\n RETURNS integer\n LANGUAGE plpgsql\nAS $function$\nDECLARE\n  v     record;\n  t     record;\n  name  text;\n  count integer := 0;\nBEGIN\n  FOR v IN\n    SELECT c.oid, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n    WHERE n.nspname = owner AND c.relkind = 'v' AND c.relname LIKE 'broken\\_%' ORDER BY c.relname\n  LOOP\n    name := 'rule:' || owner || '.' || substr(v.relname, 8);\n    IF length(name || ':again') > 63 THEN\n      RAISE EXCEPTION 'rule name % is too long for its triggers (63 bytes with :again)', name;\n    END IF;\n    FOR t IN\n      SELECT DISTINCT d.refobjid::regclass AS tab\n      FROM pg_rewrite r JOIN pg_depend d ON d.classid = 'pg_rewrite'::regclass AND d.objid = r.oid\n      JOIN pg_class rc ON rc.oid = d.refobjid\n      WHERE r.ev_class = v.oid AND d.refclassid = 'pg_class'::regclass AND rc.relkind IN ('r', 'p')\n    LOOP\n      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s', name, t.tab);\n      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s', name || ':again', t.tab);\n      EXECUTE format('CREATE CONSTRAINT TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON %s DEFERRABLE INITIALLY DEFERRED '\n                     'FOR EACH ROW EXECUTE FUNCTION cortex.rule_check(%L)', name, t.tab, owner || '.' || v.relname);\n      EXECUTE format('CREATE TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON %s '\n                     'FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again(%L)', name || ':again', t.tab, owner || '.' || v.relname);\n      count := count + 1;\n    END LOOP;\n  END LOOP;\n  RETURN count;\nEND $function$\n",
-    "language": "plpgsql",
-    "owner": "sf_owner",
-    "proacl": [
-     "=X/sf_owner",
-     "sf_owner=X/sf_owner",
-     "sf_service=X/sf_owner",
-     "sf_agent=X/sf_owner"
-    ],
-    "proargnames": [
-     "owner"
-    ],
-    "procost": 100,
-    "proisstrict": false,
-    "prokind": "f",
-    "proleakproof": false,
-    "proname": "enforce_rules",
-    "pronargdefaults": 0,
-    "pronargs": 1,
-    "proparallel": "u",
-    "proretset": false,
-    "prorows": 0,
-    "prosecdef": false,
-    "prosrc": "\nDECLARE\n  v     record;\n  t     record;\n  name  text;\n  count integer := 0;\nBEGIN\n  FOR v IN\n    SELECT c.oid, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n    WHERE n.nspname = owner AND c.relkind = 'v' AND c.relname LIKE 'broken\\_%' ORDER BY c.relname\n  LOOP\n    name := 'rule:' || owner || '.' || substr(v.relname, 8);\n    IF length(name || ':again') > 63 THEN\n      RAISE EXCEPTION 'rule name % is too long for its triggers (63 bytes with :again)', name;\n    END IF;\n    FOR t IN\n      SELECT DISTINCT d.refobjid::regclass AS tab\n      FROM pg_rewrite r JOIN pg_depend d ON d.classid = 'pg_rewrite'::regclass AND d.objid = r.oid\n      JOIN pg_class rc ON rc.oid = d.refobjid\n      WHERE r.ev_class = v.oid AND d.refclassid = 'pg_class'::regclass AND rc.relkind IN ('r', 'p')\n    LOOP\n      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s', name, t.tab);\n      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s', name || ':again', t.tab);\n      EXECUTE format('CREATE CONSTRAINT TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON %s DEFERRABLE INITIALLY DEFERRED '\n                     'FOR EACH ROW EXECUTE FUNCTION cortex.rule_check(%L)', name, t.tab, owner || '.' || v.relname);\n      EXECUTE format('CREATE TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON %s '\n                     'FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again(%L)', name || ':again', t.tab, owner || '.' || v.relname);\n      count := count + 1;\n    END LOOP;\n  END LOOP;\n  RETURN count;\nEND ",
-    "provolatile": "v",
-    "returns": "integer"
+    "ref_table": "cortex.objects"
    }
   },
   {
-   "key": "cortex.check_kinds()",
-   "kind": "routine",
-   "parent": "cortex",
+   "key": "ui.layout_pins.layout_pins_design_perspective_fkey",
+   "kind": "constraint",
+   "parent": "ui.layout_pins",
    "props": {
-    "acl": [
-     "=X/sf_owner",
-     "sf_owner=X/sf_owner",
-     "sf_service=X/sf_owner",
-     "sf_agent=X/sf_owner"
+    "columns": [
+     "design",
+     "perspective"
     ],
-    "arguments": "",
-    "create": "CREATE OR REPLACE FUNCTION cortex.check_kinds()\n RETURNS trigger\n LANGUAGE plpgsql\n STABLE\nAS $function$\nDECLARE\n  k cortex.object_kinds;\n  e text;\nBEGIN\n  SELECT engine INTO e FROM cortex.designs WHERE id = NEW.design;\n  SELECT * INTO k FROM cortex.object_kinds WHERE engine = e AND kind = NEW.kind;\n  IF k.id IS NULL THEN\n    RAISE EXCEPTION 'kind % is not declared for %', NEW.kind, e USING ERRCODE = 'check_violation';\n  END IF;\n  IF k.scope = 'server' AND NEW.namespace IS NOT NULL THEN\n    RAISE EXCEPTION 'a % lives in the server, in no namespace', NEW.kind USING ERRCODE = 'check_violation';\n  END IF;\n  IF k.scope = 'namespace' AND NEW.namespace IS NULL THEN\n    RAISE EXCEPTION 'a % lives in a namespace', NEW.kind USING ERRCODE = 'check_violation';\n  END IF;\n  RETURN NEW;\nEND $function$\n",
-    "language": "plpgsql",
-    "owner": "sf_owner",
-    "proacl": [
-     "=X/sf_owner",
-     "sf_owner=X/sf_owner",
-     "sf_service=X/sf_owner",
-     "sf_agent=X/sf_owner"
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "layout_pins_design_perspective_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, perspective) REFERENCES ui.custom_perspectives(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "custom_perspectives_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
     ],
-    "procost": 100,
-    "proisstrict": false,
-    "prokind": "f",
-    "proleakproof": false,
-    "proname": "check_kinds",
-    "pronargdefaults": 0,
-    "pronargs": 0,
-    "proparallel": "u",
-    "proretset": false,
-    "prorows": 0,
-    "prosecdef": false,
-    "prosrc": "\nDECLARE\n  k cortex.object_kinds;\n  e text;\nBEGIN\n  SELECT engine INTO e FROM cortex.designs WHERE id = NEW.design;\n  SELECT * INTO k FROM cortex.object_kinds WHERE engine = e AND kind = NEW.kind;\n  IF k.id IS NULL THEN\n    RAISE EXCEPTION 'kind % is not declared for %', NEW.kind, e USING ERRCODE = 'check_violation';\n  END IF;\n  IF k.scope = 'server' AND NEW.namespace IS NOT NULL THEN\n    RAISE EXCEPTION 'a % lives in the server, in no namespace', NEW.kind USING ERRCODE = 'check_violation';\n  END IF;\n  IF k.scope = 'namespace' AND NEW.namespace IS NULL THEN\n    RAISE EXCEPTION 'a % lives in a namespace', NEW.kind USING ERRCODE = 'check_violation';\n  END IF;\n  RETURN NEW;\nEND ",
-    "provolatile": "s",
-    "returns": "trigger"
+    "ref_table": "ui.custom_perspectives"
+   }
+  },
+  {
+   "key": "ui.object_places.object_places_design_area_fkey",
+   "kind": "constraint",
+   "parent": "ui.object_places",
+   "props": {
+    "columns": [
+     "design",
+     "area"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "n",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_places_design_area_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, area) REFERENCES ui.subject_areas(design, id) ON DELETE SET NULL (area) DEFERRABLE INITIALLY DEFERRED",
+    "delete_set_columns": [
+     "area"
+    ],
+    "index": "subject_areas_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "ui.subject_areas"
+   }
+  },
+  {
+   "key": "ui.object_places.object_places_design_fkey",
+   "kind": "constraint",
+   "parent": "ui.object_places",
+   "props": {
+    "columns": [
+     "design"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_places_design_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "designs_pkey",
+    "ref_columns": [
+     "id"
+    ],
+    "ref_table": "cortex.designs"
+   }
+  },
+  {
+   "key": "ui.object_places.object_places_design_id_fkey",
+   "kind": "constraint",
+   "parent": "ui.object_places",
+   "props": {
+    "columns": [
+     "design",
+     "id"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "object_places_design_id_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, id) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "objects_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "cortex.objects"
+   }
+  },
+  {
+   "key": "ui.perspective_members.perspective_members_design_column_fkey",
+   "kind": "constraint",
+   "parent": "ui.perspective_members",
+   "props": {
+    "columns": [
+     "design",
+     "column"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "perspective_members_design_column_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, \"column\") REFERENCES cortex.columns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "columns_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "cortex.columns"
+   }
+  },
+  {
+   "key": "ui.perspective_members.perspective_members_design_fkey",
+   "kind": "constraint",
+   "parent": "ui.perspective_members",
+   "props": {
+    "columns": [
+     "design"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "perspective_members_design_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "designs_pkey",
+    "ref_columns": [
+     "id"
+    ],
+    "ref_table": "cortex.designs"
+   }
+  },
+  {
+   "key": "ui.perspective_members.perspective_members_design_object_fkey",
+   "kind": "constraint",
+   "parent": "ui.perspective_members",
+   "props": {
+    "columns": [
+     "design",
+     "object"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "perspective_members_design_object_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "objects_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "cortex.objects"
+   }
+  },
+  {
+   "key": "ui.perspective_members.perspective_members_design_perspective_fkey",
+   "kind": "constraint",
+   "parent": "ui.perspective_members",
+   "props": {
+    "columns": [
+     "design",
+     "perspective"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "perspective_members_design_perspective_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, perspective) REFERENCES ui.custom_perspectives(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "custom_perspectives_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "ui.custom_perspectives"
+   }
+  },
+  {
+   "key": "ui.pinned_notes.pinned_notes_design_area_fkey",
+   "kind": "constraint",
+   "parent": "ui.pinned_notes",
+   "props": {
+    "columns": [
+     "design",
+     "area"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "pinned_notes_design_area_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, area) REFERENCES ui.subject_areas(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "subject_areas_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "ui.subject_areas"
+   }
+  },
+  {
+   "key": "ui.pinned_notes.pinned_notes_design_column_fkey",
+   "kind": "constraint",
+   "parent": "ui.pinned_notes",
+   "props": {
+    "columns": [
+     "design",
+     "column"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "pinned_notes_design_column_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, \"column\") REFERENCES cortex.columns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "columns_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "cortex.columns"
+   }
+  },
+  {
+   "key": "ui.pinned_notes.pinned_notes_design_constraint_fkey",
+   "kind": "constraint",
+   "parent": "ui.pinned_notes",
+   "props": {
+    "columns": [
+     "design",
+     "constraint"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "pinned_notes_design_constraint_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, \"constraint\") REFERENCES cortex.constraints(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "constraints_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "cortex.constraints"
+   }
+  },
+  {
+   "key": "ui.pinned_notes.pinned_notes_design_fkey",
+   "kind": "constraint",
+   "parent": "ui.pinned_notes",
+   "props": {
+    "columns": [
+     "design"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "pinned_notes_design_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "designs_pkey",
+    "ref_columns": [
+     "id"
+    ],
+    "ref_table": "cortex.designs"
+   }
+  },
+  {
+   "key": "ui.pinned_notes.pinned_notes_design_index_fkey",
+   "kind": "constraint",
+   "parent": "ui.pinned_notes",
+   "props": {
+    "columns": [
+     "design",
+     "index"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "pinned_notes_design_index_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, index) REFERENCES cortex.indexes(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "indexes_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "cortex.indexes"
+   }
+  },
+  {
+   "key": "ui.pinned_notes.pinned_notes_design_namespace_fkey",
+   "kind": "constraint",
+   "parent": "ui.pinned_notes",
+   "props": {
+    "columns": [
+     "design",
+     "namespace"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "pinned_notes_design_namespace_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, namespace) REFERENCES cortex.namespaces(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "namespaces_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "cortex.namespaces"
+   }
+  },
+  {
+   "key": "ui.pinned_notes.pinned_notes_design_object_fkey",
+   "kind": "constraint",
+   "parent": "ui.pinned_notes",
+   "props": {
+    "columns": [
+     "design",
+     "object"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "pinned_notes_design_object_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "objects_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "cortex.objects"
+   }
+  },
+  {
+   "key": "ui.pinned_notes.pinned_notes_design_perspective_fkey",
+   "kind": "constraint",
+   "parent": "ui.pinned_notes",
+   "props": {
+    "columns": [
+     "design",
+     "perspective"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "pinned_notes_design_perspective_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, perspective) REFERENCES ui.custom_perspectives(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "custom_perspectives_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "ui.custom_perspectives"
+   }
+  },
+  {
+   "key": "ui.pinned_notes.pinned_notes_design_turn_fkey",
+   "kind": "constraint",
+   "parent": "ui.pinned_notes",
+   "props": {
+    "columns": [
+     "design",
+     "turn"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "pinned_notes_design_turn_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "turns_design_id_key",
+    "ref_columns": [
+     "design",
+     "id"
+    ],
+    "ref_table": "cortex.turns"
+   }
+  },
+  {
+   "key": "ui.subject_areas.subject_areas_design_fkey",
+   "kind": "constraint",
+   "parent": "ui.subject_areas",
+   "props": {
+    "columns": [
+     "design"
+    ],
+    "condeferrable": true,
+    "condeferred": true,
+    "confdeltype": "c",
+    "confmatchtype": "s",
+    "confupdtype": "a",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "subject_areas_design_fkey",
+    "connoinherit": true,
+    "contype": "f",
+    "convalidated": true,
+    "definition": "FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+    "index": "designs_pkey",
+    "ref_columns": [
+     "id"
+    ],
+    "ref_table": "cortex.designs"
    }
   },
   {
@@ -30404,6 +30323,50 @@
     "prosrc": "\nBEGIN\n  PERFORM cortex.rule_marks();\n  DELETE FROM pg_temp.rule_marks m WHERE m.rule = TG_ARGV[0];\n  RETURN NULL;\nEND ",
     "provolatile": "v",
     "returns": "trigger"
+   }
+  },
+  {
+   "key": "cortex.enforce_rules(owner text)",
+   "kind": "routine",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "=X/sf_owner",
+     "sf_owner=X/sf_owner",
+     "sf_service=X/sf_owner",
+     "sf_agent=X/sf_owner"
+    ],
+    "argument_types": [
+     "text"
+    ],
+    "arguments": "owner text",
+    "comment": "puts the triggers of every rule view of a namespace on each table the view reads; returns how many tables it guarded",
+    "create": "CREATE OR REPLACE FUNCTION cortex.enforce_rules(owner text)\n RETURNS integer\n LANGUAGE plpgsql\nAS $function$\nDECLARE\n  v     record;\n  t     record;\n  name  text;\n  count integer := 0;\nBEGIN\n  FOR v IN\n    SELECT c.oid, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n    WHERE n.nspname = owner AND c.relkind = 'v' AND c.relname LIKE 'broken\\_%' ORDER BY c.relname\n  LOOP\n    name := 'rule:' || owner || '.' || substr(v.relname, 8);\n    IF length(name || ':again') > 63 THEN\n      RAISE EXCEPTION 'rule name % is too long for its triggers (63 bytes with :again)', name;\n    END IF;\n    FOR t IN\n      SELECT DISTINCT d.refobjid::regclass AS tab\n      FROM pg_rewrite r JOIN pg_depend d ON d.classid = 'pg_rewrite'::regclass AND d.objid = r.oid\n      JOIN pg_class rc ON rc.oid = d.refobjid\n      WHERE r.ev_class = v.oid AND d.refclassid = 'pg_class'::regclass AND rc.relkind IN ('r', 'p')\n    LOOP\n      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s', name, t.tab);\n      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s', name || ':again', t.tab);\n      EXECUTE format('CREATE CONSTRAINT TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON %s DEFERRABLE INITIALLY DEFERRED '\n                     'FOR EACH ROW EXECUTE FUNCTION cortex.rule_check(%L)', name, t.tab, owner || '.' || v.relname);\n      EXECUTE format('CREATE TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON %s '\n                     'FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again(%L)', name || ':again', t.tab, owner || '.' || v.relname);\n      count := count + 1;\n    END LOOP;\n  END LOOP;\n  RETURN count;\nEND $function$\n",
+    "language": "plpgsql",
+    "owner": "sf_owner",
+    "proacl": [
+     "=X/sf_owner",
+     "sf_owner=X/sf_owner",
+     "sf_service=X/sf_owner",
+     "sf_agent=X/sf_owner"
+    ],
+    "proargnames": [
+     "owner"
+    ],
+    "procost": 100,
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "enforce_rules",
+    "pronargdefaults": 0,
+    "pronargs": 1,
+    "proparallel": "u",
+    "proretset": false,
+    "prorows": 0,
+    "prosecdef": false,
+    "prosrc": "\nDECLARE\n  v     record;\n  t     record;\n  name  text;\n  count integer := 0;\nBEGIN\n  FOR v IN\n    SELECT c.oid, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n    WHERE n.nspname = owner AND c.relkind = 'v' AND c.relname LIKE 'broken\\_%' ORDER BY c.relname\n  LOOP\n    name := 'rule:' || owner || '.' || substr(v.relname, 8);\n    IF length(name || ':again') > 63 THEN\n      RAISE EXCEPTION 'rule name % is too long for its triggers (63 bytes with :again)', name;\n    END IF;\n    FOR t IN\n      SELECT DISTINCT d.refobjid::regclass AS tab\n      FROM pg_rewrite r JOIN pg_depend d ON d.classid = 'pg_rewrite'::regclass AND d.objid = r.oid\n      JOIN pg_class rc ON rc.oid = d.refobjid\n      WHERE r.ev_class = v.oid AND d.refclassid = 'pg_class'::regclass AND rc.relkind IN ('r', 'p')\n    LOOP\n      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s', name, t.tab);\n      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s', name || ':again', t.tab);\n      EXECUTE format('CREATE CONSTRAINT TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON %s DEFERRABLE INITIALLY DEFERRED '\n                     'FOR EACH ROW EXECUTE FUNCTION cortex.rule_check(%L)', name, t.tab, owner || '.' || v.relname);\n      EXECUTE format('CREATE TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON %s '\n                     'FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again(%L)', name || ':again', t.tab, owner || '.' || v.relname);\n      count := count + 1;\n    END LOOP;\n  END LOOP;\n  RETURN count;\nEND ",
+    "provolatile": "v",
+    "returns": "integer"
    }
   },
   {
@@ -30566,6 +30529,43 @@
     "prosecdef": false,
     "prosrc": "\nBEGIN\n  PERFORM pg_notify('schema_forge_turns', NEW.design::text || ' ' || NEW.seq::text);\n  RETURN NULL;\nEND ",
     "provolatile": "v",
+    "returns": "trigger"
+   }
+  },
+  {
+   "key": "cortex.check_kinds()",
+   "kind": "routine",
+   "parent": "cortex",
+   "props": {
+    "acl": [
+     "=X/sf_owner",
+     "sf_owner=X/sf_owner",
+     "sf_service=X/sf_owner",
+     "sf_agent=X/sf_owner"
+    ],
+    "arguments": "",
+    "create": "CREATE OR REPLACE FUNCTION cortex.check_kinds()\n RETURNS trigger\n LANGUAGE plpgsql\n STABLE\nAS $function$\nDECLARE\n  k cortex.object_kinds;\n  e text;\nBEGIN\n  SELECT engine INTO e FROM cortex.designs WHERE id = NEW.design;\n  SELECT * INTO k FROM cortex.object_kinds WHERE engine = e AND kind = NEW.kind;\n  IF k.id IS NULL THEN\n    RAISE EXCEPTION 'kind % is not declared for %', NEW.kind, e USING ERRCODE = 'check_violation';\n  END IF;\n  IF k.scope = 'server' AND NEW.namespace IS NOT NULL THEN\n    RAISE EXCEPTION 'a % lives in the server, in no namespace', NEW.kind USING ERRCODE = 'check_violation';\n  END IF;\n  IF k.scope = 'namespace' AND NEW.namespace IS NULL THEN\n    RAISE EXCEPTION 'a % lives in a namespace', NEW.kind USING ERRCODE = 'check_violation';\n  END IF;\n  RETURN NEW;\nEND $function$\n",
+    "language": "plpgsql",
+    "owner": "sf_owner",
+    "proacl": [
+     "=X/sf_owner",
+     "sf_owner=X/sf_owner",
+     "sf_service=X/sf_owner",
+     "sf_agent=X/sf_owner"
+    ],
+    "procost": 100,
+    "proisstrict": false,
+    "prokind": "f",
+    "proleakproof": false,
+    "proname": "check_kinds",
+    "pronargdefaults": 0,
+    "pronargs": 0,
+    "proparallel": "u",
+    "proretset": false,
+    "prorows": 0,
+    "prosecdef": false,
+    "prosrc": "\nDECLARE\n  k cortex.object_kinds;\n  e text;\nBEGIN\n  SELECT engine INTO e FROM cortex.designs WHERE id = NEW.design;\n  SELECT * INTO k FROM cortex.object_kinds WHERE engine = e AND kind = NEW.kind;\n  IF k.id IS NULL THEN\n    RAISE EXCEPTION 'kind % is not declared for %', NEW.kind, e USING ERRCODE = 'check_violation';\n  END IF;\n  IF k.scope = 'server' AND NEW.namespace IS NOT NULL THEN\n    RAISE EXCEPTION 'a % lives in the server, in no namespace', NEW.kind USING ERRCODE = 'check_violation';\n  END IF;\n  IF k.scope = 'namespace' AND NEW.namespace IS NULL THEN\n    RAISE EXCEPTION 'a % lives in a namespace', NEW.kind USING ERRCODE = 'check_violation';\n  END IF;\n  RETURN NEW;\nEND ",
+    "provolatile": "s",
     "returns": "trigger"
    }
   },

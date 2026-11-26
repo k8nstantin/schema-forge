@@ -31,6 +31,7 @@ def main():
     R.load(DB, rows)
     n = C.psql("SELECT count(*) || ' declared options, ' || count(DISTINCT part) || ' parts' FROM cortex.option_declarations", DB)
     print(f"== declared options: {n}; a MySQL {snap['version']} design loaded through the guard")
+    design = C.psql("SELECT id FROM cortex.designs LIMIT 1", DB)
     tab = C.psql("SELECT id FROM cortex.objects WHERE kind = 'table' ORDER BY position LIMIT 1", DB)
     view = C.psql("SELECT v.id FROM cortex.views v JOIN cortex.objects o ON o.id = v.id ORDER BY o.position LIMIT 1", DB)
     # one option only a later version has, to prove the guard by version
@@ -50,14 +51,28 @@ def main():
         ("a table taken out of its namespace", f"UPDATE cortex.objects SET namespace = NULL WHERE id = '{tab}';", False),
         ("a tablespace put in a namespace", f"UPDATE cortex.objects SET namespace = (SELECT namespace FROM cortex.objects WHERE id = '{tab}') "
                                             "WHERE id = (SELECT id FROM cortex.objects WHERE kind = 'tablespace' LIMIT 1);", False),
+        # flavors (decision schema-per-engine): what the design's flavor lacks is refused as it is written
+        ("a MyISAM table on Cloud SQL", f"UPDATE cortex.designs SET flavor = 'mysql/cloudsql' WHERE id = '{design}'; "
+                                         f"""UPDATE cortex.objects SET options = options || '{{"engine": "MyISAM"}}' WHERE id = '{tab}';""", False),
+        ("a MyISAM table on RDS (warned, not refused)", f"UPDATE cortex.designs SET flavor = 'mysql/rds' WHERE id = '{design}'; "
+                                         f"""UPDATE cortex.objects SET options = options || '{{"engine": "MyISAM"}}' WHERE id = '{tab}';""", True),
+        ("a loadable function on Cloud SQL", f"UPDATE cortex.designs SET flavor = 'mysql/cloudsql' WHERE id = '{design}'; "
+                                         f"INSERT INTO cortex.objects (design, namespace, kind, name, position) VALUES ('{design}', NULL, 'loadable_function', 'f_x', 999999);", False),
+        ("a loadable function on the community server", f"INSERT INTO cortex.objects (design, namespace, kind, name, position) VALUES ('{design}', NULL, 'loadable_function', 'f_x', 999999);", True),
+        ("a flavor of another engine", f"UPDATE cortex.designs SET flavor = 'postgresql/alloydb' WHERE id = '{design}';", False),
         ("a tablespace in no namespace, renamed", "UPDATE cortex.objects SET name = 'ts_renamed' WHERE id = (SELECT id FROM cortex.objects WHERE kind = 'tablespace' LIMIT 1);", True),
     ]
     bad = 0
     for what, sql, want in cases:
         ok, err = run(sql)
-        right = ok == want and (want or "check_options" in err or "not declared" in err or "is a " in err or "may " in err or "is not in" in err or "lives in" in err)
+        right = ok == want and (want or "check_options" in err or "not declared" in err or "is a " in err or "may " in err or "is not in" in err or "lives in" in err or " lacks " in err or " has no " in err or "foreign key" in err or "check constraint" in err)
         bad += not right
         print(f"  {'pass' if right else 'FAIL'}  {what}: {'taken' if ok else 'refused (' + err[7:110] + ')'}")
+    print("== cortex.misfits: what this design holds that a target would not take")
+    for target in ("'8.0', NULL", "'9.7', NULL", "'8.4', 'mysql/cloudsql'", "'8.4', 'mysql/rds'", "'5.7', 'mysql/aurora'"):
+        got = C.psql(f"SELECT coalesce(string_agg(n || ' ' || severity || ': ' || what || ' ' || name || ' (' || about || ')', E'\\n      ' ORDER BY n DESC), 'nothing') "
+                     f"FROM (SELECT count(*) n, severity, what, name, about FROM cortex.misfits('{design}', {target}) GROUP BY 2, 3, 4, 5) x", DB)
+        print(f"  to {target.replace(chr(39), '')}: {got}")
     print(f"{'pass' if not bad else 'FAIL'}  the options' guard: {bad} failures")
     return 1 if bad else 0
 
