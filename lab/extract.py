@@ -366,6 +366,7 @@ PG_PARTS = {
         'arguments', pg_get_function_arguments(p.oid), 'owner', pg_get_userbyid(p.proowner),
         'comment', obj_description(p.oid, 'pg_proc'), 'acl', p.proacl::text[],
         'create', CASE WHEN p.prokind <> 'a' THEN pg_get_functiondef(p.oid) END,
+        'sql_body', p.prosqlbody IS NOT NULL,
         'argument_types', (SELECT jsonb_agg(format_type(t, NULL) ORDER BY n) FROM unnest(coalesce(p.proallargtypes, p.proargtypes::oid[])) WITH ORDINALITY x(t, n)),
         'argument_defaults', pg_get_expr(p.proargdefaults, 0),
         'made_by', (SELECT CASE d.deptype WHEN 'e' THEN 'extension' ELSE 'type' END FROM pg_depend d

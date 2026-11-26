@@ -4324,7 +4324,8 @@
     "prosecdef": false,
     "prosrc": " SELECT id FROM shop.orders WHERE status = 'paid' ",
     "provolatile": "s",
-    "returns": "SETOF integer"
+    "returns": "SETOF integer",
+    "sql_body": false
    }
   },
   {
@@ -4349,7 +4350,8 @@
     "prosecdef": false,
     "prosrc": " BEGIN NEW.status := COALESCE(NEW.status, 'new'); RETURN NEW; END ",
     "provolatile": "v",
-    "returns": "trigger"
+    "returns": "trigger",
+    "sql_body": false
    }
   },
   {
@@ -4379,7 +4381,8 @@
     "prosecdef": false,
     "prosrc": "range_constructor2",
     "provolatile": "i",
-    "returns": "features.floatrange"
+    "returns": "features.floatrange",
+    "sql_body": false
    }
   },
   {
@@ -4410,7 +4413,8 @@
     "prosecdef": false,
     "prosrc": "range_constructor3",
     "provolatile": "i",
-    "returns": "features.floatrange"
+    "returns": "features.floatrange",
+    "sql_body": false
    }
   },
   {
@@ -4436,7 +4440,8 @@
     "prosecdef": false,
     "prosrc": "multirange_constructor0",
     "provolatile": "i",
-    "returns": "features.floatmultirange"
+    "returns": "features.floatmultirange",
+    "sql_body": false
    }
   },
   {
@@ -4465,7 +4470,8 @@
     "prosecdef": false,
     "prosrc": "multirange_constructor1",
     "provolatile": "i",
-    "returns": "features.floatmultirange"
+    "returns": "features.floatmultirange",
+    "sql_body": false
    }
   },
   {
@@ -4497,7 +4503,8 @@
     "prosecdef": false,
     "prosrc": "multirange_constructor2",
     "provolatile": "i",
-    "returns": "features.floatmultirange"
+    "returns": "features.floatmultirange",
+    "sql_body": false
    }
   },
   {
@@ -4528,7 +4535,8 @@
     "prosecdef": false,
     "prosrc": " SELECT (m * 100)::bigint ",
     "provolatile": "i",
-    "returns": "bigint"
+    "returns": "bigint",
+    "sql_body": false
    }
   },
   {
@@ -4572,7 +4580,8 @@
     "prosecdef": true,
     "prosrc": " BEGIN RETURN QUERY SELECT k.id, k.name FROM features.kinds k WHERE k.status = p_status; END ",
     "provolatile": "s",
-    "returns": "TABLE(id bigint, name text)"
+    "returns": "TABLE(id bigint, name text)",
+    "sql_body": false
    }
   },
   {
@@ -4605,7 +4614,8 @@
     "prorows": 0,
     "prosecdef": false,
     "prosrc": " BEGIN DELETE FROM features.scratch; n := 0; END ",
-    "provolatile": "v"
+    "provolatile": "v",
+    "sql_body": false
    }
   },
   {
@@ -4630,7 +4640,8 @@
     "prosecdef": false,
     "prosrc": " BEGIN RETURN NULL; END ",
     "provolatile": "v",
-    "returns": "trigger"
+    "returns": "trigger",
+    "sql_body": false
    }
   },
   {
@@ -4655,7 +4666,8 @@
     "prosecdef": false,
     "prosrc": " SELECT 1 ",
     "provolatile": "s",
-    "returns": "integer"
+    "returns": "integer",
+    "sql_body": false
    }
   },
   {
@@ -4685,7 +4697,8 @@
     "prosecdef": false,
     "prosrc": "hstore_in",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -4715,7 +4728,8 @@
     "prosecdef": false,
     "prosrc": "hstore_out",
     "provolatile": "i",
-    "returns": "cstring"
+    "returns": "cstring",
+    "sql_body": false
    }
   },
   {
@@ -4745,7 +4759,8 @@
     "prosecdef": false,
     "prosrc": "hstore_recv",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -4775,7 +4790,8 @@
     "prosecdef": false,
     "prosrc": "hstore_send",
     "provolatile": "i",
-    "returns": "bytea"
+    "returns": "bytea",
+    "sql_body": false
    }
   },
   {
@@ -4805,7 +4821,8 @@
     "prosecdef": false,
     "prosrc": "hstore_version_diag",
     "provolatile": "i",
-    "returns": "integer"
+    "returns": "integer",
+    "sql_body": false
    }
   },
   {
@@ -4836,7 +4853,8 @@
     "prosecdef": false,
     "prosrc": "hstore_fetchval",
     "provolatile": "i",
-    "returns": "text"
+    "returns": "text",
+    "sql_body": false
    }
   },
   {
@@ -4867,7 +4885,8 @@
     "prosecdef": false,
     "prosrc": "hstore_slice_to_array",
     "provolatile": "i",
-    "returns": "text[]"
+    "returns": "text[]",
+    "sql_body": false
    }
   },
   {
@@ -4898,7 +4917,8 @@
     "prosecdef": false,
     "prosrc": "hstore_slice_to_hstore",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -4929,7 +4949,8 @@
     "prosecdef": false,
     "prosrc": "hstore_exists",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -4960,7 +4981,8 @@
     "prosecdef": false,
     "prosrc": "hstore_exists",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -4991,7 +5013,8 @@
     "prosecdef": false,
     "prosrc": "hstore_exists_any",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5022,7 +5045,8 @@
     "prosecdef": false,
     "prosrc": "hstore_exists_all",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5053,7 +5077,8 @@
     "prosecdef": false,
     "prosrc": "hstore_defined",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5084,7 +5109,8 @@
     "prosecdef": false,
     "prosrc": "hstore_defined",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5115,7 +5141,8 @@
     "prosecdef": false,
     "prosrc": "hstore_delete",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -5146,7 +5173,8 @@
     "prosecdef": false,
     "prosrc": "hstore_delete_array",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -5177,7 +5205,8 @@
     "prosecdef": false,
     "prosrc": "hstore_delete_hstore",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -5208,7 +5237,8 @@
     "prosecdef": false,
     "prosrc": "hstore_concat",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -5239,7 +5269,8 @@
     "prosecdef": false,
     "prosrc": "hstore_contains",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5270,7 +5301,8 @@
     "prosecdef": false,
     "prosrc": "hstore_contained",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5301,7 +5333,8 @@
     "prosecdef": false,
     "prosrc": "hstore_from_text",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -5332,7 +5365,8 @@
     "prosecdef": false,
     "prosrc": "hstore_from_text",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -5363,7 +5397,8 @@
     "prosecdef": false,
     "prosrc": "hstore_from_arrays",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -5393,7 +5428,8 @@
     "prosecdef": false,
     "prosrc": "hstore_from_array",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -5423,7 +5459,8 @@
     "prosecdef": false,
     "prosrc": "hstore_to_json",
     "provolatile": "i",
-    "returns": "json"
+    "returns": "json",
+    "sql_body": false
    }
   },
   {
@@ -5453,7 +5490,8 @@
     "prosecdef": false,
     "prosrc": "hstore_to_json_loose",
     "provolatile": "i",
-    "returns": "json"
+    "returns": "json",
+    "sql_body": false
    }
   },
   {
@@ -5483,7 +5521,8 @@
     "prosecdef": false,
     "prosrc": "hstore_to_jsonb",
     "provolatile": "i",
-    "returns": "jsonb"
+    "returns": "jsonb",
+    "sql_body": false
    }
   },
   {
@@ -5513,7 +5552,8 @@
     "prosecdef": false,
     "prosrc": "hstore_to_jsonb_loose",
     "provolatile": "i",
-    "returns": "jsonb"
+    "returns": "jsonb",
+    "sql_body": false
    }
   },
   {
@@ -5543,7 +5583,8 @@
     "prosecdef": false,
     "prosrc": "hstore_from_record",
     "provolatile": "i",
-    "returns": "every.hstore"
+    "returns": "every.hstore",
+    "sql_body": false
    }
   },
   {
@@ -5573,7 +5614,8 @@
     "prosecdef": false,
     "prosrc": "hstore_to_array",
     "provolatile": "i",
-    "returns": "text[]"
+    "returns": "text[]",
+    "sql_body": false
    }
   },
   {
@@ -5603,7 +5645,8 @@
     "prosecdef": false,
     "prosrc": "hstore_to_matrix",
     "provolatile": "i",
-    "returns": "text[]"
+    "returns": "text[]",
+    "sql_body": false
    }
   },
   {
@@ -5633,7 +5676,8 @@
     "prosecdef": false,
     "prosrc": "hstore_akeys",
     "provolatile": "i",
-    "returns": "text[]"
+    "returns": "text[]",
+    "sql_body": false
    }
   },
   {
@@ -5663,7 +5707,8 @@
     "prosecdef": false,
     "prosrc": "hstore_avals",
     "provolatile": "i",
-    "returns": "text[]"
+    "returns": "text[]",
+    "sql_body": false
    }
   },
   {
@@ -5693,7 +5738,8 @@
     "prosecdef": false,
     "prosrc": "hstore_skeys",
     "provolatile": "i",
-    "returns": "SETOF text"
+    "returns": "SETOF text",
+    "sql_body": false
    }
   },
   {
@@ -5723,7 +5769,8 @@
     "prosecdef": false,
     "prosrc": "hstore_svals",
     "provolatile": "i",
-    "returns": "SETOF text"
+    "returns": "SETOF text",
+    "sql_body": false
    }
   },
   {
@@ -5765,7 +5812,8 @@
     "prosecdef": false,
     "prosrc": "hstore_each",
     "provolatile": "i",
-    "returns": "SETOF record"
+    "returns": "SETOF record",
+    "sql_body": false
    }
   },
   {
@@ -5796,7 +5844,8 @@
     "prosecdef": false,
     "prosrc": "hstore_populate_record",
     "provolatile": "i",
-    "returns": "anyelement"
+    "returns": "anyelement",
+    "sql_body": false
    }
   },
   {
@@ -5827,7 +5876,8 @@
     "prosecdef": false,
     "prosrc": "hstore_eq",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5858,7 +5908,8 @@
     "prosecdef": false,
     "prosrc": "hstore_ne",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5889,7 +5940,8 @@
     "prosecdef": false,
     "prosrc": "hstore_gt",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5920,7 +5972,8 @@
     "prosecdef": false,
     "prosrc": "hstore_ge",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5951,7 +6004,8 @@
     "prosecdef": false,
     "prosrc": "hstore_lt",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -5982,7 +6036,8 @@
     "prosecdef": false,
     "prosrc": "hstore_le",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -6013,7 +6068,8 @@
     "prosecdef": false,
     "prosrc": "hstore_cmp",
     "provolatile": "i",
-    "returns": "integer"
+    "returns": "integer",
+    "sql_body": false
    }
   },
   {
@@ -6043,7 +6099,8 @@
     "prosecdef": false,
     "prosrc": "hstore_hash",
     "provolatile": "i",
-    "returns": "integer"
+    "returns": "integer",
+    "sql_body": false
    }
   },
   {
@@ -6073,7 +6130,8 @@
     "prosecdef": false,
     "prosrc": "ghstore_in",
     "provolatile": "i",
-    "returns": "every.ghstore"
+    "returns": "every.ghstore",
+    "sql_body": false
    }
   },
   {
@@ -6103,7 +6161,8 @@
     "prosecdef": false,
     "prosrc": "ghstore_out",
     "provolatile": "i",
-    "returns": "cstring"
+    "returns": "cstring",
+    "sql_body": false
    }
   },
   {
@@ -6133,7 +6192,8 @@
     "prosecdef": false,
     "prosrc": "ghstore_compress",
     "provolatile": "i",
-    "returns": "internal"
+    "returns": "internal",
+    "sql_body": false
    }
   },
   {
@@ -6163,7 +6223,8 @@
     "prosecdef": false,
     "prosrc": "ghstore_decompress",
     "provolatile": "i",
-    "returns": "internal"
+    "returns": "internal",
+    "sql_body": false
    }
   },
   {
@@ -6195,7 +6256,8 @@
     "prosecdef": false,
     "prosrc": "ghstore_penalty",
     "provolatile": "i",
-    "returns": "internal"
+    "returns": "internal",
+    "sql_body": false
    }
   },
   {
@@ -6226,7 +6288,8 @@
     "prosecdef": false,
     "prosrc": "ghstore_picksplit",
     "provolatile": "i",
-    "returns": "internal"
+    "returns": "internal",
+    "sql_body": false
    }
   },
   {
@@ -6257,7 +6320,8 @@
     "prosecdef": false,
     "prosrc": "ghstore_union",
     "provolatile": "i",
-    "returns": "every.ghstore"
+    "returns": "every.ghstore",
+    "sql_body": false
    }
   },
   {
@@ -6289,7 +6353,8 @@
     "prosecdef": false,
     "prosrc": "ghstore_same",
     "provolatile": "i",
-    "returns": "internal"
+    "returns": "internal",
+    "sql_body": false
    }
   },
   {
@@ -6323,7 +6388,8 @@
     "prosecdef": false,
     "prosrc": "ghstore_consistent",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -6354,7 +6420,8 @@
     "prosecdef": false,
     "prosrc": "gin_extract_hstore",
     "provolatile": "i",
-    "returns": "internal"
+    "returns": "internal",
+    "sql_body": false
    }
   },
   {
@@ -6388,7 +6455,8 @@
     "prosecdef": false,
     "prosrc": "gin_extract_hstore_query",
     "provolatile": "i",
-    "returns": "internal"
+    "returns": "internal",
+    "sql_body": false
    }
   },
   {
@@ -6423,7 +6491,8 @@
     "prosecdef": false,
     "prosrc": "gin_consistent_hstore",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": false
    }
   },
   {
@@ -6454,7 +6523,8 @@
     "prosecdef": false,
     "prosrc": "hstore_hash_extended",
     "provolatile": "i",
-    "returns": "bigint"
+    "returns": "bigint",
+    "sql_body": false
    }
   },
   {
@@ -6484,7 +6554,8 @@
     "prosecdef": false,
     "prosrc": "ghstore_options",
     "provolatile": "i",
-    "returns": "void"
+    "returns": "void",
+    "sql_body": false
    }
   },
   {
@@ -6514,7 +6585,8 @@
     "prosecdef": false,
     "prosrc": "hstore_subscript_handler",
     "provolatile": "i",
-    "returns": "internal"
+    "returns": "internal",
+    "sql_body": false
    }
   },
   {
@@ -6544,7 +6616,8 @@
     "prosecdef": false,
     "prosrc": "range_constructor2",
     "provolatile": "i",
-    "returns": "every.floatrange"
+    "returns": "every.floatrange",
+    "sql_body": false
    }
   },
   {
@@ -6575,7 +6648,8 @@
     "prosecdef": false,
     "prosrc": "range_constructor3",
     "provolatile": "i",
-    "returns": "every.floatrange"
+    "returns": "every.floatrange",
+    "sql_body": false
    }
   },
   {
@@ -6601,7 +6675,8 @@
     "prosecdef": false,
     "prosrc": "multirange_constructor0",
     "provolatile": "i",
-    "returns": "every.floatmultirange"
+    "returns": "every.floatmultirange",
+    "sql_body": false
    }
   },
   {
@@ -6630,7 +6705,8 @@
     "prosecdef": false,
     "prosrc": "multirange_constructor1",
     "provolatile": "i",
-    "returns": "every.floatmultirange"
+    "returns": "every.floatmultirange",
+    "sql_body": false
    }
   },
   {
@@ -6662,7 +6738,8 @@
     "prosecdef": false,
     "prosrc": "multirange_constructor2",
     "provolatile": "i",
-    "returns": "every.floatmultirange"
+    "returns": "every.floatmultirange",
+    "sql_body": false
    }
   },
   {
@@ -6695,7 +6772,8 @@
     "prosecdef": false,
     "prosrc": "",
     "provolatile": "i",
-    "returns": "integer"
+    "returns": "integer",
+    "sql_body": true
    }
   },
   {
@@ -6728,7 +6806,8 @@
     "prosecdef": false,
     "prosrc": "",
     "provolatile": "i",
-    "returns": "integer"
+    "returns": "integer",
+    "sql_body": true
    }
   },
   {
@@ -6755,7 +6834,8 @@
     "prosecdef": false,
     "prosrc": "aggregate_dummy",
     "provolatile": "i",
-    "returns": "integer"
+    "returns": "integer",
+    "sql_body": false
    }
   },
   {
@@ -6785,7 +6865,8 @@
     "prorows": 0,
     "prosecdef": false,
     "prosrc": " BEGIN PERFORM p; END ",
-    "provolatile": "v"
+    "provolatile": "v",
+    "sql_body": false
    }
   },
   {
@@ -6810,7 +6891,8 @@
     "prosecdef": false,
     "prosrc": " BEGIN RAISE NOTICE 'ddl'; END ",
     "provolatile": "v",
-    "returns": "event_trigger"
+    "returns": "event_trigger",
+    "sql_body": false
    }
   },
   {
@@ -6843,7 +6925,8 @@
     "prosecdef": false,
     "prosrc": "",
     "provolatile": "i",
-    "returns": "boolean"
+    "returns": "boolean",
+    "sql_body": true
    }
   },
   {
@@ -6876,7 +6959,8 @@
     "prosecdef": false,
     "prosrc": "",
     "provolatile": "i",
-    "returns": "integer"
+    "returns": "integer",
+    "sql_body": true
    }
   },
   {

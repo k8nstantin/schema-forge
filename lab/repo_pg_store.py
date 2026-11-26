@@ -343,7 +343,7 @@ def from_locked(st):
             "labels": [e["value"] for e in sorted(enum[t["id"]], key=lambda e: e["position"])] or None,
             "attributes": json.dumps([{"name": f["name"], "type": f["type"]} for f in fields]) if fields else None,
             "base": d.get("base"), "not_null": not d.get("nullable", True), "default_value": d.get("default_value"),
-            "collation_name": d.get("collation"), "range_subtype": t["range_subtype"], "multirange": t["multirange"], "owner": t["owner"], "acl": t["acl"]}
+            "collation_name": d.get("collation"), "range_subtype": t["range_subtype"], "multirange": t["multirange"], "owner": None, "acl": None}
     for c in st["engine_postgresql.collations"].values():
         out["engine_postgresql.collation"][c["id"]] = {**{k: c[k] for k in ("id", "name", "provider", "locale", "lc_collate", "lc_ctype",
                                                                           "deterministic", "comment")}, "namespace_id": c["namespace"]}
@@ -457,7 +457,7 @@ def main():
             if p["kind"] == "index":
                 schema = home[p["parent"]]
                 got, want = P.index_def(S, names[(schema, p["key"][len(schema) + 1:])]), pr["definition"]
-            elif p["kind"] == "constraint" and pr["contype"] in "pufcxn":
+            elif p["kind"] == "constraint" and pr["contype"] in "pufcxn" and p["parent"] not in P.UNHELD_KEYS:
                 c = next(c for c in S.st["core.constraint"].values() if c["name"] == pr["conname"]
                          and f"{S.schema(S.objs[c['object_id']])}.{S.objs[c['object_id']]['name']}" == p["parent"])
                 got, want = P.constraint_def(S, c), pr["definition"]
@@ -465,7 +465,7 @@ def main():
                 o = next(o for o in S.objs.values() if o["kind"] == "trigger" and o["name"] == pr["tgname"]
                          and f"{S.schema(S.objs[o['parent_id']])}.{S.objs[o['parent_id']]['name']}" == p["parent"])
                 got, want = P.trigger_def(S, o), pr["definition"]
-            elif p["kind"] == "routine" and not pr.get("made_by"):
+            elif p["kind"] == "routine" and not pr.get("made_by") and pr.get("prokind") in ("f", "p"):
                 o = next(o for o in S.objs.values() if o["kind"] in ("function", "procedure") and o["name"] == pr["proname"]
                          and S.schema(o) == p["parent"] and o["signature"] == p["key"][p["key"].index("("):])
                 got, want = P.function_def(S, o), pr["create"]

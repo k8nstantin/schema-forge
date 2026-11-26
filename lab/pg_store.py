@@ -58,6 +58,10 @@ def split_args(text):
     return out + ([cur.strip()] if cur.strip() else [])
 
 
+UNHELD = {}   # what rows_of left out: no place for it in the design yet
+UNHELD_KEYS = set()
+
+
 def rows_of(snap):
     n = [0]
 
@@ -65,7 +69,14 @@ def rows_of(snap):
         n[0] += 1
         return n[0]
     out, by = defaultdict(list), defaultdict(list)
+    # a relation of a kind the design holds no place for yet, and every part on it, is left out and counted, not guessed
+    unheld = {p["key"] for p in snap["parts"] if p["kind"] == "relation" and p["props"]["relkind"] not in "rpvmS"
+              or p["kind"] == "routine" and p["props"].get("prokind") not in ("f", "p")}
+    UNHELD_KEYS.update(unheld)
     for p in snap["parts"]:
+        if p["key"] in unheld or p["parent"] in unheld:
+            UNHELD[p["kind"]] = UNHELD.get(p["kind"], 0) + 1
+            continue
         by[p["kind"]].append(p)
     server = nid()
     out["core.server"].append({"id": server, "engine": "postgresql", "version": snap["version"], "name": f"postgresql-{snap['version']}"})
@@ -211,7 +222,7 @@ def rows_of(snap):
         i = obj[p["key"]] = nid()
         kind = {"f": "function", "p": "procedure"}[pr["prokind"]]
         out["core.object"].append({"id": i, "namespace_id": ns[p["parent"]], "parent_id": None, "kind": kind, "name": pr["proname"],
-                                   "signature": p["key"][p["key"].index("("):], "comment": pr.get("comment"), "body": pr["prosrc"]})
+                                   "signature": p["key"][p["key"].index("("):], "comment": pr.get("comment"), "body": sql_body(pr) if pr.get("sql_body") else pr["prosrc"]})
         out["core.routine"].append({"id": i, "kind": kind, "returns": pr.get("returns") if kind == "function" else None, "language": pr["language"],
                                     "deterministic": pr["provolatile"] == "i", "security": "definer" if pr["prosecdef"] else "invoker"})
         out["engine_postgresql.routine"].append({"id": i, "volatility": pr["provolatile"], "parallel": pr["proparallel"], "strict": pr["proisstrict"],
@@ -433,8 +444,17 @@ def function_def(S, o):
     for c in pr.get("config") or []:
         k, _, v = c.partition("=")
         head += f" SET {k} TO '{v}'\n"
+    if o["body"].startswith(("RETURN ", "BEGIN ATOMIC")):   # a SQL-standard body: no string, no AS
+        return head + o["body"] + "\n"
     tag = "$function$" if o["kind"] == "function" else "$procedure$"
     return head + f"AS {tag}{o['body']}{tag}\n"
+
+
+def sql_body(pr):
+    """A SQL-standard body (RETURN ..., BEGIN ATOMIC ... END), as pg_get_functiondef writes it: prosrc holds nothing of it."""
+    text = pr["create"]
+    i = min(k for k in (text.find("\nRETURN "), text.find("\nBEGIN ATOMIC")) if k >= 0)
+    return text[i + 1:].rstrip("\n")
 
 
 def lit(s):
