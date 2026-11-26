@@ -6,7 +6,8 @@ resolver = "3"
 # roles depend on each other in a way docs/engines.xml does not allow, or a database is named outside its engine.
 members = ["crates/*", "engines/*", "tools/*"]
 # An engine whose schema is designed before its crate is written: its folder holds owner.toml and schema/ only.
-exclude = ["engines/postgresql"]
+# tools/local: Python a person or an agent runs on this machine (install, the hourly schema drift check), not a crate.
+exclude = ["engines/postgresql", "tools/local"]
 
 [workspace.package]
 version = "0.2.0"
