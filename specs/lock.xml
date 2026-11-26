@@ -87,7 +87,7 @@
   <file path="schema/cortex/workspace_identity.sql" sha256="54c4f0cdf87499196055275d9da3827fde725d8991ff1f96225d4e353bc2e564"/>
   <file path="schema/cortex/workspace_parameters.sql" sha256="c71f1706cfaa5a9d7e0b108c043e9991b0b057d4d60fe95803dce98de9e02646"/>
   <file path="schema/dump/schema_forge.sql" sha256="71faa2c0c4de8f2b747337cf9c950a8e040e5ed8b841e808e208289beee85a56"/>
-  <file path="schema/install.py" sha256="05e7d2cb2812e33b7ad9769c8f9bf92789db534eb7bb495be9686ad5b696b1c8"/>
+  <file path="schema/install.py" sha256="fc158abb39aa71c1da5e02a96bee0136809832625e22d2aa4991a5da6a77db9f"/>
   <file path="schema/ui/custom_perspectives.sql" sha256="0e976f07be723fc306540c6cd3e995f190b606b1b20bd44a1e8b884e9175a6bd"/>
   <file path="schema/ui/layout_pins.sql" sha256="9401c5bd57e962d459ea806d3b7b98bc56b276356f70e1d9a62406dfdfd3f4a7"/>
   <file path="schema/ui/object_places.sql" sha256="88769831c28161e8e2a00705481dbf9b758c65470f8aa78a4a09fdbe3f4ff438"/>
