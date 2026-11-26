@@ -322,9 +322,13 @@ fn a_table_whose_primary_key_is_not_the_one_column_id_is_the_finding_not_the_one
 fn a_rule_whose_view_is_not_named_broken_and_its_rule_is_a_finding_naming_the_file() {
     let c = copy("rule-view");
     let path = "schema/cortex/rules/triggers-on-a-table.sql";
-    let file = c.root().join(path);
-    let text = fs::read_to_string(&file).expect("read");
-    fs::write(&file, text.replace("cortex.broken_triggers_on_a_table", "cortex.triggers_on_a_table")).expect("written");
+    c.write(
+        path,
+        "-- triggers-on-a-table: Every trigger is on a table. Owner: cortex.\n\
+         CREATE VIEW cortex.triggers_on_a_table AS\n\
+         SELECT 'triggers-on-a-table' AS rule, (t.id)::text AS id FROM cortex.triggers t WHERE false;\n\n\
+         COMMENT ON VIEW cortex.triggers_on_a_table IS 'Every trigger is on a table.';\n",
+    );
     named(&check(c.root()), &[path]);
 }
 
