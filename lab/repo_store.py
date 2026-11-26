@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 import time
+import uuid
 from collections import Counter, defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -43,11 +44,14 @@ def rows_of(snap):
     out, by = defaultdict(list), defaultdict(list)
     for p in snap["parts"]:
         by[p["kind"]].append(p["props"])
-    out["cortex.object_kinds"] = [{"id": k, "name": k.title(), "position": i + 1} for i, k in enumerate(KINDS)]
+    design = str(uuid.uuid7())
+    out["cortex.designs"] = [{"id": design, "name": f"mysql-{version}", "engine": "mysql", "engine_version": version, "comment": None}]
+    out["cortex.object_kinds"] = [{"id": f"mysql/{k}", "engine": "mysql", "kind": k, "name": k.title(), "position": i + 1}
+                                  for i, k in enumerate(KINDS)]
     ns = {}
     for s in by["namespace"]:
         i = ns[s["SCHEMA_NAME"]] = nid()
-        out["cortex.namespaces"].append({"id": i, "parent": None, "name": s["SCHEMA_NAME"], "position": i, "comment": None})
+        out["cortex.namespaces"].append({"id": i, "design": design, "parent": None, "name": s["SCHEMA_NAME"], "position": i, "comment": None})
         out["engine_mysql.databases"].append({"id": i, "collation": s["DEFAULT_COLLATION_NAME"],
                                               "encryption": {"YES": True, "NO": False}.get(s.get("DEFAULT_ENCRYPTION"))})
     obj, col, broken = {}, {}, []
@@ -234,7 +238,7 @@ def rows_of(snap):
     return out, broken
 
 
-ORDER = ["cortex.object_kinds", "cortex.namespaces", "cortex.objects", "cortex.columns", "cortex.column_identities", "cortex.indexes",
+ORDER = ["cortex.designs", "cortex.object_kinds", "cortex.namespaces", "cortex.objects", "cortex.columns", "cortex.column_identities", "cortex.indexes",
          "cortex.index_parts", "cortex.constraints", "cortex.constraint_columns", "cortex.dependencies", "cortex.views",
          "cortex.routines", "cortex.routine_parameters", "cortex.triggers", "cortex.partitionings", "cortex.partitions",
          "engine_mysql.databases", "engine_mysql.tables", "engine_mysql.columns", "engine_mysql.indexes", "engine_mysql.index_parts",
@@ -259,7 +263,7 @@ def build(db):
            "DO $$ BEGIN CREATE ROLE sf_agent LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
            "DO $$ BEGIN CREATE ROLE sf_reader LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;", "postgres")
     C.psql(f"DROP DATABASE IF EXISTS {db} WITH (FORCE); CREATE DATABASE {db} OWNER sf_owner;", "postgres")
-    owners = SD.databases()["mysql"]
+    owners = SD.databases()["schema_forge"]
     script = "BEGIN;\nSET ROLE sf_owner;\n" + "".join(sql + "\n" for o in owners for _, sql in SD.version_one(o)) + "COMMIT;\n"
     C.psql(script, db)
 
@@ -459,7 +463,7 @@ def main():
                 exact[kind] += got.get((kind, schema, name)) is not None
                 continue
             exact[kind] += got.get((kind, schema, name)) == pr["__show_create"]
-        print(f"{'pass' if exact == n else 'FAIL'}  mysql {version}: {sum(len(v) for k, v in rows.items() if k != 'cortex.object_kinds')} rows in the locked design, "
+        print(f"{'pass' if exact == n else 'FAIL'}  mysql {version}: one design, {sum(len(v) for k, v in rows.items() if k not in ('cortex.object_kinds', 'cortex.designs'))} rows in the locked design, "
               f"loaded as sf_service with every rule held at commit in {t_load:.1f}s, {size}; written from it: "
               + ", ".join(f"{exact[k]}/{n[k]} {k}s" for k in sorted(n)) + (f"; {len(broken)} broken views not stored" if broken else ""))
         if roundtrip:

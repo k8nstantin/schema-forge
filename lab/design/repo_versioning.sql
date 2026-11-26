@@ -9,8 +9,9 @@ CREATE SCHEMA sf_log;
 CREATE FUNCTION sf_log.versioned() RETURNS TABLE (tab text) LANGUAGE sql STABLE AS $$
   SELECT n.nspname || '.' || c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind = 'r' AND (n.nspname LIKE 'engine\_%' OR n.nspname = 'ui' OR (n.nspname = 'cortex' AND c.relname NOT IN
-    ('schema_identity', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'schema_migrations',
-     'source_reads', 'branches', 'turns', 'operations', 'row_changes', 'savepoints', 'locked_versions')))
+    ('designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'schema_migrations',
+     'source_reads', 'branches', 'turns', 'operations', 'row_changes', 'savepoints', 'locked_versions')
+    AND c.relname NOT LIKE 'workspace\_%'))
   ORDER BY 1
 $$;
 
@@ -38,14 +39,14 @@ BEGIN
   RETURN NULL;
 END $$;
 
-CREATE FUNCTION sf_log.attach() RETURNS integer LANGUAGE plpgsql AS $$
+CREATE FUNCTION sf_log.attach(p_design uuid) RETURNS integer LANGUAGE plpgsql AS $$
 DECLARE r record; n integer := 0;
 BEGIN
   FOR r IN SELECT tab FROM sf_log.versioned() LOOP
     EXECUTE format('CREATE TRIGGER logged AFTER INSERT OR UPDATE OR DELETE ON %s FOR EACH ROW EXECUTE FUNCTION sf_log.record()', r.tab);
     n := n + 1;
   END LOOP;
-  INSERT INTO cortex.branches (name, head, current) VALUES ('main', NULL, true);
+  INSERT INTO cortex.branches (design, name, head, current) VALUES (p_design, 'main', NULL, true);
   RETURN n;
 END $$;
 
@@ -126,7 +127,7 @@ BEGIN
   SELECT * INTO b FROM cortex.branches WHERE name = p_branch;
   IF b.id IS NULL THEN RAISE EXCEPTION 'no branch %', p_branch; END IF;
   n := sf_log.move_to(b.head);
-  UPDATE cortex.branches SET current = (id = b.id);
+  UPDATE cortex.branches SET current = (id = b.id) WHERE design = b.design;
   RETURN n;
 END $$;
 
@@ -134,8 +135,8 @@ CREATE FUNCTION sf_log.branch(p_name text, p_from text DEFAULT NULL) RETURNS int
 DECLARE t uuid := coalesce((SELECT turn FROM cortex.savepoints WHERE name = p_from), (sf_log.current()).head); n integer;
 BEGIN
   n := sf_log.move_to(t);
-  INSERT INTO cortex.branches (name, head, current) VALUES (p_name, t, false);  -- it forks from t
-  UPDATE cortex.branches SET current = (name = p_name);
+  INSERT INTO cortex.branches (design, name, head, current) VALUES ((sf_log.current()).design, p_name, t, false);  -- it forks from t
+  UPDATE cortex.branches SET current = (name = p_name) WHERE design = (SELECT design FROM cortex.branches WHERE name = p_name);
   RETURN n;
 END $$;
 
@@ -151,16 +152,20 @@ END $$;
 CREATE FUNCTION sf_log.savepoint(p_name text) RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE t uuid := (sf_log.current()).head;
 BEGIN
-  INSERT INTO cortex.savepoints (name, turn, made_by, made_at) VALUES (p_name, t, 'lab', clock_timestamp())
-    ON CONFLICT (name) DO UPDATE SET turn = EXCLUDED.turn, made_at = EXCLUDED.made_at;
+  -- the name is unique per design, deferrable, so ON CONFLICT cannot take it: move the savepoint, or make it
+  UPDATE cortex.savepoints SET turn = t, made_at = clock_timestamp() WHERE design = (sf_log.current()).design AND name = p_name;
+  IF NOT FOUND THEN
+    INSERT INTO cortex.savepoints (design, name, turn, made_by, made_at) VALUES ((sf_log.current()).design, p_name, t, 'lab', clock_timestamp());
+  END IF;
   RETURN t;
 END $$;
 
 CREATE FUNCTION sf_log.lock_version(p_message text) RETURNS text LANGUAGE plpgsql AS $$
 DECLARE h text := sf_log.state_hash();
 BEGIN
-  INSERT INTO cortex.locked_versions (number, turn, hash, message, locked_by, locked_at)
-    VALUES (coalesce((SELECT max(number) FROM cortex.locked_versions), 0) + 1, (sf_log.current()).head, h, p_message, 'lab', clock_timestamp());
+  INSERT INTO cortex.locked_versions (design, number, turn, hash, message, locked_by, locked_at)
+    VALUES ((sf_log.current()).design, coalesce((SELECT max(number) FROM cortex.locked_versions WHERE design = (sf_log.current()).design), 0) + 1,
+            (sf_log.current()).head, h, p_message, 'lab', clock_timestamp());
   RETURN h;
 END $$;
 

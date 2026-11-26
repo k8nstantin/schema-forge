@@ -67,15 +67,16 @@ def edit(db, rnd, n, version):
         elif k < 0.93:
             # the ui, versioned like the design: an area and its objects, a perspective, pins, a note; names unique in the run
             tag = f"{n}_{rnd.randint(0, 10**9)}"
-            sql.append(f"""WITH a AS (INSERT INTO ui.subject_areas (name, position) VALUES ('area {tag}', (SELECT coalesce(max(position), 0) + 1 FROM ui.subject_areas)) RETURNING id),
+            sql.append(f"""WITH d AS (SELECT id FROM cortex.designs LIMIT 1),
+                 a AS (INSERT INTO ui.subject_areas (design, name, position) SELECT d.id, 'area {tag}', (SELECT coalesce(max(position), 0) + 1 FROM ui.subject_areas) FROM d RETURNING id),
                  o AS (SELECT id FROM cortex.objects WHERE kind = 'table' AND id NOT IN (SELECT id FROM ui.object_places) ORDER BY id OFFSET {off} LIMIT 3),
                  pl AS (INSERT INTO ui.object_places (id, area) SELECT o.id, a.id FROM o, a RETURNING id),
-                 p AS (INSERT INTO ui.custom_perspectives (name, position, made_by) VALUES ('view {tag}', (SELECT coalesce(max(position), 0) + 1 FROM ui.custom_perspectives), 'lab') RETURNING id),
+                 p AS (INSERT INTO ui.custom_perspectives (design, name, position, made_by) SELECT d.id, 'view {tag}', (SELECT coalesce(max(position), 0) + 1 FROM ui.custom_perspectives), 'lab' FROM d RETURNING id),
                  m AS (INSERT INTO ui.perspective_members (perspective, object, position) SELECT p.id, o.id, row_number() OVER () FROM p, o RETURNING id),
                  pin AS (INSERT INTO ui.layout_pins (view, object, x, y) SELECT 'map/{tag}', o.id, {off}, {n} FROM o RETURNING id),
                  ppin AS (INSERT INTO ui.layout_pins (perspective, object, x, y) SELECT p.id, o.id, {n}, {off} FROM p, o RETURNING id)
-               INSERT INTO ui.pinned_notes (object, position, text, written_by)
-               SELECT o.id, (SELECT coalesce(max(position), 0) FROM ui.pinned_notes) + row_number() OVER (), 'check {n}', 'lab' FROM o;""")
+               INSERT INTO ui.pinned_notes (design, object, position, text, written_by)
+               SELECT d.id, o.id, (SELECT coalesce(max(position), 0) FROM ui.pinned_notes) + row_number() OVER (), 'check {n}', 'lab' FROM o, d;""")
         elif k < 0.95:
             # a perspective deleted: its members and its pins go with it
             sql.append(f"DELETE FROM ui.custom_perspectives WHERE id = (SELECT id FROM ui.custom_perspectives ORDER BY id OFFSET {off % 3} LIMIT 1);")
@@ -92,9 +93,12 @@ def main():
     db = f"lab_repo_mysql_{version.replace('.', '_')}"
     rows, _ = R.rows_of(snap)
     R.build(db)
-    C.psql(open(os.path.join(HERE, "design", "repo_versioning.sql")).read() + "\nSELECT sf_log.attach();", db)
+    # the design is a row of cortex.designs, made before its first turn; its engine's kinds are the engine's declaration
+    C.psql("BEGIN;\n" + R.copy_sql("cortex.designs", rows["cortex.designs"]) + R.copy_sql("cortex.object_kinds", rows["cortex.object_kinds"]) + "COMMIT;", db)
+    C.psql(open(os.path.join(HERE, "design", "repo_versioning.sql")).read() + f"\nSELECT sf_log.attach('{rows['cortex.designs'][0]['id']}');", db)
     t = time.time()
-    C.psql("BEGIN; SELECT sf_log.begin_turn('import');\n" + "".join(R.copy_sql(k, rows[k]) for k in R.ORDER if rows.get(k))
+    C.psql("BEGIN; SELECT sf_log.begin_turn('import');\n"
+           + "".join(R.copy_sql(k, rows[k]) for k in R.ORDER if rows.get(k) and k not in ("cortex.designs", "cortex.object_kinds"))
            + "SELECT sf_log.end_turn(); COMMIT;", db)
     # ids the import gave: identities go on after them
     C.psql("DO $$ DECLARE r record; BEGIN FOR r IN SELECT n.nspname || '.' || c.relname AS t, a.attname AS col FROM pg_attribute a "
@@ -167,7 +171,8 @@ def main():
         ("rewrites the log", False, "BEGIN; SET LOCAL ROLE sf_agent; UPDATE cortex.row_changes SET after = NULL WHERE id = 1; COMMIT;"),
         ("deletes from the log", False, "BEGIN; SET LOCAL ROLE sf_agent; DELETE FROM cortex.turns WHERE parent IS NULL; COMMIT;"),
         ("changes a locked version", False, "BEGIN; SET LOCAL ROLE sf_agent; UPDATE cortex.locked_versions SET message = 'x'; COMMIT;"),
-        ("changes what the engine declares", False, "BEGIN; SET LOCAL ROLE sf_agent; DELETE FROM cortex.object_kinds WHERE id = 'event'; COMMIT;"),
+        ("changes what the engine declares", False, "BEGIN; SET LOCAL ROLE sf_agent; DELETE FROM cortex.object_kinds WHERE id = 'mysql/event'; COMMIT;"),
+        ("makes or deletes a design", False, "BEGIN; SET LOCAL ROLE sf_agent; DELETE FROM cortex.designs; COMMIT;"),
     ]
     for label, want, sql in agent:
         ok, why = attempt(sql, db)

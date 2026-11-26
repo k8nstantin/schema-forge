@@ -4312,7 +4312,7 @@ COMMENT ON COLUMN engine_mysql.tables.insert_method IS 'a MERGE table''s INSERT_
 CREATE VIEW engine_mysql.broken_parts_of_their_kind AS
  SELECT 'parts-of-their-kind'::text AS rule,
     (x.id)::text AS id
-   FROM (( SELECT tables.id,
+   FROM (((( SELECT tables.id,
             ARRAY['table'::text] AS kinds
            FROM engine_mysql.tables
         UNION ALL
@@ -4324,7 +4324,9 @@ CREATE VIEW engine_mysql.broken_parts_of_their_kind AS
             ARRAY['view'::text, 'procedure'::text, 'function'::text, 'trigger'::text, 'event'::text] AS "array"
            FROM engine_mysql.programs) x
      JOIN cortex.objects o ON ((o.id = x.id)))
-  WHERE (o.kind <> ALL (x.kinds));
+     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+     JOIN cortex.designs d ON ((d.id = n.design)))
+  WHERE ((o.kind <> ALL (x.kinds)) OR (d.engine <> 'mysql'::text));
 
 
 ALTER VIEW engine_mysql.broken_parts_of_their_kind OWNER TO sf_owner;
@@ -4333,7 +4335,7 @@ ALTER VIEW engine_mysql.broken_parts_of_their_kind OWNER TO sf_owner;
 -- Name: VIEW broken_parts_of_their_kind; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON VIEW engine_mysql.broken_parts_of_their_kind IS 'Table options are a table''s, an event''s schedule an event''s, and a program''s context a view''s, a routine''s, a trigger''s or an event''s.';
+COMMENT ON VIEW engine_mysql.broken_parts_of_their_kind IS 'Table options are a table''s, an event''s schedule an event''s, and a program''s context a view''s, a routine''s, a trigger''s or an event''s, each on an object of a MySQL design.';
 
 
 --
@@ -4342,9 +4344,11 @@ COMMENT ON VIEW engine_mysql.broken_parts_of_their_kind IS 'Table options are a 
 
 CREATE VIEW engine_mysql.broken_programs_have_their_context AS
  SELECT 'programs-have-their-context'::text AS rule,
-    (id)::text AS id
-   FROM cortex.objects o
-  WHERE ((kind = ANY (ARRAY['view'::text, 'procedure'::text, 'function'::text, 'trigger'::text, 'event'::text])) AND (NOT (EXISTS ( SELECT 1
+    (o.id)::text AS id
+   FROM ((cortex.objects o
+     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+     JOIN cortex.designs d ON ((d.id = n.design)))
+  WHERE ((d.engine = 'mysql'::text) AND (o.kind = ANY (ARRAY['view'::text, 'procedure'::text, 'function'::text, 'trigger'::text, 'event'::text])) AND (NOT (EXISTS ( SELECT 1
            FROM engine_mysql.programs p
           WHERE (p.id = o.id)))));
 
@@ -4355,7 +4359,7 @@ ALTER VIEW engine_mysql.broken_programs_have_their_context OWNER TO sf_owner;
 -- Name: VIEW broken_programs_have_their_context; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON VIEW engine_mysql.broken_programs_have_their_context IS 'Every view, routine, trigger and event has what MySQL made it under: its definer, sql_mode and character set.';
+COMMENT ON VIEW engine_mysql.broken_programs_have_their_context IS 'Every view, routine, trigger and event of a MySQL design has what MySQL made it under: its definer, sql_mode and character set.';
 
 
 --
@@ -4422,11 +4426,14 @@ COMMENT ON COLUMN engine_mysql.routines.parameter_collation IS 'the collation it
 
 CREATE VIEW engine_mysql.broken_routines_have_their_parameter_text AS
  SELECT 'routines-have-their-parameter-text'::text AS rule,
-    (id)::text AS id
-   FROM cortex.routines r
-  WHERE (NOT (EXISTS ( SELECT 1
+    (r.id)::text AS id
+   FROM (((cortex.routines r
+     JOIN cortex.objects o ON ((o.id = r.id)))
+     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+     JOIN cortex.designs d ON ((d.id = n.design)))
+  WHERE ((d.engine = 'mysql'::text) AND (NOT (EXISTS ( SELECT 1
            FROM engine_mysql.routines m
-          WHERE (m.id = r.id))));
+          WHERE (m.id = r.id)))));
 
 
 ALTER VIEW engine_mysql.broken_routines_have_their_parameter_text OWNER TO sf_owner;
@@ -4435,7 +4442,7 @@ ALTER VIEW engine_mysql.broken_routines_have_their_parameter_text OWNER TO sf_ow
 -- Name: VIEW broken_routines_have_their_parameter_text; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON VIEW engine_mysql.broken_routines_have_their_parameter_text IS 'Every routine has its parameter list as written.';
+COMMENT ON VIEW engine_mysql.broken_routines_have_their_parameter_text IS 'Every routine of a MySQL design has its parameter list as written.';
 
 
 --
@@ -4444,9 +4451,11 @@ COMMENT ON VIEW engine_mysql.broken_routines_have_their_parameter_text IS 'Every
 
 CREATE VIEW engine_mysql.broken_tables_have_their_options AS
  SELECT 'tables-have-their-options'::text AS rule,
-    (id)::text AS id
-   FROM cortex.objects o
-  WHERE ((kind = 'table'::text) AND (NOT (EXISTS ( SELECT 1
+    (o.id)::text AS id
+   FROM ((cortex.objects o
+     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+     JOIN cortex.designs d ON ((d.id = n.design)))
+  WHERE ((d.engine = 'mysql'::text) AND (o.kind = 'table'::text) AND (NOT (EXISTS ( SELECT 1
            FROM engine_mysql.tables t
           WHERE (t.id = o.id)))));
 
@@ -4457,7 +4466,7 @@ ALTER VIEW engine_mysql.broken_tables_have_their_options OWNER TO sf_owner;
 -- Name: VIEW broken_tables_have_their_options; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON VIEW engine_mysql.broken_tables_have_their_options IS 'Every table has its engine and collation.';
+COMMENT ON VIEW engine_mysql.broken_tables_have_their_options IS 'Every table of a MySQL design has its engine and collation.';
 
 
 --
@@ -4938,7 +4947,7 @@ COMMENT ON COLUMN engine_postgresql.types.multirange IS 'a range type''s multira
 CREATE VIEW engine_postgresql.broken_parts_of_their_kind AS
  SELECT 'parts-of-their-kind'::text AS rule,
     (x.id)::text AS id
-   FROM (( SELECT relations.id,
+   FROM (((( SELECT relations.id,
             ARRAY['table'::text, 'view'::text, 'materialized_view'::text, 'sequence'::text] AS kinds
            FROM engine_postgresql.relations
         UNION ALL
@@ -4946,7 +4955,9 @@ CREATE VIEW engine_postgresql.broken_parts_of_their_kind AS
             ARRAY['enum'::text, 'composite'::text, 'domain'::text, 'range'::text] AS "array"
            FROM engine_postgresql.types) x
      JOIN cortex.objects o ON ((o.id = x.id)))
-  WHERE (o.kind <> ALL (x.kinds));
+     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+     JOIN cortex.designs d ON ((d.id = n.design)))
+  WHERE ((o.kind <> ALL (x.kinds)) OR (d.engine <> 'postgresql'::text));
 
 
 ALTER VIEW engine_postgresql.broken_parts_of_their_kind OWNER TO sf_owner;
@@ -4955,7 +4966,7 @@ ALTER VIEW engine_postgresql.broken_parts_of_their_kind OWNER TO sf_owner;
 -- Name: VIEW broken_parts_of_their_kind; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
 --
 
-COMMENT ON VIEW engine_postgresql.broken_parts_of_their_kind IS 'A relation''s facts are a table''s, a view''s, a materialized view''s or a sequence''s, and a type''s facts a type''s.';
+COMMENT ON VIEW engine_postgresql.broken_parts_of_their_kind IS 'A relation''s facts are a table''s, a view''s, a materialized view''s or a sequence''s, and a type''s facts a type''s, each on an object of a PostgreSQL design.';
 
 
 --
@@ -4964,9 +4975,11 @@ COMMENT ON VIEW engine_postgresql.broken_parts_of_their_kind IS 'A relation''s f
 
 CREATE VIEW engine_postgresql.broken_relations_have_their_facts AS
  SELECT 'relations-have-their-facts'::text AS rule,
-    (id)::text AS id
-   FROM cortex.objects o
-  WHERE ((kind = ANY (ARRAY['table'::text, 'view'::text, 'materialized_view'::text, 'sequence'::text])) AND (NOT (EXISTS ( SELECT 1
+    (o.id)::text AS id
+   FROM ((cortex.objects o
+     JOIN cortex.namespaces n ON ((n.id = o.namespace)))
+     JOIN cortex.designs d ON ((d.id = n.design)))
+  WHERE ((d.engine = 'postgresql'::text) AND (o.kind = ANY (ARRAY['table'::text, 'view'::text, 'materialized_view'::text, 'sequence'::text])) AND (NOT (EXISTS ( SELECT 1
            FROM engine_postgresql.relations r
           WHERE (r.id = o.id)))));
 
@@ -4977,7 +4990,7 @@ ALTER VIEW engine_postgresql.broken_relations_have_their_facts OWNER TO sf_owner
 -- Name: VIEW broken_relations_have_their_facts; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
 --
 
-COMMENT ON VIEW engine_postgresql.broken_relations_have_their_facts IS 'Every table, view, materialized view and sequence has its persistence, owner and privileges.';
+COMMENT ON VIEW engine_postgresql.broken_relations_have_their_facts IS 'Every table, view, materialized view and sequence of a PostgreSQL design has its persistence, owner and privileges.';
 
 
 --
@@ -8718,10 +8731,38 @@ CREATE TRIGGER "rule:cortex.versions_follow_the_log:again" AFTER INSERT OR DELET
 
 
 --
+-- Name: designs rule:engine_mysql.parts_of_their_kind; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_parts_of_their_kind');
+
+
+--
+-- Name: namespaces rule:engine_mysql.parts_of_their_kind; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_parts_of_their_kind');
+
+
+--
 -- Name: objects rule:engine_mysql.parts_of_their_kind; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
 CREATE CONSTRAINT TRIGGER "rule:engine_mysql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_parts_of_their_kind');
+
+
+--
+-- Name: designs rule:engine_mysql.parts_of_their_kind:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.parts_of_their_kind:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_parts_of_their_kind');
+
+
+--
+-- Name: namespaces rule:engine_mysql.parts_of_their_kind:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.parts_of_their_kind:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_parts_of_their_kind');
 
 
 --
@@ -8732,10 +8773,38 @@ CREATE TRIGGER "rule:engine_mysql.parts_of_their_kind:again" AFTER INSERT OR DEL
 
 
 --
+-- Name: designs rule:engine_mysql.programs_have_their_context; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.programs_have_their_context" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_programs_have_their_context');
+
+
+--
+-- Name: namespaces rule:engine_mysql.programs_have_their_context; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.programs_have_their_context" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_programs_have_their_context');
+
+
+--
 -- Name: objects rule:engine_mysql.programs_have_their_context; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
 CREATE CONSTRAINT TRIGGER "rule:engine_mysql.programs_have_their_context" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_programs_have_their_context');
+
+
+--
+-- Name: designs rule:engine_mysql.programs_have_their_context:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.programs_have_their_context:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_programs_have_their_context');
+
+
+--
+-- Name: namespaces rule:engine_mysql.programs_have_their_context:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.programs_have_their_context:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_programs_have_their_context');
 
 
 --
@@ -8746,10 +8815,52 @@ CREATE TRIGGER "rule:engine_mysql.programs_have_their_context:again" AFTER INSER
 
 
 --
+-- Name: designs rule:engine_mysql.routines_have_their_parameter_text; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.routines_have_their_parameter_text" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_routines_have_their_parameter_text');
+
+
+--
+-- Name: namespaces rule:engine_mysql.routines_have_their_parameter_text; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.routines_have_their_parameter_text" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_routines_have_their_parameter_text');
+
+
+--
+-- Name: objects rule:engine_mysql.routines_have_their_parameter_text; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.routines_have_their_parameter_text" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_routines_have_their_parameter_text');
+
+
+--
 -- Name: routines rule:engine_mysql.routines_have_their_parameter_text; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
 CREATE CONSTRAINT TRIGGER "rule:engine_mysql.routines_have_their_parameter_text" AFTER INSERT OR DELETE OR UPDATE ON cortex.routines DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_routines_have_their_parameter_text');
+
+
+--
+-- Name: designs rule:engine_mysql.routines_have_their_parameter_text:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.routines_have_their_parameter_text:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_routines_have_their_parameter_text');
+
+
+--
+-- Name: namespaces rule:engine_mysql.routines_have_their_parameter_text:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.routines_have_their_parameter_text:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_routines_have_their_parameter_text');
+
+
+--
+-- Name: objects rule:engine_mysql.routines_have_their_parameter_text:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.routines_have_their_parameter_text:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_routines_have_their_parameter_text');
 
 
 --
@@ -8760,10 +8871,38 @@ CREATE TRIGGER "rule:engine_mysql.routines_have_their_parameter_text:again" AFTE
 
 
 --
+-- Name: designs rule:engine_mysql.tables_have_their_options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.tables_have_their_options" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_tables_have_their_options');
+
+
+--
+-- Name: namespaces rule:engine_mysql.tables_have_their_options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_mysql.tables_have_their_options" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_tables_have_their_options');
+
+
+--
 -- Name: objects rule:engine_mysql.tables_have_their_options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
 CREATE CONSTRAINT TRIGGER "rule:engine_mysql.tables_have_their_options" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_mysql.broken_tables_have_their_options');
+
+
+--
+-- Name: designs rule:engine_mysql.tables_have_their_options:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.tables_have_their_options:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_tables_have_their_options');
+
+
+--
+-- Name: namespaces rule:engine_mysql.tables_have_their_options:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_mysql.tables_have_their_options:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_mysql.broken_tables_have_their_options');
 
 
 --
@@ -8774,10 +8913,38 @@ CREATE TRIGGER "rule:engine_mysql.tables_have_their_options:again" AFTER INSERT 
 
 
 --
+-- Name: designs rule:engine_postgresql.parts_of_their_kind; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_parts_of_their_kind');
+
+
+--
+-- Name: namespaces rule:engine_postgresql.parts_of_their_kind; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_parts_of_their_kind');
+
+
+--
 -- Name: objects rule:engine_postgresql.parts_of_their_kind; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
 CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.parts_of_their_kind" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_parts_of_their_kind');
+
+
+--
+-- Name: designs rule:engine_postgresql.parts_of_their_kind:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.parts_of_their_kind:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_parts_of_their_kind');
+
+
+--
+-- Name: namespaces rule:engine_postgresql.parts_of_their_kind:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.parts_of_their_kind:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_parts_of_their_kind');
 
 
 --
@@ -8788,10 +8955,38 @@ CREATE TRIGGER "rule:engine_postgresql.parts_of_their_kind:again" AFTER INSERT O
 
 
 --
+-- Name: designs rule:engine_postgresql.relations_have_their_facts; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.relations_have_their_facts" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_relations_have_their_facts');
+
+
+--
+-- Name: namespaces rule:engine_postgresql.relations_have_their_facts; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.relations_have_their_facts" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_relations_have_their_facts');
+
+
+--
 -- Name: objects rule:engine_postgresql.relations_have_their_facts; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
 CREATE CONSTRAINT TRIGGER "rule:engine_postgresql.relations_have_their_facts" AFTER INSERT OR DELETE OR UPDATE ON cortex.objects DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cortex.rule_check('engine_postgresql.broken_relations_have_their_facts');
+
+
+--
+-- Name: designs rule:engine_postgresql.relations_have_their_facts:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.relations_have_their_facts:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.designs FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_relations_have_their_facts');
+
+
+--
+-- Name: namespaces rule:engine_postgresql.relations_have_their_facts:again; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER "rule:engine_postgresql.relations_have_their_facts:again" AFTER INSERT OR DELETE OR UPDATE ON cortex.namespaces FOR EACH STATEMENT EXECUTE FUNCTION cortex.rule_again('engine_postgresql.broken_relations_have_their_facts');
 
 
 --
