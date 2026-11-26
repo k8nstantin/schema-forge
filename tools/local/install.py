@@ -16,7 +16,8 @@ import time
 BIN = "/opt/homebrew/opt/postgresql@18/bin"
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WORK = "/tmp/schema-forge-install"
-DECLARATIONS = ["engine_versions", "engine_features", "catalog_sources", "object_kinds", "option_declarations", "engine_flavors", "flavor_limits"]
+DECLARATIONS = ["engine_versions", "engine_features", "catalog_sources", "object_kinds", "option_declarations", "engine_flavors", "flavor_limits",
+                "reference_kinds", "privilege_declarations"]
 
 
 def arg(name, default):

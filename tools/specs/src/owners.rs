@@ -20,6 +20,8 @@ const NOT_A_DESIGN: &[&str] = &[
     "cortex.option_declarations",
     "cortex.engine_flavors",
     "cortex.flavor_limits",
+    "cortex.reference_kinds",
+    "cortex.privilege_declarations",
     "cortex.schema_migrations",
 ];
 
@@ -32,6 +34,8 @@ const DECLARATIONS: &[&str] = &[
     "cortex.catalog_sources",
     "cortex.engine_flavors",
     "cortex.flavor_limits",
+    "cortex.reference_kinds",
+    "cortex.privilege_declarations",
 ];
 
 /// Whether a table holds a design's rows.
@@ -180,6 +184,7 @@ fn sql_file(root: &Path, owner: &Owner, file: &Path, found: &mut Vec<Finding>) {
                 "enforce_rules.sql"
                     | "check_options.sql"
                     | "check_kinds.sql"
+                    | "check_references.sql"
                     | "misfits.sql"
                     | "notify_turns.sql"
                     | "grant_roles.sql"

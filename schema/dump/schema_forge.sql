@@ -203,6 +203,101 @@ END $$;
 ALTER FUNCTION cortex.check_options() OWNER TO sf_owner;
 
 --
+-- Name: check_references(); Type: FUNCTION; Schema: cortex; Owner: sf_owner
+--
+
+CREATE FUNCTION cortex.check_references() RETURNS trigger
+    LANGUAGE plpgsql STABLE
+    AS $$
+DECLARE
+  bad record;
+  this_part text := TG_TABLE_SCHEMA || '.' || TG_TABLE_NAME;
+BEGIN
+  -- the kind of every object a reference points at
+  SELECT rk.field, o.kind, o.name, rk.kinds, rk.about INTO bad
+    FROM new_rows r
+    JOIN cortex.designs d ON d.id = (to_jsonb(r) ->> 'design')::uuid
+    JOIN cortex.reference_kinds rk ON rk.engine = d.engine AND rk.part = this_part
+     AND (rk.condition_field IS NULL
+          OR coalesce(to_jsonb(r) ->> rk.condition_field, to_jsonb(r) -> 'options' ->> rk.condition_field, '') = rk.condition_value)
+    JOIN cortex.objects o ON o.id = (to_jsonb(r) ->> rk.field)::uuid
+   WHERE NOT rk.kinds ? o.kind
+   LIMIT 1;
+  IF FOUND THEN
+    RAISE EXCEPTION '% may refer to % only (%), not to the % %', bad.field, bad.kinds, bad.about, bad.kind, bad.name USING ERRCODE = 'check_violation';
+  END IF;
+  -- closed: a reference some engine declares rules for may be set only where the design's engine has a rule that applies
+  -- (MySQL has no sequences: an AUTO_INCREMENT's identity draws on none; a dependency's role must be one declared)
+  SELECT f.field, d.engine, coalesce(to_jsonb(r) -> 'options' ->> 'as', to_jsonb(r) ->> 'kind', '') AS how INTO bad
+    FROM new_rows r
+    JOIN cortex.designs d ON d.id = (to_jsonb(r) ->> 'design')::uuid
+    CROSS JOIN (SELECT DISTINCT rk.field FROM cortex.reference_kinds rk WHERE rk.part = this_part) f
+   WHERE to_jsonb(r) ->> f.field IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM cortex.reference_kinds rk WHERE rk.engine = d.engine AND rk.part = this_part AND rk.field = f.field
+                       AND (rk.condition_field IS NULL
+                            OR coalesce(to_jsonb(r) ->> rk.condition_field, to_jsonb(r) -> 'options' ->> rk.condition_field, '') = rk.condition_value))
+     -- an object's parent is declared for the kinds that have one; an object of another kind has none
+   LIMIT 1;
+  IF FOUND THEN
+    RAISE EXCEPTION '% declares no % of % here (%)', bad.engine, bad.field, this_part, nullif(bad.how, '') USING ERRCODE = 'check_violation';
+  END IF;
+  -- a privilege the engine has, at the level it is granted, in the design's version
+  IF this_part IN ('cortex.privileges', 'engine_postgresql.default_privileges') THEN
+    SELECT x.privilege, x.level, d.engine, d.engine_version, p.id AS declared INTO bad
+      FROM (SELECT to_jsonb(r) ->> 'privilege' AS privilege, (to_jsonb(r) ->> 'design')::uuid AS design,
+                   CASE WHEN this_part = 'engine_postgresql.default_privileges' THEN 'object'
+                        WHEN to_jsonb(r) ->> 'column' IS NOT NULL THEN 'column' WHEN to_jsonb(r) ->> 'object' IS NOT NULL THEN 'object'
+                        WHEN to_jsonb(r) ->> 'namespace' IS NOT NULL THEN 'namespace' ELSE 'server' END AS level
+              FROM new_rows r) x
+      JOIN cortex.designs d ON d.id = x.design
+      JOIN cortex.engine_versions v ON v.engine = d.engine AND v.version = d.engine_version
+      LEFT JOIN LATERAL (SELECT * FROM cortex.privilege_declarations p WHERE p.engine = d.engine
+                           AND (p.privilege = x.privilege OR p.pattern AND x.privilege ~ p.privilege) ORDER BY p.pattern LIMIT 1) p ON true
+     WHERE p.id IS NULL OR NOT p.levels ? x.level
+        OR p.since IS NOT NULL AND v.position < (SELECT s.position FROM cortex.engine_versions s WHERE s.id = p.since)
+        OR p."until" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = p."until")
+     LIMIT 1;
+    IF FOUND THEN
+      RAISE EXCEPTION '% % has no privilege % at the % level', bad.engine, bad.engine_version, bad.privilege, bad.level USING ERRCODE = 'check_violation';
+    END IF;
+  END IF;
+  -- what must belong to the same table
+  IF this_part = 'cortex.index_parts' THEN
+    SELECT i.name, c.name AS col INTO bad FROM new_rows r JOIN cortex.indexes i ON i.id = r.index JOIN cortex.columns c ON c.id = r."column"
+     WHERE c.object <> i.object LIMIT 1;
+    IF FOUND THEN RAISE EXCEPTION 'index % has a part on %, a column of another table', bad.name, bad.col USING ERRCODE = 'check_violation'; END IF;
+  ELSIF this_part = 'cortex.constraint_columns' THEN
+    SELECT k.name, c.name AS col INTO bad FROM new_rows r JOIN cortex.constraints k ON k.id = r."constraint"
+      LEFT JOIN cortex.columns c ON c.id = r."column" LEFT JOIN cortex.columns t ON t.id = r.to_column
+     WHERE c.object <> k.object OR t.object <> k.to_object OR (r.to_column IS NOT NULL AND k.to_object IS NULL) LIMIT 1;
+    IF FOUND THEN RAISE EXCEPTION 'key % names a column not of its table, or not of the table it refers to (%)', bad.name, bad.col USING ERRCODE = 'check_violation'; END IF;
+  ELSIF this_part = 'engine_postgresql.statistics_parts' THEN
+    SELECT o.name, c.name AS col INTO bad FROM new_rows r JOIN cortex.objects o ON o.id = r.statistics JOIN cortex.columns c ON c.id = r."column"
+     WHERE NOT EXISTS (SELECT 1 FROM cortex.dependencies d WHERE d.object = r.statistics AND d.uses = c.object AND d.options ->> 'as' = 'table') LIMIT 1;
+    IF FOUND THEN RAISE EXCEPTION 'statistics % counts over %, a column of another table', bad.name, bad.col USING ERRCODE = 'check_violation'; END IF;
+  ELSIF this_part = 'engine_postgresql.publication_table_columns' THEN
+    SELECT c.name AS col INTO bad FROM new_rows r JOIN engine_postgresql.publication_tables t ON t.id = r.publication_table JOIN cortex.columns c ON c.id = r."column"
+     WHERE t."table" IS DISTINCT FROM c.object LIMIT 1;
+    IF FOUND THEN RAISE EXCEPTION 'a published table lists %, a column of another table', bad.col USING ERRCODE = 'check_violation'; END IF;
+  ELSIF this_part = 'engine_postgresql.trigger_columns' THEN
+    SELECT o.name, c.name AS col INTO bad FROM new_rows r JOIN cortex.objects o ON o.id = r.trigger JOIN cortex.columns c ON c.id = r."column"
+     WHERE c.object IS DISTINCT FROM o.parent LIMIT 1;
+    IF FOUND THEN RAISE EXCEPTION 'trigger % fires on %, a column of another table', bad.name, bad.col USING ERRCODE = 'check_violation'; END IF;
+  END IF;
+  RETURN NULL;
+END $$;
+
+
+ALTER FUNCTION cortex.check_references() OWNER TO sf_owner;
+
+--
+-- Name: FUNCTION check_references(); Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON FUNCTION cortex.check_references() IS 'refuses a reference to an object of a kind its engine does not declare for it, a privilege its engine does not have there, and parts of one thing that name another table''s columns';
+
+
+--
 -- Name: enforce_rules(text); Type: FUNCTION; Schema: cortex; Owner: sf_owner
 --
 
@@ -238,6 +333,8 @@ BEGIN
       count := count + 1;
     END LOOP;
   END LOOP;
+  -- and what every reference of the owner's tables may point at (check_references.sql)
+  PERFORM cortex.guard_references(owner);
   RETURN count;
 END $$;
 
@@ -273,7 +370,7 @@ BEGIN
   IF owner = 'cortex' THEN
     -- what the agent reads only: the designs themselves, the engines' declarations, the workspace, what a person chose
     -- to read, what was applied, read and locked
-    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors', 'flavor_limits',
+    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors', 'flavor_limits', 'reference_kinds', 'privilege_declarations',
                              'workspace_identity', 'workspace_parameters', 'workspace_connections', 'workspace_connection_values',
                              'workspace_connection_tests', 'workspace_connection_test_steps', 'workspace_design_connections',
                              'read_scopes', 'read_scope_kinds', 'read_scope_objects',
@@ -283,7 +380,7 @@ BEGIN
     -- what the engines declare (their versions, features, kinds, options, catalog sources, flavors and what each flavor
     -- lacks) is the seeds' alone, changed by installing a version as the DBA: the app reads it, as the agent does
     FOREACH t IN ARRAY ARRAY['engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors',
-                             'flavor_limits'] LOOP
+                             'flavor_limits', 'reference_kinds', 'privilege_declarations'] LOOP
       EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_service', t);
     END LOOP;
     -- the log: the agent adds to it with its work and never rewrites it
@@ -301,6 +398,39 @@ ALTER FUNCTION cortex.grant_roles(owner text) OWNER TO sf_owner;
 --
 
 COMMENT ON FUNCTION cortex.grant_roles(owner text) IS 'gives an owner''s namespace to sf_service (rows, the rules), sf_agent (the design''s rows) and sf_reader (reading), so the schema changes only as sf_owner';
+
+
+--
+-- Name: guard_references(text); Type: FUNCTION; Schema: cortex; Owner: sf_owner
+--
+
+CREATE FUNCTION cortex.guard_references(owner text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  t record;
+  n integer := 0;
+BEGIN
+  FOR t IN SELECT c.oid::regclass::text AS tab FROM pg_class c JOIN pg_namespace s ON s.oid = c.relnamespace
+            WHERE s.nspname = owner AND c.relkind = 'r'
+              AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'design' AND NOT a.attisdropped)
+              AND c.relname <> 'designs' LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS refs ON %s; DROP TRIGGER IF EXISTS refs_changed ON %s', t.tab, t.tab);
+    EXECUTE format('CREATE TRIGGER refs AFTER INSERT ON %s REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references()', t.tab);
+    EXECUTE format('CREATE TRIGGER refs_changed AFTER UPDATE ON %s REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references()', t.tab);
+    n := n + 1;
+  END LOOP;
+  RETURN n;
+END $$;
+
+
+ALTER FUNCTION cortex.guard_references(owner text) OWNER TO sf_owner;
+
+--
+-- Name: FUNCTION guard_references(owner text); Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON FUNCTION cortex.guard_references(owner text) IS 'puts the guard check_references on every table of an owner''s namespace that holds a design''s rows';
 
 
 --
@@ -2823,6 +2953,93 @@ COMMENT ON COLUMN cortex.partitions.options IS 'what the design''s engine adds t
 
 
 --
+-- Name: privilege_declarations; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.privilege_declarations (
+    id text NOT NULL,
+    engine text NOT NULL,
+    privilege text NOT NULL,
+    levels jsonb NOT NULL,
+    pattern boolean DEFAULT false NOT NULL,
+    since text,
+    until text,
+    about text NOT NULL,
+    CONSTRAINT privilege_declarations_about_check CHECK ((length(about) >= 1)),
+    CONSTRAINT privilege_declarations_check CHECK ((pattern OR (privilege ~ '^[A-Z][A-Z_ ]*$'::text))),
+    CONSTRAINT privilege_declarations_check1 CHECK (((id = ((engine || '/'::text) || privilege)) OR pattern)),
+    CONSTRAINT privilege_declarations_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
+    CONSTRAINT privilege_declarations_levels_check CHECK (((jsonb_typeof(levels) = 'array'::text) AND (jsonb_array_length(levels) >= 1))),
+    CONSTRAINT privilege_declarations_privilege_check CHECK ((length(privilege) >= 1))
+);
+
+
+ALTER TABLE cortex.privilege_declarations OWNER TO sf_owner;
+
+--
+-- Name: TABLE privilege_declarations; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.privilege_declarations IS 'the privileges each engine has, at the levels it grants them (the server, a namespace, an object, a column), in the versions that have them: a grant of any other is refused.';
+
+
+--
+-- Name: COLUMN privilege_declarations.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privilege_declarations.id IS '<engine>/<privilege>: mysql/CREATE ROUTINE';
+
+
+--
+-- Name: COLUMN privilege_declarations.engine; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privilege_declarations.engine IS 'the engine';
+
+
+--
+-- Name: COLUMN privilege_declarations.privilege; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privilege_declarations.privilege IS 'as the engine names it (SELECT, BACKUP_ADMIN); with pattern, a regular expression';
+
+
+--
+-- Name: COLUMN privilege_declarations.levels; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privilege_declarations.levels IS 'where it is granted: any of server, namespace, object, column';
+
+
+--
+-- Name: COLUMN privilege_declarations.pattern; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privilege_declarations.pattern IS 'true when privilege is a regular expression: MySQL''s dynamic privileges, which its components register';
+
+
+--
+-- Name: COLUMN privilege_declarations.since; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privilege_declarations.since IS 'the first version that has it; NULL for every one';
+
+
+--
+-- Name: COLUMN privilege_declarations.until; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privilege_declarations.until IS 'the last version that has it; NULL for every later one';
+
+
+--
+-- Name: COLUMN privilege_declarations.about; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.privilege_declarations.about IS 'what it lets its grantee do';
+
+
+--
 -- Name: privileges; Type: TABLE; Schema: cortex; Owner: sf_owner
 --
 
@@ -3110,6 +3327,94 @@ COMMENT ON COLUMN cortex.read_scopes.made_by IS 'who chose it, as the app names 
 --
 
 COMMENT ON COLUMN cortex.read_scopes.made_at IS 'when it was chosen';
+
+
+--
+-- Name: reference_kinds; Type: TABLE; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TABLE cortex.reference_kinds (
+    id text NOT NULL,
+    engine text NOT NULL,
+    part text NOT NULL,
+    field text NOT NULL,
+    condition_field text,
+    condition_value text,
+    kinds jsonb NOT NULL,
+    about text NOT NULL,
+    CONSTRAINT reference_kinds_about_check CHECK ((length(about) >= 1)),
+    CONSTRAINT reference_kinds_check CHECK (((condition_field IS NULL) = (condition_value IS NULL))),
+    CONSTRAINT reference_kinds_condition_field_check CHECK ((condition_field ~ '^[a-z_]+$'::text)),
+    CONSTRAINT reference_kinds_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
+    CONSTRAINT reference_kinds_field_check CHECK ((field ~ '^[a-z_]+$'::text)),
+    CONSTRAINT reference_kinds_kinds_check CHECK (((jsonb_typeof(kinds) = 'array'::text) AND (jsonb_array_length(kinds) >= 1))),
+    CONSTRAINT reference_kinds_part_check CHECK ((part ~ '^(cortex|engine_[a-z0-9_]+)\.[a-z_]+$'::text))
+);
+
+
+ALTER TABLE cortex.reference_kinds OWNER TO sf_owner;
+
+--
+-- Name: TABLE reference_kinds; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON TABLE cortex.reference_kinds IS 'the kinds of object a reference of the model may point at, as each engine declares them: a grant''s grantee is a role or an account, a trigger''s parent a table, what a foreign table uses as its server a foreign server. A foreign key holds that the row pointed at exists; the guard check_references holds that it is of a kind declared here.';
+
+
+--
+-- Name: COLUMN reference_kinds.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.reference_kinds.id IS '<engine>/<part>.<field>[/<condition>]: postgresql/cortex.dependencies.uses/as=server';
+
+
+--
+-- Name: COLUMN reference_kinds.engine; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.reference_kinds.engine IS 'the engine';
+
+
+--
+-- Name: COLUMN reference_kinds.part; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.reference_kinds.part IS 'the table the reference is a column of (cortex.privileges)';
+
+
+--
+-- Name: COLUMN reference_kinds.field; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.reference_kinds.field IS 'the column that refers to an object (grantee)';
+
+
+--
+-- Name: COLUMN reference_kinds.condition_field; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.reference_kinds.condition_field IS 'a column of the same row, or a key of its options, the rule applies by (as, kind, what); NULL for every row';
+
+
+--
+-- Name: COLUMN reference_kinds.condition_value; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.reference_kinds.condition_value IS 'the value it applies at (server); empty for the rows with none; NULL with no condition';
+
+
+--
+-- Name: COLUMN reference_kinds.kinds; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.reference_kinds.kinds IS 'the kinds the object referred to may be of (["role"])';
+
+
+--
+-- Name: COLUMN reference_kinds.about; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.reference_kinds.about IS 'what the reference is, in a sentence';
 
 
 --
@@ -6711,6 +7016,22 @@ ALTER TABLE ONLY cortex.partitions
 
 
 --
+-- Name: privilege_declarations privilege_declarations_engine_privilege_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privilege_declarations
+    ADD CONSTRAINT privilege_declarations_engine_privilege_key UNIQUE (engine, privilege);
+
+
+--
+-- Name: privilege_declarations privilege_declarations_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privilege_declarations
+    ADD CONSTRAINT privilege_declarations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: privileges privileges_design_grantee_grantee_name_namespace_object_col_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
@@ -6804,6 +7125,22 @@ ALTER TABLE ONLY cortex.read_scopes
 
 ALTER TABLE ONLY cortex.read_scopes
     ADD CONSTRAINT read_scopes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: reference_kinds reference_kinds_engine_part_field_condition_field_condition_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.reference_kinds
+    ADD CONSTRAINT reference_kinds_engine_part_field_condition_field_condition_key UNIQUE NULLS NOT DISTINCT (engine, part, field, condition_field, condition_value);
+
+
+--
+-- Name: reference_kinds reference_kinds_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.reference_kinds
+    ADD CONSTRAINT reference_kinds_pkey PRIMARY KEY (id);
 
 
 --
@@ -8487,10 +8824,780 @@ CREATE TRIGGER options_changed AFTER UPDATE ON cortex.views REFERENCING NEW TABL
 
 
 --
+-- Name: branches refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.branches REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: column_identities refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.column_identities REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: columns refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: constraint_columns refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.constraint_columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: constraints refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.constraints REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: dependencies refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.dependencies REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: domains refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.domains REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: enum_values refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.enum_values REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: index_parts refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.index_parts REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: indexes refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.indexes REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: locked_versions refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.locked_versions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: memberships refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.memberships REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: namespace_owners refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.namespace_owners REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: namespaces refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.namespaces REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: object_tags refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.object_tags REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: objects refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.objects REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: operations refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.operations REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: partitionings refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.partitionings REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: partitions refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.partitions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: privileges refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.privileges REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: read_scope_kinds refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.read_scope_kinds REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: read_scope_objects refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.read_scope_objects REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: read_scopes refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.read_scopes REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: required_extensions refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.required_extensions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: routine_parameters refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.routine_parameters REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: routines refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.routines REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: row_changes refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.row_changes REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: savepoints refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.savepoints REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: sequences refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.sequences REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: source_reads refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.source_reads REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: triggers refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.triggers REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: turns refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.turns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: verbatim_statements refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.verbatim_statements REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: views refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.views REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: workspace_design_connections refs; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON cortex.workspace_design_connections REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: branches refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.branches REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: column_identities refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.column_identities REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: columns refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: constraint_columns refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.constraint_columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: constraints refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.constraints REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: dependencies refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.dependencies REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: domains refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.domains REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: enum_values refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.enum_values REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: index_parts refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.index_parts REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: indexes refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.indexes REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: locked_versions refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.locked_versions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: memberships refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.memberships REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: namespace_owners refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.namespace_owners REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: namespaces refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.namespaces REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: object_tags refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.object_tags REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: objects refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.objects REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: operations refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.operations REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: partitionings refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.partitionings REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: partitions refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.partitions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: privileges refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.privileges REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: read_scope_kinds refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.read_scope_kinds REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: read_scope_objects refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.read_scope_objects REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: read_scopes refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.read_scopes REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: required_extensions refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.required_extensions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: routine_parameters refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.routine_parameters REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: routines refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.routines REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: row_changes refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.row_changes REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: savepoints refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.savepoints REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: sequences refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.sequences REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: source_reads refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.source_reads REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: triggers refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.triggers REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: turns refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.turns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: verbatim_statements refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.verbatim_statements REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: views refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.views REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: workspace_design_connections refs_changed; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON cortex.workspace_design_connections REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
 -- Name: designs target; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
 CREATE TRIGGER target BEFORE INSERT OR UPDATE OF engine_version, flavor ON cortex.designs FOR EACH ROW EXECUTE FUNCTION cortex.check_designs();
+
+
+--
+-- Name: subpartitions refs; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_mysql.subpartitions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: subpartitions refs_changed; Type: TRIGGER; Schema: engine_mysql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_mysql.subpartitions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: collations refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.collations REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: default_privileges refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.default_privileges REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: inheritance refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.inheritance REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: operator_class_members refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.operator_class_members REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: policies refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.policies REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: publication_schemas refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.publication_schemas REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: publication_table_columns refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.publication_table_columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: publication_tables refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.publication_tables REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: rules refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.rules REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: statistics_parts refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.statistics_parts REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: trigger_columns refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.trigger_columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: ts_config_mappings refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.ts_config_mappings REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: user_mappings refs; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON engine_postgresql.user_mappings REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: collations refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.collations REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: default_privileges refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.default_privileges REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: inheritance refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.inheritance REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: operator_class_members refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.operator_class_members REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: policies refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.policies REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: publication_schemas refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.publication_schemas REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: publication_table_columns refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.publication_table_columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: publication_tables refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.publication_tables REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: rules refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.rules REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: statistics_parts refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.statistics_parts REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: trigger_columns refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.trigger_columns REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: ts_config_mappings refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.ts_config_mappings REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: user_mappings refs_changed; Type: TRIGGER; Schema: engine_postgresql; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON engine_postgresql.user_mappings REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: custom_perspectives refs; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON ui.custom_perspectives REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: layout_pins refs; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON ui.layout_pins REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: object_places refs; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON ui.object_places REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: perspective_members refs; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON ui.perspective_members REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: pinned_notes refs; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON ui.pinned_notes REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: subject_areas refs; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs AFTER INSERT ON ui.subject_areas REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: custom_perspectives refs_changed; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON ui.custom_perspectives REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: layout_pins refs_changed; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON ui.layout_pins REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: object_places refs_changed; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON ui.object_places REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: perspective_members refs_changed; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON ui.perspective_members REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: pinned_notes refs_changed; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON ui.pinned_notes REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
+
+
+--
+-- Name: subject_areas refs_changed; Type: TRIGGER; Schema: ui; Owner: sf_owner
+--
+
+CREATE TRIGGER refs_changed AFTER UPDATE ON ui.subject_areas REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_references();
 
 
 --
@@ -9019,6 +10126,22 @@ ALTER TABLE ONLY cortex.partitions
 
 ALTER TABLE ONLY cortex.partitions
     ADD CONSTRAINT partitions_design_table_object_fkey FOREIGN KEY (design, table_object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: privilege_declarations privilege_declarations_since_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privilege_declarations
+    ADD CONSTRAINT privilege_declarations_since_fkey FOREIGN KEY (since) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: privilege_declarations privilege_declarations_until_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
+--
+
+ALTER TABLE ONLY cortex.privilege_declarations
+    ADD CONSTRAINT privilege_declarations_until_fkey FOREIGN KEY (until) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -9906,6 +11029,14 @@ GRANT ALL ON FUNCTION cortex.check_options() TO sf_agent;
 
 
 --
+-- Name: FUNCTION check_references(); Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT ALL ON FUNCTION cortex.check_references() TO sf_service;
+GRANT ALL ON FUNCTION cortex.check_references() TO sf_agent;
+
+
+--
 -- Name: FUNCTION enforce_rules(owner text); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
@@ -9919,6 +11050,14 @@ GRANT ALL ON FUNCTION cortex.enforce_rules(owner text) TO sf_agent;
 
 GRANT ALL ON FUNCTION cortex.grant_roles(owner text) TO sf_service;
 GRANT ALL ON FUNCTION cortex.grant_roles(owner text) TO sf_agent;
+
+
+--
+-- Name: FUNCTION guard_references(owner text); Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT ALL ON FUNCTION cortex.guard_references(owner text) TO sf_service;
+GRANT ALL ON FUNCTION cortex.guard_references(owner text) TO sf_agent;
 
 
 --
@@ -10205,6 +11344,15 @@ GRANT SELECT ON TABLE cortex.partitions TO sf_reader;
 
 
 --
+-- Name: TABLE privilege_declarations; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT ON TABLE cortex.privilege_declarations TO sf_service;
+GRANT SELECT ON TABLE cortex.privilege_declarations TO sf_agent;
+GRANT SELECT ON TABLE cortex.privilege_declarations TO sf_reader;
+
+
+--
 -- Name: TABLE privileges; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
@@ -10238,6 +11386,15 @@ GRANT SELECT ON TABLE cortex.read_scope_objects TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.read_scopes TO sf_service;
 GRANT SELECT ON TABLE cortex.read_scopes TO sf_agent;
 GRANT SELECT ON TABLE cortex.read_scopes TO sf_reader;
+
+
+--
+-- Name: TABLE reference_kinds; Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT SELECT ON TABLE cortex.reference_kinds TO sf_service;
+GRANT SELECT ON TABLE cortex.reference_kinds TO sf_agent;
+GRANT SELECT ON TABLE cortex.reference_kinds TO sf_reader;
 
 
 --

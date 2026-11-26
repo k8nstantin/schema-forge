@@ -175,7 +175,7 @@ GROUPS = [("cortex", "The model", ["designs", "namespaces", "objects", "columns"
                                               "enum_values", "domains", "routines", "routine_parameters", "triggers"]),
           ("cortex", "Who may do what", ["privileges", "memberships", "namespace_owners"]),
           ("cortex", "The log", ["branches", "turns", "operations", "row_changes", "savepoints", "locked_versions"]),
-          ("cortex", "What each engine declares", ["engine_versions", "engine_features", "object_kinds", "option_declarations", "catalog_sources", "engine_flavors", "flavor_limits"]),
+          ("cortex", "What each engine declares", ["engine_versions", "engine_features", "object_kinds", "option_declarations", "catalog_sources", "engine_flavors", "flavor_limits", "reference_kinds", "privilege_declarations"]),
           ("cortex", "The live source", ["read_scopes", "read_scope_kinds", "read_scope_objects", "source_reads"]),
           ("cortex", "The workspace", ["workspace_identity", "workspace_parameters", "workspace_connections", "workspace_connection_values",
                                        "workspace_connection_tests", "workspace_connection_test_steps", "workspace_design_connections"]),

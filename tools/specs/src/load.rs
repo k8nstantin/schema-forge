@@ -159,6 +159,7 @@ fn version_one(root: &Path, owner: &Owner) -> Vec<(String, String)> {
             "enforce_rules.sql",
             "check_options.sql",
             "check_kinds.sql",
+            "check_references.sql",
             "misfits.sql",
             "notify_turns.sql",
             "grant_roles.sql",

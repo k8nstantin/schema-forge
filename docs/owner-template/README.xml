@@ -41,7 +41,7 @@
       <item><b>A column a migration adds is written last</b> in its table file, where PostgreSQL puts it.</item>
       <item><b>A change the whole schema takes is a version too.</b> When every table of a design came to carry its design, this folder took it as <a href="schema/migrations/4_design.sql"><c>4_design.sql</c></a>: the column added and filled from the cortex row each row belongs to, made NOT NULL, <c>UNIQUE (design, id)</c> added, and every reference to a design's table moved to <c>(design, column)</c> with its index.</item>
       <item><b>So is a change of shape.</b> When what one row's facts were became options, this folder took it as <a href="schema/migrations/5_options.sql"><c>5_options.sql</c></a>: <c>table_options</c> and <c>storage_pools</c> dropped with their rules, their facts declared in its seeds.</item>
-      <item><b>Proved, not hoped:</b> applying versions 1 to 5 of this folder to an empty database gives exactly what its table files and rules give (checked on PostgreSQL 18 with <c>pg_dump --schema-only</c>); every release proves it for every owner, and upgrades a database of every earlier version.</item>
+      <item><b>Proved, not hoped:</b> applying versions 1 to 6 of this folder to an empty database gives exactly what its table files and rules give (checked on PostgreSQL 18 with <c>pg_dump --schema-only</c>); every release proves it for every owner, and upgrades a database of every earlier version.</item>
       <item>A shipped version is never edited: its checksum, kept in every database that applied it, refuses it.</item>
     </list>
   </section>

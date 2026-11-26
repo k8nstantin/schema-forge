@@ -24,7 +24,7 @@ BEGIN
   IF owner = 'cortex' THEN
     -- what the agent reads only: the designs themselves, the engines' declarations, the workspace, what a person chose
     -- to read, what was applied, read and locked
-    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors', 'flavor_limits',
+    FOREACH t IN ARRAY ARRAY['designs', 'engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors', 'flavor_limits', 'reference_kinds', 'privilege_declarations',
                              'workspace_identity', 'workspace_parameters', 'workspace_connections', 'workspace_connection_values',
                              'workspace_connection_tests', 'workspace_connection_test_steps', 'workspace_design_connections',
                              'read_scopes', 'read_scope_kinds', 'read_scope_objects',
@@ -34,7 +34,7 @@ BEGIN
     -- what the engines declare (their versions, features, kinds, options, catalog sources, flavors and what each flavor
     -- lacks) is the seeds' alone, changed by installing a version as the DBA: the app reads it, as the agent does
     FOREACH t IN ARRAY ARRAY['engine_versions', 'engine_features', 'catalog_sources', 'object_kinds', 'option_declarations', 'engine_flavors',
-                             'flavor_limits'] LOOP
+                             'flavor_limits', 'reference_kinds', 'privilege_declarations'] LOOP
       EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_service', t);
     END LOOP;
     -- the log: the agent adds to it with its work and never rewrites it

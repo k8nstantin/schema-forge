@@ -82,6 +82,8 @@ BEGIN
       count := count + 1;
     END LOOP;
   END LOOP;
+  -- and what every reference of the owner's tables may point at (check_references.sql)
+  PERFORM cortex.guard_references(owner);
   RETURN count;
 END $$;
 

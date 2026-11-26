@@ -250,7 +250,7 @@ fn an_engine_whose_card_names_another_namespace_and_a_card_whose_version_is_not_
  {
     let c = copy("cards");
     c.edit("engines/mysql/owner.toml", r#"namespace = "engine_mysql""#, r#"namespace = "engine_other""#);
-    c.edit("docs/owner-template/owner.toml", "version = 5 ", "version = 4 ");
+    c.edit("docs/owner-template/owner.toml", "version = 6 ", "version = 5 ");
     let found = check(c.root());
     named(&found, &["engines/mysql/owner.toml", "namespace"]);
     named(&found, &["docs/owner-template/owner.toml", "version"]);
@@ -418,7 +418,7 @@ fn in_docker_a_seed_whose_rows_take_a_new_id_each_time_it_is_applied_is_the_find
 #[test]
 fn in_docker_the_template_with_its_last_migration_removed_is_the_finding_its_versions_do_not_give_its_files() {
     let c = copy("versions");
-    c.remove("docs/owner-template/schema/migrations/5_options.sql");
+    c.remove("docs/owner-template/schema/migrations/6_references.sql");
     named(&load(c.root()), &["its versions do not give its files"]);
 }
 

@@ -138,3 +138,61 @@ INSERT INTO cortex.flavor_limits (id, flavor, what, kind, option, value, name, s
   ('mysql/rds/function/SHA', 'mysql/rds', 'function', NULL, NULL, NULL, 'SHA', 'mysql/9.7', NULL, 'refused', 'SHA() is not available on RDS for MySQL 9.7; the upgrade precheck blocks a routine, view, trigger, event, default or index that uses it', 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.FeatureSupport.html'),
   ('mysql/aurora/kind/tablespace', 'mysql/aurora', 'kind', 'mysql/tablespace', NULL, NULL, NULL, NULL, 'mysql/5.7', 'refused', 'Aurora MySQL version 2 (MySQL 5.7) does not support CREATE TABLESPACE', 'https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraMySQL.CompareMySQL57.html')
 ON CONFLICT (id) DO NOTHING;
+
+-- what each reference may point at (decision reference-kinds), checked by cortex.check_references
+INSERT INTO cortex.reference_kinds (id, engine, part, field, condition_field, condition_value, kinds, about) VALUES
+  ('mysql/cortex.columns.object', 'mysql', 'cortex.columns', 'object', NULL, NULL, '["table", "view"]', 'the table or view a column is of'),
+  ('mysql/cortex.indexes.object', 'mysql', 'cortex.indexes', 'object', NULL, NULL, '["table"]', 'the table an index is on'),
+  ('mysql/cortex.constraints.object', 'mysql', 'cortex.constraints', 'object', NULL, NULL, '["table"]', 'the table a key or check is on'),
+  ('mysql/cortex.constraints.to_object', 'mysql', 'cortex.constraints', 'to_object', NULL, NULL, '["table"]', 'the table a foreign key refers to'),
+  ('mysql/cortex.partitionings.id', 'mysql', 'cortex.partitionings', 'id', NULL, NULL, '["table"]', 'the table partitioned'),
+  ('mysql/cortex.partitions.table_object', 'mysql', 'cortex.partitions', 'table_object', NULL, NULL, '["table"]', 'a partition''s own table'),
+  ('mysql/cortex.views.id', 'mysql', 'cortex.views', 'id', NULL, NULL, '["view"]', 'the view whose query this is'),
+  ('mysql/cortex.routines.id', 'mysql', 'cortex.routines', 'id', NULL, NULL, '["procedure", "function"]', 'the routine whose body this is'),
+  ('mysql/cortex.routine_parameters.routine', 'mysql', 'cortex.routine_parameters', 'routine', NULL, NULL, '["procedure", "function"]', 'the routine a parameter is of'),
+  ('mysql/cortex.triggers.id', 'mysql', 'cortex.triggers', 'id', NULL, NULL, '["trigger"]', 'the trigger whose timing and body this is'),
+  ('mysql/cortex.objects.parent/kind=trigger', 'mysql', 'cortex.objects', 'parent', 'kind', 'trigger', '["table"]', 'the table a trigger fires on'),
+  ('mysql/cortex.objects.owner', 'mysql', 'cortex.objects', 'owner', NULL, NULL, '["account"]', 'the account an object belongs to and runs as (DEFINER)'),
+  ('mysql/cortex.privileges.grantee', 'mysql', 'cortex.privileges', 'grantee', NULL, NULL, '["account"]', 'the account a privilege is given to'),
+  ('mysql/cortex.privileges.object', 'mysql', 'cortex.privileges', 'object', NULL, NULL, '["table", "view", "procedure", "function"]', 'what a privilege is on'),
+  ('mysql/cortex.memberships.role', 'mysql', 'cortex.memberships', 'role', NULL, NULL, '["account"]', 'the role granted, an account made as a role'),
+  ('mysql/cortex.memberships.member', 'mysql', 'cortex.memberships', 'member', NULL, NULL, '["account"]', 'the account a role is granted to'),
+  ('mysql/cortex.dependencies.uses', 'mysql', 'cortex.dependencies', 'uses', NULL, NULL, '["table", "view", "tablespace", "library", "procedure", "function"]', 'what an object uses')
+ON CONFLICT (id) DO NOTHING;
+
+-- the privileges the engine grants, where, and in which versions (decision reference-kinds)
+INSERT INTO cortex.privilege_declarations (id, engine, privilege, levels, pattern, since, "until", about) VALUES
+  ('mysql/CREATE USER', 'mysql', 'CREATE USER', '["server"]', false, NULL, NULL, 'what CREATE USER lets its grantee do, as MySQL defines it'),
+  ('mysql/CREATE TABLESPACE', 'mysql', 'CREATE TABLESPACE', '["server"]', false, NULL, NULL, 'what CREATE TABLESPACE lets its grantee do, as MySQL defines it'),
+  ('mysql/FILE', 'mysql', 'FILE', '["server"]', false, NULL, NULL, 'what FILE lets its grantee do, as MySQL defines it'),
+  ('mysql/PROCESS', 'mysql', 'PROCESS', '["server"]', false, NULL, NULL, 'what PROCESS lets its grantee do, as MySQL defines it'),
+  ('mysql/RELOAD', 'mysql', 'RELOAD', '["server"]', false, NULL, NULL, 'what RELOAD lets its grantee do, as MySQL defines it'),
+  ('mysql/REPLICATION CLIENT', 'mysql', 'REPLICATION CLIENT', '["server"]', false, NULL, NULL, 'what REPLICATION CLIENT lets its grantee do, as MySQL defines it'),
+  ('mysql/REPLICATION SLAVE', 'mysql', 'REPLICATION SLAVE', '["server"]', false, NULL, NULL, 'what REPLICATION SLAVE lets its grantee do, as MySQL defines it'),
+  ('mysql/SHOW DATABASES', 'mysql', 'SHOW DATABASES', '["server"]', false, NULL, NULL, 'what SHOW DATABASES lets its grantee do, as MySQL defines it'),
+  ('mysql/SHUTDOWN', 'mysql', 'SHUTDOWN', '["server"]', false, NULL, NULL, 'what SHUTDOWN lets its grantee do, as MySQL defines it'),
+  ('mysql/SUPER', 'mysql', 'SUPER', '["server"]', false, NULL, NULL, 'what SUPER lets its grantee do, as MySQL defines it'),
+  ('mysql/CREATE ROLE', 'mysql', 'CREATE ROLE', '["server"]', false, 'mysql/8.0', NULL, 'what CREATE ROLE lets its grantee do, as MySQL defines it'),
+  ('mysql/DROP ROLE', 'mysql', 'DROP ROLE', '["server"]', false, 'mysql/8.0', NULL, 'what DROP ROLE lets its grantee do, as MySQL defines it'),
+  ('mysql/CREATE ROUTINE', 'mysql', 'CREATE ROUTINE', '["server", "namespace"]', false, NULL, NULL, 'what CREATE ROUTINE lets its grantee do, as MySQL defines it'),
+  ('mysql/CREATE TEMPORARY TABLES', 'mysql', 'CREATE TEMPORARY TABLES', '["server", "namespace"]', false, NULL, NULL, 'what CREATE TEMPORARY TABLES lets its grantee do, as MySQL defines it'),
+  ('mysql/EVENT', 'mysql', 'EVENT', '["server", "namespace"]', false, NULL, NULL, 'what EVENT lets its grantee do, as MySQL defines it'),
+  ('mysql/LOCK TABLES', 'mysql', 'LOCK TABLES', '["server", "namespace"]', false, NULL, NULL, 'what LOCK TABLES lets its grantee do, as MySQL defines it'),
+  ('mysql/ALTER', 'mysql', 'ALTER', '["server", "namespace", "object"]', false, NULL, NULL, 'what ALTER lets its grantee do, as MySQL defines it'),
+  ('mysql/CREATE', 'mysql', 'CREATE', '["server", "namespace", "object"]', false, NULL, NULL, 'what CREATE lets its grantee do, as MySQL defines it'),
+  ('mysql/CREATE VIEW', 'mysql', 'CREATE VIEW', '["server", "namespace", "object"]', false, NULL, NULL, 'what CREATE VIEW lets its grantee do, as MySQL defines it'),
+  ('mysql/DELETE', 'mysql', 'DELETE', '["server", "namespace", "object"]', false, NULL, NULL, 'what DELETE lets its grantee do, as MySQL defines it'),
+  ('mysql/DROP', 'mysql', 'DROP', '["server", "namespace", "object"]', false, NULL, NULL, 'what DROP lets its grantee do, as MySQL defines it'),
+  ('mysql/INDEX', 'mysql', 'INDEX', '["server", "namespace", "object"]', false, NULL, NULL, 'what INDEX lets its grantee do, as MySQL defines it'),
+  ('mysql/SHOW VIEW', 'mysql', 'SHOW VIEW', '["server", "namespace", "object"]', false, NULL, NULL, 'what SHOW VIEW lets its grantee do, as MySQL defines it'),
+  ('mysql/TRIGGER', 'mysql', 'TRIGGER', '["server", "namespace", "object"]', false, NULL, NULL, 'what TRIGGER lets its grantee do, as MySQL defines it'),
+  ('mysql/ALTER ROUTINE', 'mysql', 'ALTER ROUTINE', '["server", "namespace", "object"]', false, NULL, NULL, 'what ALTER ROUTINE lets its grantee do, as MySQL defines it'),
+  ('mysql/EXECUTE', 'mysql', 'EXECUTE', '["server", "namespace", "object"]', false, NULL, NULL, 'what EXECUTE lets its grantee do, as MySQL defines it'),
+  ('mysql/GRANT OPTION', 'mysql', 'GRANT OPTION', '["server", "namespace", "object"]', false, NULL, NULL, 'what GRANT OPTION lets its grantee do, as MySQL defines it'),
+  ('mysql/USAGE', 'mysql', 'USAGE', '["server", "namespace", "object"]', false, NULL, NULL, 'what USAGE lets its grantee do, as MySQL defines it'),
+  ('mysql/SELECT', 'mysql', 'SELECT', '["server", "namespace", "object", "column"]', false, NULL, NULL, 'what SELECT lets its grantee do, as MySQL defines it'),
+  ('mysql/INSERT', 'mysql', 'INSERT', '["server", "namespace", "object", "column"]', false, NULL, NULL, 'what INSERT lets its grantee do, as MySQL defines it'),
+  ('mysql/UPDATE', 'mysql', 'UPDATE', '["server", "namespace", "object", "column"]', false, NULL, NULL, 'what UPDATE lets its grantee do, as MySQL defines it'),
+  ('mysql/REFERENCES', 'mysql', 'REFERENCES', '["server", "namespace", "object", "column"]', false, NULL, NULL, 'what REFERENCES lets its grantee do, as MySQL defines it'),
+  ('mysql/dynamic', 'mysql', '^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$', '["server"]', true, 'mysql/8.0', NULL, 'a dynamic privilege, registered by the server or one of its components (BACKUP_ADMIN): an open set')
+ON CONFLICT (id) DO NOTHING;
