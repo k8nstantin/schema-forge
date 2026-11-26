@@ -128,6 +128,41 @@ def main():
         ok, out, err = sql("sf_agent", q, rollback=True)
         print(f"  {'pass' if ok == want else 'FAIL'}  {what}: {'allowed' if ok else 'refused (' + err[7:110] + ')'}")
 
+    print("== no service account changes the schema: every attempt refused, as sf_service, sf_agent and sf_reader")
+    changes = [
+        ("create a table", "CREATE TABLE cortex.x (id int);"),
+        ("create a table in public", "CREATE TABLE public.x (id int);"),
+        ("create a schema", "CREATE SCHEMA x;"),
+        ("add a column", "ALTER TABLE cortex.objects ADD COLUMN x int;"),
+        ("drop a column", "ALTER TABLE cortex.objects DROP COLUMN notes;"),
+        ("drop a table", "DROP TABLE cortex.object_tags;"),
+        ("create an index", "CREATE INDEX x ON cortex.objects (name);"),
+        ("drop a constraint", "ALTER TABLE cortex.objects DROP CONSTRAINT objects_pkey;"),
+        ("disable a guard", "ALTER TABLE cortex.objects DISABLE TRIGGER kinds;"),
+        ("drop a guard", "DROP TRIGGER refs ON cortex.privileges;"),
+        ("replace a guard's function", "CREATE OR REPLACE FUNCTION cortex.check_references() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NULL; END $$;"),
+        ("create a function", "CREATE FUNCTION cortex.x() RETURNS int LANGUAGE sql AS 'SELECT 1';"),
+        ("create a trigger", "CREATE TRIGGER x AFTER INSERT ON cortex.objects FOR EACH STATEMENT EXECUTE FUNCTION cortex.check_kinds();"),
+        ("truncate a table", "TRUNCATE cortex.row_changes;"),
+        ("change a comment", "COMMENT ON TABLE cortex.objects IS 'x';"),
+        ("grant itself more", "GRANT ALL ON cortex.designs TO PUBLIC;"),
+        ("become the owner", "SET ROLE sf_owner;"),
+        ("install an extension", "CREATE EXTENSION IF NOT EXISTS hstore;"),
+        ("rename a table", "ALTER TABLE cortex.objects RENAME TO x;"),
+        ("change an engine table", "ALTER TABLE engine_postgresql.policies ADD COLUMN x int;"),
+        ("change a ui table", "DROP TABLE ui.pinned_notes;"),
+    ]
+    taken = 0
+    for role in ("sf_service", "sf_agent", "sf_reader"):
+        for what, q in changes:
+            ok, out, err = sql(role, q, rollback=True)
+            # a GRANT by a role without the grant option succeeds and changes nothing: PostgreSQL warns, it does not refuse
+            if ok and "no privileges were granted" not in err:
+                taken += 1
+                print(f"  FAIL  {role} may {what}")
+        print(f"  {'pass' if not taken else 'FAIL'}  {role}: {len(changes)} schema changes tried, every one refused" if not taken else f"  {role}: done")
+    print(f"{'pass' if not taken else 'FAIL'}  no service account changes the schema: {taken} of {3 * len(changes)} taken")
+
     print("== gaps: well formed but wrong; each should be refused")
     obj = lambda kind, d=prod: sql("sf_service", f"SELECT id FROM cortex.objects WHERE design = '{d}' AND kind = '{kind}' LIMIT 1")[1]  # noqa: E731
     view, routine, account = obj("view"), obj("procedure"), obj("account", designs["service-test-mysql-9.7"])
@@ -170,7 +205,7 @@ def main():
         held += not ok
         print(f"  {'held' if not ok else 'GAP '}  {what}: {'refused (' + err[7:100] + ')' if not ok else 'TAKEN'}")
     print(f"== {held} of {len(gaps)} held; designs left as data (service-test-*): --clean deletes them")
-    return 0 if held == len(gaps) else 1
+    return 0 if held == len(gaps) and not taken else 1
 
 
 if __name__ == "__main__":
