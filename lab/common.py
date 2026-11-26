@@ -70,10 +70,16 @@ def ready_mysql(name):
 def schema_dump(container, schemas):
     """PostgreSQL's own word on a database's structure: pg_dump --schema-only of the schemas named, as statements,
     without the lines that differ between any two dumps (comments, SET, the restrict key)."""
-    args = ["docker", "exec", container, "pg_dump", "-U", "postgres", "-d", SOURCE_DB, "--schema-only"] + [f"--schema={n}" for n in schemas]
+    # the whole database, its own objects outside any schema too (casts, event triggers, servers, publications), but for
+    # the schemas the design does not hold
+    have = subprocess.run(["docker", "exec", container, "psql", "-U", "postgres", "-d", SOURCE_DB, "-Atc",
+                           "SELECT nspname FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'"],
+                          capture_output=True, text=True).stdout.split("\n")
+    args = ["docker", "exec", container, "pg_dump", "-U", "postgres", "-d", SOURCE_DB, "--schema-only"] + \
+        [f'--exclude-schema="{n}"' for n in have if n and n not in schemas and n != "public"]
     out = subprocess.run(args, capture_output=True, text=True).stdout
     keep = "\n".join(l for l in out.split("\n") if l and not l.startswith(("--", "SET ", "SELECT pg_catalog.set_config", "\\restrict", "\\unrestrict")))
-    return sorted(st.strip() for st in keep.split(";\n") if st.strip())
+    return sorted(st.strip().rstrip(";") for st in keep.split(";\n") if st.strip())
 
 
 def dump_diff(source, rebuilt, schemas):
