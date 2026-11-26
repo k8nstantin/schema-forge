@@ -41,6 +41,13 @@ def drop_everything(conn):
         raise SystemExit("nothing dropped")
     for db in dbs:
         A.ok(A.run(conn, f'DROP DATABASE "{db}" WITH (FORCE);'), f"dropping {db}")
+    # what the roles own or were granted in any other database of the cluster goes first, database by database (pg_shdepend
+    # names them); only then can a role go
+    others = A.ok(A.run(conn, "SELECT string_agg(DISTINCT d.datname, ' ') FROM pg_shdepend s JOIN pg_database d ON d.oid = s.dbid "
+                              "JOIN pg_roles r ON r.oid = s.refobjid WHERE r.rolname LIKE 'sf\\_%';"), "listing what the roles hold").split()
+    owned = " ".join(f'DROP OWNED BY "{r}" CASCADE;' for r in sorted(roles, key=lambda r: r == "sf_owner"))
+    for db in [d for d in others if d not in dbs]:
+        A.ok(A.run(conn, owned, db), f"dropping what the roles hold in {db}")
     for role in sorted(roles, key=lambda r: r == "sf_owner"):  # the owner last: the others may hold its grants
         A.ok(A.run(conn, f'DROP OWNED BY "{role}" CASCADE; DROP ROLE "{role}";'), f"dropping {role}")
 
