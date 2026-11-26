@@ -16,11 +16,12 @@ BEGIN
   EXECUTE format('GRANT USAGE ON SCHEMA %I TO sf_service, sf_agent, sf_reader', owner);
   EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO sf_service, sf_agent', owner);
   EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO sf_reader', owner);
-  EXECUTE format('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO sf_service, sf_agent', owner);
+  -- no function by default: PostgreSQL lets everyone execute a new function; here only what a job needs (cortex.misfits)
+  EXECUTE format('REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA %I FROM PUBLIC, sf_service, sf_agent, sf_reader', owner);
   -- and the same for every table and function a later version makes (they are made as sf_owner)
   EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO sf_service, sf_agent', owner);
   EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT ON TABLES TO sf_reader', owner);
-  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT EXECUTE ON FUNCTIONS TO sf_service, sf_agent', owner);
+  EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC';
   IF owner = 'cortex' THEN
     -- what the agent reads only: the designs themselves, the engines' declarations, the workspace, what a person chose
     -- to read, what was applied, read and locked
@@ -37,10 +38,22 @@ BEGIN
                              'flavor_limits', 'reference_kinds', 'privilege_declarations'] LOOP
       EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_service', t);
     END LOOP;
-    -- the log: the agent adds to it with its work and never rewrites it
+    -- the log: the agent adds to it with its work and never rewrites it; the app adds to it, and of a turn changes only
+    -- its state as it ends or is decided: no row of history is rewritten or deleted (a design deleted takes its log with
+    -- it, as the table owner, by the foreign keys)
     FOREACH t IN ARRAY ARRAY['turns', 'operations', 'row_changes'] LOOP
       EXECUTE format('REVOKE UPDATE, DELETE ON cortex.%I FROM sf_agent', t);
     END LOOP;
+    REVOKE UPDATE, DELETE ON cortex.operations, cortex.row_changes FROM sf_service;
+    REVOKE DELETE ON cortex.turns FROM sf_service;
+    -- what was migrated is the owner's to write; a version locked stays as it was locked
+    REVOKE INSERT, UPDATE, DELETE ON cortex.schema_migrations FROM sf_service;
+    REVOKE UPDATE, DELETE ON cortex.locked_versions FROM sf_service;
+    -- the one function a job needs: what a design holds that a target would not take
+    GRANT EXECUTE ON FUNCTION cortex.misfits(uuid, text, text) TO sf_service, sf_agent, sf_reader;
+    -- the database: the service accounts connect to it, and make nothing in it, not even a temporary table
+    EXECUTE format('REVOKE ALL ON DATABASE %I FROM PUBLIC', current_database());
+    EXECUTE format('GRANT CONNECT ON DATABASE %I TO sf_service, sf_agent, sf_reader', current_database());
   END IF;
 END $$;
 

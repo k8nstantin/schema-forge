@@ -20,6 +20,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.dont_write_bytecode = True
 import common as C  # noqa: E402
+import pg_store as P  # noqa: E402
+import repo_pg_store as RP  # noqa: E402
 import repo_store as R  # noqa: E402
 
 DB = "lab_designs"
@@ -81,6 +83,16 @@ def main():
     print(f"== two designs in {DB}, loaded as sf_service")
     R.load(DB, a_rows)
     R.load(DB, {k: v for k, v in b_rows.items() if k not in ("cortex.engine_versions", "cortex.object_kinds")})
+    # and a PostgreSQL design with its twin: sequences, identities and inheritance are PostgreSQL's alone
+    pg_snap = json.load(open(os.path.join(HERE, "out", "postgresql-18.json")))
+    p_rows, _ = RP.to_locked(P.rows_of(pg_snap), "18", pg_snap["parts"])
+    p_rows["cortex.designs"][0]["name"] = "pg"
+    p_copy, pg_twin = R.twin(p_rows, "pg-copy")
+    for rows in (p_rows, p_copy):
+        rows = RP.jsonish(R.OL.to_options({k: v for k, v in rows.items() if k not in ("cortex.engine_versions", "cortex.object_kinds")}))
+        C.psql("BEGIN;\nSET ROLE sf_service;\n" + "".join(R.copy_sql(k, rows[k]) for k in RP.ORDER if rows.get(k)) + "COMMIT;\n", DB)
+    pa = p_rows["cortex.designs"][0]["id"]
+    PT = lambda x: f"'{pg_twin[x]}'"  # noqa: E731  the twin in pg-copy of a part of pg
     q("CREATE TABLE public.lab_twin (a uuid PRIMARY KEY, b uuid NOT NULL); GRANT SELECT ON public.lab_twin TO sf_service;")
     q("INSERT INTO public.lab_twin VALUES " + ", ".join(f"('{k}', '{v}')" for k, v in twin_ids.items() if len(k) == 36) + ";")
     OBJ = "SELECT o.id, o.namespace, o.kind, o.name, o.signature, o.parent, o.position, o.comment FROM cortex.objects o WHERE o.design = '{d}'"
@@ -103,13 +115,11 @@ def main():
     ns_a, ns_a2 = q(f"SELECT id FROM cortex.namespaces WHERE design = '{a}' ORDER BY position LIMIT 2").split()
     tab = q(f"SELECT id FROM cortex.objects WHERE design = '{a}' AND kind = 'table' ORDER BY position LIMIT 1")
     col = q(f"SELECT id FROM cortex.columns WHERE object = '{tab}' ORDER BY position LIMIT 1")
-    # a kind MySQL declares (the guard check_kinds refuses any other first): the sequences row is what is under test
-    seq = f"INSERT INTO cortex.objects (id, design, namespace, kind, name, position) VALUES ('{NEW[0]}', '{a}', '{ns_a}', 'table', 's_new', 999999);\n"
-    refused("a sequence owned by a column of the other design",
-            seq + f"INSERT INTO cortex.sequences (id, design, owned_by) VALUES ('{NEW[0]}', '{a}', {T(col)});")
-    plain = q(f"SELECT c.id FROM cortex.columns c WHERE c.design = '{a}' AND NOT EXISTS (SELECT 1 FROM cortex.column_identities i WHERE i.id = c.id) ORDER BY c.position LIMIT 1")
-    refused("an identity drawing on a sequence of the other design",
-            f"INSERT INTO cortex.column_identities (id, design, sequence) VALUES ('{plain}', '{a}', {T(tab)});")
+    # sequences and identities are PostgreSQL's: the PostgreSQL pair proves them, each a real row pointed at its twin
+    pseq, pcol = q(f"SELECT s.id || ' ' || c.id FROM cortex.sequences s, cortex.columns c WHERE s.design = '{pa}' AND c.design = '{pa}' LIMIT 1").split()
+    refused("a sequence owned by a column of the other design", f"UPDATE cortex.sequences SET owned_by = {PT(pcol)} WHERE id = '{pseq}';")
+    pid = q(f"SELECT id || ' ' || sequence FROM cortex.column_identities WHERE design = '{pa}' AND sequence IS NOT NULL LIMIT 1").split()
+    refused("an identity drawing on a sequence of the other design", f"UPDATE cortex.column_identities SET sequence = {PT(pid[1])} WHERE id = '{pid[0]}';")
     part = q(f"SELECT id FROM cortex.partitions WHERE design = '{a}' LIMIT 1")
     if part:
         refused("a partition whose table is in the other design", f"UPDATE cortex.partitions SET table_object = {TW.format('partitioning')} WHERE id = '{part}';")
@@ -122,8 +132,8 @@ def main():
     refused("a choice of what to read listing a kind under the other design's choice",
             f"INSERT INTO cortex.read_scopes (id, design, everything, made_by) VALUES ('{NEW[2]}', '{b}', false, 'lab');\n"
             f"INSERT INTO cortex.read_scope_kinds (design, scope, kind) VALUES ('{a}', '{NEW[2]}', 'table');")
-    refused("an inherited parent in the other design",
-            f"INSERT INTO engine_postgresql.inheritance (design, object, parent, position) VALUES ('{a}', '{tab}', {T(tab)}, 1);")
+    inh = q(f"SELECT id || ' ' || parent FROM engine_postgresql.inheritance WHERE design = '{pa}' LIMIT 1").split()
+    refused("an inherited parent in the other design", f"UPDATE engine_postgresql.inheritance SET parent = {PT(inh[1])} WHERE id = '{inh[0]}';")
     refused("a row of one design claiming the other's design",
             f"UPDATE cortex.views SET design = '{b}' WHERE id = (SELECT id FROM cortex.views WHERE design = '{a}' LIMIT 1);")
 

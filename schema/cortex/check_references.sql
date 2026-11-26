@@ -13,36 +13,33 @@
 CREATE FUNCTION cortex.check_references() RETURNS trigger LANGUAGE plpgsql STABLE AS $$
 DECLARE
   bad record;
+  f record;
   this_part text := TG_TABLE_SCHEMA || '.' || TG_TABLE_NAME;
 BEGIN
-  -- the kind of every object a reference points at
-  SELECT rk.field, o.kind, o.name, rk.kinds, rk.about INTO bad
-    FROM new_rows r
-    JOIN cortex.designs d ON d.id = (to_jsonb(r) ->> 'design')::uuid
-    JOIN cortex.reference_kinds rk ON rk.engine = d.engine AND rk.part = this_part
-     AND (rk.condition_field IS NULL
-          OR coalesce(to_jsonb(r) ->> rk.condition_field, to_jsonb(r) -> 'options' ->> rk.condition_field, '') = rk.condition_value)
-    JOIN cortex.objects o ON o.id = (to_jsonb(r) ->> rk.field)::uuid
-   WHERE NOT rk.kinds ? o.kind
-   LIMIT 1;
-  IF FOUND THEN
-    RAISE EXCEPTION '% may refer to % only (%), not to the % %', bad.field, bad.kinds, bad.about, bad.kind, bad.name USING ERRCODE = 'check_violation';
-  END IF;
-  -- closed: a reference some engine declares rules for may be set only where the design's engine has a rule that applies
-  -- (MySQL has no sequences: an AUTO_INCREMENT's identity draws on none; a dependency's role must be one declared)
-  SELECT f.field, d.engine, coalesce(to_jsonb(r) -> 'options' ->> 'as', to_jsonb(r) ->> 'kind', '') AS how INTO bad
-    FROM new_rows r
-    JOIN cortex.designs d ON d.id = (to_jsonb(r) ->> 'design')::uuid
-    CROSS JOIN (SELECT DISTINCT rk.field FROM cortex.reference_kinds rk WHERE rk.part = this_part) f
-   WHERE to_jsonb(r) ->> f.field IS NOT NULL
-     AND NOT EXISTS (SELECT 1 FROM cortex.reference_kinds rk WHERE rk.engine = d.engine AND rk.part = this_part AND rk.field = f.field
-                       AND (rk.condition_field IS NULL
-                            OR coalesce(to_jsonb(r) ->> rk.condition_field, to_jsonb(r) -> 'options' ->> rk.condition_field, '') = rk.condition_value))
-     -- an object's parent is declared for the kinds that have one; an object of another kind has none
-   LIMIT 1;
-  IF FOUND THEN
-    RAISE EXCEPTION '% declares no % of % here (%)', bad.engine, bad.field, this_part, nullif(bad.how, '') USING ERRCODE = 'check_violation';
-  END IF;
+  -- every reference column some engine declares rules for, read straight from the statement's rows: its object's kind
+  -- must be one a rule of the design's engine that applies to the row names; with no such rule, it may not be set (closed)
+  FOR f IN SELECT DISTINCT rk.field FROM cortex.reference_kinds rk WHERE rk.part = this_part LOOP
+    EXECUTE format($q$
+      SELECT %1$L AS field, o.kind, o.name, d.engine, rk.kinds, rk.about, rk.id AS rule,
+             coalesce(to_jsonb(r) -> 'options' ->> 'as', to_jsonb(r) ->> 'kind', '') AS how
+        FROM new_rows r
+        JOIN cortex.objects o ON o.id = r.%1$I
+        JOIN cortex.designs d ON d.id = r.design
+        LEFT JOIN LATERAL (
+          SELECT x.* FROM cortex.reference_kinds x
+           WHERE x.engine = d.engine AND x.part = %2$L AND x.field = %1$L
+             AND (x.condition_field IS NULL
+                  OR coalesce(to_jsonb(r) ->> x.condition_field, to_jsonb(r) -> 'options' ->> x.condition_field, '') = x.condition_value)
+           ORDER BY x.condition_field NULLS LAST LIMIT 1) rk ON true
+       WHERE rk.id IS NULL OR NOT rk.kinds ? o.kind
+       LIMIT 1$q$, f.field, this_part) INTO bad;
+    IF bad.field IS NOT NULL THEN
+      IF bad.rule IS NULL THEN
+        RAISE EXCEPTION '% declares no % of % here (%)', bad.engine, bad.field, this_part, nullif(bad.how, '') USING ERRCODE = 'check_violation';
+      END IF;
+      RAISE EXCEPTION '% may refer to % only (%), not to the % %', bad.field, bad.kinds, bad.about, bad.kind, bad.name USING ERRCODE = 'check_violation';
+    END IF;
+  END LOOP;
   -- a privilege the engine has, at the level it is granted, in the design's version
   IF this_part IN ('cortex.privileges', 'engine_postgresql.default_privileges') THEN
     SELECT x.privilege, x.level, d.engine, d.engine_version, p.id AS declared INTO bad

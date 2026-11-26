@@ -57,6 +57,11 @@ def install(conn):
         raise SystemExit(f"{DATABASE} is installed already: run with --fresh to install it again")
     owners = SD.databases()[DATABASE]
     A.ok(A.run(conn, f"CREATE DATABASE {DATABASE} OWNER sf_owner;"), f"making {DATABASE}")
+    # the cluster's own databases: PostgreSQL lets every role connect to them; no service account needs to (a superuser,
+    # the DBA, is not bound by it)
+    A.ok(A.run(conn, "REVOKE CONNECT ON DATABASE postgres FROM PUBLIC; REVOKE CONNECT ON DATABASE template1 FROM PUBLIC;"),
+         "keeping the service accounts out of postgres and template1")
+    print("postgres and template1: no longer open to every role (CONNECT revoked from PUBLIC); a superuser is not bound by it")
     script = "BEGIN;\nSET ROLE sf_owner;\n" + "".join(sql + "\n" for o in owners for _, sql in SD.version_one(o)) + "COMMIT;\n"
     A.ok(A.run(conn, script, DATABASE), f"loading {DATABASE}")
     tables = A.ok(A.run(conn, "SELECT string_agg(n.nspname || ' ' || x.c, ', ' ORDER BY n.nspname) FROM (SELECT relnamespace, count(*) c "

@@ -208,39 +208,36 @@ ALTER FUNCTION cortex.check_options() OWNER TO sf_owner;
 
 CREATE FUNCTION cortex.check_references() RETURNS trigger
     LANGUAGE plpgsql STABLE
-    AS $$
+    AS $_$
 DECLARE
   bad record;
+  f record;
   this_part text := TG_TABLE_SCHEMA || '.' || TG_TABLE_NAME;
 BEGIN
-  -- the kind of every object a reference points at
-  SELECT rk.field, o.kind, o.name, rk.kinds, rk.about INTO bad
-    FROM new_rows r
-    JOIN cortex.designs d ON d.id = (to_jsonb(r) ->> 'design')::uuid
-    JOIN cortex.reference_kinds rk ON rk.engine = d.engine AND rk.part = this_part
-     AND (rk.condition_field IS NULL
-          OR coalesce(to_jsonb(r) ->> rk.condition_field, to_jsonb(r) -> 'options' ->> rk.condition_field, '') = rk.condition_value)
-    JOIN cortex.objects o ON o.id = (to_jsonb(r) ->> rk.field)::uuid
-   WHERE NOT rk.kinds ? o.kind
-   LIMIT 1;
-  IF FOUND THEN
-    RAISE EXCEPTION '% may refer to % only (%), not to the % %', bad.field, bad.kinds, bad.about, bad.kind, bad.name USING ERRCODE = 'check_violation';
-  END IF;
-  -- closed: a reference some engine declares rules for may be set only where the design's engine has a rule that applies
-  -- (MySQL has no sequences: an AUTO_INCREMENT's identity draws on none; a dependency's role must be one declared)
-  SELECT f.field, d.engine, coalesce(to_jsonb(r) -> 'options' ->> 'as', to_jsonb(r) ->> 'kind', '') AS how INTO bad
-    FROM new_rows r
-    JOIN cortex.designs d ON d.id = (to_jsonb(r) ->> 'design')::uuid
-    CROSS JOIN (SELECT DISTINCT rk.field FROM cortex.reference_kinds rk WHERE rk.part = this_part) f
-   WHERE to_jsonb(r) ->> f.field IS NOT NULL
-     AND NOT EXISTS (SELECT 1 FROM cortex.reference_kinds rk WHERE rk.engine = d.engine AND rk.part = this_part AND rk.field = f.field
-                       AND (rk.condition_field IS NULL
-                            OR coalesce(to_jsonb(r) ->> rk.condition_field, to_jsonb(r) -> 'options' ->> rk.condition_field, '') = rk.condition_value))
-     -- an object's parent is declared for the kinds that have one; an object of another kind has none
-   LIMIT 1;
-  IF FOUND THEN
-    RAISE EXCEPTION '% declares no % of % here (%)', bad.engine, bad.field, this_part, nullif(bad.how, '') USING ERRCODE = 'check_violation';
-  END IF;
+  -- every reference column some engine declares rules for, read straight from the statement's rows: its object's kind
+  -- must be one a rule of the design's engine that applies to the row names; with no such rule, it may not be set (closed)
+  FOR f IN SELECT DISTINCT rk.field FROM cortex.reference_kinds rk WHERE rk.part = this_part LOOP
+    EXECUTE format($q$
+      SELECT %1$L AS field, o.kind, o.name, d.engine, rk.kinds, rk.about, rk.id AS rule,
+             coalesce(to_jsonb(r) -> 'options' ->> 'as', to_jsonb(r) ->> 'kind', '') AS how
+        FROM new_rows r
+        JOIN cortex.objects o ON o.id = r.%1$I
+        JOIN cortex.designs d ON d.id = r.design
+        LEFT JOIN LATERAL (
+          SELECT x.* FROM cortex.reference_kinds x
+           WHERE x.engine = d.engine AND x.part = %2$L AND x.field = %1$L
+             AND (x.condition_field IS NULL
+                  OR coalesce(to_jsonb(r) ->> x.condition_field, to_jsonb(r) -> 'options' ->> x.condition_field, '') = x.condition_value)
+           ORDER BY x.condition_field NULLS LAST LIMIT 1) rk ON true
+       WHERE rk.id IS NULL OR NOT rk.kinds ? o.kind
+       LIMIT 1$q$, f.field, this_part) INTO bad;
+    IF bad.field IS NOT NULL THEN
+      IF bad.rule IS NULL THEN
+        RAISE EXCEPTION '% declares no % of % here (%)', bad.engine, bad.field, this_part, nullif(bad.how, '') USING ERRCODE = 'check_violation';
+      END IF;
+      RAISE EXCEPTION '% may refer to % only (%), not to the % %', bad.field, bad.kinds, bad.about, bad.kind, bad.name USING ERRCODE = 'check_violation';
+    END IF;
+  END LOOP;
   -- a privilege the engine has, at the level it is granted, in the design's version
   IF this_part IN ('cortex.privileges', 'engine_postgresql.default_privileges') THEN
     SELECT x.privilege, x.level, d.engine, d.engine_version, p.id AS declared INTO bad
@@ -285,7 +282,7 @@ BEGIN
     IF FOUND THEN RAISE EXCEPTION 'trigger % fires on %, a column of another table', bad.name, bad.col USING ERRCODE = 'check_violation'; END IF;
   END IF;
   RETURN NULL;
-END $$;
+END $_$;
 
 
 ALTER FUNCTION cortex.check_references() OWNER TO sf_owner;
@@ -362,11 +359,12 @@ BEGIN
   EXECUTE format('GRANT USAGE ON SCHEMA %I TO sf_service, sf_agent, sf_reader', owner);
   EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO sf_service, sf_agent', owner);
   EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO sf_reader', owner);
-  EXECUTE format('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO sf_service, sf_agent', owner);
+  -- no function by default: PostgreSQL lets everyone execute a new function; here only what a job needs (cortex.misfits)
+  EXECUTE format('REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA %I FROM PUBLIC, sf_service, sf_agent, sf_reader', owner);
   -- and the same for every table and function a later version makes (they are made as sf_owner)
   EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO sf_service, sf_agent', owner);
   EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT SELECT ON TABLES TO sf_reader', owner);
-  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA %I GRANT EXECUTE ON FUNCTIONS TO sf_service, sf_agent', owner);
+  EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC';
   IF owner = 'cortex' THEN
     -- what the agent reads only: the designs themselves, the engines' declarations, the workspace, what a person chose
     -- to read, what was applied, read and locked
@@ -383,10 +381,22 @@ BEGIN
                              'flavor_limits', 'reference_kinds', 'privilege_declarations'] LOOP
       EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON cortex.%I FROM sf_service', t);
     END LOOP;
-    -- the log: the agent adds to it with its work and never rewrites it
+    -- the log: the agent adds to it with its work and never rewrites it; the app adds to it, and of a turn changes only
+    -- its state as it ends or is decided: no row of history is rewritten or deleted (a design deleted takes its log with
+    -- it, as the table owner, by the foreign keys)
     FOREACH t IN ARRAY ARRAY['turns', 'operations', 'row_changes'] LOOP
       EXECUTE format('REVOKE UPDATE, DELETE ON cortex.%I FROM sf_agent', t);
     END LOOP;
+    REVOKE UPDATE, DELETE ON cortex.operations, cortex.row_changes FROM sf_service;
+    REVOKE DELETE ON cortex.turns FROM sf_service;
+    -- what was migrated is the owner's to write; a version locked stays as it was locked
+    REVOKE INSERT, UPDATE, DELETE ON cortex.schema_migrations FROM sf_service;
+    REVOKE UPDATE, DELETE ON cortex.locked_versions FROM sf_service;
+    -- the one function a job needs: what a design holds that a target would not take
+    GRANT EXECUTE ON FUNCTION cortex.misfits(uuid, text, text) TO sf_service, sf_agent, sf_reader;
+    -- the database: the service accounts connect to it, and make nothing in it, not even a temporary table
+    EXECUTE format('REVOKE ALL ON DATABASE %I FROM PUBLIC', current_database());
+    EXECUTE format('GRANT CONNECT ON DATABASE %I TO sf_service, sf_agent, sf_reader', current_database());
   END IF;
 END $$;
 
@@ -11008,96 +11018,87 @@ GRANT USAGE ON SCHEMA ui TO sf_reader;
 -- Name: FUNCTION check_designs(); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.check_designs() TO sf_service;
-GRANT ALL ON FUNCTION cortex.check_designs() TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.check_designs() FROM PUBLIC;
 
 
 --
 -- Name: FUNCTION check_kinds(); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.check_kinds() TO sf_service;
-GRANT ALL ON FUNCTION cortex.check_kinds() TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.check_kinds() FROM PUBLIC;
 
 
 --
 -- Name: FUNCTION check_options(); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.check_options() TO sf_service;
-GRANT ALL ON FUNCTION cortex.check_options() TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.check_options() FROM PUBLIC;
 
 
 --
 -- Name: FUNCTION check_references(); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.check_references() TO sf_service;
-GRANT ALL ON FUNCTION cortex.check_references() TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.check_references() FROM PUBLIC;
 
 
 --
 -- Name: FUNCTION enforce_rules(owner text); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.enforce_rules(owner text) TO sf_service;
-GRANT ALL ON FUNCTION cortex.enforce_rules(owner text) TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.enforce_rules(owner text) FROM PUBLIC;
 
 
 --
 -- Name: FUNCTION grant_roles(owner text); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.grant_roles(owner text) TO sf_service;
-GRANT ALL ON FUNCTION cortex.grant_roles(owner text) TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.grant_roles(owner text) FROM PUBLIC;
 
 
 --
 -- Name: FUNCTION guard_references(owner text); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.guard_references(owner text) TO sf_service;
-GRANT ALL ON FUNCTION cortex.guard_references(owner text) TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.guard_references(owner text) FROM PUBLIC;
 
 
 --
 -- Name: FUNCTION misfits(p_design uuid, p_version text, p_flavor text); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
+REVOKE ALL ON FUNCTION cortex.misfits(p_design uuid, p_version text, p_flavor text) FROM PUBLIC;
 GRANT ALL ON FUNCTION cortex.misfits(p_design uuid, p_version text, p_flavor text) TO sf_service;
 GRANT ALL ON FUNCTION cortex.misfits(p_design uuid, p_version text, p_flavor text) TO sf_agent;
+GRANT ALL ON FUNCTION cortex.misfits(p_design uuid, p_version text, p_flavor text) TO sf_reader;
 
 
 --
 -- Name: FUNCTION notify_turns(); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.notify_turns() TO sf_service;
-GRANT ALL ON FUNCTION cortex.notify_turns() TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.notify_turns() FROM PUBLIC;
 
 
 --
 -- Name: FUNCTION rule_again(); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.rule_again() TO sf_service;
-GRANT ALL ON FUNCTION cortex.rule_again() TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.rule_again() FROM PUBLIC;
 
 
 --
 -- Name: FUNCTION rule_check(); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.rule_check() TO sf_service;
-GRANT ALL ON FUNCTION cortex.rule_check() TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.rule_check() FROM PUBLIC;
 
 
 --
 -- Name: FUNCTION rule_marks(); Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT ALL ON FUNCTION cortex.rule_marks() TO sf_service;
-GRANT ALL ON FUNCTION cortex.rule_marks() TO sf_agent;
+REVOKE ALL ON FUNCTION cortex.rule_marks() FROM PUBLIC;
 
 
 --
@@ -11248,7 +11249,7 @@ GRANT SELECT ON TABLE cortex.indexes TO sf_reader;
 -- Name: TABLE locked_versions; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.locked_versions TO sf_service;
+GRANT SELECT,INSERT ON TABLE cortex.locked_versions TO sf_service;
 GRANT SELECT ON TABLE cortex.locked_versions TO sf_agent;
 GRANT SELECT ON TABLE cortex.locked_versions TO sf_reader;
 
@@ -11311,7 +11312,7 @@ GRANT SELECT ON TABLE cortex.objects TO sf_reader;
 -- Name: TABLE operations; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.operations TO sf_service;
+GRANT SELECT,INSERT ON TABLE cortex.operations TO sf_service;
 GRANT SELECT,INSERT ON TABLE cortex.operations TO sf_agent;
 GRANT SELECT ON TABLE cortex.operations TO sf_reader;
 
@@ -11428,7 +11429,7 @@ GRANT SELECT ON TABLE cortex.routines TO sf_reader;
 -- Name: TABLE row_changes; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.row_changes TO sf_service;
+GRANT SELECT,INSERT ON TABLE cortex.row_changes TO sf_service;
 GRANT SELECT,INSERT ON TABLE cortex.row_changes TO sf_agent;
 GRANT SELECT ON TABLE cortex.row_changes TO sf_reader;
 
@@ -11446,7 +11447,7 @@ GRANT SELECT ON TABLE cortex.savepoints TO sf_reader;
 -- Name: TABLE schema_migrations; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.schema_migrations TO sf_service;
+GRANT SELECT ON TABLE cortex.schema_migrations TO sf_service;
 GRANT SELECT ON TABLE cortex.schema_migrations TO sf_agent;
 GRANT SELECT ON TABLE cortex.schema_migrations TO sf_reader;
 
@@ -11482,7 +11483,7 @@ GRANT SELECT ON TABLE cortex.triggers TO sf_reader;
 -- Name: TABLE turns; Type: ACL; Schema: cortex; Owner: sf_owner
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.turns TO sf_service;
+GRANT SELECT,INSERT,UPDATE ON TABLE cortex.turns TO sf_service;
 GRANT SELECT,INSERT ON TABLE cortex.turns TO sf_agent;
 GRANT SELECT ON TABLE cortex.turns TO sf_reader;
 
@@ -11749,28 +11750,12 @@ GRANT SELECT ON TABLE ui.subject_areas TO sf_reader;
 
 
 --
--- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: cortex; Owner: sf_owner
---
-
-ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA cortex GRANT ALL ON FUNCTIONS TO sf_service;
-ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA cortex GRANT ALL ON FUNCTIONS TO sf_agent;
-
-
---
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: cortex; Owner: sf_owner
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA cortex GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sf_service;
 ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA cortex GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sf_agent;
 ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA cortex GRANT SELECT ON TABLES TO sf_reader;
-
-
---
--- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: engine_mysql; Owner: sf_owner
---
-
-ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA engine_mysql GRANT ALL ON FUNCTIONS TO sf_service;
-ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA engine_mysql GRANT ALL ON FUNCTIONS TO sf_agent;
 
 
 --
@@ -11783,14 +11768,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA engine_mysql GRANT SELECT O
 
 
 --
--- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: engine_postgresql; Owner: sf_owner
---
-
-ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA engine_postgresql GRANT ALL ON FUNCTIONS TO sf_service;
-ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA engine_postgresql GRANT ALL ON FUNCTIONS TO sf_agent;
-
-
---
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: engine_postgresql; Owner: sf_owner
 --
 
@@ -11800,20 +11777,19 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA engine_postgresql GRANT SEL
 
 
 --
--- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: ui; Owner: sf_owner
---
-
-ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA ui GRANT ALL ON FUNCTIONS TO sf_service;
-ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA ui GRANT ALL ON FUNCTIONS TO sf_agent;
-
-
---
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: ui; Owner: sf_owner
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA ui GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sf_service;
 ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA ui GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sf_agent;
 ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner IN SCHEMA ui GRANT SELECT ON TABLES TO sf_reader;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: -; Owner: sf_owner
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE sf_owner REVOKE ALL ON FUNCTIONS FROM PUBLIC;
 
 
 --
