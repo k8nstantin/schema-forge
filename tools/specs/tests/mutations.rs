@@ -273,7 +273,7 @@ fn a_column_line_without_its_comment_is_the_finding_has_no_comment_naming_the_li
 #[test]
 fn a_column_of_a_type_none_of_the_eight_is_the_finding_which_is_none_of_the_eight() {
     let c = copy("type");
-    c.edit("schema/cortex/dependencies.sql", "position  INTEGER", "position  SMALLINT");
+    c.edit("schema/cortex/dependencies.sql", "position  NUMERIC", "position  SMALLINT");
     named(
         &check(c.root()),
         &["schema/cortex/dependencies.sql", "column position has the type SMALLINT, which is none of the eight"],
