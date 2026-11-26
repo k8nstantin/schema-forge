@@ -61,7 +61,7 @@
     </list>
   </section>
   <section title="What the canvas keeps">
-    <p>The canvas is shared by every engine, and what it keeps is part of the design, in the cortex (decision canvas-state): pinned notes (<c>cortex.pinned_notes</c>), custom perspectives and what they show (<c>cortex.custom_perspectives</c>, <c>cortex.perspective_members</c>), a table's place pinned in a view (<c>cortex.layout_pins</c>) and a table put in a family by hand (<c>cortex.family_assignments</c>). Every layout is worked out afresh, so only pins are kept; every change to these is an operation of a turn, undoable. The selection and the view on screen belong to the session and are never stored.</p>
+    <p>The canvas is shared by every engine, and what it keeps is part of the design, in the core owner ui beside the cortex (decision canvas-state): pinned notes (<c>ui.pinned_notes</c>), custom perspectives (<c>ui.custom_perspectives</c>, <c>ui.perspective_members</c>), pins of a table's place (<c>ui.layout_pins</c>), subject areas and a table put in a family by hand (<c>ui.subject_areas</c>, <c>ui.object_places</c>), every change logged and undone with the design. Every layout is worked out afresh, so only pins are kept; every change to these is an operation of a turn, undoable. The selection and the view on screen belong to the session and are never stored.</p>
   </section>
   <section title="The perspectives">
     <table>
