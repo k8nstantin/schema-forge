@@ -8,6 +8,7 @@ CREATE TABLE cortex.triggers (
   condition     TEXT,                                                                                          -- the rows it fires for, in the engine's SQL; NULL for every row
   body          TEXT,                                                                                          -- the statements it runs, exactly as the server holds them; NULL where it calls a routine
   action_order  INTEGER NOT NULL DEFAULT 1 CHECK (action_order >= 1),                                          -- its place among its table's triggers of the same timing and change
+  options       JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (design, id),
   FOREIGN KEY (design, id) REFERENCES cortex.objects (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
 );
@@ -21,3 +22,4 @@ COMMENT ON COLUMN cortex.triggers.level IS 'once per row or once per statement';
 COMMENT ON COLUMN cortex.triggers.condition IS 'the rows it fires for, in the engine''s SQL; NULL for every row';
 COMMENT ON COLUMN cortex.triggers.body IS 'the statements it runs, exactly as the server holds them; NULL where it calls a routine';
 COMMENT ON COLUMN cortex.triggers.action_order IS 'its place among its table''s triggers of the same timing and change';
+COMMENT ON COLUMN cortex.triggers.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

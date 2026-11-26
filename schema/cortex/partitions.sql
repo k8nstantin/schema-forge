@@ -8,6 +8,7 @@ CREATE TABLE cortex.partitions (
   bounds        TEXT,                                                                                          -- its bounds as the engine writes them (2025, FOR VALUES IN ('east')); NULL where the strategy gives none
   table_object  UUID,                                                                                          -- the table it is, where the engine makes partitions tables (PostgreSQL); NULL otherwise
   comment       TEXT,                                                                                          -- what it holds; NULL for none
+  options       JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (partitioning, name) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (partitioning, position) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
@@ -27,3 +28,4 @@ COMMENT ON COLUMN cortex.partitions.name IS 'its name';
 COMMENT ON COLUMN cortex.partitions.bounds IS 'its bounds as the engine writes them (2025, FOR VALUES IN (''east'')); NULL where the strategy gives none';
 COMMENT ON COLUMN cortex.partitions.table_object IS 'the table it is, where the engine makes partitions tables (PostgreSQL); NULL otherwise';
 COMMENT ON COLUMN cortex.partitions.comment IS 'what it holds; NULL for none';
+COMMENT ON COLUMN cortex.partitions.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

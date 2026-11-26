@@ -8,6 +8,7 @@ CREATE TABLE cortex.routine_parameters (
   type           TEXT NOT NULL CHECK (length(type) >= 1),                                                       -- its type, as the engine writes it
   mode           TEXT NOT NULL DEFAULT 'in' CHECK (mode IN ('in', 'out', 'in_out', 'variadic', 'table')),       -- how it is passed; table: a column of what a function returns
   default_value  TEXT,                                                                                          -- its default, in the engine's SQL; NULL for none
+  options        JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (routine, position) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
   FOREIGN KEY (design, routine) REFERENCES cortex.routines (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
@@ -24,3 +25,4 @@ COMMENT ON COLUMN cortex.routine_parameters.name IS 'its name; NULL for an unnam
 COMMENT ON COLUMN cortex.routine_parameters.type IS 'its type, as the engine writes it';
 COMMENT ON COLUMN cortex.routine_parameters.mode IS 'how it is passed; table: a column of what a function returns';
 COMMENT ON COLUMN cortex.routine_parameters.default_value IS 'its default, in the engine''s SQL; NULL for none';
+COMMENT ON COLUMN cortex.routine_parameters.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

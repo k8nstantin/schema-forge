@@ -7,6 +7,7 @@ CREATE TABLE cortex.sort_fields (
   "column"    UUID NOT NULL,                                                                                 -- the column ordered by
   transform   TEXT,                                                                                          -- the transform, in the engine's words; NULL for the value itself
   descending  BOOLEAN NOT NULL DEFAULT false,                                                                -- true when descending
+  options     JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (object, position) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
   FOREIGN KEY (design, object) REFERENCES cortex.objects (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
@@ -24,3 +25,4 @@ COMMENT ON COLUMN cortex.sort_fields.position IS 'its place, 1 first';
 COMMENT ON COLUMN cortex.sort_fields."column" IS 'the column ordered by';
 COMMENT ON COLUMN cortex.sort_fields.transform IS 'the transform, in the engine''s words; NULL for the value itself';
 COMMENT ON COLUMN cortex.sort_fields.descending IS 'true when descending';
+COMMENT ON COLUMN cortex.sort_fields.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

@@ -18,6 +18,7 @@ CREATE TABLE cortex.constraints (
   on_update           TEXT CHECK (on_update IN ('no_action', 'restrict', 'cascade', 'set_null', 'set_default')),                       -- what happens when its key changes; NULL for the engine's default
   match_kind          TEXT CHECK (match_kind IN ('simple', 'full', 'partial')),                                                        -- how a key of several columns with some null matches; NULL for the engine's default
   position            INTEGER NOT NULL CHECK (position >= 1),                                                                          -- its place among the object's constraints
+  options             JSONB NOT NULL DEFAULT '{}',                                                                                     -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (object, position) DEFERRABLE INITIALLY DEFERRED,
   CHECK ((kind = 'check') = (expression IS NOT NULL) OR kind = 'exclusion'),
   CHECK (kind <> 'foreign' OR (to_object IS NULL) = (to_object_name IS NOT NULL)),
@@ -50,3 +51,4 @@ COMMENT ON COLUMN cortex.constraints.on_delete IS 'what happens when the row ref
 COMMENT ON COLUMN cortex.constraints.on_update IS 'what happens when its key changes; NULL for the engine''s default';
 COMMENT ON COLUMN cortex.constraints.match_kind IS 'how a key of several columns with some null matches; NULL for the engine''s default';
 COMMENT ON COLUMN cortex.constraints.position IS 'its place among the object''s constraints';
+COMMENT ON COLUMN cortex.constraints.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

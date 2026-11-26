@@ -7,6 +7,7 @@ CREATE TABLE cortex.routines (
   deterministic  BOOLEAN NOT NULL DEFAULT false,                                                                -- true when the same arguments always give the same result
   security       TEXT NOT NULL DEFAULT 'definer' CHECK (security IN ('definer', 'invoker')),                    -- whose rights it runs with
   body           TEXT NOT NULL,                                                                                 -- its body, exactly as the server holds it (SHOW CREATE, prosrc): information_schema's copy is not it
+  options        JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (design, id),
   FOREIGN KEY (design, id) REFERENCES cortex.objects (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
 );
@@ -19,3 +20,4 @@ COMMENT ON COLUMN cortex.routines.language IS 'its language in the engine''s wor
 COMMENT ON COLUMN cortex.routines.deterministic IS 'true when the same arguments always give the same result';
 COMMENT ON COLUMN cortex.routines.security IS 'whose rights it runs with';
 COMMENT ON COLUMN cortex.routines.body IS 'its body, exactly as the server holds it (SHOW CREATE, prosrc): information_schema''s copy is not it';
+COMMENT ON COLUMN cortex.routines.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

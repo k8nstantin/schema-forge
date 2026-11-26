@@ -12,6 +12,7 @@ CREATE TABLE cortex.columns (
   generated_stored      BOOLEAN,                                                                                       -- for a computed column: true when stored, false when computed when read
   "collation"           TEXT,                                                                                          -- its collation where it is not its table's, as the engine names it; NULL for the table's
   comment               TEXT,                                                                                          -- what it holds: written into its SQL
+  options               JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (object, name) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (object, position) DEFERRABLE INITIALLY DEFERRED,
   CHECK ((generated_expression IS NULL) = (generated_stored IS NULL)),
@@ -34,3 +35,4 @@ COMMENT ON COLUMN cortex.columns.generated_expression IS 'the expression it is c
 COMMENT ON COLUMN cortex.columns.generated_stored IS 'for a computed column: true when stored, false when computed when read';
 COMMENT ON COLUMN cortex.columns."collation" IS 'its collation where it is not its table''s, as the engine names it; NULL for the table''s';
 COMMENT ON COLUMN cortex.columns.comment IS 'what it holds: written into its SQL';
+COMMENT ON COLUMN cortex.columns.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

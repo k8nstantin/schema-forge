@@ -124,7 +124,7 @@ def main():
     refused("an inherited parent in the other design",
             f"INSERT INTO engine_postgresql.inheritance (design, object, parent, position) VALUES ('{a}', '{tab}', {T(tab)}, 1);")
     refused("a row of one design claiming the other's design",
-            f"UPDATE engine_mysql.tables SET design = '{b}' WHERE id = '{tab}';")
+            f"UPDATE cortex.views SET design = '{b}' WHERE id = (SELECT id FROM cortex.views WHERE design = '{a}' LIMIT 1);")
 
     print("== deleting a design")
     tables = q("SELECT string_agg(n.nspname || '.' || c.relname, ' ') FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
@@ -134,7 +134,7 @@ def main():
     ok, _, err = run(f"BEGIN;\nSET LOCAL ROLE sf_service;\nDELETE FROM cortex.designs WHERE id = '{b}';\nCOMMIT;")
     left = int(q(f"SELECT {count}"))
     after = q(f"SELECT md5(string_agg(x::text, '|' ORDER BY x.id)) FROM ({OBJ.format(d=a)}) x")
-    b_had = sum(len(v) for k, v in b_rows.items() if k not in ("cortex.engine_versions", "cortex.object_kinds"))
+    b_had = sum(len(v) for k, v in R.OL.to_options(b_rows).items())
     stray = sum(int(q(f"SELECT count(*) FROM {t} WHERE design = '{b}'")) for t in design_tables)
     check(ok and total - left == b_had and stray == 0 and after == before,
           f"shop-copy deleted as sf_service, one row: {total - left} rows went of the {b_had} it had, {stray} left anywhere; "

@@ -4,6 +4,7 @@ CREATE TABLE cortex.column_identities (
   design    UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   always    BOOLEAN NOT NULL DEFAULT false,                                                                -- true when a value can never be given (ALWAYS); false for BY DEFAULT and for MySQL's AUTO_INCREMENT
   sequence  UUID,                                                                                          -- the sequence that numbers it, where the engine makes one; NULL for none
+  options   JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (design, id),
   FOREIGN KEY (design, id) REFERENCES cortex.columns (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
   FOREIGN KEY (design, sequence) REFERENCES cortex.objects (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
@@ -16,3 +17,4 @@ COMMENT ON COLUMN cortex.column_identities.id IS 'the column numbered';
 COMMENT ON COLUMN cortex.column_identities.design IS 'the design it belongs to';
 COMMENT ON COLUMN cortex.column_identities.always IS 'true when a value can never be given (ALWAYS); false for BY DEFAULT and for MySQL''s AUTO_INCREMENT';
 COMMENT ON COLUMN cortex.column_identities.sequence IS 'the sequence that numbers it, where the engine makes one; NULL for none';
+COMMENT ON COLUMN cortex.column_identities.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

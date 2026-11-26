@@ -1,0 +1,351 @@
+{
+ "kept": [
+  "engine_mysql.subpartitions",
+  "engine_postgresql.collations",
+  "engine_postgresql.inheritance",
+  "engine_postgresql.policies",
+  "engine_postgresql.rules"
+ ],
+ "moved": {
+  "engine_mysql.columns": {
+   "keys": [
+    "on_update",
+    "srid",
+    "invisible"
+   ],
+   "target": "cortex.columns",
+   "types": {
+    "invisible": "boolean",
+    "on_update": "string",
+    "srid": "number"
+   }
+  },
+  "engine_mysql.databases": {
+   "keys": [
+    "collation",
+    "encryption"
+   ],
+   "target": "cortex.namespaces",
+   "types": {
+    "collation": "string",
+    "encryption": "boolean"
+   }
+  },
+  "engine_mysql.events": {
+   "keys": [
+    "body",
+    "interval_value",
+    "interval_field",
+    "execute_at",
+    "starts",
+    "ends",
+    "status",
+    "preserve"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "body": "string",
+    "ends": "string",
+    "execute_at": "string",
+    "interval_field": "string",
+    "interval_value": "string",
+    "preserve": "boolean",
+    "starts": "string",
+    "status": "string"
+   }
+  },
+  "engine_mysql.index_parts": {
+   "keys": [
+    "length"
+   ],
+   "target": "cortex.index_parts",
+   "types": {
+    "length": "number"
+   }
+  },
+  "engine_mysql.indexes": {
+   "keys": [
+    "invisible",
+    "parser"
+   ],
+   "target": "cortex.indexes",
+   "types": {
+    "invisible": "boolean",
+    "parser": "string"
+   }
+  },
+  "engine_mysql.programs": {
+   "keys": [
+    "definer",
+    "sql_mode",
+    "character_set_client",
+    "collation_connection",
+    "database_collation",
+    "time_zone"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "character_set_client": "string",
+    "collation_connection": "string",
+    "database_collation": "string",
+    "definer": "string",
+    "sql_mode": "string",
+    "time_zone": "string"
+   }
+  },
+  "engine_mysql.routines": {
+   "keys": [
+    "parameter_text",
+    "data_access",
+    "returns_charset",
+    "parameter_collation"
+   ],
+   "target": "cortex.routines",
+   "types": {
+    "data_access": "string",
+    "parameter_collation": "string",
+    "parameter_text": "string",
+    "returns_charset": "string"
+   }
+  },
+  "engine_mysql.subpartitionings": {
+   "keys": [
+    "strategy",
+    "expression"
+   ],
+   "target": "cortex.partitionings",
+   "types": {
+    "expression": "string",
+    "strategy": "string"
+   }
+  },
+  "engine_mysql.tables": {
+   "keys": [
+    "engine",
+    "collation",
+    "auto_increment",
+    "row_format",
+    "avg_row_length",
+    "min_rows",
+    "max_rows",
+    "pack_keys",
+    "checksum",
+    "delay_key_write",
+    "key_block_size",
+    "stats_persistent",
+    "stats_auto_recalc",
+    "stats_sample_pages",
+    "compression",
+    "encryption",
+    "tablespace",
+    "insert_method"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "auto_increment": "number",
+    "avg_row_length": "number",
+    "checksum": "string",
+    "collation": "string",
+    "compression": "string",
+    "delay_key_write": "string",
+    "encryption": "string",
+    "engine": "string",
+    "insert_method": "string",
+    "key_block_size": "number",
+    "max_rows": "number",
+    "min_rows": "number",
+    "pack_keys": "string",
+    "row_format": "string",
+    "stats_auto_recalc": "string",
+    "stats_persistent": "string",
+    "stats_sample_pages": "string",
+    "tablespace": "string"
+   }
+  },
+  "engine_mysql.views": {
+   "keys": [
+    "algorithm",
+    "security"
+   ],
+   "target": "cortex.views",
+   "types": {
+    "algorithm": "string",
+    "security": "string"
+   }
+  },
+  "engine_postgresql.columns": {
+   "keys": [
+    "is_local",
+    "inherit_count",
+    "options",
+    "acl"
+   ],
+   "target": "cortex.columns",
+   "types": {
+    "acl": "json",
+    "inherit_count": "number",
+    "is_local": "boolean",
+    "options": "json"
+   }
+  },
+  "engine_postgresql.constraints": {
+   "keys": [
+    "validated",
+    "no_inherit",
+    "is_local",
+    "inherit_count",
+    "operators",
+    "delete_set_columns"
+   ],
+   "target": "cortex.constraints",
+   "types": {
+    "delete_set_columns": "json",
+    "inherit_count": "number",
+    "is_local": "boolean",
+    "no_inherit": "boolean",
+    "operators": "json",
+    "validated": "boolean"
+   }
+  },
+  "engine_postgresql.index_parts": {
+   "keys": [
+    "nulls_first",
+    "operator_class",
+    "collation"
+   ],
+   "target": "cortex.index_parts",
+   "types": {
+    "collation": "string",
+    "nulls_first": "boolean",
+    "operator_class": "string"
+   }
+  },
+  "engine_postgresql.indexes": {
+   "keys": [
+    "nulls_not_distinct",
+    "options",
+    "parent"
+   ],
+   "target": "cortex.indexes",
+   "types": {
+    "nulls_not_distinct": "boolean",
+    "options": "json",
+    "parent": "string"
+   }
+  },
+  "engine_postgresql.namespaces": {
+   "keys": [
+    "owner",
+    "acl"
+   ],
+   "target": "cortex.namespaces",
+   "types": {
+    "acl": "json",
+    "owner": "string"
+   }
+  },
+  "engine_postgresql.relations": {
+   "keys": [
+    "persistence",
+    "options",
+    "access_method",
+    "owner",
+    "acl",
+    "row_security",
+    "force_row_security",
+    "replica_identity",
+    "populated"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "access_method": "string",
+    "acl": "json",
+    "force_row_security": "boolean",
+    "options": "json",
+    "owner": "string",
+    "persistence": "string",
+    "populated": "boolean",
+    "replica_identity": "string",
+    "row_security": "boolean"
+   }
+  },
+  "engine_postgresql.routines": {
+   "keys": [
+    "volatility",
+    "parallel",
+    "strict",
+    "leakproof",
+    "returns_set",
+    "cost",
+    "result_rows",
+    "config",
+    "owner",
+    "acl"
+   ],
+   "target": "cortex.routines",
+   "types": {
+    "acl": "json",
+    "config": "json",
+    "cost": "number",
+    "leakproof": "boolean",
+    "owner": "string",
+    "parallel": "string",
+    "result_rows": "number",
+    "returns_set": "boolean",
+    "strict": "boolean",
+    "volatility": "string"
+   }
+  },
+  "engine_postgresql.sequences": {
+   "keys": [
+    "identity"
+   ],
+   "target": "cortex.sequences",
+   "types": {
+    "identity": "boolean"
+   }
+  },
+  "engine_postgresql.triggers": {
+   "keys": [
+    "function_name",
+    "arguments",
+    "update_columns",
+    "old_table",
+    "new_table",
+    "enabled",
+    "constraint_trigger",
+    "from_table",
+    "deferrable",
+    "initially_deferred"
+   ],
+   "target": "cortex.triggers",
+   "types": {
+    "arguments": "json",
+    "constraint_trigger": "boolean",
+    "deferrable": "boolean",
+    "enabled": "string",
+    "from_table": "string",
+    "function_name": "string",
+    "initially_deferred": "boolean",
+    "new_table": "string",
+    "old_table": "string",
+    "update_columns": "json"
+   }
+  },
+  "engine_postgresql.types": {
+   "keys": [
+    "owner",
+    "acl",
+    "range_subtype",
+    "multirange"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "acl": "json",
+    "multirange": "string",
+    "owner": "string",
+    "range_subtype": "string"
+   }
+  }
+ }
+}

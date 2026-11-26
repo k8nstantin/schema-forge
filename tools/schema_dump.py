@@ -75,7 +75,7 @@ def version_one(o):
     parts = [(f'{o["root"]}/owner.toml', f"CREATE SCHEMA {ns};")]
     parts += [(p, read(p)) for p in tables_in_order(o)]
     if o["id"] == "cortex":
-        parts += [(f"{folder}/{f}", read(f"{folder}/{f}")) for f in ("enforce_rules.sql", "notify_turns.sql", "grant_roles.sql")]
+        parts += [(f"{folder}/{f}", read(f"{folder}/{f}")) for f in ("enforce_rules.sql", "check_options.sql", "notify_turns.sql", "grant_roles.sql")]
     parts += [(p, read(p)) for p in files(f"{folder}/rules")]
     parts.append((f"{folder}/rules", f"SELECT cortex.enforce_rules('{ns}');"))
     parts += [(p, read(p)) for p in files(f"{folder}/seeds")]

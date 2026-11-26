@@ -49,27 +49,18 @@ def edit(db, rnd, n, version):
         elif k < 0.5:
             engine, row_format = rnd.choice(['InnoDB', 'MyISAM']), rnd.choice(['NULL', chr(39) + 'DYNAMIC' + chr(39)])
             where = f"WHERE id = (SELECT o.id FROM cortex.objects o WHERE {PLAIN} ORDER BY o.id OFFSET {off} LIMIT 1);"
-            if R.LAYOUT == "options":  # layout B: the same facts, as the table's options
-                sql.append(f"UPDATE cortex.objects SET options = options || jsonb_build_object('engine', '{engine}', 'row_format', {row_format}::text) {where}")
-            else:
-                sql.append(f"UPDATE engine_mysql.tables SET engine = '{engine}', row_format = {row_format} {where}")
+            sql.append(f"UPDATE cortex.objects SET options = options || jsonb_build_object('engine', '{engine}', 'row_format', {row_format}::text) {where}")
         elif k < 0.65:
             sql.append(f"UPDATE cortex.columns SET name = name || '_{n}' WHERE id = (SELECT c.id FROM cortex.columns c JOIN cortex.objects o ON o.id = c.object "
                        f"WHERE o.kind = 'table' AND NOT EXISTS (SELECT 1 FROM cortex.dependencies d WHERE d.uses = o.id) ORDER BY c.id OFFSET {off * 7} LIMIT 1);")
         elif k < 0.85:
             cols = rnd.randint(1, 4)
             name = f"lab_t{n}_{rnd.randint(0, 10**6)}"
-            if R.LAYOUT == "options":  # layout B: the table's engine and collation are its options, from its database's
-                head = f"""WITH t AS (INSERT INTO cortex.objects (design, namespace, kind, name, position, options)
+            head = f"""WITH t AS (INSERT INTO cortex.objects (design, namespace, kind, name, position, options)
                  SELECT (SELECT id FROM cortex.designs LIMIT 1), min(id::text)::uuid, 'table', '{name}', (SELECT max(position) + 1 FROM cortex.objects),
                         jsonb_build_object('engine', 'InnoDB', 'collation', (SELECT options->>'collation' FROM cortex.namespaces
                                            WHERE id = (SELECT min(id::text)::uuid FROM cortex.namespaces)))
                  FROM cortex.namespaces RETURNING id),"""
-            else:
-                head = f"""WITH t AS (INSERT INTO cortex.objects (design, namespace, kind, name, position)
-                 SELECT (SELECT id FROM cortex.designs LIMIT 1), min(id::text)::uuid, 'table', '{name}', (SELECT max(position) + 1 FROM cortex.objects) FROM cortex.namespaces RETURNING id),
-               m AS (INSERT INTO engine_mysql.tables (id, design, engine, "collation") SELECT t.id, (SELECT id FROM cortex.designs LIMIT 1), 'InnoDB', d."collation" FROM t, engine_mysql.databases d
-                 WHERE d.id = (SELECT min(id::text)::uuid FROM cortex.namespaces) RETURNING id),"""
             sql.append(head + f"""
                c AS (INSERT INTO cortex.columns (design, object, position, name, type, nullable)
                  SELECT (SELECT id FROM cortex.designs LIMIT 1), t.id, g, 'c' || g, '{int_type}', g > 1 FROM t, generate_series(1, {cols}) g RETURNING id, position),
@@ -106,11 +97,9 @@ def main():
     db = f"lab_repo_mysql_{version.replace('.', '_')}"
     rows, _ = R.rows_of(snap)
     R.build(db)
-    if R.MOVED:  # layout B: the engine tables' facts are options of their cortex rows
-        import options_layout as OL
-        rows = OL.to_options(rows, R.MOVED)
+    rows = R.OL.to_options(rows)  # what the engine adds to a cortex row, as that row's options
     # the design is a row of cortex.designs, made before its first turn; its engine's kinds are the engine's declaration
-    C.psql("BEGIN;\n" + R.copy_sql("cortex.engine_versions", rows["cortex.engine_versions"]) + R.copy_sql("cortex.designs", rows["cortex.designs"]) + R.copy_sql("cortex.object_kinds", rows["cortex.object_kinds"]) + "COMMIT;", db)
+    C.psql("BEGIN;\n" + R.copy_sql("cortex.designs", rows["cortex.designs"]) + "COMMIT;", db)
     C.psql(open(os.path.join(HERE, "design", "repo_versioning.sql")).read() + f"\nSELECT sf_log.attach('{rows['cortex.designs'][0]['id']}');", db)
     t = time.time()
     C.psql("BEGIN; SELECT sf_log.begin_turn('import');\n"

@@ -7,6 +7,7 @@ CREATE TABLE cortex.constraint_columns (
   "column"        UUID NOT NULL,                                                                                 -- a column of the constraint's table
   to_column       UUID,                                                                                          -- the column a link refers to; NULL for a key, and for a table outside the store
   to_column_name  TEXT,                                                                                          -- the referred column outside the store, as written; NULL otherwise
+  options         JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE ("constraint", position) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
   FOREIGN KEY (design, "constraint") REFERENCES cortex.constraints (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
@@ -26,3 +27,4 @@ COMMENT ON COLUMN cortex.constraint_columns.position IS 'its place, 1 first';
 COMMENT ON COLUMN cortex.constraint_columns."column" IS 'a column of the constraint''s table';
 COMMENT ON COLUMN cortex.constraint_columns.to_column IS 'the column a link refers to; NULL for a key, and for a table outside the store';
 COMMENT ON COLUMN cortex.constraint_columns.to_column_name IS 'the referred column outside the store, as written; NULL otherwise';
+COMMENT ON COLUMN cortex.constraint_columns.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

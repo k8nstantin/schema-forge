@@ -10,6 +10,7 @@ CREATE TABLE cortex.objects (
   position   NUMERIC NOT NULL CHECK (position > 0),                                                         -- its place among its namespace's objects, in the order made or read; an order key
   comment    TEXT,                                                                                          -- what it holds, in a sentence or two: written into its SQL
   notes      TEXT,                                                                                          -- longer notes for people and the agent: never written into SQL
+  options    JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (namespace, kind, name, signature) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (namespace, position) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
@@ -31,3 +32,4 @@ COMMENT ON COLUMN cortex.objects.parent IS 'the object it belongs to: a trigger'
 COMMENT ON COLUMN cortex.objects.position IS 'its place among its namespace''s objects, in the order made or read; an order key';
 COMMENT ON COLUMN cortex.objects.comment IS 'what it holds, in a sentence or two: written into its SQL';
 COMMENT ON COLUMN cortex.objects.notes IS 'longer notes for people and the agent: never written into SQL';
+COMMENT ON COLUMN cortex.objects.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

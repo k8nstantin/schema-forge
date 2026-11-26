@@ -5,6 +5,7 @@ CREATE TABLE cortex.enum_values (
   object    UUID NOT NULL,                                                                                 -- the type
   position  INTEGER NOT NULL CHECK (position >= 1),                                                        -- its place, 1 first
   value     TEXT NOT NULL,                                                                                 -- the value
+  options   JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (object, value) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (object, position) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
@@ -19,3 +20,4 @@ COMMENT ON COLUMN cortex.enum_values.design IS 'the design it belongs to';
 COMMENT ON COLUMN cortex.enum_values.object IS 'the type';
 COMMENT ON COLUMN cortex.enum_values.position IS 'its place, 1 first';
 COMMENT ON COLUMN cortex.enum_values.value IS 'the value';
+COMMENT ON COLUMN cortex.enum_values.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

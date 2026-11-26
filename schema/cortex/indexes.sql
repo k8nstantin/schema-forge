@@ -9,6 +9,7 @@ CREATE TABLE cortex.indexes (
   method     TEXT,                                                                                          -- how it is built, in the engine's words (BTREE, FULLTEXT, SPATIAL, gin); NULL for the engine's default
   condition  TEXT,                                                                                          -- the rows a partial index covers, in the engine's SQL; NULL for all
   comment    TEXT,                                                                                          -- what it is for; NULL for none
+  options    JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (object, name) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (object, position) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
@@ -27,3 +28,4 @@ COMMENT ON COLUMN cortex.indexes."unique" IS 'true for a unique index';
 COMMENT ON COLUMN cortex.indexes.method IS 'how it is built, in the engine''s words (BTREE, FULLTEXT, SPATIAL, gin); NULL for the engine''s default';
 COMMENT ON COLUMN cortex.indexes.condition IS 'the rows a partial index covers, in the engine''s SQL; NULL for all';
 COMMENT ON COLUMN cortex.indexes.comment IS 'what it is for; NULL for none';
+COMMENT ON COLUMN cortex.indexes.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

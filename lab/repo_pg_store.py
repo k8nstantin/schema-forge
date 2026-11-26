@@ -36,7 +36,7 @@ VOLATILITY = {"i": "immutable", "s": "stable", "v": "volatile"}
 PARALLEL = {"s": "safe", "r": "restricted", "u": "unsafe"}
 PERSISTENCE = {"p": "permanent", "u": "unlogged", "t": "temporary"}
 REPLICA = {"d": "default", "n": "nothing", "f": "full", "i": "index"}
-ORDER = ["cortex.engine_versions", "cortex.designs", "cortex.object_kinds", "cortex.namespaces", "cortex.required_extensions",
+ORDER = ["cortex.designs", "cortex.namespaces", "cortex.required_extensions",
          "cortex.objects", "cortex.columns", "cortex.indexes", "cortex.index_parts", "cortex.constraints", "cortex.constraint_columns",
          "cortex.dependencies", "cortex.views", "cortex.routines", "cortex.routine_parameters", "cortex.triggers", "cortex.partitionings",
          "cortex.partitions", "cortex.sequences", "cortex.column_identities", "cortex.domains", "cortex.enum_values",
@@ -58,12 +58,7 @@ def to_locked(old, version):
     def add(table, row):
         out[table].append({"design": design, **row} if not table.startswith("cortex.engine_") and table not in (
             "cortex.designs", "cortex.object_kinds") else row)
-    out["cortex.engine_versions"].append({"id": f"postgresql/{version}", "engine": "postgresql", "version": version,
-                                          "name": f"PostgreSQL {version}", "position": 1, "support_ends": None})
     out["cortex.designs"].append({"id": design, "name": f"postgresql-{version}", "engine": "postgresql", "engine_version": version, "comment": None})
-    kinds = ["table", "view", "materialized_view", "sequence", "enum", "composite", "domain", "range", "function", "procedure", "trigger"]
-    for k, kind in enumerate(kinds):
-        out["cortex.object_kinds"].append({"id": f"postgresql/{kind}", "engine": "postgresql", "kind": kind, "name": kind, "position": k + 1})
     for k, n in enumerate(old["core.namespace"]):
         add("cortex.namespaces", {"id": U(n["id"]), "parent": U(n["parent_id"]), "name": n["name"], "position": k + 1, "comment": n["comment"]})
     for k, e in enumerate(old["engine_postgresql.extension"]):
@@ -324,17 +319,13 @@ def main():
         db = f"lab_repo_postgresql_{version}"
         R.build(db)
         t = time.time()
-        if R.MOVED:
-            import options_layout as OL
-            rows = OL.to_options(rows, R.MOVED)
+        rows = R.OL.to_options(rows)
         rows = jsonish(rows)
         C.psql("BEGIN;\nSET ROLE sf_service;\n" + "".join(R.copy_sql(k, rows[k]) for k in ORDER if rows.get(k)) + "COMMIT;\n", db)
         t_load = time.time() - t
         st = {k: {r["id"]: r for r in json.loads(C.psql(f"SELECT coalesce(json_agg(to_jsonb(t)), '[]') FROM {k} t;", db))}
               for k in ORDER if k not in R.MOVED}
-        if R.MOVED:
-            import options_layout as OL
-            st = OL.from_options(st, R.MOVED, R.ORIGIN)
+        st = R.OL.from_options(st)
         S = P.Store(from_locked(st))
         n, exact, first = Counter(), Counter(), {}
         names = {(S.schema(S.objs[i["object_id"]]), i["name"]): i for i in S.st["core.index"].values()}

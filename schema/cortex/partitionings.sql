@@ -4,6 +4,7 @@ CREATE TABLE cortex.partitionings (
   design      UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   strategy    TEXT NOT NULL,                                                                                 -- the way rows are split, in the engine's words (RANGE, LIST, HASH, KEY)
   expression  TEXT NOT NULL,                                                                                 -- what it is split by, as the engine writes it (year(`d`), (taken))
+  options     JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE (design, id),
   FOREIGN KEY (design, id) REFERENCES cortex.objects (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
 );
@@ -13,3 +14,4 @@ COMMENT ON COLUMN cortex.partitionings.id IS 'the table split';
 COMMENT ON COLUMN cortex.partitionings.design IS 'the design it belongs to';
 COMMENT ON COLUMN cortex.partitionings.strategy IS 'the way rows are split, in the engine''s words (RANGE, LIST, HASH, KEY)';
 COMMENT ON COLUMN cortex.partitionings.expression IS 'what it is split by, as the engine writes it (year(`d`), (taken))';
+COMMENT ON COLUMN cortex.partitionings.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

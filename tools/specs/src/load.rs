@@ -151,7 +151,7 @@ fn version_one(root: &Path, owner: &Owner) -> Vec<(String, String)> {
         parts.push((path, text));
     }
     if owner.id == "cortex" {
-        for f in ["enforce_rules.sql", "notify_turns.sql", "grant_roles.sql"] {
+        for f in ["enforce_rules.sql", "check_options.sql", "notify_turns.sql", "grant_roles.sql"] {
             parts.push((format!("{}/{f}", owner.folder), fs::read_to_string(folder.join(f)).unwrap_or_default()));
         }
     }

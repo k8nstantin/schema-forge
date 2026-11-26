@@ -8,6 +8,7 @@ CREATE TABLE cortex.index_parts (
   expression  TEXT,                                                                                          -- the expression indexed, in the engine's SQL; NULL for a column
   descending  BOOLEAN NOT NULL DEFAULT false,                                                                -- true when held descending
   included    BOOLEAN NOT NULL DEFAULT false,                                                                -- true for a column carried without being part of the order (INCLUDE)
+  options     JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE ("index", position) DEFERRABLE INITIALLY DEFERRED,
   CHECK (("column" IS NULL) <> (expression IS NULL)),
   UNIQUE (design, id),
@@ -27,3 +28,4 @@ COMMENT ON COLUMN cortex.index_parts."column" IS 'the column indexed; NULL for a
 COMMENT ON COLUMN cortex.index_parts.expression IS 'the expression indexed, in the engine''s SQL; NULL for a column';
 COMMENT ON COLUMN cortex.index_parts.descending IS 'true when held descending';
 COMMENT ON COLUMN cortex.index_parts.included IS 'true for a column carried without being part of the order (INCLUDE)';
+COMMENT ON COLUMN cortex.index_parts.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';

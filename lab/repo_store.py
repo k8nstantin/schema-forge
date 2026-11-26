@@ -49,11 +49,7 @@ def rows_of(snap, name=None):
     for p in snap["parts"]:
         by[p["kind"]].append(p["props"])
     design = str(uuid.uuid7())
-    out["cortex.engine_versions"] = [{"id": f"mysql/{version}", "engine": "mysql", "version": version, "name": f"MySQL {version}",
-                                      "position": 1, "support_ends": None}]
     out["cortex.designs"] = [{"id": design, "name": name or f"mysql-{version}", "engine": "mysql", "engine_version": version, "comment": None}]
-    out["cortex.object_kinds"] = [{"id": f"mysql/{k}", "engine": "mysql", "kind": k, "name": k.title(), "position": i + 1}
-                                  for i, k in enumerate(KINDS)]
     ns = {}
     for s in by["namespace"]:
         i = ns[s["SCHEMA_NAME"]] = nid()
@@ -248,7 +244,7 @@ def rows_of(snap, name=None):
     return out, broken
 
 
-ORDER = ["cortex.engine_versions", "cortex.designs", "cortex.object_kinds", "cortex.namespaces", "cortex.objects", "cortex.columns", "cortex.column_identities", "cortex.indexes",
+ORDER = ["cortex.designs", "cortex.namespaces", "cortex.objects", "cortex.columns", "cortex.column_identities", "cortex.indexes",
          "cortex.index_parts", "cortex.constraints", "cortex.constraint_columns", "cortex.dependencies", "cortex.views",
          "cortex.routines", "cortex.routine_parameters", "cortex.triggers", "cortex.partitionings", "cortex.partitions",
          "engine_mysql.databases", "engine_mysql.tables", "engine_mysql.columns", "engine_mysql.indexes", "engine_mysql.index_parts",
@@ -280,13 +276,12 @@ def copy_sql(table, rows):
     return f"COPY {table} ({', '.join(chr(34) + c + chr(34) for c in cols)}) FROM STDIN WITH (FORMAT csv, NULL '\\N');\n{body}\\.\n"
 
 
-LAYOUT = os.environ.get("LAB_LAYOUT", "locked")  # locked: the schema folders as they are; options: layout B (lab/options_layout.py)
-MOVED, ORIGIN = {}, {}
+import options_layout as OL  # noqa: E402  the readers' engine rows as the locked design's options (decision declared-options)
+MOVED = OL.MOVED
 
 
 def build(db):
-    """A database of the locked design: the cortex and MySQL's owner folders, as the dumps load them; made layout B
-    when LAB_LAYOUT is options."""
+    """A database of the locked design: every owner folder, as the dump loads it, the engines' declarations seeded."""
     C.psql("DO $$ BEGIN CREATE ROLE sf_owner NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
            "DO $$ BEGIN CREATE ROLE sf_service LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
            "DO $$ BEGIN CREATE ROLE sf_agent LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
@@ -295,16 +290,10 @@ def build(db):
     owners = SD.databases()["schema_forge"]
     script = "BEGIN;\nSET ROLE sf_owner;\n" + "".join(sql + "\n" for o in owners for _, sql in SD.version_one(o)) + "COMMIT;\n"
     C.psql(script, db)
-    if LAYOUT == "options":
-        import options_layout as OL
-        m, o = OL.transform(db)
-        MOVED.clear(), MOVED.update(m), ORIGIN.clear(), ORIGIN.update(o)
 
 
 def load(db, rows):
-    if MOVED:
-        import options_layout as OL
-        rows = OL.to_options(rows, MOVED)
+    rows = OL.to_options(rows)
     t = time.time()
     C.psql("BEGIN;\nSET ROLE sf_service;\n" + "".join(copy_sql(k, rows[k]) for k in ORDER if rows.get(k)) + "COMMIT;\n", db)
     return time.time() - t
@@ -315,9 +304,7 @@ def read_back(db):
     for k in ORDER:
         if k not in MOVED:
             out[k] = {r["id"]: r for r in json.loads(C.psql(f"SELECT coalesce(json_agg(to_jsonb(t)), '[]') FROM {k} t;", db))}
-    if MOVED:
-        import options_layout as OL
-        out = OL.from_options(out, MOVED, ORIGIN)
+    out = OL.from_options(out)
     return out
 
 

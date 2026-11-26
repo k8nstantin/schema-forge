@@ -17,7 +17,17 @@ const NOT_A_DESIGN: &[&str] = &[
     "cortex.engine_features",
     "cortex.catalog_sources",
     "cortex.object_kinds",
+    "cortex.option_declarations",
     "cortex.schema_migrations",
+];
+
+/// The cortex's tables an engine's seeds declare it in: its versions, features, kinds, options and catalog sources.
+const DECLARATIONS: &[&str] = &[
+    "cortex.engine_versions",
+    "cortex.engine_features",
+    "cortex.object_kinds",
+    "cortex.option_declarations",
+    "cortex.catalog_sources",
 ];
 
 /// Whether a table holds a design's rows.
@@ -161,7 +171,10 @@ fn sql_file(root: &Path, owner: &Owner, file: &Path, found: &mut Vec<Finding>) {
     let lines: Vec<&str> = text.lines().collect();
     let Some(create) = lines.iter().position(|l| l.starts_with("CREATE TABLE ")) else {
         let allowed = owner.id == "cortex"
-            && matches!(name(file).as_str(), "enforce_rules.sql" | "notify_turns.sql" | "grant_roles.sql");
+            && matches!(
+                name(file).as_str(),
+                "enforce_rules.sql" | "check_options.sql" | "notify_turns.sql" | "grant_roles.sql"
+            );
         if !allowed {
             finding(found, &at, "neither a table file nor a file the method names");
         }
@@ -362,18 +375,39 @@ fn seed_file(root: &Path, owner: &Owner, file: &Path, at: &str, found: &mut Vec<
     let text = fs::read_to_string(file).unwrap_or_default();
     let code: String = text.lines().map(|l| split_comment(l).0).collect::<Vec<_>>().join("\n");
     let ns = owner.namespace();
-    let tables: Vec<String> = files_in(&root.join(&owner.folder), ".sql")
+    let mut tables: Vec<String> = files_in(&root.join(&owner.folder), ".sql")
         .iter()
         .filter(|f| fs::read_to_string(f).is_ok_and(|t| t.lines().any(|l| l.starts_with("CREATE TABLE "))))
         .map(|f| format!("{ns}.{}", stem(f)))
         .collect();
-    let good = code.split(';').map(str::trim).filter(|s| !s.is_empty()).all(|stmt| {
+    // an engine declares itself as rows of the cortex's declaration tables (decision declared-options)
+    if owner.kind == "engine" {
+        tables.extend(DECLARATIONS.iter().map(|t| (*t).to_string()));
+    }
+    let good = statements(&code).iter().map(|s| s.trim()).filter(|s| !s.is_empty()).all(|stmt| {
         let target = stmt.strip_prefix("INSERT INTO ").and_then(|r| r.split_whitespace().next()).unwrap_or("");
         tables.iter().any(|t| t == target) && spaced(stmt).ends_with("ON CONFLICT (id) DO NOTHING")
     });
     if !good {
         finding(found, at, "a seed writes only new rows of its own tables");
     }
+}
+
+/// SQL cut into its statements at each `;` outside a quoted string, so a `;` inside a value cuts nothing.
+fn statements(code: &str) -> Vec<String> {
+    let mut out = vec![String::new()];
+    let mut quoted = false;
+    for ch in code.chars() {
+        if ch == '\'' {
+            quoted = !quoted;
+        }
+        if ch == ';' && !quoted {
+            out.push(String::new());
+        } else if let Some(last) = out.last_mut() {
+            last.push(ch);
+        }
+    }
+    out
 }
 
 fn migrations(root: &Path, owner: &Owner, found: &mut Vec<Finding>) {

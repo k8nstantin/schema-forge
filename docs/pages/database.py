@@ -161,13 +161,13 @@ engine_svgs = {o: engine_svg(o) for o in db if o.startswith("engine_")}
 undrawn = [(a, c, b) for a, c, b in edges if (a, c) not in drawn]
 
 # --- the tables ------------------------------------------------------------------------------------------------
-GROUPS = [("cortex", "The model", ["designs", "object_kinds", "namespaces", "objects", "columns", "column_identities",
+GROUPS = [("cortex", "The model", ["designs", "namespaces", "objects", "columns", "column_identities",
                                     "constraints", "constraint_columns", "object_tags", "dependencies", "verbatim_statements",
                                     "required_extensions"]),
           ("cortex", "What an object holds", ["indexes", "index_parts", "partitionings", "partitions", "sort_fields", "views", "sequences",
                                               "enum_values", "domains", "routines", "routine_parameters", "triggers"]),
           ("cortex", "The log", ["branches", "turns", "operations", "row_changes", "savepoints", "locked_versions"]),
-          ("cortex", "The engine's versions", ["engine_versions", "engine_features", "catalog_sources"]),
+          ("cortex", "What each engine declares", ["engine_versions", "engine_features", "object_kinds", "option_declarations", "catalog_sources"]),
           ("cortex", "The live source", ["read_scopes", "read_scope_kinds", "read_scope_objects", "source_reads"]),
           ("cortex", "The workspace", ["workspace_identity", "workspace_parameters", "workspace_connections", "workspace_connection_values",
                                        "workspace_connection_tests", "workspace_connection_test_steps", "workspace_design_connections"]),
@@ -362,7 +362,7 @@ foreign key cannot state is a view the database enforces at every commit. Everyt
 <figure>{ws_svg}</figure></section>
 
 {accounts_html}
-<section id="engines"><h2>Each engine's tables</h2><p class="lede">What one engine alone says (MySQL's charset and row format) lives in that engine's namespace, <code>engine_&lt;engine&gt;</code>: a table named for the cortex table it extends (<code>engine_mysql.tables</code>, <code>engine_mysql.columns</code>) or for what only it has (<code>engine_postgresql.policies</code>). Every option is a typed column; there is no table of keys and values.</p>{eng_figs}</section>
+<section id="engines"><h2>Each engine's tables</h2><p class="lede">What one engine alone says of a part (MySQL's row format, PostgreSQL's operator class) is that part's <code>options</code>, each option declared in <code>cortex.option_declarations</code> by the engine's seeds and checked as the row is written (decision declared-options): a new option is a row, never a column. An engine's own namespace, <code>engine_&lt;engine&gt;</code>, holds only what is many rows of its own (<code>engine_postgresql.policies</code>, <code>engine_mysql.subpartitions</code>).</p>{eng_figs}</section>
 
 <section id="tables"><h2>Every table</h2><p class="lede">Grouped as above. Each with what it holds, how its row is named, its columns, what refers to it, its constraints, the rules that read it, and its file whole.</p>{toc}</section>
 {body_tables}

@@ -6,6 +6,7 @@ CREATE TABLE cortex.namespaces (
   name      TEXT NOT NULL CHECK (length(name) >= 1),                                                       -- sales
   position  NUMERIC NOT NULL CHECK (position > 0),                                                         -- its place among its design's namespaces, in the order made or read; an order key
   comment   TEXT,                                                                                          -- what it holds: written into its SQL
+  options   JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
   UNIQUE NULLS NOT DISTINCT (design, parent, name) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, position) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
@@ -21,3 +22,4 @@ COMMENT ON COLUMN cortex.namespaces.parent IS 'the namespace it sits in, of the 
 COMMENT ON COLUMN cortex.namespaces.name IS 'sales';
 COMMENT ON COLUMN cortex.namespaces.position IS 'its place among its design''s namespaces, in the order made or read; an order key';
 COMMENT ON COLUMN cortex.namespaces.comment IS 'what it holds: written into its SQL';
+COMMENT ON COLUMN cortex.namespaces.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';
