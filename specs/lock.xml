@@ -3,7 +3,7 @@
   The schema lock: the SHA-256 of every file that makes up the database's design. Written only in a design
   session, by tools/schema_lock.py with its write option; tools/check.sh refuses any locked file that differs.
 -->
-<lock product="SchemaForge" files="129">
+<lock product="SchemaForge" files="131">
   <file path="docs/owner-template/README.xml" sha256="2f49f17f0ad13a21a8cd403368edd8c034100570d630557214c88e038f9161c6"/>
   <file path="docs/owner-template/owner.toml" sha256="031cf866bb50d34572fcdd16333b9db6318aab561fe519ad4da1f82dab73a734"/>
   <file path="docs/owner-template/schema/column_codecs.sql" sha256="121a46bfbb713c706944facc8eadef68785c445960270f34c248d7c1c391b1c6"/>
@@ -56,6 +56,7 @@
   <file path="features/usage/schema/rules/index-usage-on-its-table.sql" sha256="c35cd97ccd618d52439efeee2482691ff8c1c0a4e4881fcbaf9a78b1571007ff"/>
   <file path="features/usage/schema/snapshots.sql" sha256="424b7dbffdc9d220add988a168876e3f3d536b81c414ea311862fa5005b87bf1"/>
   <file path="postgres/manifest.toml" sha256="d8e75bb68508d4aa724ca0d43c7b8a50a6d70c449e620f8d0c01cd0db634aad1"/>
+  <file path="schema/accounts.py" sha256="9327425d8b86111cef2e7185d532e17d97639331dedf21e15aed9ae6e386acda"/>
   <file path="schema/cortex/branches.sql" sha256="280d31881331692eb43c94d02be7794ab0e6aad7841d65881154649d97dcc0bb"/>
   <file path="schema/cortex/catalog_sources.sql" sha256="efef4061fa645da48dc4c5168633d264a1f98134e1c637a49e6734a38ac9b3fd"/>
   <file path="schema/cortex/column_identities.sql" sha256="9f66b220a324e67856f2c16ffd52d4f81d8d22729086f852fd7811c0d4056407"/>
@@ -113,6 +114,7 @@
   <file path="schema/dump/postgresql.sql" sha256="8757de63995f6ae37f27d0222b8832d49b4116b6cd2af797ce33d13fcfd5e21b"/>
   <file path="schema/dump/usage.sql" sha256="6e9b1c7a6b6bcbce5efd36a3cb6d54dfcc3a6221a7ced6d75db273e58cf15fc1"/>
   <file path="schema/dump/workspace.sql" sha256="6cd92bff775bc16cce45b7d68a1aa7846d15df067b79ddea0bbf7c7864862342"/>
+  <file path="schema/install.py" sha256="3009bc22b0b01c1ad0250d9687bbb3616aca2e14a3d47c1ae6999376d6792f7c"/>
   <file path="schema/ui/custom_perspectives.sql" sha256="843316a3313e7858fc80ec86b87dd894a371990df8f41df3b44be23242b706f9"/>
   <file path="schema/ui/layout_pins.sql" sha256="120ab09b3c4153cc7c64b2871337513d15bcec9a8fc7785a87f975791f9739ff"/>
   <file path="schema/ui/object_places.sql" sha256="14020fb209dc2a9b874c8502bd8341407d2db74cc163adcab7f1875a2ca9853c"/>
