@@ -520,7 +520,12 @@ def script(st):
             sql.append(f"COMMENT ON SCHEMA {qi(n['name'])} IS {lit(n['comment'])};")
         if pn.get("acl"):
             sql += grants(f"SCHEMA {qi(n['name'])}", pn["acl"], pn.get("owner") or owner_default)
-    for d in (st.get("engine_postgresql.default_acl") or {}).values():
+    defaults = list((st.get("engine_postgresql.default_acl") or {}).values())
+    # a role's defaults for every schema replace PostgreSQL's own (PUBLIC may execute a function, use a type): they are
+    # written whole, everything revoked and then what they give; a schema's own defaults only add, and are granted alone
+    for role, otype in sorted({(d["role"], d["object_type"]) for d in defaults if not d["schema"]}):
+        sql.append(f"ALTER DEFAULT PRIVILEGES FOR ROLE {qi(role)} REVOKE ALL ON {otype.replace('_', ' ').upper()} FROM PUBLIC, {qi(role)};")
+    for d in defaults:
         sql.append(f"ALTER DEFAULT PRIVILEGES FOR ROLE {qi(d['role'])}" + (f" IN SCHEMA {qi(d['schema'])}" if d["schema"] else "")
                    + f" GRANT {d['privilege']} ON {d['object_type'].replace('_', ' ').upper()} TO {'PUBLIC' if d['grantee'] == 'PUBLIC' else qi(d['grantee'])}"
                    + (" WITH GRANT OPTION;" if d["grantable"] else ";"))

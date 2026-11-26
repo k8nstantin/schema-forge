@@ -263,7 +263,7 @@ def access(out, parts, design, add):
     for p in (p for p in parts if p["kind"] == "default_acl"):
         pr = p["props"]
         for k, (grantee, priv, grantable) in enumerate(acl_items(pr["acl"])):
-            add("engine_postgresql.default_privileges", {"id": str(uuid.uuid7()), "role": role[pr["role"]], "namespace": ns.get(pr["schema"]),
+            add("engine_postgresql.default_privileges", {"id": str(uuid.uuid7()), "role": role[pr["role"]], "namespace": ns.get(pr.get("schema")),
                                                          "object_type": DEFACL[pr["objtype"]], "grantee": role.get(grantee),
                                                          "grantee_name": None if grantee in role else (grantee or "PUBLIC"),
                                                          "privilege": priv, "grantable": grantable, "position": k + 1})
