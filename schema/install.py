@@ -35,7 +35,9 @@ def drop_everything(conn):
                "listing databases").split()
     roles = A.ok(A.run(conn, "SELECT string_agg(rolname, ' ') FROM pg_roles WHERE rolname LIKE 'sf\\_%';"), "listing roles").split()
     print(f"--fresh drops {len(dbs)} databases ({', '.join(dbs) or 'none'}) and {len(roles)} roles ({', '.join(roles) or 'none'}).")
-    if os.environ.get("SF_CONFIRM") != "DROP" and input("type DROP to go on: ").strip() != "DROP":
+    if not dbs and not roles:
+        return
+    if os.environ.get("SF_CONFIRM", "").upper() != "DROP" and input("type DROP to go on: ").strip().upper() != "DROP":
         raise SystemExit("nothing dropped")
     for db in dbs:
         A.ok(A.run(conn, f'DROP DATABASE "{db}" WITH (FORCE);'), f"dropping {db}")
