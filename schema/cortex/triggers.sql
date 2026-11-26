@@ -1,6 +1,6 @@
 -- cortex.triggers: a trigger: when it fires, on which changes, for rows or statements, and what it runs. Owner: cortex.
 CREATE TABLE cortex.triggers (
-  id            BIGINT NOT NULL PRIMARY KEY,                                                                   -- the trigger; its table is the object's parent
+  id            UUID NOT NULL PRIMARY KEY,                                                                     -- the trigger; its table is the object's parent
   design        UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   timing        TEXT NOT NULL CHECK (timing IN ('before', 'after', 'instead_of')),                             -- when it fires
   events        JSONB NOT NULL,                                                                                -- the changes it fires on, in order: ["insert", "update"]

@@ -1,6 +1,6 @@
 -- cortex.routines: a procedure or a function: what it returns, how it runs, and its body exactly as the server holds it. Owner: cortex.
 CREATE TABLE cortex.routines (
-  id             BIGINT NOT NULL PRIMARY KEY,                                                                   -- the routine
+  id             UUID NOT NULL PRIMARY KEY,                                                                     -- the routine
   design         UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   returns        TEXT,                                                                                          -- what a function returns, as the engine writes the type; NULL for a procedure
   language       TEXT,                                                                                          -- its language in the engine's words (SQL, plpgsql); NULL for the engine's own

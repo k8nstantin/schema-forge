@@ -4,7 +4,7 @@ CREATE TABLE cortex.workspace_design_connections (
   design         UUID NOT NULL UNIQUE REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,         -- the design
   connection     UUID NOT NULL REFERENCES cortex.workspace_connections (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the saved connection it is read from
   database_name  TEXT NOT NULL CHECK (length(database_name) >= 1),                                                            -- the database on that server it is read from, as the server names it (shop)
-  scope          BIGINT NOT NULL,                                                                                             -- what is read from it each time, the design's newest choice (decision read-scope)
+  scope          UUID NOT NULL,                                                                                               -- what is read from it each time, the design's newest choice (decision read-scope)
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),                                                                          -- when the design was tied to it
   FOREIGN KEY (design, scope) REFERENCES cortex.read_scopes (design, id) DEFERRABLE INITIALLY DEFERRED
 );

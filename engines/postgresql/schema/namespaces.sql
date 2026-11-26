@@ -1,6 +1,6 @@
 -- engine_postgresql.namespaces: who owns a PostgreSQL schema and who may use it. Owner: postgresql.
 CREATE TABLE engine_postgresql.namespaces (
-  id      BIGINT NOT NULL PRIMARY KEY,                                                                   -- the schema
+  id      UUID NOT NULL PRIMARY KEY,                                                                     -- the schema
   design  UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   owner   TEXT,                                                                                          -- its owner, by role name; NULL for the one the schema is written as
   acl     JSONB,                                                                                         -- its privileges, as the server writes them (["postgres=UC/postgres"]); NULL for the defaults

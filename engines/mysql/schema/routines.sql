@@ -1,6 +1,6 @@
 -- engine_mysql.routines: what MySQL says of a procedure or function beyond the cortex. Owner: mysql.
 CREATE TABLE engine_mysql.routines (
-  id                   BIGINT NOT NULL PRIMARY KEY,                                                                                                    -- the routine
+  id                   UUID NOT NULL PRIMARY KEY,                                                                                                      -- the routine
   design               UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,                                   -- the design it belongs to
   parameter_text       TEXT NOT NULL,                                                                                                                  -- its parameter list exactly as written: real code formats it by hand, so it is not rebuilt from the parameters
   data_access          TEXT NOT NULL DEFAULT 'CONTAINS SQL' CHECK (data_access IN ('CONTAINS SQL', 'NO SQL', 'READS SQL DATA', 'MODIFIES SQL DATA')),  -- what it does with data

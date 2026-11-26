@@ -1,6 +1,6 @@
 -- cortex.sequences: a sequence object, and how it numbers. Owner: cortex.
 CREATE TABLE cortex.sequences (
-  id         BIGINT NOT NULL PRIMARY KEY,                                                                   -- the sequence
+  id         UUID NOT NULL PRIMARY KEY,                                                                     -- the sequence
   design     UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   type       TEXT,                                                                                          -- its type as the engine writes it; NULL for the engine's default
   start      NUMERIC,                                                                                       -- its first number; NULL for the engine's default
@@ -9,7 +9,7 @@ CREATE TABLE cortex.sequences (
   max_value  NUMERIC,                                                                                       -- its largest number; NULL for the engine's default
   cache      BIGINT CHECK (cache >= 1),                                                                     -- how many numbers are taken at a time; NULL for the engine's default
   cycle      BOOLEAN NOT NULL DEFAULT false,                                                                -- true when it starts again after its last number
-  owned_by   BIGINT,                                                                                        -- the column that owns it and drops it with itself; NULL for none
+  owned_by   UUID,                                                                                          -- the column that owns it and drops it with itself; NULL for none
   UNIQUE (design, id),
   FOREIGN KEY (design, id) REFERENCES cortex.objects (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
   FOREIGN KEY (design, owned_by) REFERENCES cortex.columns (design, id) ON DELETE SET NULL (owned_by) DEFERRABLE INITIALLY DEFERRED

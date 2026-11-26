@@ -1,6 +1,6 @@
 -- engine_postgresql.constraints: what PostgreSQL says of a constraint beyond the cortex; a row only where it says something. Owner: postgresql.
 CREATE TABLE engine_postgresql.constraints (
-  id             BIGINT NOT NULL PRIMARY KEY,                                                                   -- the constraint
+  id             UUID NOT NULL PRIMARY KEY,                                                                     -- the constraint
   design         UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   validated      BOOLEAN NOT NULL DEFAULT true,                                                                 -- false when made NOT VALID: existing rows are not checked
   no_inherit     BOOLEAN NOT NULL DEFAULT false,                                                                -- true when it does not pass to child tables

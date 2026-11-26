@@ -1,6 +1,6 @@
 -- engine_postgresql.index_parts: how one part of an index is ordered and compared, where it is not the default. Owner: postgresql.
 CREATE TABLE engine_postgresql.index_parts (
-  id              BIGINT NOT NULL PRIMARY KEY,                                                                   -- the index part
+  id              UUID NOT NULL PRIMARY KEY,                                                                     -- the index part
   design          UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   nulls_first     BOOLEAN NOT NULL DEFAULT false,                                                                -- true when nulls sort first
   operator_class  TEXT,                                                                                          -- its operator class where it is not the default for its type, as the server writes it (gist_trgm_ops); NULL for the default

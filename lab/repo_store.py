@@ -33,13 +33,16 @@ STATUS = {"ENABLED": "ENABLE", "DISABLED": "DISABLE", "SLAVESIDE_DISABLED": "DIS
 KINDS = ["table", "view", "procedure", "function", "trigger", "event"]
 
 
-def rows_of(snap, first=0, name=None):
-    """A snapshot as the locked design's rows: {table: [row]}, and the views the server says are broken. Its BIGINT ids
-    start after first, so more than one design can be loaded into one database; name names the design."""
+def rows_of(snap, name=None):
+    """A snapshot as the locked design's rows: {table: [row]}, and the views the server says are broken. Every id is a
+    UUIDv7 made with its row, as the core makes them; name names the design."""
     version = snap["version"]
-    n = [first]
+    n = [0]
 
     def nid():
+        return str(uuid.uuid7())
+
+    def next_place():
         n[0] += 1
         return n[0]
     out, by = defaultdict(list), defaultdict(list)
@@ -54,7 +57,7 @@ def rows_of(snap, first=0, name=None):
     ns = {}
     for s in by["namespace"]:
         i = ns[s["SCHEMA_NAME"]] = nid()
-        out["cortex.namespaces"].append({"id": i, "design": design, "parent": None, "name": s["SCHEMA_NAME"], "position": i, "comment": None})
+        out["cortex.namespaces"].append({"id": i, "design": design, "parent": None, "name": s["SCHEMA_NAME"], "position": next_place(), "comment": None})
         out["engine_mysql.databases"].append({"id": i, "collation": s["DEFAULT_COLLATION_NAME"],
                                               "encryption": {"YES": True, "NO": False}.get(s.get("DEFAULT_ENCRYPTION"))})
     obj, col, broken = {}, {}, []
@@ -63,7 +66,7 @@ def rows_of(snap, first=0, name=None):
     def add_object(key, schema, kind, name, comment=None, parent=None):
         i = obj[key] = nid()
         out["cortex.objects"].append({"id": i, "namespace": ns[schema], "kind": kind, "name": name, "signature": "", "parent": parent,
-                                      "position": i, "comment": comment, "notes": None})
+                                      "position": next_place(), "comment": comment, "notes": None})
         return i
 
     def program(i, r, sql_mode):
@@ -253,6 +256,20 @@ ORDER = ["cortex.engine_versions", "cortex.designs", "cortex.object_kinds", "cor
          "engine_mysql.views", "engine_mysql.events"]
 
 
+def twin(rows, name):
+    """The same design under fresh ids and another name: every id, and every value that names one, made anew, so the
+    twin can sit beside the original in one database. Returns the rows and the map from each old id to its new one."""
+    ids = {str(r["id"]): str(uuid.uuid7()) for k, rs in rows.items() for r in rs
+           if k not in ("cortex.engine_versions", "cortex.object_kinds")}
+    out = {}
+    for k, rs in rows.items():
+        if k in ("cortex.engine_versions", "cortex.object_kinds"):
+            continue
+        out[k] = [{c: (ids.get(v, v) if isinstance(v, str) else v) for c, v in r.items()} for r in rs]
+    out["cortex.designs"][0]["name"] = name
+    return out, ids
+
+
 def copy_sql(table, rows):
     cols = list(rows[0])
     buf = io.StringIO()
@@ -401,13 +418,13 @@ def script(st, version):
         c = st["engine_mysql.databases"][n["id"]]["collation"]
         coll[n["name"]] = c
         say(f"CREATE DATABASE {D.q(n['name'])} DEFAULT CHARACTER SET {c.split('_')[0]} COLLATE {c};\n")
-    for o in sorted((o for o in objs.values() if o["kind"] == "table"), key=lambda o: o["id"]):
+    for o in sorted((o for o in objs.values() if o["kind"] == "table"), key=lambda o: o["position"]):
         schema = ns[o["namespace"]]["name"]
         say(f"USE {D.q(schema)};\nSET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO';\n{C.implicit_collate(text[('table', schema, o['name'])])};\n")
     helpers = set()
     rank = {"view": 0, "procedure": 1, "function": 1, "trigger": 2, "event": 3}
     progs = sorted((o for o in objs.values() if o["kind"] in rank),
-                   key=lambda o: (rank[o["kind"]], st["cortex.triggers"].get(o["id"], {}).get("action_order", 0), o["id"]))
+                   key=lambda o: (rank[o["kind"]], st["cortex.triggers"].get(o["id"], {}).get("action_order", 0), o["position"]))
     for o in progs:
         schema = ns[o["namespace"]]["name"]
         pr = st["engine_mysql.programs"][o["id"]]

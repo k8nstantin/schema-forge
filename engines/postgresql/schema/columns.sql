@@ -1,6 +1,6 @@
 -- engine_postgresql.columns: what PostgreSQL says of a column beyond the cortex; a row only where it says something. Owner: postgresql.
 CREATE TABLE engine_postgresql.columns (
-  id             BIGINT NOT NULL PRIMARY KEY,                                                                   -- the column
+  id             UUID NOT NULL PRIMARY KEY,                                                                     -- the column
   design         UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   is_local       BOOLEAN NOT NULL DEFAULT true,                                                                 -- false when it comes from a parent table only
   inherit_count  INTEGER NOT NULL DEFAULT 0 CHECK (inherit_count >= 0),                                         -- how many parents it comes from

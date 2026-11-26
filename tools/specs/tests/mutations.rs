@@ -312,7 +312,7 @@ fn an_engine_table_referring_to_another_engine_s_table_is_the_finding_which_is_n
 #[test]
 fn a_table_whose_primary_key_is_not_the_one_column_id_is_the_finding_not_the_one_column_id() {
     let c = copy("primary-key");
-    c.edit("schema/cortex/namespaces.sql", "NOT NULL PRIMARY KEY GENERATED", "NOT NULL GENERATED");
+    c.edit("schema/cortex/namespaces.sql", "NOT NULL PRIMARY KEY DEFAULT uuidv7()", "NOT NULL DEFAULT uuidv7()");
     named(&check(c.root()), &["schema/cortex/namespaces.sql", "not the one column id"]);
 }
 
@@ -326,7 +326,7 @@ fn a_design_s_table_without_its_design_column_is_the_finding_has_no_column_desig
 #[test]
 fn a_reference_to_a_design_s_table_by_id_alone_is_the_finding_by_id_alone() {
     let c = copy("by-id");
-    c.edit("schema/cortex/columns.sql", "BIGINT NOT NULL,", "BIGINT NOT NULL REFERENCES cortex.objects (id),");
+    c.edit("schema/cortex/columns.sql", "UUID NOT NULL,", "UUID NOT NULL REFERENCES cortex.objects (id),");
     named(
         &check(c.root()),
         &["schema/cortex/columns.sql", "refers to cortex.objects by id alone, not by (design, object)"],

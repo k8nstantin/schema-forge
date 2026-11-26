@@ -1,6 +1,6 @@
 -- engine_postgresql.routines: what PostgreSQL says of a function or procedure beyond the cortex. Owner: postgresql.
 CREATE TABLE engine_postgresql.routines (
-  id           BIGINT NOT NULL PRIMARY KEY,                                                                   -- the routine
+  id           UUID NOT NULL PRIMARY KEY,                                                                     -- the routine
   design       UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   volatility   TEXT NOT NULL DEFAULT 'volatile' CHECK (volatility IN ('immutable', 'stable', 'volatile')),    -- what it promises about its results
   parallel     TEXT NOT NULL DEFAULT 'unsafe' CHECK (parallel IN ('safe', 'restricted', 'unsafe')),           -- whether it may run in a parallel query

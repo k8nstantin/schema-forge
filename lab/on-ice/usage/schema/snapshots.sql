@@ -3,13 +3,13 @@
 -- two snapshots of one server give what happened between them, and a smaller uptime shows a restart.
 -- Owner: usage.
 CREATE TABLE usage.snapshots (
-  id             UUID        NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),        -- UUIDv7, issued by the database
+  id             UUID NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),               -- UUIDv7, issued by the database
   design         UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
-  source_read    UUID        NOT NULL UNIQUE,                                                                   -- the read it was taken in: the connection, the server, the account
-  source         TEXT        NOT NULL CHECK (length(source) >= 1),                                              -- where the server keeps its usage, as the engine names it (performance_schema)
+  source_read    UUID NOT NULL UNIQUE,                                                                          -- the read it was taken in: the connection, the server, the account
+  source         TEXT NOT NULL CHECK (length(source) >= 1),                                                     -- where the server keeps its usage, as the engine names it (performance_schema)
   taken_at       TIMESTAMPTZ NOT NULL,                                                                          -- when it was read
-  server_uptime  BIGINT      NOT NULL CHECK (server_uptime >= 0),                                               -- the server's uptime in seconds when it was read: what every count runs from
-  digests_lost   NUMERIC     NOT NULL DEFAULT 0 CHECK (digests_lost >= 0),                                      -- statements the server counted with no digest of their own because its digest table was full; 0 when every statement has its row
+  server_uptime  BIGINT NOT NULL CHECK (server_uptime >= 0),                                                    -- the server's uptime in seconds when it was read: what every count runs from
+  digests_lost   NUMERIC NOT NULL DEFAULT 0 CHECK (digests_lost >= 0),                                          -- statements the server counted with no digest of their own because its digest table was full; 0 when every statement has its row
   settings       JSONB,                                                                                         -- the server's settings that shape what it keeps (performance_schema_digests_size, the consumers on), as it gives them; NULL when not read
   UNIQUE (design, id),
   FOREIGN KEY (design, source_read) REFERENCES cortex.source_reads (design, id) ON DELETE CASCADE

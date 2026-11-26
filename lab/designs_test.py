@@ -12,6 +12,7 @@ locked design loaded exactly as the dump loads it:
 """
 import json
 import os
+import uuid
 import subprocess
 import sys
 
@@ -22,8 +23,7 @@ import common as C  # noqa: E402
 import repo_store as R  # noqa: E402
 
 DB = "lab_designs"
-OFF = 10_000_000  # design b's BIGINT ids are design a's plus this: a part and its twin differ by OFF
-NEW = 90_000_000  # ids of rows a case makes
+NEW = [str(uuid.uuid7()) for _ in range(3)]  # ids of rows a case makes
 failures = 0
 
 
@@ -52,8 +52,13 @@ def refused(what, change):
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "out", "mysql-8.4.json")
     snap = json.load(open(path))
-    a_rows, _ = R.rows_of(snap, 0, "shop")
-    b_rows, _ = R.rows_of(snap, OFF, "shop-copy")
+    a_rows, _ = R.rows_of(snap, "shop")
+    b_rows, twin_ids = R.twin(a_rows, "shop-copy")
+
+    def T(x):
+        """The twin in shop-copy of a part of shop."""
+        return f"'{twin_ids[x]}'"
+    TW = "(SELECT b FROM public.lab_twin WHERE a = {})"  # the same, inside a statement
     a, b = a_rows["cortex.designs"][0]["id"], b_rows["cortex.designs"][0]["id"]
     R.build(DB)
 
@@ -76,6 +81,8 @@ def main():
     print(f"== two designs in {DB}, loaded as sf_service")
     R.load(DB, a_rows)
     R.load(DB, {k: v for k, v in b_rows.items() if k not in ("cortex.engine_versions", "cortex.object_kinds")})
+    q("CREATE TABLE public.lab_twin (a uuid PRIMARY KEY, b uuid NOT NULL); GRANT SELECT ON public.lab_twin TO sf_service;")
+    q("INSERT INTO public.lab_twin VALUES " + ", ".join(f"('{k}', '{v}')" for k, v in twin_ids.items() if len(k) == 36) + ";")
     OBJ = "SELECT o.id, o.namespace, o.kind, o.name, o.signature, o.parent, o.position, o.comment FROM cortex.objects o WHERE o.design = '{d}'"
     NAMES = "SELECT n.name, o.kind, o.name, o.signature FROM cortex.objects o JOIN cortex.namespaces n ON n.id = o.namespace WHERE o.design = '{d}'"
     na, nb = q(f"SELECT count(*) FROM ({OBJ.format(d=a)}) x"), q(f"SELECT count(*) FROM ({OBJ.format(d=b)}) x")
@@ -85,39 +92,39 @@ def main():
 
     print("== a reference from one design into another, refused by the foreign keys")
     trig = q(f"SELECT id FROM cortex.objects WHERE design = '{a}' AND parent IS NOT NULL LIMIT 1")
-    refused("a trigger's table in the other design", f"UPDATE cortex.objects SET parent = parent + {OFF} WHERE id = {trig};")
+    refused("a trigger's table in the other design", f"UPDATE cortex.objects SET parent = {TW.format('parent')} WHERE id = '{trig}';")
     fk = q(f"SELECT id FROM cortex.constraints WHERE design = '{a}' AND to_object IS NOT NULL LIMIT 1")
-    refused("a link to a table of the other design", f"UPDATE cortex.constraints SET to_object = to_object + {OFF} WHERE id = {fk};\n"
-                                                    f"UPDATE cortex.constraint_columns SET to_column = to_column + {OFF} WHERE \"constraint\" = {fk};")
+    refused("a link to a table of the other design", f"UPDATE cortex.constraints SET to_object = {TW.format('to_object')} WHERE id = '{fk}';\n"
+                                                    f"UPDATE cortex.constraint_columns SET to_column = {TW.format('to_column')} WHERE \"constraint\" = '{fk}';")
     ki = q(f"SELECT id FROM cortex.constraints WHERE design = '{a}' AND \"index\" IS NOT NULL LIMIT 1")
-    refused("a key's index in the other design", f"UPDATE cortex.constraints SET \"index\" = \"index\" + {OFF} WHERE id = {ki};")
+    refused("a key's index in the other design", f"UPDATE cortex.constraints SET \"index\" = {TW.format(chr(34) + 'index' + chr(34))} WHERE id = '{ki}';")
     dep = q(f"SELECT id FROM cortex.dependencies WHERE design = '{a}' LIMIT 1")
-    refused("a view using an object of the other design", f"UPDATE cortex.dependencies SET uses = uses + {OFF} WHERE id = {dep};")
-    ns_a = q(f"SELECT min(id) FROM cortex.namespaces WHERE design = '{a}'")
-    tab = q(f"SELECT min(id) FROM cortex.objects WHERE design = '{a}' AND kind = 'table'")
-    col = q(f"SELECT min(id) FROM cortex.columns WHERE object = {tab}")
-    seq = f"INSERT INTO cortex.objects (id, design, namespace, kind, name, position) VALUES ({NEW}, '{a}', {ns_a}, 'sequence', 's_new', {NEW});\n"
+    refused("a view using an object of the other design", f"UPDATE cortex.dependencies SET uses = {TW.format('uses')} WHERE id = '{dep}';")
+    ns_a, ns_a2 = q(f"SELECT id FROM cortex.namespaces WHERE design = '{a}' ORDER BY position LIMIT 2").split()
+    tab = q(f"SELECT id FROM cortex.objects WHERE design = '{a}' AND kind = 'table' ORDER BY position LIMIT 1")
+    col = q(f"SELECT id FROM cortex.columns WHERE object = '{tab}' ORDER BY position LIMIT 1")
+    seq = f"INSERT INTO cortex.objects (id, design, namespace, kind, name, position) VALUES ('{NEW[0]}', '{a}', '{ns_a}', 'sequence', 's_new', 999999);\n"
     refused("a sequence owned by a column of the other design",
-            seq + f"INSERT INTO cortex.sequences (id, design, owned_by) VALUES ({NEW}, '{a}', {int(col) + OFF});")
-    plain = q(f"SELECT min(c.id) FROM cortex.columns c WHERE c.design = '{a}' AND NOT EXISTS (SELECT 1 FROM cortex.column_identities i WHERE i.id = c.id)")
+            seq + f"INSERT INTO cortex.sequences (id, design, owned_by) VALUES ('{NEW[0]}', '{a}', {T(col)});")
+    plain = q(f"SELECT c.id FROM cortex.columns c WHERE c.design = '{a}' AND NOT EXISTS (SELECT 1 FROM cortex.column_identities i WHERE i.id = c.id) ORDER BY c.position LIMIT 1")
     refused("an identity drawing on a sequence of the other design",
-            f"INSERT INTO cortex.column_identities (id, design, sequence) VALUES ({plain}, '{a}', {int(tab) + OFF});")
+            f"INSERT INTO cortex.column_identities (id, design, sequence) VALUES ('{plain}', '{a}', {T(tab)});")
     part = q(f"SELECT id FROM cortex.partitions WHERE design = '{a}' LIMIT 1")
     if part:
-        refused("a partition whose table is in the other design", f"UPDATE cortex.partitions SET table_object = partitioning + {OFF} WHERE id = {part};")
+        refused("a partition whose table is in the other design", f"UPDATE cortex.partitions SET table_object = {TW.format('partitioning')} WHERE id = '{part}';")
     refused("a verbatim statement placed after an object of the other design",
-            f"INSERT INTO cortex.verbatim_statements (design, position, kind, text, after_object) VALUES ('{a}', 1, 'grant', 'GRANT ...', {int(tab) + OFF});")
-    refused("a namespace inside a namespace of the other design", f"UPDATE cortex.namespaces SET parent = {int(ns_a) + OFF} WHERE id = {int(ns_a) + 1};")
+            f"INSERT INTO cortex.verbatim_statements (design, position, kind, text, after_object) VALUES ('{a}', 1, 'grant', 'GRANT ...', {T(tab)});")
+    refused("a namespace inside a namespace of the other design", f"UPDATE cortex.namespaces SET parent = {T(ns_a)} WHERE id = '{ns_a2}';")
     refused("a table placed in a subject area of the other design",
-            f"INSERT INTO ui.subject_areas (id, design, name, position) VALUES ({NEW}, '{b}', 'orders', 1);\n"
-            f"INSERT INTO ui.object_places (id, design, area) VALUES ({tab}, '{a}', {NEW});")
+            f"INSERT INTO ui.subject_areas (id, design, name, position) VALUES ('{NEW[1]}', '{b}', 'orders', 1);\n"
+            f"INSERT INTO ui.object_places (id, design, area) VALUES ('{tab}', '{a}', '{NEW[1]}');")
     refused("a choice of what to read listing a kind under the other design's choice",
-            f"INSERT INTO cortex.read_scopes (id, design, everything, made_by) VALUES ({NEW}, '{b}', false, 'lab');\n"
-            f"INSERT INTO cortex.read_scope_kinds (design, scope, kind) VALUES ('{a}', {NEW}, 'table');")
+            f"INSERT INTO cortex.read_scopes (id, design, everything, made_by) VALUES ('{NEW[2]}', '{b}', false, 'lab');\n"
+            f"INSERT INTO cortex.read_scope_kinds (design, scope, kind) VALUES ('{a}', '{NEW[2]}', 'table');")
     refused("an inherited parent in the other design",
-            f"INSERT INTO engine_postgresql.inheritance (design, object, parent, position) VALUES ('{a}', {tab}, {int(tab) + OFF}, 1);")
+            f"INSERT INTO engine_postgresql.inheritance (design, object, parent, position) VALUES ('{a}', '{tab}', {T(tab)}, 1);")
     refused("a row of one design claiming the other's design",
-            f"UPDATE engine_mysql.tables SET design = '{b}' WHERE id = {tab};")
+            f"UPDATE engine_mysql.tables SET design = '{b}' WHERE id = '{tab}';")
 
     print("== deleting a design")
     tables = q("SELECT string_agg(n.nspname || '.' || c.relname, ' ') FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "

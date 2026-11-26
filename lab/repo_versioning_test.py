@@ -55,9 +55,9 @@ def edit(db, rnd, n, version):
         elif k < 0.85:
             cols = rnd.randint(1, 4)
             sql.append(f"""WITH t AS (INSERT INTO cortex.objects (design, namespace, kind, name, position)
-                 SELECT (SELECT id FROM cortex.designs LIMIT 1), min(id), 'table', 'lab_t{n}_{rnd.randint(0, 10**6)}', (SELECT max(position) + 1 FROM cortex.objects) FROM cortex.namespaces RETURNING id),
+                 SELECT (SELECT id FROM cortex.designs LIMIT 1), min(id::text)::uuid, 'table', 'lab_t{n}_{rnd.randint(0, 10**6)}', (SELECT max(position) + 1 FROM cortex.objects) FROM cortex.namespaces RETURNING id),
                m AS (INSERT INTO engine_mysql.tables (id, design, engine, "collation") SELECT t.id, (SELECT id FROM cortex.designs LIMIT 1), 'InnoDB', d."collation" FROM t, engine_mysql.databases d
-                 WHERE d.id = (SELECT min(id) FROM cortex.namespaces) RETURNING id),
+                 WHERE d.id = (SELECT min(id::text)::uuid FROM cortex.namespaces) RETURNING id),
                c AS (INSERT INTO cortex.columns (design, object, position, name, type, nullable)
                  SELECT (SELECT id FROM cortex.designs LIMIT 1), t.id, g, 'c' || g, '{int_type}', g > 1 FROM t, generate_series(1, {cols}) g RETURNING id, position),
                i AS (INSERT INTO cortex.indexes (design, object, position, name, "unique", method) SELECT (SELECT id FROM cortex.designs LIMIT 1), t.id, 1, 'PRIMARY', true, 'BTREE' FROM t RETURNING id),
@@ -100,11 +100,7 @@ def main():
     C.psql("BEGIN; SELECT sf_log.begin_turn('import');\n"
            + "".join(R.copy_sql(k, rows[k]) for k in R.ORDER if rows.get(k) and k not in ("cortex.engine_versions", "cortex.designs", "cortex.object_kinds"))
            + "SELECT sf_log.end_turn(); COMMIT;", db)
-    # ids the import gave: identities go on after them
-    C.psql("DO $$ DECLARE r record; BEGIN FOR r IN SELECT n.nspname || '.' || c.relname AS t, a.attname AS col FROM pg_attribute a "
-           "JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE a.attidentity <> '' "
-           "AND n.nspname IN ('cortex', 'engine_mysql') LOOP EXECUTE format('SELECT setval(pg_get_serial_sequence(%L, %L), "
-           "greatest((SELECT max(id) FROM %s), 1))', r.t, r.col, r.t); END LOOP; END $$;", db)
+
     print(f"== mysql {version}: imported as one turn, {one('SELECT count(*) FROM cortex.row_changes', db)} rows logged ({time.time() - t:.1f}s)")
 
     hashes = {}
@@ -160,10 +156,10 @@ def main():
     agent = [
         ("edits a design row inside a turn", True,
          "BEGIN; SELECT sf_log.begin_turn('agent'); SET LOCAL ROLE sf_agent; UPDATE cortex.objects SET notes = 'agent' "
-         "WHERE id = (SELECT min(id) FROM cortex.objects); RESET ROLE; SELECT sf_log.end_turn(); COMMIT;"),
+         "WHERE id = (SELECT min(id::text)::uuid FROM cortex.objects); RESET ROLE; SELECT sf_log.end_turn(); COMMIT;"),
         ("pins a table on the canvas inside a turn", True,
          "BEGIN; SELECT sf_log.begin_turn('agent'); SET LOCAL ROLE sf_agent; INSERT INTO ui.layout_pins (design, view, object, x, y) "
-         "VALUES ((SELECT id FROM cortex.designs LIMIT 1), 'map/agent', (SELECT min(id) FROM cortex.objects), 1, 1); RESET ROLE; SELECT sf_log.end_turn(); COMMIT;"),
+         "VALUES ((SELECT id FROM cortex.designs LIMIT 1), 'map/agent', (SELECT min(id::text)::uuid FROM cortex.objects), 1, 1); RESET ROLE; SELECT sf_log.end_turn(); COMMIT;"),
         ("creates a table in the ui", False, "BEGIN; SET LOCAL ROLE sf_agent; CREATE TABLE ui.agent_attempt (id bigint); COMMIT;"),
         ("creates a table", False, "BEGIN; SET LOCAL ROLE sf_agent; CREATE TABLE cortex.agent_attempt (id bigint); COMMIT;"),
         ("alters a table", False, "BEGIN; SET LOCAL ROLE sf_agent; ALTER TABLE cortex.objects ADD COLUMN x int; COMMIT;"),
@@ -201,16 +197,16 @@ def feed(db):
           f"in the order they ended: {nums[4] == 'true'}")
     r = subprocess.run(["docker", "exec", "-i", C.SERVER, "psql", "-U", "postgres", "-d", db, "-At", "-v", "ON_ERROR_STOP=1"],
                        input="LISTEN schema_forge_turns;\nBEGIN; SELECT sf_log.begin_turn('bell');\n"
-                             "UPDATE cortex.objects SET notes = 'bell' WHERE id = (SELECT min(id) FROM cortex.objects);\n"
+                             "UPDATE cortex.objects SET notes = 'bell' WHERE id = (SELECT min(id::text)::uuid FROM cortex.objects);\n"
                              "SELECT sf_log.end_turn(); COMMIT;\nSELECT 'after';\n", capture_output=True, text=True)
     heard = [l for l in (r.stdout + r.stderr).splitlines() if "schema_forge_turns" in l]
     want = one("SELECT design || ' ' || seq FROM cortex.turns WHERE seq = (SELECT max(seq) FROM cortex.turns)", db)
     print(f"  {'pass' if len(heard) == 1 and want in heard[0] else 'FAIL'}  a committed turn rings the bell once, after commit, "
           f"with its design and number: {heard[0].split('payload')[-1].split(' received')[0].strip() if heard else 'NOTHING HEARD'}")
     # two writers end a turn at once: the second takes the same number, waits for the first's commit, and is refused
-    first = ("BEGIN; SELECT sf_log.begin_turn('first'); UPDATE cortex.objects SET notes = 'first' WHERE id = (SELECT min(id) FROM cortex.objects);\n"
+    first = ("BEGIN; SELECT sf_log.begin_turn('first'); UPDATE cortex.objects SET notes = 'first' WHERE id = (SELECT min(id::text)::uuid FROM cortex.objects);\n"
              "SELECT sf_log.end_turn(); SELECT pg_sleep(2); COMMIT;\n")
-    second = ("BEGIN; SELECT sf_log.begin_turn('second'); UPDATE cortex.objects SET notes = 'second' WHERE id = (SELECT max(id) FROM cortex.objects);\n"
+    second = ("BEGIN; SELECT sf_log.begin_turn('second'); UPDATE cortex.objects SET notes = 'second' WHERE id = (SELECT max(id::text)::uuid FROM cortex.objects);\n"
               "SELECT sf_log.end_turn(); COMMIT;\n")
     cmd = ["docker", "exec", "-i", C.SERVER, "psql", "-U", "postgres", "-d", db, "-At", "-v", "ON_ERROR_STOP=1", "-q"]
     before = int(one("SELECT max(seq) FROM cortex.turns", db))

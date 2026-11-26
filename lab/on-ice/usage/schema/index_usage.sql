@@ -2,12 +2,12 @@
 -- An index read nowhere since the server started is a candidate to drop, never a verdict: the snapshot's uptime says how long.
 -- Owner: usage.
 CREATE TABLE usage.index_usage (
-  id             UUID    NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),            -- UUIDv7, issued by the database
+  id             UUID NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),               -- UUIDv7, issued by the database
   design         UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
-  snapshot       UUID    NOT NULL,                                                                              -- the snapshot it is part of
-  "index"        BIGINT,                                                                                        -- the design's index of that name when the snapshot was taken; NULL when the design has none, or for rows read with no index
-  object_schema  TEXT    NOT NULL CHECK (length(object_schema) >= 1),                                           -- the database its table is in, as the server names it (shop)
-  object_name    TEXT    NOT NULL CHECK (length(object_name) >= 1),                                             -- its table, as the server names it (orders)
+  snapshot       UUID NOT NULL,                                                                                 -- the snapshot it is part of
+  "index"        UUID,                                                                                          -- the design's index of that name when the snapshot was taken; NULL when the design has none, or for rows read with no index
+  object_schema  TEXT NOT NULL CHECK (length(object_schema) >= 1),                                              -- the database its table is in, as the server names it (shop)
+  object_name    TEXT NOT NULL CHECK (length(object_name) >= 1),                                                -- its table, as the server names it (orders)
   index_name     TEXT,                                                                                          -- the index, as the server names it (PRIMARY); NULL for the rows read with no index
   rows_read      NUMERIC CHECK (rows_read >= 0),                                                                -- rows read through it since the server started; NULL when not counted
   rows_fetched   NUMERIC CHECK (rows_fetched >= 0),                                                             -- rows fetched through it; NULL when not counted
@@ -16,7 +16,7 @@ CREATE TABLE usage.index_usage (
   rows_deleted   NUMERIC CHECK (rows_deleted >= 0),                                                             -- rows deleted through it; NULL when not counted
   io_wait_ps     NUMERIC CHECK (io_wait_ps >= 0),                                                               -- time spent on it, in picoseconds; NULL when not timed
   cardinality    NUMERIC CHECK (cardinality >= 0),                                                              -- the distinct values it holds, as the server estimates them; NULL when it gives none, or for rows read with no index
-  source_rows    JSONB   NOT NULL,                                                                              -- every row the server gave of this index, as it gave them, by the table it was read from: what the columns above are taken from, and all the rest
+  source_rows    JSONB NOT NULL,                                                                                -- every row the server gave of this index, as it gave them, by the table it was read from: what the columns above are taken from, and all the rest
   UNIQUE NULLS NOT DISTINCT (snapshot, object_schema, object_name, index_name),
   UNIQUE (design, id),
   FOREIGN KEY (design, snapshot) REFERENCES usage.snapshots (design, id) ON DELETE CASCADE,

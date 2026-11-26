@@ -294,7 +294,9 @@ PG_PARTS = {
         'arguments', CASE WHEN tg.tgnargs > 0 THEN (SELECT jsonb_agg(x) FROM unnest(string_to_array(rtrim(encode(tg.tgargs, 'escape'), '\\000'), '\\000')) x) END,
         'update_columns', (SELECT jsonb_agg(a.attname ORDER BY k.n) FROM unnest(tg.tgattr) WITH ORDINALITY k(attnum, n)
                            JOIN pg_attribute a ON a.attrelid = tg.tgrelid AND a.attnum = k.attnum),
-        'condition', substring(pg_get_triggerdef(tg.oid) FROM ' WHEN \\((.*)\\) EXECUTE ')) AS props
+        'condition', substring(pg_get_triggerdef(tg.oid) FROM ' WHEN \\((.*)\\) EXECUTE '),
+        'constraint_trigger', tg.tgconstraint <> 0,
+        'from_table', CASE WHEN tg.tgconstrrelid <> 0 THEN tg.tgconstrrelid::regclass::text END) AS props
       FROM pg_trigger tg JOIN pg_class c ON c.oid = tg.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = ANY(%(s)s) AND NOT tg.tgisinternal""",
     "policy": """SELECT schemaname || '.' || tablename || '.' || policyname AS key, schemaname || '.' || tablename AS parent,

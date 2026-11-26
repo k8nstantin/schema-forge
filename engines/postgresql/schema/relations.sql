@@ -1,6 +1,6 @@
 -- engine_postgresql.relations: what PostgreSQL says of a table, view, materialized view or sequence beyond the cortex. Owner: postgresql.
 CREATE TABLE engine_postgresql.relations (
-  id                  BIGINT NOT NULL PRIMARY KEY,                                                                          -- the relation
+  id                  UUID NOT NULL PRIMARY KEY,                                                                            -- the relation
   design              UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,         -- the design it belongs to
   persistence         TEXT NOT NULL DEFAULT 'permanent' CHECK (persistence IN ('permanent', 'unlogged', 'temporary')),      -- how it is kept
   options             JSONB,                                                                                                -- its storage options as the server writes them (["fillfactor=70"]); NULL for none

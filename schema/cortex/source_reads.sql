@@ -3,7 +3,7 @@ CREATE TABLE cortex.source_reads (
   id               UUID NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),                     -- UUIDv7, issued by the database
   design           UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,        -- the design it was read for
   turn             UUID,                                                                                                -- the import turn its definitions landed in; NULL when the read ended before it had one (refused, stopped)
-  scope            BIGINT NOT NULL,                                                                                     -- the choice it ran with (decision read-scope)
+  scope            UUID NOT NULL,                                                                                       -- the choice it ran with (decision read-scope)
   connection       UUID REFERENCES cortex.workspace_connections (id) ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED,  -- the saved connection read through; NULL once it is deleted
   connection_name  TEXT NOT NULL CHECK (length(connection_name) >= 1),                                                  -- its name when it was read (prod-replica)
   database_name    TEXT NOT NULL CHECK (length(database_name) >= 1),                                                    -- the database read, as the server names it (shop)

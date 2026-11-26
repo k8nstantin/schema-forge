@@ -1,6 +1,6 @@
 -- engine_postgresql.types: an enum, composite, domain or range type's PostgreSQL facts beyond the cortex. Owner: postgresql.
 CREATE TABLE engine_postgresql.types (
-  id             BIGINT NOT NULL PRIMARY KEY,                                                                   -- the type
+  id             UUID NOT NULL PRIMARY KEY,                                                                     -- the type
   design         UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   owner          TEXT,                                                                                          -- its owner, by role name; NULL for the one the schema is written as
   acl            JSONB,                                                                                         -- its privileges; NULL for the defaults

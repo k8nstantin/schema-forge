@@ -6,103 +6,103 @@
 <lock product="SchemaForge" files="101">
   <file path="docs/owner-template/README.xml" sha256="336271195f4c3f3532581ab1238b3fb2a5a8945df9aeede7975b7206050a9c01"/>
   <file path="docs/owner-template/owner.toml" sha256="cc6f9817675670ceefa5592dff30c24a0ac38afc63eddd92ebde0efda4275567"/>
-  <file path="docs/owner-template/schema/column_codecs.sql" sha256="0c994e3388f36dcb7adf915473f2d11778ea36d7779e52e3c958c615e53dac29"/>
-  <file path="docs/owner-template/schema/migrations/1_tables.sql" sha256="0ad54ba5def7b996802f69dd023ddc037e6b91af47a299712e5b2a2b9aad38a1"/>
+  <file path="docs/owner-template/schema/column_codecs.sql" sha256="223529ca1dd21d9d7486f7481183ee4b8d4b8bae86b8eaf2b7119bd74c353ec5"/>
+  <file path="docs/owner-template/schema/migrations/1_tables.sql" sha256="86c79f9dd9f71bebe8781e36845bc214638265ce9a55a528f087de856ba8dc41"/>
   <file path="docs/owner-template/schema/migrations/2_compaction_policy_add.sql" sha256="6150257f1532b6fda4138bffb24532db9ecded5b21b9b581f9b44adc82e877bb"/>
   <file path="docs/owner-template/schema/migrations/3_compaction_policy_drop_old.sql" sha256="7bd9005fa1031bdb7894a797746a4ee85c483c0c65a79f195c9daba14007ff91"/>
   <file path="docs/owner-template/schema/migrations/4_design.sql" sha256="bc108bdc566cf80866d7d01516e6698118259e822bcc7bba81393c9030c8551e"/>
-  <file path="docs/owner-template/schema/nested_fields.sql" sha256="8e4fe20984b63e4fb90fc44a4790fc0228fcb4bff9ee0bf4e561c0adc5e70938"/>
+  <file path="docs/owner-template/schema/nested_fields.sql" sha256="f4b5121bc6f9155a3b4cd63e37013de0c5a1abbd4287365a7cf7954f87e3b0f0"/>
   <file path="docs/owner-template/schema/rules/nested-fields-in-their-column.sql" sha256="627f04589ca2a682d385f48b0474cdedeb916ccd34341b55e437c6d3c36ee460"/>
   <file path="docs/owner-template/schema/rules/pools-of-their-kind.sql" sha256="7d43e1b827b0c04d445fc4110d605db9ee5f71f6282157e69afdd15d584dc19a"/>
   <file path="docs/owner-template/schema/rules/table-options-on-tables.sql" sha256="78708cbd81e7e4d034336cf345e7b5984d3517ebe4bee27c922db150348fcef6"/>
-  <file path="docs/owner-template/schema/storage_pools.sql" sha256="99c97245092595e05c46c11847b73fd69e024f2c3996fb91723a66995aaafabe"/>
-  <file path="docs/owner-template/schema/table_options.sql" sha256="b508d7d3e35f042c2dc3b167fac67d2843570cc4d0509f5e7192bbcf28bc8d50"/>
+  <file path="docs/owner-template/schema/storage_pools.sql" sha256="f7f33f86b69a718f80c8973eea97ceba33f117ebfc1b15624009c76c17dc2eb5"/>
+  <file path="docs/owner-template/schema/table_options.sql" sha256="e51e599bac5101da0777241fb36a6d2df0255e42cd601606d65389cd8cfc414c"/>
   <file path="engines/mysql/owner.toml" sha256="4e8c087074eac7912ab7ef867a642f7fedea46b34b97c8b0ab6a26008fdd4b2a"/>
-  <file path="engines/mysql/schema/columns.sql" sha256="161998a6680f471bf440560ea726a2695e6b6c2d40d53857b47e26de98ad2254"/>
-  <file path="engines/mysql/schema/databases.sql" sha256="8024e6c2fb124d29bf37214bf06d210efb2dd1691162f869b3497be3ee6140e1"/>
-  <file path="engines/mysql/schema/events.sql" sha256="bc64f5fb317b07b16df97b96becc15bfd164e17232b68d5b623c9f8ba03fba87"/>
-  <file path="engines/mysql/schema/index_parts.sql" sha256="bbd32fdf51ac6aaacc9b9ac95c36105b449b99c38caee778b974282905471095"/>
-  <file path="engines/mysql/schema/indexes.sql" sha256="98b19f411916a9c4ac22df175475cb264a983e1d9ffb1f6f07acf4966209e260"/>
-  <file path="engines/mysql/schema/programs.sql" sha256="9116133ec449144a0dd4422a69144197a12883d83ba6c7a6d9e10080e43b283a"/>
-  <file path="engines/mysql/schema/routines.sql" sha256="d4d5bd6543166b1a935bd4e1e519dfbccf379a350041c02325b5a01f3988d6c8"/>
-  <file path="engines/mysql/schema/subpartitionings.sql" sha256="346d52d384209894463ba30057c08cca2c83d83d5d9427831ca73c196d824c3b"/>
-  <file path="engines/mysql/schema/subpartitions.sql" sha256="7b5507b2ed891fb90e2810934d11ce9fa88166df85d0f4e9b7c79131ea8d7923"/>
-  <file path="engines/mysql/schema/tables.sql" sha256="007f1915fc697f24156d95b80252ccb7261c7c6055febeb3d3158562dab9ff0a"/>
-  <file path="engines/mysql/schema/views.sql" sha256="7140d1d8d16e82a07f36bb0d3c9a83a77665ffae9c8f73dd741c8a173674a6aa"/>
+  <file path="engines/mysql/schema/columns.sql" sha256="6e5603c153d36b27fadb8a0517a671c2ce6c77653e6ee62b4e9afdf8ff31521a"/>
+  <file path="engines/mysql/schema/databases.sql" sha256="be745a526e3086fabebc9a33f419bf5d96777b015a53836dd331e46bb7c896ea"/>
+  <file path="engines/mysql/schema/events.sql" sha256="9e45c9759b5b8f88b64fb351716c97e462a42e192a44340fc6f8b9c46e6faf05"/>
+  <file path="engines/mysql/schema/index_parts.sql" sha256="8eb61eb8717a949cb00f279e80050f8d28dbfdb2d153677b12517a393422779f"/>
+  <file path="engines/mysql/schema/indexes.sql" sha256="5914c33182e8164b2f278013bc8cb85a07556f13f07c18e1ef79ecdba0476311"/>
+  <file path="engines/mysql/schema/programs.sql" sha256="9784cef40dc13366287db7a2bc1b7c35ba2b95e124a2990037d7590c34361d0d"/>
+  <file path="engines/mysql/schema/routines.sql" sha256="9b63f736be5faf1cffc34a08d0027a994f8f223c0a9c7d7d6213e606b2e7a116"/>
+  <file path="engines/mysql/schema/subpartitionings.sql" sha256="297dd73a7ebd9b242484e506e3718bc0854f18572c750d547155520b69efd7d8"/>
+  <file path="engines/mysql/schema/subpartitions.sql" sha256="ce1e8941b48979631734f495a80f53675a9225cd106865223ae2966eea571e88"/>
+  <file path="engines/mysql/schema/tables.sql" sha256="afe936a375d87b31f4feecfa57e5b7a5ca17e21c8d3be2bef2d9b41f5c79b274"/>
+  <file path="engines/mysql/schema/views.sql" sha256="67b677bd0994e49fae79acc30c28b5d8b3f65c219606fb4a41f746d2b3dda176"/>
   <file path="engines/postgresql/owner.toml" sha256="31aadaa48668ad2cb4211b8c71f963f761e5b50f253b66e1be499b06e05fc82c"/>
-  <file path="engines/postgresql/schema/collations.sql" sha256="33e66bfc6bfd17752dd4299dc133ccfecbb71e19413b2b78da6ad68923ef86ea"/>
-  <file path="engines/postgresql/schema/columns.sql" sha256="f56bbfea80a2013440b055264ce49814395ebe41d73b5aa94a90ed4bb65e4dca"/>
-  <file path="engines/postgresql/schema/constraints.sql" sha256="04e9dca262d5b4c9b57e17f17d3eea68927e17e7b0f9ff06bd9ffb41a92ec75b"/>
-  <file path="engines/postgresql/schema/index_parts.sql" sha256="b62b504b14c546a71023ff3a717c35f6e6403124c676fd6feb4603ec9104b6f5"/>
-  <file path="engines/postgresql/schema/indexes.sql" sha256="e4262b02e203b0d4ff764a5ce79f43370a25bccb69d6ef9dcca5dab10b66b084"/>
-  <file path="engines/postgresql/schema/inheritance.sql" sha256="d3da4ec022a84643adb95caad4dd12668889bdc81bb8936dacea862b8d1eb80c"/>
-  <file path="engines/postgresql/schema/namespaces.sql" sha256="138142f51bab7eed9696f8067c29a65e28608533f43097c577c848fb4302e36c"/>
-  <file path="engines/postgresql/schema/policies.sql" sha256="077c0dfb011ff41d2dd595b6240883436cab525d1e3698f65424dd26373f2c4b"/>
-  <file path="engines/postgresql/schema/relations.sql" sha256="338989f19b132b2b1a5f8e0b8d360bbec00051a465fc7f6612d36a688d136c6a"/>
-  <file path="engines/postgresql/schema/routines.sql" sha256="9771bfef65de57a3ddac207d81b69ba9553e9e508a4f7714aa3eeb5bddf26a92"/>
-  <file path="engines/postgresql/schema/rules.sql" sha256="72c04e07eacfb271e0952ec463fb47177b496244fcb0c3504462091364b1b6de"/>
-  <file path="engines/postgresql/schema/sequences.sql" sha256="6ba2b5331fecffb6473b2be56a9899d624a9e7b55d241a4b5dab285701db67ff"/>
-  <file path="engines/postgresql/schema/triggers.sql" sha256="68697cd84b3bda5d5bb75499aa1b68586f2ec3a42603b8938c0d2b23ec251c6c"/>
-  <file path="engines/postgresql/schema/types.sql" sha256="e39ad10ee0fd06017e9c0c1a2baa4791bcc577b1bd50507de6d0bb7a6ec55709"/>
+  <file path="engines/postgresql/schema/collations.sql" sha256="10999eb0d1516b620d05c6ed751d540f727bc567b9a8e9ffb76f9cb83eed5745"/>
+  <file path="engines/postgresql/schema/columns.sql" sha256="d52b2b314603b03b45e0f8fbd8dd12918e9844187f43d209fe1e751e4e149ad0"/>
+  <file path="engines/postgresql/schema/constraints.sql" sha256="3ec2a5a1c3ed40ecdc8ee10d77367f76a32b43a614590195a671e598fe0daedc"/>
+  <file path="engines/postgresql/schema/index_parts.sql" sha256="b2f312853c783ed206ff8dcfc011921ab9471a8791bf4fa6490d91d175a82943"/>
+  <file path="engines/postgresql/schema/indexes.sql" sha256="3196db90a2dc4434f4ae7bafd03411d2523ce8f088836ad8f457f40264559e73"/>
+  <file path="engines/postgresql/schema/inheritance.sql" sha256="e11cd4d8f480915609ce3ffc804534772447c669bcd55beea0ee21ad26f631b7"/>
+  <file path="engines/postgresql/schema/namespaces.sql" sha256="ae7e2414f5f99c508b0d0d36655f6d8425019092b33b77a3ae3b54060210829b"/>
+  <file path="engines/postgresql/schema/policies.sql" sha256="2bab5ceffe6fc2987f0e9a8359af74668ad64c15eb532fd5e81faed827967ee1"/>
+  <file path="engines/postgresql/schema/relations.sql" sha256="d407ea9354cee59312648a0f963874225d4da0740e5c05aad8bd0d4805bf559d"/>
+  <file path="engines/postgresql/schema/routines.sql" sha256="0ee31c5d292e2b00f499d6a80d7b08ddb5f3a5d6e71accb191d9e3eba0d2c4c5"/>
+  <file path="engines/postgresql/schema/rules.sql" sha256="bd548b50f1105370bd97fd50e94082c112149ce896f85704e1c9a4bb32ab829b"/>
+  <file path="engines/postgresql/schema/sequences.sql" sha256="2b925fed58f1a0ad468c7cc6675373b768b6f100e8547e331a99a87a7f406753"/>
+  <file path="engines/postgresql/schema/triggers.sql" sha256="4bee3b0d1187c1ba34d27e0587e12df4505c9244c308d2bd47713c5c7dc32e6f"/>
+  <file path="engines/postgresql/schema/types.sql" sha256="d3efaed4ace7eb2ed1bf761edb5c707559b3b38e4a2590e883b8fc25da4ab8b1"/>
   <file path="postgres/manifest.toml" sha256="d8e75bb68508d4aa724ca0d43c7b8a50a6d70c449e620f8d0c01cd0db634aad1"/>
   <file path="schema/accounts.py" sha256="56a019aaabee5f23ee9dffb45b589dc9f5233716fed2df59664ebf8e05367190"/>
-  <file path="schema/cortex/branches.sql" sha256="303b8af9d444e8ee993824d6bda737a176bc946eda64f757f5ce7a782012e0cd"/>
+  <file path="schema/cortex/branches.sql" sha256="fe622417f13f88f108c7e7f4c0baa9df1934a733394e52d256344d11c3c6a8c5"/>
   <file path="schema/cortex/catalog_sources.sql" sha256="652d77aabe6a7fb647ec0d46bd1e17582e497688c0bb1397b36a489f3ed2bfc8"/>
-  <file path="schema/cortex/column_identities.sql" sha256="d4aa823ac91ecf2be090c797fe8df6edc1d05f70b77a900bc9ddd1237a1c2240"/>
-  <file path="schema/cortex/columns.sql" sha256="850fe7a4a78d0d47e55dcc75cd8a287dc10ccca43f219ee0d56e6849feb54a79"/>
-  <file path="schema/cortex/constraint_columns.sql" sha256="d7d63028b71890db6ac97f6da6e30e8f44d19eb02e1f143e28658ab3b00a4ae5"/>
-  <file path="schema/cortex/constraints.sql" sha256="178fd6e114f9fd20cd0043afe966279105913c8a36cf354398a09b6ed1541b74"/>
-  <file path="schema/cortex/dependencies.sql" sha256="bd05936e47174c623f674a0d8a33cbdc341a05ac4967e382ebc87fea6187ce9e"/>
+  <file path="schema/cortex/column_identities.sql" sha256="80fcda1212634da36a09a31bc317e706612390b1e72d70060c26a319c236ac1c"/>
+  <file path="schema/cortex/columns.sql" sha256="36cbe4b4852af0001007342a4a0681221b974213e7f88a337e21951d2f8a82a0"/>
+  <file path="schema/cortex/constraint_columns.sql" sha256="0b28903fab42b3634e6d79e31153e9bec7f72b4555a95893f6e2a2928413e7a4"/>
+  <file path="schema/cortex/constraints.sql" sha256="06d7f220a916d9e76a3126477fc4d5f244d4c9276980ad4e817ec84dd1747b53"/>
+  <file path="schema/cortex/dependencies.sql" sha256="ef81a73f445492485f26cfec60216687d29b51622bd7a3d793d43852e9d1f0e0"/>
   <file path="schema/cortex/designs.sql" sha256="e372b61f02889a7da9ae42ce36133c99549bf92657b27ccea17c7b82b02d2c1f"/>
-  <file path="schema/cortex/domains.sql" sha256="f2c7d74ab01558d504f9abb86607ae9cadf1234fe6c6a5f42cbdff4e3f63fc75"/>
+  <file path="schema/cortex/domains.sql" sha256="f536486a95f5502519ead6d8f83a1b33d1a34340b3beae89ebf45f7d637f7b39"/>
   <file path="schema/cortex/enforce_rules.sql" sha256="72d22b023be1c8e03cf3f0a929b79287d9f5f880dcd754c8834b135548a84308"/>
   <file path="schema/cortex/engine_features.sql" sha256="f1535a04aff75ede3cdd6366ebb5df9716d9bdac6ffd0a9beaa1422ebf564660"/>
   <file path="schema/cortex/engine_versions.sql" sha256="e0cfe573c659ca1a5d16618b7dbc7bdd1f4372c7cc638977b4fc76c7e971d5b9"/>
-  <file path="schema/cortex/enum_values.sql" sha256="2b96bd2018d25bdc4151fe27b41187826250bbe39e8ceeaad965d56e408bdcfb"/>
+  <file path="schema/cortex/enum_values.sql" sha256="5b037e40e69a56f057fa021aa349487e2e30acd1ab99fae6a375b631a75221a7"/>
   <file path="schema/cortex/grant_roles.sql" sha256="5bb29fada34da30cc0019727ab4a9c5da74ffc788f27792a7fa7180c5b20602c"/>
-  <file path="schema/cortex/index_parts.sql" sha256="9f14e2e36f77725b6b736fb79780dc156b77d68876634f43524eded3f645315b"/>
-  <file path="schema/cortex/indexes.sql" sha256="5a0555b1d77e764faa7db2bf809f36fc73bf2bd6b935b109d5edff5ee7caa4e9"/>
+  <file path="schema/cortex/index_parts.sql" sha256="98105d5904e0a1c430c9c5ed978501ee06a1446086ca857784b1b390f3286df3"/>
+  <file path="schema/cortex/indexes.sql" sha256="495623c7718024372461651f8878f4424f9949c4df7eb840264607740af940f3"/>
   <file path="schema/cortex/locked_versions.sql" sha256="aae38cb5744ae4380d3c4838dbe6bff610db2d8c18c3624427d9aa08053bf0eb"/>
-  <file path="schema/cortex/namespaces.sql" sha256="a72f53fe6b010de6a8b37bd337c56f10648c4377b15baa1a618e0ee5d99e78f5"/>
+  <file path="schema/cortex/namespaces.sql" sha256="9c031466cbcb4f8e56b6c7636e5ba98bfae72c74f58bc33f71b0412299584843"/>
   <file path="schema/cortex/notify_turns.sql" sha256="375957c40615e2903d66691675048974b4d4a1882e86a6cd8ca0e08f75000dce"/>
   <file path="schema/cortex/object_kinds.sql" sha256="ca2d951f462512069e88fb5010a70475ef7bd840df4e3be209fa17a193ef6e5b"/>
-  <file path="schema/cortex/object_tags.sql" sha256="37601ed1c760ef69adeac39b4d7055589986323886bf853e275881bd1e44961d"/>
-  <file path="schema/cortex/objects.sql" sha256="4b7b52ee9bc5b27df88198f8024d4336fdde47fc255cafd16d6f62b646a438ff"/>
+  <file path="schema/cortex/object_tags.sql" sha256="ba865af272ea25717c39e501d6c4492621b6bf4596136d59b1993d898c89b859"/>
+  <file path="schema/cortex/objects.sql" sha256="907e1f37b02bb27553f7d26f85aacef1b16fa25f13659a39cbb197d51f6ad0be"/>
   <file path="schema/cortex/operations.sql" sha256="82ff26ca82c0bcd400eac0f6d9eae3b7c572556a8f9b86dc4217fde955288623"/>
   <file path="schema/cortex/owner.toml" sha256="a19468b5390474700ec3bad09d80e8af5c956f2f31ce709a6824a710707c1670"/>
-  <file path="schema/cortex/partitionings.sql" sha256="1c9930011f791f0f4d285c1abda192015598c604ae2c781fbd732c9fc4dc1e0c"/>
-  <file path="schema/cortex/partitions.sql" sha256="885598b03cc13b129b8bc26d87b63a0bdc0777a24ddbaff4201f71561fb824c5"/>
-  <file path="schema/cortex/read_scope_kinds.sql" sha256="086f81fd045210d4ef69ddcd21f20af55b4b29a1b4390e912dcc49afb7265b55"/>
-  <file path="schema/cortex/read_scope_objects.sql" sha256="1230aec2dcf628f9275305efdc506b058c955de9aa4c54118348387b5d1b14bd"/>
-  <file path="schema/cortex/read_scopes.sql" sha256="df9306e6ab58921aa550ea1fd9f89dedd3cb85c02c9ec7afb3be4d41f53aeaf5"/>
-  <file path="schema/cortex/required_extensions.sql" sha256="eaab6abd9c9a5570731d7adf9c61c0d47a163d0d4bfc2a33025824424cd4a218"/>
-  <file path="schema/cortex/routine_parameters.sql" sha256="3df5b56da6cd826178ed4cbd081fa4b91595ff1ce1bc97629d96705effe50dd2"/>
-  <file path="schema/cortex/routines.sql" sha256="1275ecdab116a72f767d82d74637aaa5f37b8d2f6c09eda4b8dea26acd9c412a"/>
-  <file path="schema/cortex/row_changes.sql" sha256="213371609bdebfecac7cee2397ae1aaa453036f13f9ee443ebaacc0b30b32eab"/>
-  <file path="schema/cortex/savepoints.sql" sha256="298eccf62bd079ed02551f2859e6ed403c75f9b3c64f668dd64b8ed62c22902c"/>
+  <file path="schema/cortex/partitionings.sql" sha256="7264fccca1a6608eb09078c9fac23b95026cd083219339faf73044941b1ee76f"/>
+  <file path="schema/cortex/partitions.sql" sha256="35ee05298d0a155135311cdad98a1e33b8fcc29d3a2d7e25e940f52e013e11a7"/>
+  <file path="schema/cortex/read_scope_kinds.sql" sha256="2deffe4d7c3c0c82fa98e6fbc3028f66d73ce18d8207498193b0a92cce164c06"/>
+  <file path="schema/cortex/read_scope_objects.sql" sha256="965e9c0eecc119fa1189052c40e319a8ad9a284bf194853d2865720996ea723b"/>
+  <file path="schema/cortex/read_scopes.sql" sha256="b1fe398e36ed5c2c02e2c731382013bb8b198338842c318b821f804cd4b7d917"/>
+  <file path="schema/cortex/required_extensions.sql" sha256="a5c0ff87f581927995b6d0173616b62ccfd835539b16f01af27593709dd7aad8"/>
+  <file path="schema/cortex/routine_parameters.sql" sha256="a05b5f2e38ea54a7d6842bfd5159d60821264b72a58ea541f75d154c5ae8a9fb"/>
+  <file path="schema/cortex/routines.sql" sha256="675e27c1fcc44b89876e9f527876c7ce4e55fcfa3ca4f58deb6ceaab43026bfe"/>
+  <file path="schema/cortex/row_changes.sql" sha256="2a1f40bf6342a69acec64aa36c3642b06c291a3caed10b79bc9ae1cd99e1871a"/>
+  <file path="schema/cortex/savepoints.sql" sha256="f8baf2dd4b8ae9434b5c3ef8cf0b8c07ee5b10c2dead04661fbb25710724b3be"/>
   <file path="schema/cortex/schema_migrations.sql" sha256="01561a6007bcce36356c0ed8ec118ea49777013836b95034817f22b8c9998599"/>
   <file path="schema/cortex/seeds/workspace_parameters.sql" sha256="06ecb5a3d97479b61557be1c4655b9f1bf228d2c7f00b0580a3ea1391c5a15aa"/>
-  <file path="schema/cortex/sequences.sql" sha256="09c42e58f5e7aafd918d36abef4a375b4e16a4ad698b4db1ad9ab2f981182a1f"/>
-  <file path="schema/cortex/sort_fields.sql" sha256="d8ef0a1f9145a618ba4f84587028221228ef679bae0010fe72640d7646d10c7f"/>
-  <file path="schema/cortex/source_reads.sql" sha256="eef110b6b198652a2e88871bef3655da0e166518c08124d7208f51ef75630f62"/>
-  <file path="schema/cortex/triggers.sql" sha256="b5ce4dd1d3aadcce5170fb385c955f8f86208f8af9ecd6350c766b3a4ab32fc9"/>
-  <file path="schema/cortex/turns.sql" sha256="b055809d77414362aa02722539a76bae2c0438ffc022a87721b602cfd3687c8f"/>
-  <file path="schema/cortex/verbatim_statements.sql" sha256="44751edffecd0904d0bbd5dd37cf319ea083c44d4755135cdc0534ff5e1c7df0"/>
-  <file path="schema/cortex/views.sql" sha256="61e24475f900b9df16302e6e6a8390f49548e75240c4b712745d3875fcc3fabf"/>
-  <file path="schema/cortex/workspace_connection_test_steps.sql" sha256="81337fdacf72862b53c83561db496ae313b08120d3fb7a73a3f45e98316d3493"/>
+  <file path="schema/cortex/sequences.sql" sha256="c895b11b762ca825b9e00fa1eccfdbbed0ab329ead783fe0c881ab076f8bf260"/>
+  <file path="schema/cortex/sort_fields.sql" sha256="6a2391dff92f99b58eac04cee020751590eabbd206406bcc3c0cd4c6b1874845"/>
+  <file path="schema/cortex/source_reads.sql" sha256="706c7265c0d9167e7014cb12463162c9ed83ec79b1ed88c92978a1f67ff68c69"/>
+  <file path="schema/cortex/triggers.sql" sha256="f22977990dec64f5a848b38f5129bc10d1b4314871485dcc5e2ba613097f5cae"/>
+  <file path="schema/cortex/turns.sql" sha256="dbdb74e8b1ab56f9c3cacb45ed6753b1d41a1caa74df2cd7753c2982034c85fc"/>
+  <file path="schema/cortex/verbatim_statements.sql" sha256="b3232b39f38f0aeb0442b785284cb4db8962f631eb2c70287581ce2273510864"/>
+  <file path="schema/cortex/views.sql" sha256="f9d4a8f3f5e042eeb7d846a0e255e995b9242629faa2c6f44360342c3169d2c8"/>
+  <file path="schema/cortex/workspace_connection_test_steps.sql" sha256="43e5c07107f3bf875cbcfda2f2cabdb716fce5dd756d27a2d45c8ea20328ab20"/>
   <file path="schema/cortex/workspace_connection_tests.sql" sha256="4c81eb09853abe6e17a25337e5ed65eb90b0346769b05f3b35653ed43eef9415"/>
-  <file path="schema/cortex/workspace_connection_values.sql" sha256="4a1f4b3ae78d655153ae44c6cbf991c2092e7418fe6bd59a543aacf54070e4cc"/>
+  <file path="schema/cortex/workspace_connection_values.sql" sha256="3b8f718201c0151a41dcace9ab6ea6e6a55c4705e9db1d35b73318d8797aaa8f"/>
   <file path="schema/cortex/workspace_connections.sql" sha256="cccf6659919ad699dc81c18673f47dd27f94f5b525dadd22f5d69b42f50f7297"/>
-  <file path="schema/cortex/workspace_design_connections.sql" sha256="63707f8a9fd396a6a522aab5a874996d8cd5cb248644865d91a9db14695d819d"/>
+  <file path="schema/cortex/workspace_design_connections.sql" sha256="68194448bab649f03526deb72bbbd125a340160d7e430bc2a9067cd4d5da7358"/>
   <file path="schema/cortex/workspace_identity.sql" sha256="54c4f0cdf87499196055275d9da3827fde725d8991ff1f96225d4e353bc2e564"/>
   <file path="schema/cortex/workspace_parameters.sql" sha256="c71f1706cfaa5a9d7e0b108c043e9991b0b057d4d60fe95803dce98de9e02646"/>
-  <file path="schema/dump/schema_forge.sql" sha256="60db67727da9e02c5f3cd23d4361041af1dc767183452c3f50ecda6619dcc70b"/>
+  <file path="schema/dump/schema_forge.sql" sha256="25c9bc55f40736e1628aca237c0385f58a173b4057df35e7f7725833956408c6"/>
   <file path="schema/install.py" sha256="8217deef60f05da7dcdfb44115ee6805a0dfe94a909c5bf1d9eacaaa9d159910"/>
-  <file path="schema/ui/custom_perspectives.sql" sha256="2b3bfb11804a93ea7212f8e31060763e11c5df67dda37f55b5099bb794716d45"/>
-  <file path="schema/ui/layout_pins.sql" sha256="fd7ab01c879d1a33a28f72fce784f629254cea464d07ee6abee5e1fed7a49cd6"/>
-  <file path="schema/ui/object_places.sql" sha256="113b2d740b2e8d1be488865f1754bb5c861b25a2dc29a0f720a663e6ba24edcb"/>
+  <file path="schema/ui/custom_perspectives.sql" sha256="0e976f07be723fc306540c6cd3e995f190b606b1b20bd44a1e8b884e9175a6bd"/>
+  <file path="schema/ui/layout_pins.sql" sha256="9401c5bd57e962d459ea806d3b7b98bc56b276356f70e1d9a62406dfdfd3f4a7"/>
+  <file path="schema/ui/object_places.sql" sha256="88769831c28161e8e2a00705481dbf9b758c65470f8aa78a4a09fdbe3f4ff438"/>
   <file path="schema/ui/owner.toml" sha256="a78ed652381e7dcf89cf9212a55d1e2ae1d19cc4a1dc4e07d6b97cb8616a5cc2"/>
-  <file path="schema/ui/perspective_members.sql" sha256="d71bc0ab4ee217f07debe586531c80a02d2286ed8d0235a50f4450ba33ac659b"/>
-  <file path="schema/ui/pinned_notes.sql" sha256="d2eaac29e522650bf954919c8e8a9ebb32495c1e68b73fa1cb53afdc50d62b65"/>
-  <file path="schema/ui/subject_areas.sql" sha256="3177e76c81221f4424ec1ba9d14b301a2c3546b3030fc2d4d4ee16d1554d22c5"/>
+  <file path="schema/ui/perspective_members.sql" sha256="88a158f73dab8991197aa6062db523b6ee832dcee283af342ab570b9b8c0b9a4"/>
+  <file path="schema/ui/pinned_notes.sql" sha256="2303329721d543f24f49618de2e3ed94826aea66557b6073005df51b50ff83b2"/>
+  <file path="schema/ui/subject_areas.sql" sha256="a27ee304ac5b91544629e14cb28d718186763658298d4b98d7f6f70b2de9b862"/>
 </lock>

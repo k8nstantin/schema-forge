@@ -68,6 +68,10 @@ CREATE TRIGGER t_child_audit AFTER INSERT ON features.child REFERENCING NEW TABL
   FOR EACH STATEMENT EXECUTE FUNCTION audit.log_change();
 CREATE TRIGGER t_child_when BEFORE UPDATE ON features.child FOR EACH ROW WHEN (OLD.parent_id IS DISTINCT FROM NEW.parent_id)
   EXECUTE FUNCTION audit.log_change();
+CREATE CONSTRAINT TRIGGER t_child_deferred AFTER INSERT OR UPDATE ON features.child DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION audit.log_change();
+CREATE CONSTRAINT TRIGGER t_child_checked AFTER DELETE ON features.child FROM features.parent NOT DEFERRABLE
+  FOR EACH ROW EXECUTE FUNCTION audit.log_change();
 ALTER TABLE features.kinds ENABLE ROW LEVEL SECURITY;
 CREATE POLICY own_rows ON features.kinds FOR SELECT TO PUBLIC USING (status <> 'shipped');
 CREATE RULE r_scratch AS ON DELETE TO features.scratch DO INSTEAD NOTHING;

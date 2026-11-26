@@ -193,8 +193,7 @@ def id_pattern(t):
         m = re.match(r"CHECK \(left\(id, 37\) = (\w+)::text \|\| '\.'", c)
         if m:
             return f"<{m.group(1)}>.<n>"
-    if idc and idc["type"] == "UUID" and not idc["ref"]: return "UUIDv7" + (", issued by the database" if idc["default"] else "")
-    if idc and idc["type"] == "BIGINT" and not idc["ref"] and "IDENTITY" in (idc.get("check") or "") + str(idc): return "a BIGINT the database issues, kept when the name changes"
+    if idc and idc["type"] == "UUID" and not idc["ref"]: return "UUIDv7, made with the row"
     if idc and idc["ref"]: return f"the id of its {short(idc['ref'])} row ({short(idc['ref'])}.id)"
     if idc and idc["check"]:
         m = re.search(r"id ~ '\^(\w)_", idc["check"])
@@ -351,7 +350,7 @@ foreign key cannot state is a view the database enforces at every commit. Everyt
 <figure>{files_svg}<figcaption>The same layout runs on a central team server later: only the connection changes.</figcaption></figure></section>
 
 <section id="model"><h2>The model</h2><p class="lede">Namespaces hold objects (tables, views, routines, whatever kinds the engine declares); objects have columns; constraints are a table's keys and checks and the links from its columns to another's, enforced by the database or only drawn by the design. An object's kind must be one its engine declared, and what it holds must suit its kind (the rule <code>parts-of-their-kind</code>).</p>
-<figure>{model_svg}<figcaption>Every foreign key between these tables. A part's primary key is a <code>BIGINT</code> the database issues, kept when it is renamed: a rename is one row, and every reference follows it by id.</figcaption>{legend}</figure></section>
+<figure>{model_svg}<figcaption>Every foreign key between these tables. A part's primary key is a UUIDv7, made with the row and kept when it is renamed: a rename is one row, and every reference follows it by id.</figcaption>{legend}</figure></section>
 
 <section id="parts"><h2>What an object holds</h2><p class="lede">What every engine can say of an object, as tables: a table is held as facts only, and its statement is written from them byte for byte as the server writes it; a view, routine or trigger keeps its body as the server holds it. A kind fills only the parts it uses: a rule refuses a part its kind lacks.</p>
 <figure>{parts_svg}<figcaption>Middle row: one row per object at most, its id the object's. Bottom row: any number per object, in the server's order (an INTEGER position from 1). The outer rows are their parts. Not drawn, listed with each table: {undrawn_note}.</figcaption></figure></section>

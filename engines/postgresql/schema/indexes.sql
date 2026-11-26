@@ -1,10 +1,10 @@
 -- engine_postgresql.indexes: what PostgreSQL says of an index beyond the cortex; a row only where it says something. Owner: postgresql.
 CREATE TABLE engine_postgresql.indexes (
-  id                  BIGINT NOT NULL PRIMARY KEY,                                                                   -- the index
+  id                  UUID NOT NULL PRIMARY KEY,                                                                     -- the index
   design              UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   nulls_not_distinct  BOOLEAN NOT NULL DEFAULT false,                                                                -- true when nulls count as equal (15 and later)
   options             JSONB,                                                                                         -- its storage options as the server writes them (["pages_per_range=32"]); NULL for none
-  parent              BIGINT,                                                                                        -- the partitioned table's index it is part of; NULL for none
+  parent              UUID,                                                                                          -- the partitioned table's index it is part of; NULL for none
   UNIQUE (design, id),
   FOREIGN KEY (design, id) REFERENCES cortex.indexes (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
   FOREIGN KEY (design, parent) REFERENCES cortex.indexes (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED

@@ -1,6 +1,6 @@
 -- engine_mysql.databases: what MySQL says of a database (a namespace) beyond the cortex. Owner: mysql.
 CREATE TABLE engine_mysql.databases (
-  id           BIGINT NOT NULL PRIMARY KEY,                                                                   -- the database
+  id           UUID NOT NULL PRIMARY KEY,                                                                     -- the database
   design       UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   "collation"  TEXT NOT NULL,                                                                                 -- its default collation; its character set is the collation's
   encryption   BOOLEAN,                                                                                       -- its default encryption (8.0 and later); NULL before

@@ -1,6 +1,6 @@
 -- cortex.domains: a type narrowed by a default, a not null and checks (its checks are in constraints). Owner: cortex.
 CREATE TABLE cortex.domains (
-  id             BIGINT NOT NULL PRIMARY KEY,                                                                   -- the domain
+  id             UUID NOT NULL PRIMARY KEY,                                                                     -- the domain
   design         UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   base           TEXT NOT NULL CHECK (length(base) >= 1),                                                       -- the type it narrows, as the engine writes it
   default_value  TEXT,                                                                                          -- its default, in the engine's SQL; NULL for none

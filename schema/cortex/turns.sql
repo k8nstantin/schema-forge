@@ -4,7 +4,7 @@ CREATE TABLE cortex.turns (
   design      UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   seq         BIGINT CHECK (seq >= 1),                                                                       -- its number in its design's commit order, given as it ends: a copy holding the design at a number catches up by the turns after it; NULL while it is open
   parent      UUID,                                                                                          -- the turn it follows; NULL for the first
-  branch      BIGINT NOT NULL,                                                                               -- the branch it was made on
+  branch      UUID NOT NULL,                                                                                 -- the branch it was made on
   by          TEXT NOT NULL CHECK (by IN ('agent', 'person', 'import')),                                     -- who made it
   who         TEXT NOT NULL CHECK (length(who) >= 1),                                                        -- the agent's label, the person's name, or the source read
   summary     TEXT NOT NULL CHECK (length(summary) >= 1),                                                    -- what it does, in one line, as its maker gives it

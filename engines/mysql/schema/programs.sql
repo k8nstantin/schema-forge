@@ -1,6 +1,6 @@
 -- engine_mysql.programs: what MySQL stores with each view, routine, trigger and event, and must be given again when it is written back, so its text means the same. Owner: mysql.
 CREATE TABLE engine_mysql.programs (
-  id                    BIGINT NOT NULL PRIMARY KEY,                                                                   -- the view, routine, trigger or event
+  id                    UUID NOT NULL PRIMARY KEY,                                                                     -- the view, routine, trigger or event
   design                UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   definer               TEXT NOT NULL,                                                                                 -- the account whose rights it runs with, as the server gives it (app@%)
   sql_mode              TEXT,                                                                                          -- the SQL mode it was made under, from SHOW CREATE (5.7's ROUTINES misnames one mode); NULL for a view

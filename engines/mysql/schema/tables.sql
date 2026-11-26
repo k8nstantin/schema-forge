@@ -1,6 +1,6 @@
 -- engine_mysql.tables: the options of a MySQL table, each typed, each only where its statement writes it. Owner: mysql.
 CREATE TABLE engine_mysql.tables (
-  id                  BIGINT NOT NULL PRIMARY KEY,                                                                   -- the table
+  id                  UUID NOT NULL PRIMARY KEY,                                                                     -- the table
   design              UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   engine              TEXT NOT NULL,                                                                                 -- its storage engine, as SHOW CREATE writes it (InnoDB, MyISAM, MRG_MyISAM)
   "collation"         TEXT NOT NULL,                                                                                 -- its default collation; its character set is the collation's

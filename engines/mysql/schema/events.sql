@@ -1,6 +1,6 @@
 -- engine_mysql.events: a scheduled event: when it runs and what becomes of it. Owner: mysql.
 CREATE TABLE engine_mysql.events (
-  id              BIGINT NOT NULL PRIMARY KEY,                                                                      -- the event; its body is the object's
+  id              UUID NOT NULL PRIMARY KEY,                                                                        -- the event; its body is the object's
   design          UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,     -- the design it belongs to
   body            TEXT NOT NULL,                                                                                    -- the statements it runs, exactly as SHOW CREATE EVENT holds them
   interval_value  TEXT,                                                                                             -- EVERY's value as the server gives it (5, '1:30'); NULL for a one-time event

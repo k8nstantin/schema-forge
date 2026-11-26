@@ -186,7 +186,7 @@ BEGIN
   RETURN sf_log.end_turn();
 END $$;
 
-CREATE FUNCTION sf_log.compare(p_from text, p_to text) RETURNS TABLE (table_name text, row_id bigint, what text) LANGUAGE sql STABLE AS $$
+CREATE FUNCTION sf_log.compare(p_from text, p_to text) RETURNS TABLE (table_name text, row_id uuid, what text) LANGUAGE sql STABLE AS $$
   SELECT c.table_name, c.row_id, CASE WHEN bool_or(c.action = 'insert') AND bool_or(c.action = 'delete') THEN 'made and removed'
     WHEN bool_or(c.action = 'insert') THEN 'added' WHEN bool_or(c.action = 'delete') THEN 'removed' ELSE 'changed' END
   FROM sf_log.changes_between((SELECT turn FROM cortex.savepoints WHERE name = p_to), (SELECT turn FROM cortex.savepoints WHERE name = p_from)) c

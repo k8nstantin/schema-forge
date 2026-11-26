@@ -1869,7 +1869,7 @@
       "expression": null,
       "key": true,
       "nulls_first": false,
-      "opclass": "text_ops",
+      "opclass": null,
       "position": 1
      }
     ]
@@ -1938,7 +1938,7 @@
       "expression": null,
       "key": true,
       "nulls_first": false,
-      "opclass": "text_ops",
+      "opclass": null,
       "position": 1
      }
     ]
@@ -2046,7 +2046,7 @@
     "indnullsnotdistinct": false,
     "parts": [
      {
-      "collation": "features.ci",
+      "collation": null,
       "column": null,
       "descending": false,
       "expression": "lower(name)",
@@ -2097,7 +2097,7 @@
       "expression": null,
       "key": true,
       "nulls_first": false,
-      "opclass": "array_ops",
+      "opclass": null,
       "position": 1
      }
     ]
@@ -2165,7 +2165,7 @@
       "expression": null,
       "key": true,
       "nulls_first": false,
-      "opclass": "public.gist_trgm_ops",
+      "opclass": "gist_trgm_ops",
       "position": 1
      }
     ]
@@ -2199,7 +2199,7 @@
       "expression": null,
       "key": true,
       "nulls_first": false,
-      "opclass": "range_ops",
+      "opclass": null,
       "position": 1
      }
     ]
@@ -2270,7 +2270,7 @@
       "expression": null,
       "key": true,
       "nulls_first": false,
-      "opclass": "enum_ops",
+      "opclass": null,
       "position": 1
      },
      {
@@ -2430,7 +2430,7 @@
       "expression": null,
       "key": true,
       "nulls_first": false,
-      "opclass": "range_ops",
+      "opclass": null,
       "position": 2
      }
     ]
@@ -2500,7 +2500,7 @@
       "expression": null,
       "key": true,
       "nulls_first": false,
-      "opclass": "text_ops",
+      "opclass": null,
       "position": 1
      }
     ]
@@ -2603,7 +2603,7 @@
       "expression": null,
       "key": true,
       "nulls_first": false,
-      "opclass": "enum_ops",
+      "opclass": null,
       "position": 1
      }
     ]
@@ -3391,6 +3391,48 @@
    }
   },
   {
+   "key": "features.child.t_child_checked",
+   "kind": "constraint",
+   "parent": "features.child",
+   "props": {
+    "condeferrable": false,
+    "condeferred": false,
+    "conenforced": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "t_child_checked",
+    "connoinherit": true,
+    "conperiod": false,
+    "contype": "t",
+    "convalidated": true,
+    "definition": "TRIGGER"
+   }
+  },
+  {
+   "key": "features.child.t_child_deferred",
+   "kind": "constraint",
+   "parent": "features.child",
+   "props": {
+    "condeferrable": true,
+    "condeferred": true,
+    "conenforced": true,
+    "confdeltype": " ",
+    "confmatchtype": " ",
+    "confupdtype": " ",
+    "coninhcount": 0,
+    "conislocal": true,
+    "conname": "t_child_deferred",
+    "connoinherit": true,
+    "conperiod": false,
+    "contype": "t",
+    "convalidated": true,
+    "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+   }
+  },
+  {
    "key": "features.booking.booking_room_during_excl",
    "kind": "constraint",
    "parent": "features.booking",
@@ -4144,6 +4186,7 @@
    "kind": "trigger",
    "parent": "shop.orders",
    "props": {
+    "constraint_trigger": false,
     "definition": "CREATE TRIGGER orders_status BEFORE INSERT ON shop.orders FOR EACH ROW EXECUTE FUNCTION shop.default_status()",
     "function": "shop.default_status",
     "tgdeferrable": false,
@@ -4160,6 +4203,7 @@
    "kind": "trigger",
    "parent": "features.child",
    "props": {
+    "constraint_trigger": false,
     "definition": "CREATE TRIGGER t_child_audit AFTER INSERT ON features.child REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION audit.log_change()",
     "function": "audit.log_change",
     "tgdeferrable": false,
@@ -4178,6 +4222,7 @@
    "parent": "features.child",
    "props": {
     "condition": "(old.parent_id IS DISTINCT FROM new.parent_id)",
+    "constraint_trigger": false,
     "definition": "CREATE TRIGGER t_child_when BEFORE UPDATE ON features.child FOR EACH ROW WHEN ((old.parent_id IS DISTINCT FROM new.parent_id)) EXECUTE FUNCTION audit.log_change()",
     "function": "audit.log_change",
     "tgdeferrable": false,
@@ -4187,6 +4232,41 @@
     "tgname": "t_child_when",
     "tgnargs": 0,
     "tgtype": 19
+   }
+  },
+  {
+   "key": "features.child.t_child_deferred",
+   "kind": "trigger",
+   "parent": "features.child",
+   "props": {
+    "constraint_trigger": true,
+    "definition": "CREATE CONSTRAINT TRIGGER t_child_deferred AFTER INSERT OR UPDATE ON features.child DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION audit.log_change()",
+    "function": "audit.log_change",
+    "tgdeferrable": true,
+    "tgenabled": "O",
+    "tginitdeferred": true,
+    "tgisinternal": false,
+    "tgname": "t_child_deferred",
+    "tgnargs": 0,
+    "tgtype": 21
+   }
+  },
+  {
+   "key": "features.child.t_child_checked",
+   "kind": "trigger",
+   "parent": "features.child",
+   "props": {
+    "constraint_trigger": true,
+    "definition": "CREATE CONSTRAINT TRIGGER t_child_checked AFTER DELETE ON features.child FROM features.parent NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION audit.log_change()",
+    "from_table": "features.parent",
+    "function": "audit.log_change",
+    "tgdeferrable": false,
+    "tgenabled": "O",
+    "tginitdeferred": false,
+    "tgisinternal": false,
+    "tgname": "t_child_checked",
+    "tgnargs": 0,
+    "tgtype": 9
    }
   },
   {

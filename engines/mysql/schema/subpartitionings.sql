@@ -1,6 +1,6 @@
 -- engine_mysql.subpartitionings: how each partition of a table is split again (SUBPARTITION BY). Owner: mysql.
 CREATE TABLE engine_mysql.subpartitionings (
-  id          BIGINT NOT NULL PRIMARY KEY,                                                                   -- the partitioning
+  id          UUID NOT NULL PRIMARY KEY,                                                                     -- the partitioning
   design      UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   strategy    TEXT NOT NULL,                                                                                 -- how a partition is split again (HASH, KEY, LINEAR HASH)
   expression  TEXT NOT NULL,                                                                                 -- what it is split by, as the server writes it

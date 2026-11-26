@@ -1,8 +1,8 @@
 -- ui.object_places: where the tool puts an object: its subject area, and the family it is put in by hand. Owner: ui.
 CREATE TABLE ui.object_places (
-  id      BIGINT NOT NULL PRIMARY KEY,                                                                   -- the object
+  id      UUID NOT NULL PRIMARY KEY,                                                                     -- the object
   design  UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
-  area    BIGINT,                                                                                        -- the subject area it belongs to; NULL for none
+  area    UUID,                                                                                          -- the subject area it belongs to; NULL for none
   family  TEXT CHECK (length(family) >= 1),                                                              -- the family it is put in by hand, overriding the one worked out from its name; NULL for that one
   UNIQUE (design, id),
   FOREIGN KEY (design, id) REFERENCES cortex.objects (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,

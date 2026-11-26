@@ -237,7 +237,8 @@ def rows_of(snap):
             "id": i, "function_name": pr["function"], "arguments": pr.get("arguments"),
             "update_columns": [col[f"{p['parent']}.{c}"] for c in pr["update_columns"]] if pr.get("update_columns") else None,
             "condition": pr.get("condition"), "old_table": pr.get("tgoldtable"), "new_table": pr.get("tgnewtable"), "enabled": pr["tgenabled"],
-            "is_deferrable": pr["tgdeferrable"], "initially_deferred": pr["tginitdeferred"]})
+            "is_deferrable": pr["tgdeferrable"], "initially_deferred": pr["tginitdeferred"],
+            "constraint_trigger": pr.get("constraint_trigger", False), "from_table": pr.get("from_table")})
     for p in by["policy"]:
         pr = p["props"]
         out["engine_postgresql.policy"].append({"id": nid(), "object_id": obj[p["parent"]], "name": pr["policyname"],
@@ -382,7 +383,10 @@ def trigger_def(S, o):
         if e == "UPDATE" and pt.get("update_columns"):
             e += " OF " + ", ".join(qi(cols[c]["name"]) for c in pt["update_columns"])
         ev.append(e)
-    out = f"CREATE TRIGGER {qi(o['name'])} {t['timing']} {' OR '.join(ev)} ON {S.rel(table)}"
+    out = f"CREATE {'CONSTRAINT ' if pt.get('constraint_trigger') else ''}TRIGGER {qi(o['name'])} {t['timing']} {' OR '.join(ev)} ON {S.rel(table)}"
+    if pt.get("constraint_trigger"):
+        out += (f" FROM {pt['from_table']}" if pt.get("from_table") else "") + (" DEFERRABLE" if pt.get("is_deferrable") else " NOT DEFERRABLE") \
+            + (" INITIALLY DEFERRED" if pt.get("initially_deferred") else " INITIALLY IMMEDIATE")
     if pt.get("old_table") or pt.get("new_table"):
         out += " REFERENCING" + (f" OLD TABLE AS {qi(pt['old_table'])}" if pt.get("old_table") else "") + (f" NEW TABLE AS {qi(pt['new_table'])}" if pt.get("new_table") else "")
     out += f" FOR EACH {t['level'].upper()}"
