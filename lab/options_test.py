@@ -45,11 +45,17 @@ def main():
         ("a null where it may not be null", f"""UPDATE cortex.objects SET options = options || '{{"engine": null}}' WHERE id = '{tab}';""", False),
         ("an option the design's version does not have", f"""UPDATE cortex.objects SET options = options || '{{"future_option": true}}' WHERE id = '{tab}';""", False),
         ("a right option, rightly typed", f"""UPDATE cortex.objects SET options = options || '{{"row_format": "COMPACT"}}' WHERE id = '{tab}';""", True),
+        # the kinds' guard (check_kinds): a kind the engine declares, in a namespace exactly when its kind lives in one
+        ("a kind the engine does not declare", f"UPDATE cortex.objects SET kind = 'materialized_view' WHERE id = '{tab}';", False),
+        ("a table taken out of its namespace", f"UPDATE cortex.objects SET namespace = NULL WHERE id = '{tab}';", False),
+        ("a tablespace put in a namespace", f"UPDATE cortex.objects SET namespace = (SELECT namespace FROM cortex.objects WHERE id = '{tab}') "
+                                            "WHERE id = (SELECT id FROM cortex.objects WHERE kind = 'tablespace' LIMIT 1);", False),
+        ("a tablespace in no namespace, renamed", "UPDATE cortex.objects SET name = 'ts_renamed' WHERE id = (SELECT id FROM cortex.objects WHERE kind = 'tablespace' LIMIT 1);", True),
     ]
     bad = 0
     for what, sql, want in cases:
         ok, err = run(sql)
-        right = ok == want and (want or "check_options" in err or "not declared" in err or "is a " in err or "may " in err or "is not in" in err)
+        right = ok == want and (want or "check_options" in err or "not declared" in err or "is a " in err or "may " in err or "is not in" in err or "lives in" in err)
         bad += not right
         print(f"  {'pass' if right else 'FAIL'}  {what}: {'taken' if ok else 'refused (' + err[7:110] + ')'}")
     print(f"{'pass' if not bad else 'FAIL'}  the options' guard: {bad} failures")

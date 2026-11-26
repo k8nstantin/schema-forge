@@ -173,7 +173,7 @@ fn sql_file(root: &Path, owner: &Owner, file: &Path, found: &mut Vec<Finding>) {
         let allowed = owner.id == "cortex"
             && matches!(
                 name(file).as_str(),
-                "enforce_rules.sql" | "check_options.sql" | "notify_turns.sql" | "grant_roles.sql"
+                "enforce_rules.sql" | "check_options.sql" | "check_kinds.sql" | "notify_turns.sql" | "grant_roles.sql"
             );
         if !allowed {
             finding(found, &at, "neither a table file nor a file the method names");

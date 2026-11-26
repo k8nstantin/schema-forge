@@ -1,6 +1,7 @@
 """What the lab's scripts share: our own PostgreSQL (the store), fresh servers to write a schema into, and comparing
 what two servers hold.
 """
+import os
 import codecs
 import re
 import subprocess
@@ -37,7 +38,7 @@ def implicit_collate(definition):
     """8.0 and later remember whether a column's collation was written: SHOW CREATE TABLE writes an implicit one as
     COLLATE alone, an explicit one as CHARACTER SET and COLLATE. A COLLATE alone that is the table's default is left
     out, so the column takes it implicitly again, as it did."""
-    table = re.search(r"\) ENGINE=.*\bCOLLATE=(\w+)", definition)
+    table = re.search(r"\n\)(?: /\*!50100 TABLESPACE `(?:[^`]|``)+` \*/)? ENGINE=.*\bCOLLATE=(\w+)", definition)
     if not table:
         return definition
     def line_of(line):
@@ -96,4 +97,6 @@ def compare(a, b, skip=()):
         for pk in set(ia[k]) | set(ib[k]):
             if ia[k].get(pk) != ib[k].get(pk):
                 diffs[f"{k[0]}.{pk}"] = diffs.get(f"{k[0]}.{pk}", 0) + 1
+                if os.environ.get("LAB_SHOW_DIFFS"):
+                    print(f"            {k[1]}.{pk}:\n              was {ia[k].get(pk)!r}\n              now {ib[k].get(pk)!r}")
     return diffs, len(ia)

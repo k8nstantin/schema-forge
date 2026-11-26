@@ -20,22 +20,27 @@ INSERT INTO cortex.engine_features (id, engine, feature, what, since, "until", d
   ('mysql/libraries', 'mysql', 'libraries', 'JavaScript and WASM libraries and stored programs', 'mysql/9.7', NULL, '9.0, 9.2')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO cortex.object_kinds (id, engine, kind, name, position) VALUES
-  ('mysql/table', 'mysql', 'table', 'Table', 1),
-  ('mysql/view', 'mysql', 'view', 'View', 2),
-  ('mysql/procedure', 'mysql', 'procedure', 'Procedure', 3),
-  ('mysql/function', 'mysql', 'function', 'Function', 4),
-  ('mysql/loadable_function', 'mysql', 'loadable_function', 'Loadable function', 5),
-  ('mysql/library', 'mysql', 'library', 'Library', 6),
-  ('mysql/trigger', 'mysql', 'trigger', 'Trigger', 7),
-  ('mysql/event', 'mysql', 'event', 'Event', 8),
-  ('mysql/tablespace', 'mysql', 'tablespace', 'Tablespace', 9),
-  ('mysql/spatial_reference_system', 'mysql', 'spatial_reference_system', 'Spatial reference system', 10)
+INSERT INTO cortex.object_kinds (id, engine, kind, name, position, scope) VALUES
+  ('mysql/table', 'mysql', 'table', 'Table', 1, 'namespace'),
+  ('mysql/view', 'mysql', 'view', 'View', 2, 'namespace'),
+  ('mysql/procedure', 'mysql', 'procedure', 'Procedure', 3, 'namespace'),
+  ('mysql/function', 'mysql', 'function', 'Function', 4, 'namespace'),
+  ('mysql/loadable_function', 'mysql', 'loadable_function', 'Loadable function', 5, 'server'),
+  ('mysql/library', 'mysql', 'library', 'Library', 6, 'namespace'),
+  ('mysql/trigger', 'mysql', 'trigger', 'Trigger', 7, 'namespace'),
+  ('mysql/event', 'mysql', 'event', 'Event', 8, 'namespace'),
+  ('mysql/tablespace', 'mysql', 'tablespace', 'Tablespace', 9, 'server'),
+  ('mysql/spatial_reference_system', 'mysql', 'spatial_reference_system', 'Spatial reference system', 10, 'server')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, since, about) VALUES
   ('mysql/objects/language', 'mysql', 'objects', 'language', 'string', false, NULL, 'mysql/9.7', 'a library''s language, as SHOW CREATE LIBRARY writes it (JAVASCRIPT)'),
-  ('mysql/dependencies/alias', 'mysql', 'dependencies', 'alias', 'string', true, NULL, 'mysql/9.7', 'the name a routine''s code calls a library it uses by (USING (lib AS util)); NULL for the library''s own name')
+  ('mysql/dependencies/alias', 'mysql', 'dependencies', 'alias', 'string', true, NULL, 'mysql/9.7', 'the name a routine''s code calls a library it uses by (USING (lib AS util)); NULL for the library''s own name'),
+  ('mysql/objects/autoextend_size', 'mysql', 'objects', 'autoextend_size', 'number', true, NULL, 'mysql/8.0', 'a tablespace''s AUTOEXTEND_SIZE in bytes, where written (8.0.23 and later); NULL for none'),
+  ('mysql/objects/srs_id', 'mysql', 'objects', 'srs_id', 'number', false, NULL, 'mysql/8.0', 'a spatial reference system''s number, the SRID a column names it by (outside the ranges MySQL reserves for its own)'),
+  ('mysql/objects/organization', 'mysql', 'objects', 'organization', 'string', true, NULL, 'mysql/8.0', 'the organization that defines a spatial reference system; NULL for none'),
+  ('mysql/objects/organization_coordsys_id', 'mysql', 'objects', 'organization_coordsys_id', 'number', true, NULL, 'mysql/8.0', 'the number the organization gives it (IDENTIFIED BY); NULL with no organization'),
+  ('mysql/objects/definition', 'mysql', 'objects', 'definition', 'string', false, NULL, 'mysql/8.0', 'a spatial reference system''s definition, in WKT, exactly as the server holds it')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, nullable, choices, about) VALUES
@@ -83,7 +88,12 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('mysql/objects/stats_sample_pages', 'mysql', 'objects', 'stats_sample_pages', 'string', true, NULL, 'STATS_SAMPLE_PAGES, where written'),
   ('mysql/objects/compression', 'mysql', 'objects', 'compression', 'string', true, NULL, 'COMPRESSION, where written'),
   ('mysql/objects/encryption', 'mysql', 'objects', 'encryption', 'string', true, NULL, 'ENCRYPTION, where written'),
-  ('mysql/objects/tablespace', 'mysql', 'objects', 'tablespace', 'string', true, NULL, 'the tablespace it is stored in, where written'),
+  ('mysql/objects/tablespace', 'mysql', 'objects', 'tablespace', 'string', true, NULL, 'the tablespace a table is stored in, by name, where it is one the design does not hold (innodb_system); one it holds is a dependency'),
+  ('mysql/objects/datafile', 'mysql', 'objects', 'datafile', 'string', false, NULL, 'a tablespace''s data file, as the server gives it (./ts_shared.ibd)'),
+  ('mysql/objects/file_block_size', 'mysql', 'objects', 'file_block_size', 'number', true, NULL, 'a compressed tablespace''s FILE_BLOCK_SIZE in bytes; NULL for an uncompressed one'),
+  ('mysql/objects/soname', 'mysql', 'objects', 'soname', 'string', false, NULL, 'the shared library a loadable function is in (SONAME), as registered'),
+  ('mysql/objects/returns', 'mysql', 'objects', 'returns', 'string', false, '["STRING", "INTEGER", "REAL", "DECIMAL"]', 'what a loadable function returns'),
+  ('mysql/objects/aggregate', 'mysql', 'objects', 'aggregate', 'boolean', false, NULL, 'true for an aggregate loadable function (CREATE AGGREGATE FUNCTION)'),
   ('mysql/objects/insert_method', 'mysql', 'objects', 'insert_method', 'string', true, NULL, 'a MERGE table''s INSERT_METHOD; its tables are dependencies, in order'),
   ('mysql/views/algorithm', 'mysql', 'views', 'algorithm', 'string', false, '["UNDEFINED", "MERGE", "TEMPTABLE"]', 'how its query is run: SHOW CREATE VIEW alone holds it'),
   ('mysql/views/security', 'mysql', 'views', 'security', 'string', false, '["DEFINER", "INVOKER"]', 'whose rights it runs with')

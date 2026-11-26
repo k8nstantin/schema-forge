@@ -133,6 +133,72 @@
    }
   },
   {
+   "key": "features.in_shared",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": "",
+    "ENGINE": "InnoDB",
+    "ROW_FORMAT": "Dynamic",
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": "utf8mb4_unicode_ci",
+    "TABLE_COMMENT": "",
+    "TABLE_NAME": "in_shared",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "BASE TABLE",
+    "VERSION": 10,
+    "__index_order": [
+     "PRIMARY"
+    ],
+    "__show_create": "CREATE TABLE `in_shared` (\n  `id` int(11) NOT NULL,\n  `note` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) /*!50100 TABLESPACE `ts_shared` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    "__tablespace": "ts_shared"
+   }
+  },
+  {
+   "key": "features.in_small",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": "row_format=COMPRESSED KEY_BLOCK_SIZE=8",
+    "ENGINE": "InnoDB",
+    "ROW_FORMAT": "Compressed",
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": "utf8mb4_unicode_ci",
+    "TABLE_COMMENT": "",
+    "TABLE_NAME": "in_small",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "BASE TABLE",
+    "VERSION": 10,
+    "__index_order": [
+     "PRIMARY"
+    ],
+    "__show_create": "CREATE TABLE `in_small` (\n  `id` int(11) NOT NULL,\n  PRIMARY KEY (`id`)\n) /*!50100 TABLESPACE `ts_small` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=8",
+    "__tablespace": "ts_small"
+   }
+  },
+  {
+   "key": "features.in_system",
+   "kind": "table",
+   "parent": "features",
+   "props": {
+    "CREATE_OPTIONS": "",
+    "ENGINE": "InnoDB",
+    "ROW_FORMAT": "Dynamic",
+    "TABLE_CATALOG": "def",
+    "TABLE_COLLATION": "utf8mb4_unicode_ci",
+    "TABLE_COMMENT": "",
+    "TABLE_NAME": "in_system",
+    "TABLE_SCHEMA": "features",
+    "TABLE_TYPE": "BASE TABLE",
+    "VERSION": 10,
+    "__index_order": [
+     "PRIMARY"
+    ],
+    "__show_create": "CREATE TABLE `in_system` (\n  `id` int(11) NOT NULL,\n  PRIMARY KEY (`id`)\n) /*!50100 TABLESPACE `innodb_system` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    "__tablespace": "innodb_system"
+   }
+  },
+  {
    "key": "features.kinds",
    "kind": "table",
    "parent": "features",
@@ -666,6 +732,118 @@
     "PRIVILEGES": "select,insert,update,references",
     "TABLE_CATALOG": "def",
     "TABLE_NAME": "child",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_shared.id",
+   "kind": "column",
+   "parent": "features.in_shared",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": null,
+    "COLUMN_KEY": "PRI",
+    "COLUMN_NAME": "id",
+    "COLUMN_TYPE": "int(11)",
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "NO",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 1,
+    "PRIVILEGES": "select,insert,update,references",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "in_shared",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_shared.note",
+   "kind": "column",
+   "parent": "features.in_shared",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": 40,
+    "CHARACTER_OCTET_LENGTH": 160,
+    "CHARACTER_SET_NAME": "utf8mb4",
+    "COLLATION_NAME": "utf8mb4_unicode_ci",
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": null,
+    "COLUMN_KEY": "",
+    "COLUMN_NAME": "note",
+    "COLUMN_TYPE": "varchar(40)",
+    "DATA_TYPE": "varchar",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "YES",
+    "NUMERIC_PRECISION": null,
+    "NUMERIC_SCALE": null,
+    "ORDINAL_POSITION": 2,
+    "PRIVILEGES": "select,insert,update,references",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "in_shared",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_small.id",
+   "kind": "column",
+   "parent": "features.in_small",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": null,
+    "COLUMN_KEY": "PRI",
+    "COLUMN_NAME": "id",
+    "COLUMN_TYPE": "int(11)",
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "NO",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 1,
+    "PRIVILEGES": "select,insert,update,references",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "in_small",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_system.id",
+   "kind": "column",
+   "parent": "features.in_system",
+   "props": {
+    "CHARACTER_MAXIMUM_LENGTH": null,
+    "CHARACTER_OCTET_LENGTH": null,
+    "CHARACTER_SET_NAME": null,
+    "COLLATION_NAME": null,
+    "COLUMN_COMMENT": "",
+    "COLUMN_DEFAULT": null,
+    "COLUMN_KEY": "PRI",
+    "COLUMN_NAME": "id",
+    "COLUMN_TYPE": "int(11)",
+    "DATA_TYPE": "int",
+    "DATETIME_PRECISION": null,
+    "EXTRA": "",
+    "GENERATION_EXPRESSION": "",
+    "IS_NULLABLE": "NO",
+    "NUMERIC_PRECISION": 10,
+    "NUMERIC_SCALE": 0,
+    "ORDINAL_POSITION": 1,
+    "PRIVILEGES": "select,insert,update,references",
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "in_system",
     "TABLE_SCHEMA": "features"
    }
   },
@@ -2234,6 +2412,72 @@
    }
   },
   {
+   "key": "features.in_shared.PRIMARY.1",
+   "kind": "index_part",
+   "parent": "features.in_shared.PRIMARY",
+   "props": {
+    "COLLATION": "A",
+    "COLUMN_NAME": "id",
+    "COMMENT": "",
+    "INDEX_COMMENT": "",
+    "INDEX_NAME": "PRIMARY",
+    "INDEX_SCHEMA": "features",
+    "INDEX_TYPE": "BTREE",
+    "NON_UNIQUE": 0,
+    "NULLABLE": "",
+    "PACKED": null,
+    "SEQ_IN_INDEX": 1,
+    "SUB_PART": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "in_shared",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_small.PRIMARY.1",
+   "kind": "index_part",
+   "parent": "features.in_small.PRIMARY",
+   "props": {
+    "COLLATION": "A",
+    "COLUMN_NAME": "id",
+    "COMMENT": "",
+    "INDEX_COMMENT": "",
+    "INDEX_NAME": "PRIMARY",
+    "INDEX_SCHEMA": "features",
+    "INDEX_TYPE": "BTREE",
+    "NON_UNIQUE": 0,
+    "NULLABLE": "",
+    "PACKED": null,
+    "SEQ_IN_INDEX": 1,
+    "SUB_PART": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "in_small",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_system.PRIMARY.1",
+   "kind": "index_part",
+   "parent": "features.in_system.PRIMARY",
+   "props": {
+    "COLLATION": "A",
+    "COLUMN_NAME": "id",
+    "COMMENT": "",
+    "INDEX_COMMENT": "",
+    "INDEX_NAME": "PRIMARY",
+    "INDEX_SCHEMA": "features",
+    "INDEX_TYPE": "BTREE",
+    "NON_UNIQUE": 0,
+    "NULLABLE": "",
+    "PACKED": null,
+    "SEQ_IN_INDEX": 1,
+    "SUB_PART": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "in_system",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
    "key": "features.kinds.PRIMARY.1",
    "kind": "index_part",
    "parent": "features.kinds.PRIMARY",
@@ -2831,6 +3075,45 @@
    }
   },
   {
+   "key": "features.in_shared.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "features.in_shared",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "TABLE_NAME": "in_shared",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_small.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "features.in_small",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "TABLE_NAME": "in_small",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_system.PRIMARY.PRIMARY KEY",
+   "kind": "constraint",
+   "parent": "features.in_system",
+   "props": {
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "CONSTRAINT_TYPE": "PRIMARY KEY",
+    "TABLE_NAME": "in_system",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
    "key": "features.kinds.PRIMARY.PRIMARY KEY",
    "kind": "constraint",
    "parent": "features.kinds",
@@ -3212,6 +3495,63 @@
     "REFERENCED_TABLE_SCHEMA": "features",
     "TABLE_CATALOG": "def",
     "TABLE_NAME": "child",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_shared.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.in_shared.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "in_shared",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_small.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.in_small.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "in_small",
+    "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "features.in_system.PRIMARY.1",
+   "kind": "key_column",
+   "parent": "features.in_system.PRIMARY",
+   "props": {
+    "COLUMN_NAME": "id",
+    "CONSTRAINT_CATALOG": "def",
+    "CONSTRAINT_NAME": "PRIMARY",
+    "CONSTRAINT_SCHEMA": "features",
+    "ORDINAL_POSITION": 1,
+    "POSITION_IN_UNIQUE_CONSTRAINT": null,
+    "REFERENCED_COLUMN_NAME": null,
+    "REFERENCED_TABLE_NAME": null,
+    "REFERENCED_TABLE_SCHEMA": null,
+    "TABLE_CATALOG": "def",
+    "TABLE_NAME": "in_system",
     "TABLE_SCHEMA": "features"
    }
   },
@@ -4062,31 +4402,31 @@
    }
   },
   {
-   "key": "features.e_replica_off",
+   "key": "shop.nightly",
    "kind": "event",
-   "parent": "features",
+   "parent": "shop",
    "props": {
     "CHARACTER_SET_CLIENT": "latin1",
     "COLLATION_CONNECTION": "latin1_swedish_ci",
-    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
+    "DATABASE_COLLATION": "latin1_swedish_ci",
     "DEFINER": "root@localhost",
     "ENDS": null,
     "EVENT_BODY": "SQL",
     "EVENT_CATALOG": "def",
     "EVENT_COMMENT": "",
-    "EVENT_DEFINITION": "DELETE FROM features.myisam_log WHERE id < -1",
-    "EVENT_NAME": "e_replica_off",
-    "EVENT_SCHEMA": "features",
+    "EVENT_DEFINITION": "DELETE FROM shop.order_items WHERE qty = 0",
+    "EVENT_NAME": "nightly",
+    "EVENT_SCHEMA": "shop",
     "EVENT_TYPE": "RECURRING",
     "EXECUTE_AT": null,
-    "INTERVAL_FIELD": "HOUR",
+    "INTERVAL_FIELD": "DAY",
     "INTERVAL_VALUE": "1",
     "ON_COMPLETION": "NOT PRESERVE",
     "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
-    "STARTS": "2030-01-01 00:00:00.000000",
-    "STATUS": "SLAVESIDE_DISABLED",
+    "STARTS": "2026-11-26 17:29:02.000000",
+    "STATUS": "ENABLED",
     "TIME_ZONE": "SYSTEM",
-    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `e_replica_off` ON SCHEDULE EVERY 1 HOUR STARTS '2030-01-01 00:00:00' ON COMPLETION NOT PRESERVE DISABLE ON SLAVE DO DELETE FROM features.myisam_log WHERE id < -1",
+    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `nightly` ON SCHEDULE EVERY 1 DAY STARTS '2026-11-26 17:29:02' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM shop.order_items WHERE qty = 0",
     "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
    }
   },
@@ -4120,31 +4460,31 @@
    }
   },
   {
-   "key": "shop.nightly",
+   "key": "features.e_replica_off",
    "kind": "event",
-   "parent": "shop",
+   "parent": "features",
    "props": {
     "CHARACTER_SET_CLIENT": "latin1",
     "COLLATION_CONNECTION": "latin1_swedish_ci",
-    "DATABASE_COLLATION": "latin1_swedish_ci",
+    "DATABASE_COLLATION": "utf8mb4_unicode_ci",
     "DEFINER": "root@localhost",
     "ENDS": null,
     "EVENT_BODY": "SQL",
     "EVENT_CATALOG": "def",
     "EVENT_COMMENT": "",
-    "EVENT_DEFINITION": "DELETE FROM shop.order_items WHERE qty = 0",
-    "EVENT_NAME": "nightly",
-    "EVENT_SCHEMA": "shop",
+    "EVENT_DEFINITION": "DELETE FROM features.myisam_log WHERE id < -1",
+    "EVENT_NAME": "e_replica_off",
+    "EVENT_SCHEMA": "features",
     "EVENT_TYPE": "RECURRING",
     "EXECUTE_AT": null,
-    "INTERVAL_FIELD": "DAY",
+    "INTERVAL_FIELD": "HOUR",
     "INTERVAL_VALUE": "1",
     "ON_COMPLETION": "NOT PRESERVE",
     "SQL_MODE": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
-    "STARTS": "2026-11-26 16:54:34.000000",
-    "STATUS": "ENABLED",
+    "STARTS": "2030-01-01 00:00:00.000000",
+    "STATUS": "SLAVESIDE_DISABLED",
     "TIME_ZONE": "SYSTEM",
-    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `nightly` ON SCHEDULE EVERY 1 DAY STARTS '2026-11-26 16:54:34' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM shop.order_items WHERE qty = 0",
+    "__show_create": "CREATE DEFINER=`root`@`localhost` EVENT `e_replica_off` ON SCHEDULE EVERY 1 HOUR STARTS '2030-01-01 00:00:00' ON COMPLETION NOT PRESERVE DISABLE ON SLAVE DO DELETE FROM features.myisam_log WHERE id < -1",
     "__sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
    }
   },
@@ -4432,6 +4772,39 @@
     "TABLE_CATALOG": "def",
     "TABLE_NAME": "by_range",
     "TABLE_SCHEMA": "features"
+   }
+  },
+  {
+   "key": "ts_shared",
+   "kind": "tablespace",
+   "parent": null,
+   "props": {
+    "ENGINE": "InnoDB",
+    "FILE_NAME": "./ts_shared.ibd",
+    "NAME": "ts_shared",
+    "ZIP_PAGE_SIZE": 0
+   }
+  },
+  {
+   "key": "ts_small",
+   "kind": "tablespace",
+   "parent": null,
+   "props": {
+    "ENGINE": "InnoDB",
+    "FILE_NAME": "./ts_small.ibd",
+    "NAME": "ts_small",
+    "ZIP_PAGE_SIZE": 8192
+   }
+  },
+  {
+   "key": "keyring_key_fetch",
+   "kind": "loadable_function",
+   "parent": null,
+   "props": {
+    "DL": "keyring_udf.so",
+    "NAME": "keyring_key_fetch",
+    "RET": 0,
+    "TYPE": "function"
    }
   }
  ],

@@ -77,6 +77,7 @@ def samples(engine, version):
     d = os.path.join(HERE, "samples", engine)
     mysql = engine == "mysql"
     files = ["shop.sql", "features.sql"] + (["features_replica.sql"] if mysql else []) \
+        + (["servers.sql"] if mysql else []) + (["servers80.sql"] if mysql and version != "5.7" else []) \
         + (["features80.sql"] if mysql and version != "5.7" else []) + (["features97.sql"] if mysql and version == "9.7" else []) + ["quoted_names.sql"]
     sql = "".join(open(os.path.join(d, f)).read() + "\n" for f in files)
     if mysql and version in ("5.7", "8.0"):
@@ -98,6 +99,10 @@ def main():
         name = mysql_up(v, port)
         sh("docker", "exec", name, "mysql", "-uroot", f"-p{PW}", "-e",
            "DROP DATABASE IF EXISTS shop; DROP DATABASE IF EXISTS features; DROP DATABASE IF EXISTS features_js; DROP DATABASE IF EXISTS `Quoted Names`")
+        # the server's own objects the samples made, once no table is in them (--force: a server that lacks one moves on)
+        sh("docker", "exec", "-i", name, "mysql", "-uroot", f"-p{PW}", "--force", check=False,
+           stdin="DROP FUNCTION IF EXISTS keyring_key_fetch;\nDROP TABLESPACE ts_shared;\nDROP TABLESPACE ts_small;\nDROP TABLESPACE ts_grow;\n"
+                 "DROP SPATIAL REFERENCE SYSTEM IF EXISTS 1000001;\n")
         sh("docker", "exec", "-i", name, "mysql", "-uroot", f"-p{PW}", "--comments", stdin=samples("mysql", v))
         note = ""
         for path in (baseline.split(":") if baseline else []):

@@ -61,7 +61,7 @@ def rows_of(snap, name=None):
 
     def add_object(key, schema, kind, name, comment=None, parent=None):
         i = obj[key] = nid()
-        out["cortex.objects"].append({"id": i, "namespace": ns[schema], "kind": kind, "name": name, "signature": "", "parent": parent,
+        out["cortex.objects"].append({"id": i, "namespace": None if schema is None else ns[schema], "kind": kind, "name": name, "signature": "", "parent": parent,
                                       "position": next_place(), "comment": comment, "notes": None})
         return i
 
@@ -69,6 +69,20 @@ def rows_of(snap, name=None):
         out["engine_mysql.programs"].append({"id": i, "definer": r["DEFINER"], "sql_mode": sql_mode, "character_set_client": r["CHARACTER_SET_CLIENT"],
                                              "collation_connection": r["COLLATION_CONNECTION"], "database_collation": r.get("DATABASE_COLLATION"),
                                              "time_zone": r.get("TIME_ZONE")})
+    # what the server holds beside its namespaces (scope server): in no namespace
+    for r in by["tablespace"]:
+        i = add_object(("tablespace", r["NAME"]), None, "tablespace", r["NAME"])
+        out["engine_mysql.tablespaces"].append({"id": i, "datafile": r["FILE_NAME"], "file_block_size": r["ZIP_PAGE_SIZE"] or None,
+                                                "autoextend_size": r.get("AUTOEXTEND_SIZE") or None, "engine": r["ENGINE"],
+                                                "encryption": r.get("ENCRYPTION")})
+    for r in by["spatial_reference_system"]:
+        i = add_object(("spatial_reference_system", r["SRS_ID"]), None, "spatial_reference_system", r["SRS_NAME"], r.get("DESCRIPTION"))
+        out["engine_mysql.spatial_reference_systems"].append({"id": i, "srs_id": r["SRS_ID"], "organization": r.get("ORGANIZATION"),
+                                                              "organization_coordsys_id": r.get("ORGANIZATION_COORDSYS_ID"), "definition": r["DEFINITION"]})
+    for r in by["loadable_function"]:
+        i = add_object(("loadable_function", r["NAME"]), None, "loadable_function", r["NAME"])
+        out["engine_mysql.loadable_functions"].append({"id": i, "soname": r["DL"], "returns": UDF_RETURNS[int(r["RET"])],
+                                                       "aggregate": r["TYPE"] == "aggregate"})
     for t in by["table"]:
         key = (t["TABLE_SCHEMA"], t["TABLE_NAME"])
         if t.get("TABLE_TYPE") == "VIEW":
@@ -85,11 +99,13 @@ def rows_of(snap, name=None):
             program(i, v, None)
             continue
         i = add_object(key, key[0], "table", key[1], t.get("TABLE_COMMENT") or None)
-        opts = dict(o.split("=", 1) for o in (t.get("CREATE_OPTIONS") or "").split() if "=" in o)
+        # CREATE_OPTIONS writes most options lower case, KEY_BLOCK_SIZE upper
+        opts = {k.lower(): v for k, v in (o.split("=", 1) for o in (t.get("CREATE_OPTIONS") or "").split() if "=" in o)}
         unknown = set(opts) - set(OPTIONS)
         assert not unknown, f"table options the design has no column for: {unknown}"
         r = {"id": i, "engine": D.ENGINE_NAMES.get(t["ENGINE"], t["ENGINE"]), "collation": t["TABLE_COLLATION"],
-             "auto_increment": t.get("__auto_increment"), "tablespace": None, "insert_method": t.get("__insert_method")}
+             "auto_increment": t.get("__auto_increment"), "insert_method": t.get("__insert_method"),
+             "tablespace": t["__tablespace"] if t.get("__tablespace") and ("tablespace", t["__tablespace"]) not in obj else None}
         r.update({k: opts.get(k) for k in OPTIONS})
         out["engine_mysql.tables"].append(r)
     for c in by["column"]:
@@ -243,6 +259,9 @@ def rows_of(snap, name=None):
             if u and u not in seen:
                 seen.append(u)
                 depends(v["id"], u)
+    for t in by["table"]:   # a table's tablespace, where the design holds it: a reference, not a name
+        if t.get("__tablespace") and ("tablespace", t["__tablespace"]) in obj:
+            depends(obj[(t["TABLE_SCHEMA"], t["TABLE_NAME"])], obj[("tablespace", t["__tablespace"])])
     for t in by["table"]:
         key = (t["TABLE_SCHEMA"], t["TABLE_NAME"])
         for u in t.get("__merge_union") or []:
@@ -259,7 +278,9 @@ ORDER = ["cortex.designs", "cortex.namespaces", "cortex.objects", "cortex.column
          "cortex.routines", "cortex.routine_parameters", "cortex.triggers", "cortex.partitionings", "cortex.partitions",
          "engine_mysql.databases", "engine_mysql.tables", "engine_mysql.columns", "engine_mysql.indexes", "engine_mysql.index_parts",
          "engine_mysql.subpartitionings", "engine_mysql.subpartitions", "engine_mysql.programs", "engine_mysql.routines",
-         "engine_mysql.views", "engine_mysql.events", "engine_mysql.libraries", "engine_mysql.dependencies"]
+         "engine_mysql.views", "engine_mysql.events", "engine_mysql.libraries", "engine_mysql.dependencies", "engine_mysql.tablespaces",
+         "engine_mysql.spatial_reference_systems", "engine_mysql.loadable_functions"]
+UDF_RETURNS = {0: "STRING", 1: "REAL", 2: "INTEGER", 4: "DECIMAL"}   # mysql.func.ret
 
 
 def twin(rows, name):
@@ -335,16 +356,17 @@ def write(st, version):
     ns, objs, allcols = st["cortex.namespaces"], st["cortex.objects"], st["cortex.columns"]
     out = {}
     for o in objs.values():
-        schema = ns[o["namespace"]]["name"]
+        schema = ns[o["namespace"]]["name"] if o["namespace"] else None
         key = (o["kind"], schema, o["name"])
         pr = st["engine_mysql.programs"].get(o["id"])
         if o["kind"] == "table":
             mt = st["engine_mysql.tables"][o["id"]]
-            union = [objs[d["uses"]]["name"] for d in sorted(by["cortex.dependencies"][o["id"]], key=lambda d: d["position"])] \
-                if mt["engine"] == "MRG_MyISAM" else None
+            uses = [objs[d["uses"]] for d in sorted(by["cortex.dependencies"][o["id"]], key=lambda d: d["position"])]
+            union = [u["name"] for u in uses if u["kind"] == "table"] if mt["engine"] == "MRG_MyISAM" else None
+            space = next((u["name"] for u in uses if u["kind"] == "tablespace"), mt.get("tablespace"))
             t = {"TABLE_NAME": o["name"], "TABLE_SCHEMA": schema, "ENGINE": mt["engine"], "TABLE_COLLATION": mt["collation"],
                  "CREATE_OPTIONS": " ".join(f"{k}={mt[k]}" for k in OPTIONS if mt.get(k) is not None), "TABLE_COMMENT": o.get("comment") or "",
-                 "__merge_union": union, "__insert_method": mt.get("insert_method"), "__auto_increment": mt.get("auto_increment"),
+                 "__merge_union": union, "__insert_method": mt.get("insert_method"), "__tablespace": space, "__auto_increment": mt.get("auto_increment"),
                  "__index_order": [i["name"] for i in sorted(by["cortex.indexes"][o["id"]], key=lambda i: i["position"])]}
             cid = {c["id"]: c for c in by["cortex.columns"][o["id"]]}
             icols = []
@@ -401,6 +423,20 @@ def write(st, version):
             r.update(LANGUAGE=ro["language"], USING=[(ns[objs[d["uses"]]["namespace"]]["name"], objs[d["uses"]]["name"],
                                                        st["engine_mysql.dependencies"].get(d["id"], {}).get("alias")) for d in libs])
             out[key] = P.routine(r, mr["parameter_text"], ro["body"], version)
+        elif o["kind"] == "tablespace":
+            ts = st["engine_mysql.tablespaces"][o["id"]]
+            out[key] = (f"CREATE TABLESPACE {D.q(o['name'])} ADD DATAFILE {C.lit(ts['datafile'])}"
+                        + (f" FILE_BLOCK_SIZE = {ts['file_block_size']}" if ts.get("file_block_size") else "")
+                        + (f" AUTOEXTEND_SIZE = {ts['autoextend_size']}" if ts.get("autoextend_size") else "")
+                        + (" ENCRYPTION = 'Y'" if ts.get("encryption") == "Y" else "") + f" ENGINE = {ts['engine']}")
+        elif o["kind"] == "spatial_reference_system":
+            sr = st["engine_mysql.spatial_reference_systems"][o["id"]]
+            out[key] = (f"CREATE SPATIAL REFERENCE SYSTEM {sr['srs_id']} NAME {C.lit(o['name'])}"
+                        + (f" ORGANIZATION {C.lit(sr['organization'])} IDENTIFIED BY {sr['organization_coordsys_id']}" if sr.get("organization") else "")
+                        + f" DEFINITION {C.lit(sr['definition'])}" + (f" DESCRIPTION {C.lit(o['comment'])}" if o.get("comment") else ""))
+        elif o["kind"] == "loadable_function":
+            lf = st["engine_mysql.loadable_functions"][o["id"]]
+            out[key] = f"CREATE {'AGGREGATE ' if lf['aggregate'] else ''}FUNCTION {D.q(o['name'])} RETURNS {lf['returns']} SONAME {C.lit(lf['soname'])}"
         elif o["kind"] == "library":
             lib = st["engine_mysql.libraries"][o["id"]]
             out[key] = P.library(o["name"], lib["language"], o["comment"], lib["body"])
@@ -432,6 +468,9 @@ def script(st, version):
         enc = C.PY.get(charset.split("_")[0], "utf-8")
         chunks.append(sql.encode(enc, errors="mysql_latin1" if enc == "cp1252" else "strict"))
     say("SET NAMES utf8mb4;\nSET SESSION innodb_strict_mode = 0;\nSET FOREIGN_KEY_CHECKS = 0;\n")
+    for kind in ("tablespace", "spatial_reference_system", "loadable_function"):   # the server's, before any database
+        for o in sorted((o for o in objs.values() if o["kind"] == kind), key=lambda o: o["position"]):
+            say(text[(kind, None, o["name"])] + ";\n")
     coll = {}
     for n in sorted(ns.values(), key=lambda n: n["name"]):
         c = st["engine_mysql.databases"][n["id"]]["collation"]

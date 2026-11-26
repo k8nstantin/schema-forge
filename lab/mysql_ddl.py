@@ -134,7 +134,7 @@ OPTION_ORDER = ["min_rows", "max_rows", "pack_keys", "stats_persistent", "stats_
 
 
 def table_options(t, version, charset_default):
-    out = f") ENGINE={ENGINE_NAMES.get(t['ENGINE'], t['ENGINE'])}"
+    out = (f") /*!50100 TABLESPACE {q(t['__tablespace'])} */" if t.get("__tablespace") else ")") + f" ENGINE={ENGINE_NAMES.get(t['ENGINE'], t['ENGINE'])}"
     if t.get("__auto_increment"):
         out += f" AUTO_INCREMENT={t['__auto_increment']}"
     cs = t["TABLE_COLLATION"].split("_")[0]

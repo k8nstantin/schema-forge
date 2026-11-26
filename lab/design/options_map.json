@@ -367,6 +367,51 @@
    "types": {
     "alias": "string"
    }
+  },
+  "engine_mysql.tablespaces": {
+   "keys": [
+    "datafile",
+    "file_block_size",
+    "autoextend_size",
+    "engine",
+    "encryption"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "datafile": "string",
+    "file_block_size": "number",
+    "autoextend_size": "number",
+    "engine": "string",
+    "encryption": "string"
+   }
+  },
+  "engine_mysql.spatial_reference_systems": {
+   "keys": [
+    "srs_id",
+    "organization",
+    "organization_coordsys_id",
+    "definition"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "srs_id": "number",
+    "organization": "string",
+    "organization_coordsys_id": "number",
+    "definition": "string"
+   }
+  },
+  "engine_mysql.loadable_functions": {
+   "keys": [
+    "soname",
+    "returns",
+    "aggregate"
+   ],
+   "target": "cortex.objects",
+   "types": {
+    "soname": "string",
+    "returns": "string",
+    "aggregate": "boolean"
+   }
   }
  }
 }

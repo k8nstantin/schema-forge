@@ -110,9 +110,39 @@ def table_facts(props):
     m = re.search(r" AUTO_INCREMENT=(\d+)", last)  # TABLES.AUTO_INCREMENT is cached on 8.0 and later; this is not
     if m:
         props["__auto_increment"] = int(m.group(1))
+    m = re.search(r"^\) /\*!50100 TABLESPACE `((?:[^`]|``)+)` \*/", last.lstrip("\n"))
+    if m:
+        props["__tablespace"] = m.group(1).replace("``", "`")
     m = re.search(r" INSERT_METHOD=(\w+)", last)
     if m:
         props["__insert_method"] = m.group(1)
+
+
+def server_parts(container, have):
+    """What the server holds beside its databases, whatever databases a run reads: general tablespaces, the loadable
+    functions people registered (mysql.func; a component's own are not made by a statement), and the spatial reference
+    systems people defined (8.0 and later: those outside the ranges MySQL reserves for its own)."""
+    out = []
+    spaces = "INNODB_TABLESPACES" if "INNODB_TABLESPACES" in have else "INNODB_SYS_TABLESPACES"
+    cols = {c[0] for c in mysql(container, f"SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='information_schema' AND TABLE_NAME='{spaces}'")}
+    extra = "".join(f",'{c}',t.{c}" for c in ("ENCRYPTION", "AUTOEXTEND_SIZE") if c in cols)
+    # general tablespaces but mysql, 8.0's data dictionary: the server's own
+    for (row,) in mysql(container, f"SELECT JSON_OBJECT('NAME',t.NAME,'FILE_NAME',f.FILE_NAME,'ENGINE',f.ENGINE,'ZIP_PAGE_SIZE',t.ZIP_PAGE_SIZE{extra}) "
+                                   f"FROM information_schema.{spaces} t JOIN information_schema.FILES f ON f.TABLESPACE_NAME = t.NAME "
+                                   f"WHERE t.SPACE_TYPE = 'General' AND t.NAME <> 'mysql'"):
+        p = json.loads(row)
+        out.append({"kind": "tablespace", "key": p["NAME"], "parent": None, "props": p})
+    for (row,) in mysql(container, "SELECT JSON_OBJECT('NAME',name,'RET',ret,'DL',dl,'TYPE',type) FROM mysql.func"):
+        p = json.loads(row)
+        out.append({"kind": "loadable_function", "key": p["NAME"], "parent": None, "props": p})
+    if "ST_SPATIAL_REFERENCE_SYSTEMS" in have:
+        for (row,) in mysql(container, "SELECT JSON_OBJECT('SRS_NAME',SRS_NAME,'SRS_ID',SRS_ID,'ORGANIZATION',ORGANIZATION,"
+                                       "'ORGANIZATION_COORDSYS_ID',ORGANIZATION_COORDSYS_ID,'DEFINITION',DEFINITION,'DESCRIPTION',DESCRIPTION) "
+                                       "FROM information_schema.ST_SPATIAL_REFERENCE_SYSTEMS WHERE SRS_ID BETWEEN 32768 AND 59999999 "
+                                       "OR SRS_ID BETWEEN 70000000 AND 1999999999"):
+            p = json.loads(row)
+            out.append({"kind": "spatial_reference_system", "key": str(p["SRS_ID"]), "parent": None, "props": p})
+    return out
 
 
 def extract_mysql(version, container):
@@ -133,6 +163,7 @@ def extract_mysql(version, container):
                 p.pop(v, None)
             parts.append({"kind": kind, "key": ".".join(str(p.get(k)) for k in key),
                           "parent": ".".join(str(p.get(k)) for k in parent) if parent else None, "props": p})
+    parts += server_parts(container, have)
     # the definition as the server writes it, beside the catalog: every SHOW CREATE in one session, each after a
     # marker, so a statement the server refuses leaves its part without one and moves nothing else
     wants = []

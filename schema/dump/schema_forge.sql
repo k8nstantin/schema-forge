@@ -55,6 +55,34 @@ CREATE SCHEMA ui;
 ALTER SCHEMA ui OWNER TO sf_owner;
 
 --
+-- Name: check_kinds(); Type: FUNCTION; Schema: cortex; Owner: sf_owner
+--
+
+CREATE FUNCTION cortex.check_kinds() RETURNS trigger
+    LANGUAGE plpgsql STABLE
+    AS $$
+DECLARE
+  k cortex.object_kinds;
+  e text;
+BEGIN
+  SELECT engine INTO e FROM cortex.designs WHERE id = NEW.design;
+  SELECT * INTO k FROM cortex.object_kinds WHERE engine = e AND kind = NEW.kind;
+  IF k.id IS NULL THEN
+    RAISE EXCEPTION 'kind % is not declared for %', NEW.kind, e USING ERRCODE = 'check_violation';
+  END IF;
+  IF k.scope = 'server' AND NEW.namespace IS NOT NULL THEN
+    RAISE EXCEPTION 'a % lives in the server, in no namespace', NEW.kind USING ERRCODE = 'check_violation';
+  END IF;
+  IF k.scope = 'namespace' AND NEW.namespace IS NULL THEN
+    RAISE EXCEPTION 'a % lives in a namespace', NEW.kind USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION cortex.check_kinds() OWNER TO sf_owner;
+
+--
 -- Name: check_options(); Type: FUNCTION; Schema: cortex; Owner: sf_owner
 --
 
@@ -1695,11 +1723,13 @@ CREATE TABLE cortex.object_kinds (
     kind text NOT NULL,
     name text NOT NULL,
     "position" numeric NOT NULL,
+    scope text DEFAULT 'namespace'::text NOT NULL,
     CONSTRAINT object_kinds_check CHECK ((id = ((engine || '/'::text) || kind))),
     CONSTRAINT object_kinds_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
     CONSTRAINT object_kinds_kind_check CHECK ((kind ~ '^[a-z0-9_]+$'::text)),
     CONSTRAINT object_kinds_name_check CHECK ((length(name) >= 1)),
-    CONSTRAINT object_kinds_position_check CHECK (("position" > (0)::numeric))
+    CONSTRAINT object_kinds_position_check CHECK (("position" > (0)::numeric)),
+    CONSTRAINT object_kinds_scope_check CHECK ((scope = ANY (ARRAY['namespace'::text, 'server'::text])))
 );
 
 
@@ -1745,6 +1775,13 @@ COMMENT ON COLUMN cortex.object_kinds.name IS 'as people say it (Table)';
 --
 
 COMMENT ON COLUMN cortex.object_kinds."position" IS 'its place in the engine''s declaration, for listing in the engine''s order';
+
+
+--
+-- Name: COLUMN object_kinds.scope; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.object_kinds.scope IS 'where its objects live: in a namespace (a table), or in the server beside the namespaces, in none (a MySQL tablespace)';
 
 
 --
@@ -1814,7 +1851,7 @@ COMMENT ON COLUMN cortex.object_tags.tag IS 'the tag';
 CREATE TABLE cortex.objects (
     id uuid DEFAULT uuidv7() NOT NULL,
     design uuid NOT NULL,
-    namespace uuid NOT NULL,
+    namespace uuid,
     kind text NOT NULL,
     name text NOT NULL,
     signature text DEFAULT ''::text NOT NULL,
@@ -1836,7 +1873,7 @@ ALTER TABLE cortex.objects OWNER TO sf_owner;
 -- Name: TABLE objects; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON TABLE cortex.objects IS 'everything a namespace holds: tables, views, routines, triggers, events, sequences, types, whatever kinds the engine declares.';
+COMMENT ON TABLE cortex.objects IS 'everything a namespace holds, and what the server holds beside its namespaces: tables, views, routines, triggers, events, sequences, types, tablespaces, whatever kinds the engine declares.';
 
 
 --
@@ -1857,14 +1894,14 @@ COMMENT ON COLUMN cortex.objects.design IS 'the design it belongs to';
 -- Name: COLUMN objects.namespace; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.objects.namespace IS 'the namespace that holds it';
+COMMENT ON COLUMN cortex.objects.namespace IS 'the namespace that holds it; NULL for an object of a kind the server holds (scope server): the guard check_kinds sees to both';
 
 
 --
 -- Name: COLUMN objects.kind; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.objects.kind IS 'one of its design''s engine''s kinds (table): the rule kinds-of-the-engine refuses any other';
+COMMENT ON COLUMN cortex.objects.kind IS 'one of its design''s engine''s kinds (table): the guard check_kinds refuses any other as the row is written';
 
 
 --
@@ -1892,7 +1929,7 @@ COMMENT ON COLUMN cortex.objects.parent IS 'the object it belongs to: a trigger'
 -- Name: COLUMN objects."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.objects."position" IS 'its place among its namespace''s objects, in the order made or read; an order key';
+COMMENT ON COLUMN cortex.objects."position" IS 'its place among its namespace''s objects (or the server''s), in the order made or read; an order key';
 
 
 --
@@ -5231,19 +5268,19 @@ ALTER TABLE ONLY cortex.objects
 
 
 --
--- Name: objects objects_namespace_parent_kind_name_signature_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+-- Name: objects objects_design_namespace_parent_kind_name_signature_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
 ALTER TABLE ONLY cortex.objects
-    ADD CONSTRAINT objects_namespace_parent_kind_name_signature_key UNIQUE NULLS NOT DISTINCT (namespace, parent, kind, name, signature) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT objects_design_namespace_parent_kind_name_signature_key UNIQUE NULLS NOT DISTINCT (design, namespace, parent, kind, name, signature) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: objects objects_namespace_position_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+-- Name: objects objects_design_namespace_position_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
 ALTER TABLE ONLY cortex.objects
-    ADD CONSTRAINT objects_namespace_position_key UNIQUE (namespace, "position") DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT objects_design_namespace_position_key UNIQUE NULLS NOT DISTINCT (design, namespace, "position") DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6468,6 +6505,13 @@ CREATE INDEX pinned_notes_turn ON ui.pinned_notes USING btree (design, turn);
 
 
 --
+-- Name: objects kinds; Type: TRIGGER; Schema: cortex; Owner: sf_owner
+--
+
+CREATE TRIGGER kinds BEFORE INSERT OR UPDATE OF kind, namespace ON cortex.objects FOR EACH ROW EXECUTE FUNCTION cortex.check_kinds();
+
+
+--
 -- Name: turns notify_turns; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
@@ -7602,6 +7646,14 @@ GRANT USAGE ON SCHEMA engine_postgresql TO sf_reader;
 GRANT USAGE ON SCHEMA ui TO sf_service;
 GRANT USAGE ON SCHEMA ui TO sf_agent;
 GRANT USAGE ON SCHEMA ui TO sf_reader;
+
+
+--
+-- Name: FUNCTION check_kinds(); Type: ACL; Schema: cortex; Owner: sf_owner
+--
+
+GRANT ALL ON FUNCTION cortex.check_kinds() TO sf_service;
+GRANT ALL ON FUNCTION cortex.check_kinds() TO sf_agent;
 
 
 --
