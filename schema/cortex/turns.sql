@@ -10,7 +10,7 @@ CREATE TABLE cortex.turns (
   summary     TEXT NOT NULL CHECK (length(summary) >= 1),                                                    -- what it does, in one line, as its maker gives it
   state       TEXT NOT NULL CHECK (state IN ('open', 'accepted', 'rejected', 'undone')),                     -- open while it awaits a verdict; then accepted, rejected or undone
   undoes      UUID,                                                                                          -- the turn this one takes back by applying its inverses; NULL for any other turn
-  started_at  TIMESTAMPTZ NOT NULL,                                                                          -- when its first change landed
+  started_at  TIMESTAMPTZ NOT NULL DEFAULT now(),                                                            -- when its first change landed
   ended_at    TIMESTAMPTZ,                                                                                   -- when its maker ended it; NULL while it is being made
   decided_at  TIMESTAMPTZ,                                                                                   -- when it was accepted, rejected or undone; NULL while open
   decided_by  TEXT,                                                                                          -- who decided it; NULL while open
@@ -20,9 +20,9 @@ CREATE TABLE cortex.turns (
   CHECK (parent IS NULL OR parent <> id),
   UNIQUE (design, seq),
   UNIQUE (design, id),
-  FOREIGN KEY (design, parent) REFERENCES cortex.turns (design, id),
+  FOREIGN KEY (design, parent) REFERENCES cortex.turns (design, id) DEFERRABLE INITIALLY DEFERRED,
   FOREIGN KEY (design, branch) REFERENCES cortex.branches (design, id) DEFERRABLE INITIALLY DEFERRED,
-  FOREIGN KEY (design, undoes) REFERENCES cortex.turns (design, id)
+  FOREIGN KEY (design, undoes) REFERENCES cortex.turns (design, id) DEFERRABLE INITIALLY DEFERRED
 );
 
 CREATE INDEX turns_parent ON cortex.turns (design, parent);

@@ -1,7 +1,7 @@
 -- cortex.catalog_sources: what an engine's live read asks a server of each version, what it gives, and the grant it needs. Owner: cortex.
 CREATE TABLE cortex.catalog_sources (
   id        TEXT NOT NULL PRIMARY KEY,                                                                         -- <engine>/<version>/<source>: mysql/8.4/information_schema.ROUTINES
-  version   TEXT NOT NULL REFERENCES cortex.engine_versions (id),                                              -- the engine's version it is asked of (mysql/8.4)
+  version   TEXT NOT NULL REFERENCES cortex.engine_versions (id) DEFERRABLE INITIALLY DEFERRED,                -- the engine's version it is asked of (mysql/8.4)
   source    TEXT NOT NULL CHECK (length(source) >= 1),                                                         -- the catalog table or statement, as the server names it (SHOW CREATE TABLE)
   gives     TEXT NOT NULL CHECK (length(gives) >= 1),                                                          -- what the read takes from it (routines and their bodies)
   needs     TEXT,                                                                                              -- the grant it needs, as the server writes it; NULL for none beyond the database's

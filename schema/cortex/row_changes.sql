@@ -11,7 +11,7 @@ CREATE TABLE cortex.row_changes (
   CHECK ((action = 'insert') = (before IS NULL)),
   CHECK ((action = 'delete') = (after IS NULL)),
   UNIQUE (design, id),
-  FOREIGN KEY (design, operation) REFERENCES cortex.operations (design, id)
+  FOREIGN KEY (design, operation) REFERENCES cortex.operations (design, id) DEFERRABLE INITIALLY DEFERRED
 );
 
 CREATE INDEX row_changes_operation ON cortex.row_changes (design, operation, id);

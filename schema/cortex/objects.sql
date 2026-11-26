@@ -11,7 +11,7 @@ CREATE TABLE cortex.objects (
   comment    TEXT,                                                                                          -- what it holds, in a sentence or two: written into its SQL
   notes      TEXT,                                                                                          -- longer notes for people and the agent: never written into SQL
   options    JSONB NOT NULL DEFAULT '{}',                                                                   -- what the design's engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}
-  UNIQUE (namespace, kind, name, signature) DEFERRABLE INITIALLY DEFERRED,
+  UNIQUE NULLS NOT DISTINCT (namespace, parent, kind, name, signature) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (namespace, position) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
   FOREIGN KEY (design, namespace) REFERENCES cortex.namespaces (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,

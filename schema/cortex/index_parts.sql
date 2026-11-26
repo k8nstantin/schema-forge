@@ -3,7 +3,7 @@ CREATE TABLE cortex.index_parts (
   id          UUID NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),               -- UUIDv7, made with the row
   design      UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   "index"     UUID NOT NULL,                                                                                 -- the index
-  position    INTEGER NOT NULL CHECK (position >= 1),                                                        -- its place, 1 first
+  position    NUMERIC NOT NULL CHECK (position > 0),                                                         -- its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered
   "column"    UUID,                                                                                          -- the column indexed; NULL for an expression
   expression  TEXT,                                                                                          -- the expression indexed, in the engine's SQL; NULL for a column
   descending  BOOLEAN NOT NULL DEFAULT false,                                                                -- true when held descending
@@ -23,7 +23,7 @@ COMMENT ON TABLE cortex.index_parts IS 'the parts of an index, in order: each a 
 COMMENT ON COLUMN cortex.index_parts.id IS 'UUIDv7, made with the row';
 COMMENT ON COLUMN cortex.index_parts.design IS 'the design it belongs to';
 COMMENT ON COLUMN cortex.index_parts."index" IS 'the index';
-COMMENT ON COLUMN cortex.index_parts.position IS 'its place, 1 first';
+COMMENT ON COLUMN cortex.index_parts.position IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 COMMENT ON COLUMN cortex.index_parts."column" IS 'the column indexed; NULL for an expression';
 COMMENT ON COLUMN cortex.index_parts.expression IS 'the expression indexed, in the engine''s SQL; NULL for a column';
 COMMENT ON COLUMN cortex.index_parts.descending IS 'true when held descending';

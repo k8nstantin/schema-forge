@@ -11,11 +11,11 @@ CREATE TABLE cortex.source_reads (
   server_edition   TEXT,                                                                                                -- what the server says it is beyond its version; NULL when it says nothing
   read_as          TEXT NOT NULL CHECK (length(read_as) >= 1),                                                          -- the account the server says the read ran as (sf_reader@%)
   missing_grants   TEXT,                                                                                                -- the grants the account lacked, and so what was not read; NULL for none
-  started_at       TIMESTAMPTZ NOT NULL,                                                                                -- when the read began
+  started_at       TIMESTAMPTZ NOT NULL DEFAULT now(),                                                                  -- when the read began
   ended_at         TIMESTAMPTZ,                                                                                         -- when it ended; NULL while it runs
   CHECK (ended_at IS NULL OR ended_at >= started_at),
   UNIQUE (design, id),
-  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id),
+  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id) DEFERRABLE INITIALLY DEFERRED,
   FOREIGN KEY (design, scope) REFERENCES cortex.read_scopes (design, id) DEFERRABLE INITIALLY DEFERRED
 );
 

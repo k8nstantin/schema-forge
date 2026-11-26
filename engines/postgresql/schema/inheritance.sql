@@ -4,7 +4,7 @@ CREATE TABLE engine_postgresql.inheritance (
   design    UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   object    UUID NOT NULL,                                                                                 -- the table that inherits
   parent    UUID NOT NULL,                                                                                 -- the table inherited from: it cannot go first
-  position  INTEGER NOT NULL CHECK (position >= 1),                                                        -- its place, 1 first
+  position  NUMERIC NOT NULL CHECK (position > 0),                                                         -- its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered
   UNIQUE (object, position) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
   FOREIGN KEY (design, object) REFERENCES cortex.objects (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
@@ -19,4 +19,4 @@ COMMENT ON COLUMN engine_postgresql.inheritance.id IS 'UUIDv7, made with the row
 COMMENT ON COLUMN engine_postgresql.inheritance.design IS 'the design it belongs to';
 COMMENT ON COLUMN engine_postgresql.inheritance.object IS 'the table that inherits';
 COMMENT ON COLUMN engine_postgresql.inheritance.parent IS 'the table inherited from: it cannot go first';
-COMMENT ON COLUMN engine_postgresql.inheritance.position IS 'its place, 1 first';
+COMMENT ON COLUMN engine_postgresql.inheritance.position IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';

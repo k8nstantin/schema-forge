@@ -3,7 +3,7 @@ CREATE TABLE cortex.columns (
   id                    UUID NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),               -- UUIDv7, made with the row, kept when the name changes
   design                UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   object                UUID NOT NULL,                                                                                 -- the object it belongs to
-  position              INTEGER NOT NULL CHECK (position >= 1),                                                        -- its place in the object: 1, 2, 3
+  position              NUMERIC NOT NULL CHECK (position > 0),                                                         -- its place in the object: 1, 2, 3; an order key: one put between two takes their midpoint, so nothing is renumbered
   name                  TEXT NOT NULL CHECK (length(name) >= 1),                                                       -- total
   type                  TEXT NOT NULL CHECK (length(type) >= 1),                                                       -- its type as the engine writes it at the schema's version (decimal(12,2), int(11) on MySQL 5.7)
   nullable              BOOLEAN NOT NULL,                                                                              -- true when it may hold null
@@ -26,7 +26,7 @@ COMMENT ON TABLE cortex.columns IS 'the columns of a table, a view or a composit
 COMMENT ON COLUMN cortex.columns.id IS 'UUIDv7, made with the row, kept when the name changes';
 COMMENT ON COLUMN cortex.columns.design IS 'the design it belongs to';
 COMMENT ON COLUMN cortex.columns.object IS 'the object it belongs to';
-COMMENT ON COLUMN cortex.columns.position IS 'its place in the object: 1, 2, 3';
+COMMENT ON COLUMN cortex.columns.position IS 'its place in the object: 1, 2, 3; an order key: one put between two takes their midpoint, so nothing is renumbered';
 COMMENT ON COLUMN cortex.columns.name IS 'total';
 COMMENT ON COLUMN cortex.columns.type IS 'its type as the engine writes it at the schema''s version (decimal(12,2), int(11) on MySQL 5.7)';
 COMMENT ON COLUMN cortex.columns.nullable IS 'true when it may hold null';

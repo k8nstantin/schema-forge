@@ -3,7 +3,7 @@ CREATE TABLE cortex.object_kinds (
   id        TEXT NOT NULL PRIMARY KEY,                      -- <engine>/<kind>: mysql/table
   engine    TEXT NOT NULL CHECK (engine ~ '^[a-z0-9_]+$'),  -- the engine
   kind      TEXT NOT NULL CHECK (kind ~ '^[a-z0-9_]+$'),    -- as an object names its kind (table, view, procedure, materialized_view)
-  name      TEXT NOT NULL,                                  -- as people say it (Table)
+  name      TEXT NOT NULL CHECK (length(name) >= 1),        -- as people say it (Table)
   position  NUMERIC NOT NULL CHECK (position > 0),          -- its place in the engine's declaration, for listing in the engine's order
   UNIQUE (engine, kind),
   UNIQUE (engine, position),

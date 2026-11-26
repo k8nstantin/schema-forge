@@ -4,7 +4,7 @@ CREATE TABLE cortex.dependencies (
   design    UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   object    UUID NOT NULL,                                                                                 -- the object that uses
   uses      UUID NOT NULL,                                                                                 -- the object used: it cannot go while this row is here
-  position  INTEGER NOT NULL CHECK (position >= 1),                                                        -- its place, 1 first
+  position  NUMERIC NOT NULL CHECK (position > 0),                                                         -- its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered
   UNIQUE (object, uses) DEFERRABLE INITIALLY DEFERRED,
   CHECK (object <> uses),
   UNIQUE (design, id),
@@ -20,4 +20,4 @@ COMMENT ON COLUMN cortex.dependencies.id IS 'UUIDv7, made with the row';
 COMMENT ON COLUMN cortex.dependencies.design IS 'the design it belongs to';
 COMMENT ON COLUMN cortex.dependencies.object IS 'the object that uses';
 COMMENT ON COLUMN cortex.dependencies.uses IS 'the object used: it cannot go while this row is here';
-COMMENT ON COLUMN cortex.dependencies.position IS 'its place, 1 first';
+COMMENT ON COLUMN cortex.dependencies.position IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';

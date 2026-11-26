@@ -88,9 +88,6 @@ CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.routine_para
 CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.sequences
   FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
 
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.sort_fields
-  FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
-
 CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.triggers
   FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
 

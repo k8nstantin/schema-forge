@@ -4,7 +4,7 @@ CREATE TABLE cortex.schema_migrations (
   owner       TEXT NOT NULL CHECK (owner ~ '^[a-z0-9_]+$'),  -- cortex, or the id of the engine or the feature whose tables it creates
   version     INTEGER NOT NULL CHECK (version >= 1),         -- the owner's version; 1 creates its tables from its schema folder
   checksum    TEXT NOT NULL CHECK (length(checksum) = 64),   -- SHA-256 of what was applied, hex: a shipped migration whose text changed is refused
-  applied_at  TIMESTAMPTZ NOT NULL,                          -- when it was applied
+  applied_at  TIMESTAMPTZ NOT NULL DEFAULT now(),            -- when it was applied
   UNIQUE (owner, version),
   CHECK (id = owner || '/' || version)
 );

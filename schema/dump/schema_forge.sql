@@ -505,7 +505,7 @@ CREATE TABLE cortex.columns (
     id uuid DEFAULT uuidv7() NOT NULL,
     design uuid NOT NULL,
     object uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     name text NOT NULL,
     type text NOT NULL,
     nullable boolean NOT NULL,
@@ -518,7 +518,7 @@ CREATE TABLE cortex.columns (
     CONSTRAINT columns_check CHECK (((generated_expression IS NULL) = (generated_stored IS NULL))),
     CONSTRAINT columns_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT columns_name_check CHECK ((length(name) >= 1)),
-    CONSTRAINT columns_position_check CHECK (("position" >= 1)),
+    CONSTRAINT columns_position_check CHECK (("position" > (0)::numeric)),
     CONSTRAINT columns_type_check CHECK ((length(type) >= 1))
 );
 
@@ -557,7 +557,7 @@ COMMENT ON COLUMN cortex.columns.object IS 'the object it belongs to';
 -- Name: COLUMN columns."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.columns."position" IS 'its place in the object: 1, 2, 3';
+COMMENT ON COLUMN cortex.columns."position" IS 'its place in the object: 1, 2, 3; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -631,13 +631,13 @@ CREATE TABLE cortex.constraint_columns (
     id uuid DEFAULT uuidv7() NOT NULL,
     design uuid NOT NULL,
     "constraint" uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     "column" uuid NOT NULL,
     to_column uuid,
     to_column_name text,
     options jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT constraint_columns_id_check CHECK ((uuid_extract_version(id) = 7)),
-    CONSTRAINT constraint_columns_position_check CHECK (("position" >= 1))
+    CONSTRAINT constraint_columns_position_check CHECK (("position" > (0)::numeric))
 );
 
 
@@ -675,7 +675,7 @@ COMMENT ON COLUMN cortex.constraint_columns."constraint" IS 'the key or link';
 -- Name: COLUMN constraint_columns."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.constraint_columns."position" IS 'its place, 1 first';
+COMMENT ON COLUMN cortex.constraint_columns."position" IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -728,16 +728,17 @@ CREATE TABLE cortex.constraints (
     on_delete text,
     on_update text,
     match_kind text,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     options jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT constraints_check CHECK ((((kind = 'check'::text) = (expression IS NOT NULL)) OR (kind = 'exclusion'::text))),
     CONSTRAINT constraints_check1 CHECK (((kind <> 'foreign'::text) OR ((to_object IS NULL) = (to_object_name IS NOT NULL)))),
     CONSTRAINT constraints_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT constraints_kind_check CHECK ((kind = ANY (ARRAY['primary'::text, 'unique'::text, 'foreign'::text, 'check'::text, 'exclusion'::text, 'not_null'::text, 'identifier'::text]))),
     CONSTRAINT constraints_match_kind_check CHECK ((match_kind = ANY (ARRAY['simple'::text, 'full'::text, 'partial'::text]))),
+    CONSTRAINT constraints_name_check CHECK ((length(name) >= 1)),
     CONSTRAINT constraints_on_delete_check CHECK ((on_delete = ANY (ARRAY['no_action'::text, 'restrict'::text, 'cascade'::text, 'set_null'::text, 'set_default'::text]))),
     CONSTRAINT constraints_on_update_check CHECK ((on_update = ANY (ARRAY['no_action'::text, 'restrict'::text, 'cascade'::text, 'set_null'::text, 'set_default'::text]))),
-    CONSTRAINT constraints_position_check CHECK (("position" >= 1))
+    CONSTRAINT constraints_position_check CHECK (("position" > (0)::numeric))
 );
 
 
@@ -873,7 +874,7 @@ COMMENT ON COLUMN cortex.constraints.match_kind IS 'how a key of several columns
 -- Name: COLUMN constraints."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.constraints."position" IS 'its place among the object''s constraints';
+COMMENT ON COLUMN cortex.constraints."position" IS 'its place among the object''s constraints; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -892,10 +893,10 @@ CREATE TABLE cortex.dependencies (
     design uuid NOT NULL,
     object uuid NOT NULL,
     uses uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     CONSTRAINT dependencies_check CHECK ((object <> uses)),
     CONSTRAINT dependencies_id_check CHECK ((uuid_extract_version(id) = 7)),
-    CONSTRAINT dependencies_position_check CHECK (("position" >= 1))
+    CONSTRAINT dependencies_position_check CHECK (("position" > (0)::numeric))
 );
 
 
@@ -940,7 +941,7 @@ COMMENT ON COLUMN cortex.dependencies.uses IS 'the object used: it cannot go whi
 -- Name: COLUMN dependencies."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.dependencies."position" IS 'its place, 1 first';
+COMMENT ON COLUMN cortex.dependencies."position" IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -1239,11 +1240,11 @@ CREATE TABLE cortex.enum_values (
     id uuid DEFAULT uuidv7() NOT NULL,
     design uuid NOT NULL,
     object uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     value text NOT NULL,
     options jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT enum_values_id_check CHECK ((uuid_extract_version(id) = 7)),
-    CONSTRAINT enum_values_position_check CHECK (("position" >= 1))
+    CONSTRAINT enum_values_position_check CHECK (("position" > (0)::numeric))
 );
 
 
@@ -1281,7 +1282,7 @@ COMMENT ON COLUMN cortex.enum_values.object IS 'the type';
 -- Name: COLUMN enum_values."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.enum_values."position" IS 'its place, 1 first';
+COMMENT ON COLUMN cortex.enum_values."position" IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -1306,7 +1307,7 @@ CREATE TABLE cortex.index_parts (
     id uuid DEFAULT uuidv7() NOT NULL,
     design uuid NOT NULL,
     index uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     "column" uuid,
     expression text,
     descending boolean DEFAULT false NOT NULL,
@@ -1314,7 +1315,7 @@ CREATE TABLE cortex.index_parts (
     options jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT index_parts_check CHECK ((("column" IS NULL) <> (expression IS NULL))),
     CONSTRAINT index_parts_id_check CHECK ((uuid_extract_version(id) = 7)),
-    CONSTRAINT index_parts_position_check CHECK (("position" >= 1))
+    CONSTRAINT index_parts_position_check CHECK (("position" > (0)::numeric))
 );
 
 
@@ -1352,7 +1353,7 @@ COMMENT ON COLUMN cortex.index_parts.index IS 'the index';
 -- Name: COLUMN index_parts."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.index_parts."position" IS 'its place, 1 first';
+COMMENT ON COLUMN cortex.index_parts."position" IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -1398,7 +1399,7 @@ CREATE TABLE cortex.indexes (
     id uuid DEFAULT uuidv7() NOT NULL,
     design uuid NOT NULL,
     object uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     name text NOT NULL,
     "unique" boolean DEFAULT false NOT NULL,
     method text,
@@ -1407,7 +1408,7 @@ CREATE TABLE cortex.indexes (
     options jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT indexes_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT indexes_name_check CHECK ((length(name) >= 1)),
-    CONSTRAINT indexes_position_check CHECK (("position" >= 1))
+    CONSTRAINT indexes_position_check CHECK (("position" > (0)::numeric))
 );
 
 
@@ -1445,7 +1446,7 @@ COMMENT ON COLUMN cortex.indexes.object IS 'the table it is on';
 -- Name: COLUMN indexes."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.indexes."position" IS 'its place among the table''s indexes: the server''s order, which information_schema does not give';
+COMMENT ON COLUMN cortex.indexes."position" IS 'its place among the table''s indexes: the server''s order, which information_schema does not give; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -1502,7 +1503,7 @@ CREATE TABLE cortex.locked_versions (
     hash text NOT NULL,
     message text NOT NULL,
     locked_by text NOT NULL,
-    locked_at timestamp with time zone NOT NULL,
+    locked_at timestamp with time zone DEFAULT now() NOT NULL,
     git_commit text,
     git_tag text,
     CONSTRAINT locked_versions_git_commit_check CHECK (((git_commit IS NULL) OR (length(git_commit) = ANY (ARRAY[40, 64])))),
@@ -1681,6 +1682,7 @@ CREATE TABLE cortex.object_kinds (
     CONSTRAINT object_kinds_check CHECK ((id = ((engine || '/'::text) || kind))),
     CONSTRAINT object_kinds_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
     CONSTRAINT object_kinds_kind_check CHECK ((kind ~ '^[a-z0-9_]+$'::text)),
+    CONSTRAINT object_kinds_name_check CHECK ((length(name) >= 1)),
     CONSTRAINT object_kinds_position_check CHECK (("position" > (0)::numeric))
 );
 
@@ -1737,10 +1739,10 @@ CREATE TABLE cortex.object_tags (
     id uuid DEFAULT uuidv7() NOT NULL,
     design uuid NOT NULL,
     object uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     tag text NOT NULL,
     CONSTRAINT object_tags_id_check CHECK ((uuid_extract_version(id) = 7)),
-    CONSTRAINT object_tags_position_check CHECK (("position" >= 1)),
+    CONSTRAINT object_tags_position_check CHECK (("position" > (0)::numeric)),
     CONSTRAINT object_tags_tag_check CHECK ((length(tag) >= 1))
 );
 
@@ -1779,7 +1781,7 @@ COMMENT ON COLUMN cortex.object_tags.object IS 'the object tagged';
 -- Name: COLUMN object_tags."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.object_tags."position" IS 'its place, 1 first';
+COMMENT ON COLUMN cortex.object_tags."position" IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -1986,7 +1988,7 @@ CREATE TABLE cortex.option_declarations (
     CONSTRAINT option_declarations_choices_check CHECK (((choices IS NULL) OR (jsonb_typeof(choices) = 'array'::text))),
     CONSTRAINT option_declarations_engine_check CHECK ((engine ~ '^[a-z0-9_]+$'::text)),
     CONSTRAINT option_declarations_name_check CHECK ((name ~ '^[a-z0-9_]+$'::text)),
-    CONSTRAINT option_declarations_part_check CHECK ((part = ANY (ARRAY['namespaces'::text, 'objects'::text, 'columns'::text, 'column_identities'::text, 'constraints'::text, 'constraint_columns'::text, 'domains'::text, 'enum_values'::text, 'indexes'::text, 'index_parts'::text, 'partitionings'::text, 'partitions'::text, 'routines'::text, 'routine_parameters'::text, 'sequences'::text, 'sort_fields'::text, 'triggers'::text, 'views'::text]))),
+    CONSTRAINT option_declarations_part_check CHECK ((part = ANY (ARRAY['namespaces'::text, 'objects'::text, 'columns'::text, 'column_identities'::text, 'constraints'::text, 'constraint_columns'::text, 'domains'::text, 'enum_values'::text, 'indexes'::text, 'index_parts'::text, 'partitionings'::text, 'partitions'::text, 'routines'::text, 'routine_parameters'::text, 'sequences'::text, 'triggers'::text, 'views'::text]))),
     CONSTRAINT option_declarations_value_type_check CHECK ((value_type = ANY (ARRAY['string'::text, 'number'::text, 'boolean'::text, 'json'::text])))
 );
 
@@ -2135,7 +2137,7 @@ CREATE TABLE cortex.partitions (
     id uuid DEFAULT uuidv7() NOT NULL,
     design uuid NOT NULL,
     partitioning uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     name text NOT NULL,
     bounds text,
     table_object uuid,
@@ -2143,7 +2145,7 @@ CREATE TABLE cortex.partitions (
     options jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT partitions_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT partitions_name_check CHECK ((length(name) >= 1)),
-    CONSTRAINT partitions_position_check CHECK (("position" >= 1))
+    CONSTRAINT partitions_position_check CHECK (("position" > (0)::numeric))
 );
 
 
@@ -2181,7 +2183,7 @@ COMMENT ON COLUMN cortex.partitions.partitioning IS 'the partitioning';
 -- Name: COLUMN partitions."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.partitions."position" IS 'its place, 1 first';
+COMMENT ON COLUMN cortex.partitions."position" IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -2474,7 +2476,7 @@ CREATE TABLE cortex.routine_parameters (
     id uuid DEFAULT uuidv7() NOT NULL,
     design uuid NOT NULL,
     routine uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     name text,
     type text NOT NULL,
     mode text DEFAULT 'in'::text NOT NULL,
@@ -2482,7 +2484,8 @@ CREATE TABLE cortex.routine_parameters (
     options jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT routine_parameters_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT routine_parameters_mode_check CHECK ((mode = ANY (ARRAY['in'::text, 'out'::text, 'in_out'::text, 'variadic'::text, 'table'::text]))),
-    CONSTRAINT routine_parameters_position_check CHECK (("position" >= 1)),
+    CONSTRAINT routine_parameters_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT routine_parameters_position_check CHECK (("position" > (0)::numeric)),
     CONSTRAINT routine_parameters_type_check CHECK ((length(type) >= 1))
 );
 
@@ -2521,7 +2524,7 @@ COMMENT ON COLUMN cortex.routine_parameters.routine IS 'the routine';
 -- Name: COLUMN routine_parameters."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.routine_parameters."position" IS 'its place, 1 first';
+COMMENT ON COLUMN cortex.routine_parameters."position" IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -2737,7 +2740,7 @@ CREATE TABLE cortex.savepoints (
     name text NOT NULL,
     turn uuid NOT NULL,
     made_by text NOT NULL,
-    made_at timestamp with time zone NOT NULL,
+    made_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT savepoints_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT savepoints_made_by_check CHECK ((length(made_by) >= 1)),
     CONSTRAINT savepoints_name_check CHECK ((length(name) >= 1))
@@ -2804,7 +2807,7 @@ CREATE TABLE cortex.schema_migrations (
     owner text NOT NULL,
     version integer NOT NULL,
     checksum text NOT NULL,
-    applied_at timestamp with time zone NOT NULL,
+    applied_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT schema_migrations_check CHECK ((id = ((owner || '/'::text) || version))),
     CONSTRAINT schema_migrations_checksum_check CHECK ((length(checksum) = 64)),
     CONSTRAINT schema_migrations_owner_check CHECK ((owner ~ '^[a-z0-9_]+$'::text)),
@@ -2964,89 +2967,6 @@ COMMENT ON COLUMN cortex.sequences.options IS 'what the design''s engine adds to
 
 
 --
--- Name: sort_fields; Type: TABLE; Schema: cortex; Owner: sf_owner
---
-
-CREATE TABLE cortex.sort_fields (
-    id uuid DEFAULT uuidv7() NOT NULL,
-    design uuid NOT NULL,
-    object uuid NOT NULL,
-    "position" integer NOT NULL,
-    "column" uuid NOT NULL,
-    transform text,
-    descending boolean DEFAULT false NOT NULL,
-    options jsonb DEFAULT '{}'::jsonb NOT NULL,
-    CONSTRAINT sort_fields_id_check CHECK ((uuid_extract_version(id) = 7)),
-    CONSTRAINT sort_fields_position_check CHECK (("position" >= 1))
-);
-
-
-ALTER TABLE cortex.sort_fields OWNER TO sf_owner;
-
---
--- Name: TABLE sort_fields; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON TABLE cortex.sort_fields IS 'the order a table''s rows are written in (a sort order, a clustering).';
-
-
---
--- Name: COLUMN sort_fields.id; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.sort_fields.id IS 'UUIDv7, made with the row';
-
-
---
--- Name: COLUMN sort_fields.design; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.sort_fields.design IS 'the design it belongs to';
-
-
---
--- Name: COLUMN sort_fields.object; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.sort_fields.object IS 'the table';
-
-
---
--- Name: COLUMN sort_fields."position"; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.sort_fields."position" IS 'its place, 1 first';
-
-
---
--- Name: COLUMN sort_fields."column"; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.sort_fields."column" IS 'the column ordered by';
-
-
---
--- Name: COLUMN sort_fields.transform; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.sort_fields.transform IS 'the transform, in the engine''s words; NULL for the value itself';
-
-
---
--- Name: COLUMN sort_fields.descending; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.sort_fields.descending IS 'true when descending';
-
-
---
--- Name: COLUMN sort_fields.options; Type: COMMENT; Schema: cortex; Owner: sf_owner
---
-
-COMMENT ON COLUMN cortex.sort_fields.options IS 'what the design''s engine adds to it, each key an option the engine declares for this part (cortex.option_declarations), checked as the row is written: {"row_format": "DYNAMIC"}';
-
-
---
 -- Name: source_reads; Type: TABLE; Schema: cortex; Owner: sf_owner
 --
 
@@ -3062,7 +2982,7 @@ CREATE TABLE cortex.source_reads (
     server_edition text,
     read_as text NOT NULL,
     missing_grants text,
-    started_at timestamp with time zone NOT NULL,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
     ended_at timestamp with time zone,
     CONSTRAINT source_reads_check CHECK (((ended_at IS NULL) OR (ended_at >= started_at))),
     CONSTRAINT source_reads_connection_name_check CHECK ((length(connection_name) >= 1)),
@@ -3280,7 +3200,7 @@ CREATE TABLE cortex.turns (
     summary text NOT NULL,
     state text NOT NULL,
     undoes uuid,
-    started_at timestamp with time zone NOT NULL,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
     ended_at timestamp with time zone,
     decided_at timestamp with time zone,
     decided_by text,
@@ -3941,11 +3861,11 @@ CREATE TABLE engine_mysql.subpartitions (
     id uuid DEFAULT uuidv7() NOT NULL,
     design uuid NOT NULL,
     partition uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     name text NOT NULL,
     CONSTRAINT subpartitions_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT subpartitions_name_check CHECK ((length(name) >= 1)),
-    CONSTRAINT subpartitions_position_check CHECK (("position" >= 1))
+    CONSTRAINT subpartitions_position_check CHECK (("position" > (0)::numeric))
 );
 
 
@@ -3983,7 +3903,7 @@ COMMENT ON COLUMN engine_mysql.subpartitions.partition IS 'the partition split';
 -- Name: COLUMN subpartitions."position"; Type: COMMENT; Schema: engine_mysql; Owner: sf_owner
 --
 
-COMMENT ON COLUMN engine_mysql.subpartitions."position" IS 'its place, 1 first';
+COMMENT ON COLUMN engine_mysql.subpartitions."position" IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -4102,9 +4022,9 @@ CREATE TABLE engine_postgresql.inheritance (
     design uuid NOT NULL,
     object uuid NOT NULL,
     parent uuid NOT NULL,
-    "position" integer NOT NULL,
+    "position" numeric NOT NULL,
     CONSTRAINT inheritance_id_check CHECK ((uuid_extract_version(id) = 7)),
-    CONSTRAINT inheritance_position_check CHECK (("position" >= 1))
+    CONSTRAINT inheritance_position_check CHECK (("position" > (0)::numeric))
 );
 
 
@@ -4149,7 +4069,7 @@ COMMENT ON COLUMN engine_postgresql.inheritance.parent IS 'the table inherited f
 -- Name: COLUMN inheritance."position"; Type: COMMENT; Schema: engine_postgresql; Owner: sf_owner
 --
 
-COMMENT ON COLUMN engine_postgresql.inheritance."position" IS 'its place, 1 first';
+COMMENT ON COLUMN engine_postgresql.inheritance."position" IS 'its place, 1 first; an order key: one put between two takes their midpoint, so nothing is renumbered';
 
 
 --
@@ -5236,11 +5156,11 @@ ALTER TABLE ONLY cortex.objects
 
 
 --
--- Name: objects objects_namespace_kind_name_signature_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
+-- Name: objects objects_namespace_parent_kind_name_signature_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
 --
 
 ALTER TABLE ONLY cortex.objects
-    ADD CONSTRAINT objects_namespace_kind_name_signature_key UNIQUE (namespace, kind, name, signature) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT objects_namespace_parent_kind_name_signature_key UNIQUE NULLS NOT DISTINCT (namespace, parent, kind, name, signature) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -5553,30 +5473,6 @@ ALTER TABLE ONLY cortex.sequences
 
 ALTER TABLE ONLY cortex.sequences
     ADD CONSTRAINT sequences_pkey PRIMARY KEY (id);
-
-
---
--- Name: sort_fields sort_fields_design_id_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
---
-
-ALTER TABLE ONLY cortex.sort_fields
-    ADD CONSTRAINT sort_fields_design_id_key UNIQUE (design, id);
-
-
---
--- Name: sort_fields sort_fields_object_position_key; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
---
-
-ALTER TABLE ONLY cortex.sort_fields
-    ADD CONSTRAINT sort_fields_object_position_key UNIQUE (object, "position") DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: sort_fields sort_fields_pkey; Type: CONSTRAINT; Schema: cortex; Owner: sf_owner
---
-
-ALTER TABLE ONLY cortex.sort_fields
-    ADD CONSTRAINT sort_fields_pkey PRIMARY KEY (id);
 
 
 --
@@ -6248,20 +6144,6 @@ CREATE INDEX sequences_owned_by ON cortex.sequences USING btree (design, owned_b
 
 
 --
--- Name: sort_fields_column; Type: INDEX; Schema: cortex; Owner: sf_owner
---
-
-CREATE INDEX sort_fields_column ON cortex.sort_fields USING btree (design, "column");
-
-
---
--- Name: sort_fields_object; Type: INDEX; Schema: cortex; Owner: sf_owner
---
-
-CREATE INDEX sort_fields_object ON cortex.sort_fields USING btree (design, object);
-
-
---
 -- Name: source_reads_scope; Type: INDEX; Schema: cortex; Owner: sf_owner
 --
 
@@ -6570,13 +6452,6 @@ CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.sequences FO
 
 
 --
--- Name: sort_fields options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
---
-
-CREATE TRIGGER options BEFORE INSERT OR UPDATE OF options ON cortex.sort_fields FOR EACH ROW EXECUTE FUNCTION cortex.check_options();
-
-
---
 -- Name: triggers options; Type: TRIGGER; Schema: cortex; Owner: sf_owner
 --
 
@@ -6603,7 +6478,7 @@ ALTER TABLE ONLY cortex.branches
 --
 
 ALTER TABLE ONLY cortex.catalog_sources
-    ADD CONSTRAINT catalog_sources_version_fkey FOREIGN KEY (version) REFERENCES cortex.engine_versions(id);
+    ADD CONSTRAINT catalog_sources_version_fkey FOREIGN KEY (version) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6755,7 +6630,7 @@ ALTER TABLE ONLY cortex.domains
 --
 
 ALTER TABLE ONLY cortex.engine_features
-    ADD CONSTRAINT engine_features_since_fkey FOREIGN KEY (since) REFERENCES cortex.engine_versions(id);
+    ADD CONSTRAINT engine_features_since_fkey FOREIGN KEY (since) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6763,7 +6638,7 @@ ALTER TABLE ONLY cortex.engine_features
 --
 
 ALTER TABLE ONLY cortex.engine_features
-    ADD CONSTRAINT engine_features_until_fkey FOREIGN KEY (until) REFERENCES cortex.engine_versions(id);
+    ADD CONSTRAINT engine_features_until_fkey FOREIGN KEY (until) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6835,7 +6710,7 @@ ALTER TABLE ONLY cortex.locked_versions
 --
 
 ALTER TABLE ONLY cortex.locked_versions
-    ADD CONSTRAINT locked_versions_design_turn_fkey FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id);
+    ADD CONSTRAINT locked_versions_design_turn_fkey FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6907,7 +6782,7 @@ ALTER TABLE ONLY cortex.operations
 --
 
 ALTER TABLE ONLY cortex.operations
-    ADD CONSTRAINT operations_design_turn_fkey FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id);
+    ADD CONSTRAINT operations_design_turn_fkey FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6915,7 +6790,7 @@ ALTER TABLE ONLY cortex.operations
 --
 
 ALTER TABLE ONLY cortex.option_declarations
-    ADD CONSTRAINT option_declarations_since_fkey FOREIGN KEY (since) REFERENCES cortex.engine_versions(id);
+    ADD CONSTRAINT option_declarations_since_fkey FOREIGN KEY (since) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6923,7 +6798,7 @@ ALTER TABLE ONLY cortex.option_declarations
 --
 
 ALTER TABLE ONLY cortex.option_declarations
-    ADD CONSTRAINT option_declarations_until_fkey FOREIGN KEY (until) REFERENCES cortex.engine_versions(id);
+    ADD CONSTRAINT option_declarations_until_fkey FOREIGN KEY (until) REFERENCES cortex.engine_versions(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7059,7 +6934,7 @@ ALTER TABLE ONLY cortex.row_changes
 --
 
 ALTER TABLE ONLY cortex.row_changes
-    ADD CONSTRAINT row_changes_design_operation_fkey FOREIGN KEY (design, operation) REFERENCES cortex.operations(design, id);
+    ADD CONSTRAINT row_changes_design_operation_fkey FOREIGN KEY (design, operation) REFERENCES cortex.operations(design, id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7075,7 +6950,7 @@ ALTER TABLE ONLY cortex.savepoints
 --
 
 ALTER TABLE ONLY cortex.savepoints
-    ADD CONSTRAINT savepoints_design_turn_fkey FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id);
+    ADD CONSTRAINT savepoints_design_turn_fkey FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7100,30 +6975,6 @@ ALTER TABLE ONLY cortex.sequences
 
 ALTER TABLE ONLY cortex.sequences
     ADD CONSTRAINT sequences_design_owned_by_fkey FOREIGN KEY (design, owned_by) REFERENCES cortex.columns(design, id) ON DELETE SET NULL (owned_by) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: sort_fields sort_fields_design_column_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
---
-
-ALTER TABLE ONLY cortex.sort_fields
-    ADD CONSTRAINT sort_fields_design_column_fkey FOREIGN KEY (design, "column") REFERENCES cortex.columns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: sort_fields sort_fields_design_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
---
-
-ALTER TABLE ONLY cortex.sort_fields
-    ADD CONSTRAINT sort_fields_design_fkey FOREIGN KEY (design) REFERENCES cortex.designs(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: sort_fields sort_fields_design_object_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: sf_owner
---
-
-ALTER TABLE ONLY cortex.sort_fields
-    ADD CONSTRAINT sort_fields_design_object_fkey FOREIGN KEY (design, object) REFERENCES cortex.objects(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7155,7 +7006,7 @@ ALTER TABLE ONLY cortex.source_reads
 --
 
 ALTER TABLE ONLY cortex.source_reads
-    ADD CONSTRAINT source_reads_design_turn_fkey FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id);
+    ADD CONSTRAINT source_reads_design_turn_fkey FOREIGN KEY (design, turn) REFERENCES cortex.turns(design, id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7195,7 +7046,7 @@ ALTER TABLE ONLY cortex.turns
 --
 
 ALTER TABLE ONLY cortex.turns
-    ADD CONSTRAINT turns_design_parent_fkey FOREIGN KEY (design, parent) REFERENCES cortex.turns(design, id);
+    ADD CONSTRAINT turns_design_parent_fkey FOREIGN KEY (design, parent) REFERENCES cortex.turns(design, id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7203,7 +7054,7 @@ ALTER TABLE ONLY cortex.turns
 --
 
 ALTER TABLE ONLY cortex.turns
-    ADD CONSTRAINT turns_design_undoes_fkey FOREIGN KEY (design, undoes) REFERENCES cortex.turns(design, id);
+    ADD CONSTRAINT turns_design_undoes_fkey FOREIGN KEY (design, undoes) REFERENCES cortex.turns(design, id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -7937,15 +7788,6 @@ GRANT SELECT ON TABLE cortex.schema_migrations TO sf_reader;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.sequences TO sf_service;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.sequences TO sf_agent;
 GRANT SELECT ON TABLE cortex.sequences TO sf_reader;
-
-
---
--- Name: TABLE sort_fields; Type: ACL; Schema: cortex; Owner: sf_owner
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.sort_fields TO sf_service;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE cortex.sort_fields TO sf_agent;
-GRANT SELECT ON TABLE cortex.sort_fields TO sf_reader;
 
 
 --

@@ -42,7 +42,7 @@ INSERT INTO cortex.option_declarations (id, engine, part, name, value_type, null
   ('postgresql/indexes/parent', 'postgresql', 'indexes', 'parent', 'string', true, NULL, 'the partitioned table''s index it is part of; NULL for none'),
   ('postgresql/namespaces/owner', 'postgresql', 'namespaces', 'owner', 'string', true, NULL, 'its owner, by role name; NULL for the one the schema is written as'),
   ('postgresql/namespaces/acl', 'postgresql', 'namespaces', 'acl', 'json', true, NULL, 'its privileges, as the server writes them (["postgres=UC/postgres"]); NULL for the defaults'),
-  ('postgresql/objects/persistence', 'postgresql', 'objects', 'persistence', 'string', false, '["permanent", "unlogged", "temporary"]', 'how it is kept'),
+  ('postgresql/objects/persistence', 'postgresql', 'objects', 'persistence', 'string', false, '["permanent", "unlogged"]', 'how it is kept'),
   ('postgresql/objects/options', 'postgresql', 'objects', 'options', 'json', true, NULL, 'its storage options as the server writes them (["fillfactor=70"]); NULL for none'),
   ('postgresql/objects/access_method', 'postgresql', 'objects', 'access_method', 'string', true, NULL, 'its table access method (heap); NULL for the default'),
   ('postgresql/objects/owner', 'postgresql', 'objects', 'owner', 'string', true, NULL, 'its owner, by role name; NULL for the one the schema is written as'),

@@ -7,12 +7,12 @@ CREATE TABLE cortex.locked_versions (
   hash        TEXT NOT NULL CHECK (length(hash) = 64),                                                       -- SHA-256 of the version's design, hex: the design at that turn always hashes to it
   message     TEXT NOT NULL CHECK (length(message) >= 1),                                                    -- what the version is, in a sentence
   locked_by   TEXT NOT NULL,                                                                                 -- who locked it
-  locked_at   TIMESTAMPTZ NOT NULL,                                                                          -- when
+  locked_at   TIMESTAMPTZ NOT NULL DEFAULT now(),                                                            -- when
   git_commit  TEXT CHECK (git_commit IS NULL OR length(git_commit) IN (40, 64)),                             -- the commit its definitions were written in; NULL outside a git repository
   git_tag     TEXT,                                                                                          -- the tag of that commit; NULL outside a git repository
   UNIQUE (design, number) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
-  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id)
+  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id) DEFERRABLE INITIALLY DEFERRED
 );
 
 CREATE INDEX locked_versions_turn ON cortex.locked_versions (design, turn);

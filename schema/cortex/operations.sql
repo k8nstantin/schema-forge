@@ -7,7 +7,7 @@ CREATE TABLE cortex.operations (
   summary  TEXT NOT NULL CHECK (length(summary) >= 1),                                                    -- what it did, in one line
   at       TIMESTAMPTZ NOT NULL,                                                                          -- when it was committed
   UNIQUE (design, id),
-  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id)
+  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id) DEFERRABLE INITIALLY DEFERRED
 );
 
 CREATE INDEX operations_turn ON cortex.operations (design, turn);

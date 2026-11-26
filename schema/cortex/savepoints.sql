@@ -5,10 +5,10 @@ CREATE TABLE cortex.savepoints (
   name     TEXT NOT NULL CHECK (length(name) >= 1),                                                       -- as people call it
   turn     UUID NOT NULL,                                                                                 -- the turn it marks
   made_by  TEXT NOT NULL CHECK (length(made_by) >= 1),                                                    -- who named it
-  made_at  TIMESTAMPTZ NOT NULL,                                                                          -- when
+  made_at  TIMESTAMPTZ NOT NULL DEFAULT now(),                                                            -- when
   UNIQUE (design, name) DEFERRABLE INITIALLY DEFERRED,
   UNIQUE (design, id),
-  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id)
+  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id) DEFERRABLE INITIALLY DEFERRED
 );
 
 CREATE INDEX savepoints_turn ON cortex.savepoints (design, turn);

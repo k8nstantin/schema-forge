@@ -3,7 +3,7 @@ CREATE TABLE cortex.indexes (
   id         UUID NOT NULL PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),               -- UUIDv7, made with the row
   design     UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,  -- the design it belongs to
   object     UUID NOT NULL,                                                                                 -- the table it is on
-  position   INTEGER NOT NULL CHECK (position >= 1),                                                        -- its place among the table's indexes: the server's order, which information_schema does not give
+  position   NUMERIC NOT NULL CHECK (position > 0),                                                         -- its place among the table's indexes: the server's order, which information_schema does not give; an order key: one put between two takes their midpoint, so nothing is renumbered
   name       TEXT NOT NULL CHECK (length(name) >= 1),                                                       -- its name
   "unique"   BOOLEAN NOT NULL DEFAULT false,                                                                -- true for a unique index
   method     TEXT,                                                                                          -- how it is built, in the engine's words (BTREE, FULLTEXT, SPATIAL, gin); NULL for the engine's default
@@ -22,7 +22,7 @@ COMMENT ON TABLE cortex.indexes IS 'an index of a table, in the order the table 
 COMMENT ON COLUMN cortex.indexes.id IS 'UUIDv7, made with the row';
 COMMENT ON COLUMN cortex.indexes.design IS 'the design it belongs to';
 COMMENT ON COLUMN cortex.indexes.object IS 'the table it is on';
-COMMENT ON COLUMN cortex.indexes.position IS 'its place among the table''s indexes: the server''s order, which information_schema does not give';
+COMMENT ON COLUMN cortex.indexes.position IS 'its place among the table''s indexes: the server''s order, which information_schema does not give; an order key: one put between two takes their midpoint, so nothing is renumbered';
 COMMENT ON COLUMN cortex.indexes.name IS 'its name';
 COMMENT ON COLUMN cortex.indexes."unique" IS 'true for a unique index';
 COMMENT ON COLUMN cortex.indexes.method IS 'how it is built, in the engine''s words (BTREE, FULLTEXT, SPATIAL, gin); NULL for the engine''s default';
