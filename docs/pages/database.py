@@ -71,7 +71,7 @@ model_svg = g.render()
 # --- 3. what an object holds -------------------------------------------------------------------------------------
 g = Svg(1280, 620, "What an object holds: one row at most per object for what it is, and the lists of its parts.")
 one = ["views", "routines", "triggers", "sequences", "domains", "partitionings"]
-many = ["indexes", "sort_fields", "enum_values"]
+many = ["indexes", "enum_values"]
 xs1 = {nm: 40 + i * 205 for i, nm in enumerate(one)}
 for nm in one: tbox(g, C(nm), xs1[nm], 150, 160)
 tbox(g, C("objects"), 565, 300, 150, 40, "pri")
@@ -164,7 +164,7 @@ undrawn = [(a, c, b) for a, c, b in edges if (a, c) not in drawn]
 GROUPS = [("cortex", "The model", ["designs", "namespaces", "objects", "columns", "column_identities",
                                     "constraints", "constraint_columns", "object_tags", "dependencies", "verbatim_statements",
                                     "required_extensions"]),
-          ("cortex", "What an object holds", ["indexes", "index_parts", "partitionings", "partitions", "sort_fields", "views", "sequences",
+          ("cortex", "What an object holds", ["indexes", "index_parts", "partitionings", "partitions", "views", "sequences",
                                               "enum_values", "domains", "routines", "routine_parameters", "triggers"]),
           ("cortex", "The log", ["branches", "turns", "operations", "row_changes", "savepoints", "locked_versions"]),
           ("cortex", "What each engine declares", ["engine_versions", "engine_features", "object_kinds", "option_declarations", "catalog_sources"]),

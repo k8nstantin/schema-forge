@@ -23,20 +23,19 @@ g.containers = set()
 layers_svg = g.render()
 
 # --- an Iceberg table, in the cortex and in engine_iceberg -----------------------------------------------------------
-g = Svg(1040, 470, "An Iceberg table: what every engine shares lands in the cortex; what only Iceberg has lands in engine_iceberg, each row tied to its cortex row.")
+g = Svg(1040, 470, "An Iceberg table: what every engine shares lands in the cortex; what only Iceberg says of a row is that row's declared options; what is many rows of its own lands in engine_iceberg.")
 g.band(10, 10, 420, 450, "cortex: shared")
 g.band(560, 10, 470, 450, "engine_iceberg: only Iceberg (a sketch)")
 cortex = [("objects", 50, "objects", "the table, the view"), ("columns", 130, "columns", "id, name, type, null"),
-          ("keys", 210, "constraints", "identifier: the upsert key"), ("pf", 290, "partitionings", "day(ts), bucket[16](id)"),
-          ("sort", 370, "sort_fields", "the sort order")]
+          ("keys", 210, "constraints", "identifier: the upsert key"), ("pf", 290, "partitionings", "day(ts), bucket[16](id)")]
 for k, y, t, s in cortex:
     g.box(k, 40, y, 360, 56, t, s, cls="pri")
-ice = [("topt", 50, "tables", "format version, location, merge-on-read, properties"), ("vrep", 130, "view_representations", "one SQL per dialect"),
-       ("copt", 210, "columns", "field id, initial and write defaults"),
-       ("nest", 290, "nested_fields", "struct, list, map: a tree with field ids")]
+ice = [("topt", 50, "objects' declared options", "format version, location, merge-on-read"), ("sort", 130, "sort_order", "the order files are written in"),
+       ("vrep", 210, "view_representations", "one SQL per dialect"), ("copt", 290, "columns' declared options", "field id, initial and write defaults"),
+       ("nest", 370, "nested_fields", "struct, list, map: a tree with field ids")]
 for k, y, t, s in ice:
     g.box(k, 600, y, 400, 56, t, s, cls="eng")
-for a, b in [("topt", "objects"), ("vrep", "objects"), ("copt", "columns"), ("nest", "columns")]:
+for a, b in [("topt", "objects"), ("vrep", "objects"), ("copt", "columns"), ("nest", "columns"), ("sort", "objects")]:
     ax, ay, aw, ah = g.boxes[a]; bx, by, bw, bh = g.boxes[b]
     g.parts.append(f'<line x1="{ax}" y1="{ay + ah / 2}" x2="{bx + bw + 2}" y2="{by + bh / 2}" class="ea" marker-end="url(#mka)"/>')
     g.lines.append((a, b, ax, ay + ah / 2, bx + bw + 2, by + bh / 2))
@@ -80,7 +79,7 @@ iceberg_cards = "".join(card(a, b) for a, b in [
     ("Format versions 1, 2 and 3", "Version 3 brings default values (initial and write), nanosecond timestamps, variant, geometry and geography, row lineage and deletion vectors; each feature marked with its version. Format 4 will be new rows in the same crate."),
     ("Field ids, not names", "Iceberg tracks every column, and every field nested in it, by an id that never changes: that is how it renames safely. %PRODUCT% keeps the ids, so a design evolves the way Iceberg evolves."),
     ("Hidden partitioning", "Partitions are transforms of columns (<code>day(ts)</code>, <code>bucket[16](id)</code>, <code>truncate[4](code)</code>), kept in the cortex's partition fields, so the canvas and the rules read them like any engine's."),
-    ("Identifier fields and the sort order", "The upsert key CDC needs, and the order files are written in: both in the cortex, as the shared layout has a place for each."),
+    ("Identifier fields and the sort order", "The upsert key CDC needs is the cortex's (a constraint, as every engine's key is); the order files are written in is Iceberg's own, added with the Iceberg engine, never a change to 1.0's tables."),
     ("Read from where Iceberg lives", "Spark SQL and Trino DDL, a table's <code>metadata.json</code>, and a live catalog (REST, Glue, Hive) through a connection; written back as DDL or table metadata."),
     ("The CDC target", "The other end of a pipeline: a MySQL or PostgreSQL source designed into Iceberg tables by rules, with every type that would be lost, widened or approximated named."),
 ])
