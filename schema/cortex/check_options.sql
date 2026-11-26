@@ -42,7 +42,18 @@ BEGIN
         OR dec."until" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec."until")
         OR l.about IS NOT NULL))
    LIMIT 1;
-  IF NOT FOUND THEN RETURN NULL; END IF;
+  IF NOT FOUND THEN
+    -- a value of one of the part's own columns the design's flavor lacks (CockroachDB's deferrable constraints)
+    SELECT d.flavor, l.field, l.value, l.about INTO bad
+      FROM new_rows r JOIN cortex.designs d ON d.id = r.design
+      JOIN cortex.flavor_limits l ON l.flavor = d.flavor AND l.what = 'field' AND l.severity = 'refused' AND l.part = TG_TABLE_NAME
+     WHERE to_jsonb(r) -> l.field = l.value
+     LIMIT 1;
+    IF FOUND THEN
+      RAISE EXCEPTION '% lacks % = %: %', bad.flavor, bad.field, bad.value, bad.about USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NULL;
+  END IF;
   IF bad.shape <> 'object' THEN
     RAISE EXCEPTION 'options must be an object, not %', bad.shape USING ERRCODE = 'check_violation';
   ELSIF bad.did IS NULL THEN

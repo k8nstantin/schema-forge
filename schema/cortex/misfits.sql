@@ -30,6 +30,13 @@ BEGIN
     WHERE o.design = p_design AND (l.id IS NOT NULL OR k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor
        OR k.since IS NOT NULL AND at < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.since)
        OR k."until" IS NOT NULL AND at > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k."until"));
+  -- a value of a part's own column the flavor lacks (CockroachDB's deferrable constraints)
+  FOR p IN SELECT DISTINCT l.part FROM cortex.flavor_limits l WHERE l.flavor = p_flavor AND l.what = 'field' LOOP
+    RETURN QUERY EXECUTE format($q$
+      SELECT %1$L::text, r.id, 'field'::text, l.field || ' = ' || l.value::text, l.severity, l.about, l.source
+        FROM cortex.%1$I r JOIN cortex.flavor_limits l ON l.flavor = $2 AND l.what = 'field' AND l.part = %1$L
+       WHERE r.design = $1 AND to_jsonb(r) -> l.field = l.value$q$, p) USING p_design, p_flavor;
+  END LOOP;
   -- every option of every part: one the target version does not have, another flavor's alone, or one the flavor lacks
   FOR p IN SELECT DISTINCT d.part FROM cortex.option_declarations d WHERE d.engine = e LOOP
     RETURN QUERY EXECUTE format($q$

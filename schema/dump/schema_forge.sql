@@ -167,7 +167,18 @@ BEGIN
         OR dec."until" IS NOT NULL AND v.position > (SELECT u.position FROM cortex.engine_versions u WHERE u.id = dec."until")
         OR l.about IS NOT NULL))
    LIMIT 1;
-  IF NOT FOUND THEN RETURN NULL; END IF;
+  IF NOT FOUND THEN
+    -- a value of one of the part's own columns the design's flavor lacks (CockroachDB's deferrable constraints)
+    SELECT d.flavor, l.field, l.value, l.about INTO bad
+      FROM new_rows r JOIN cortex.designs d ON d.id = r.design
+      JOIN cortex.flavor_limits l ON l.flavor = d.flavor AND l.what = 'field' AND l.severity = 'refused' AND l.part = TG_TABLE_NAME
+     WHERE to_jsonb(r) -> l.field = l.value
+     LIMIT 1;
+    IF FOUND THEN
+      RAISE EXCEPTION '% lacks % = %: %', bad.flavor, bad.field, bad.value, bad.about USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NULL;
+  END IF;
   IF bad.shape <> 'object' THEN
     RAISE EXCEPTION 'options must be an object, not %', bad.shape USING ERRCODE = 'check_violation';
   ELSIF bad.did IS NULL THEN
@@ -317,6 +328,13 @@ BEGIN
     WHERE o.design = p_design AND (l.id IS NOT NULL OR k.flavor IS NOT NULL AND k.flavor IS DISTINCT FROM p_flavor
        OR k.since IS NOT NULL AND at < (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k.since)
        OR k."until" IS NOT NULL AND at > (SELECT v.position FROM cortex.engine_versions v WHERE v.id = k."until"));
+  -- a value of a part's own column the flavor lacks (CockroachDB's deferrable constraints)
+  FOR p IN SELECT DISTINCT l.part FROM cortex.flavor_limits l WHERE l.flavor = p_flavor AND l.what = 'field' LOOP
+    RETURN QUERY EXECUTE format($q$
+      SELECT %1$L::text, r.id, 'field'::text, l.field || ' = ' || l.value::text, l.severity, l.about, l.source
+        FROM cortex.%1$I r JOIN cortex.flavor_limits l ON l.flavor = $2 AND l.what = 'field' AND l.part = %1$L
+       WHERE r.design = $1 AND to_jsonb(r) -> l.field = l.value$q$, p) USING p_design, p_flavor;
+  END LOOP;
   -- every option of every part: one the target version does not have, another flavor's alone, or one the flavor lacks
   FOR p IN SELECT DISTINCT d.part FROM cortex.option_declarations d WHERE d.engine = e LOOP
     RETURN QUERY EXECUTE format($q$
@@ -1542,6 +1560,8 @@ CREATE TABLE cortex.flavor_limits (
     kind text,
     option text,
     value jsonb,
+    part text,
+    field text,
     name text,
     version text,
     since text,
@@ -1552,13 +1572,15 @@ CREATE TABLE cortex.flavor_limits (
     CONSTRAINT flavor_limits_about_check CHECK ((length(about) >= 1)),
     CONSTRAINT flavor_limits_check CHECK (((what = 'kind'::text) = (kind IS NOT NULL))),
     CONSTRAINT flavor_limits_check1 CHECK (((what = ANY (ARRAY['option'::text, 'value'::text])) = (option IS NOT NULL))),
-    CONSTRAINT flavor_limits_check2 CHECK (((what = 'value'::text) = (value IS NOT NULL))),
-    CONSTRAINT flavor_limits_check3 CHECK (((what = ANY (ARRAY['function'::text, 'extension'::text])) = (name IS NOT NULL))),
-    CONSTRAINT flavor_limits_check4 CHECK (((what = 'version'::text) = (version IS NOT NULL))),
+    CONSTRAINT flavor_limits_check2 CHECK (((what = ANY (ARRAY['value'::text, 'field'::text])) = (value IS NOT NULL))),
+    CONSTRAINT flavor_limits_check3 CHECK (((what = 'field'::text) = ((part IS NOT NULL) AND (field IS NOT NULL)))),
+    CONSTRAINT flavor_limits_check4 CHECK (((what = ANY (ARRAY['function'::text, 'extension'::text])) = (name IS NOT NULL))),
+    CONSTRAINT flavor_limits_check5 CHECK (((what = 'version'::text) = (version IS NOT NULL))),
+    CONSTRAINT flavor_limits_field_check CHECK ((field ~ '^[a-z_]+$'::text)),
     CONSTRAINT flavor_limits_name_check CHECK ((length(name) >= 1)),
     CONSTRAINT flavor_limits_severity_check CHECK ((severity = ANY (ARRAY['refused'::text, 'warned'::text]))),
     CONSTRAINT flavor_limits_source_check CHECK ((source ~ '^https://'::text)),
-    CONSTRAINT flavor_limits_what_check CHECK ((what = ANY (ARRAY['kind'::text, 'option'::text, 'value'::text, 'function'::text, 'extension'::text, 'version'::text])))
+    CONSTRAINT flavor_limits_what_check CHECK ((what = ANY (ARRAY['kind'::text, 'option'::text, 'value'::text, 'field'::text, 'function'::text, 'extension'::text, 'version'::text])))
 );
 
 
@@ -1568,7 +1590,7 @@ ALTER TABLE cortex.flavor_limits OWNER TO sf_owner;
 -- Name: TABLE flavor_limits; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON TABLE cortex.flavor_limits IS 'what a flavor lacks of its engine, one fact a row, each with where it was read: a kind of object, an option, one value of an option, a function a routine may call, an extension, or a version. The guard refuses what a design''s flavor lacks (severity refused); cortex.misfits lists both kinds for a design and a target.';
+COMMENT ON TABLE cortex.flavor_limits IS 'what a flavor lacks of its engine, one fact a row, each with where it was read: a kind of object, an option, one value of an option, one value of a cortex column (CockroachDB''s deferrable constraints), a function a routine may call, an extension, or a version. The guard refuses what a design''s flavor lacks (severity refused); cortex.misfits lists both kinds for a design and a target.';
 
 
 --
@@ -1610,7 +1632,21 @@ COMMENT ON COLUMN cortex.flavor_limits.option IS 'the option it lacks, or whose 
 -- Name: COLUMN flavor_limits.value; Type: COMMENT; Schema: cortex; Owner: sf_owner
 --
 
-COMMENT ON COLUMN cortex.flavor_limits.value IS 'the option''s value it lacks (what value): "MyISAM"; NULL otherwise';
+COMMENT ON COLUMN cortex.flavor_limits.value IS 'the option''s value it lacks (what value): "MyISAM", or the column''s (what field): true; NULL otherwise';
+
+
+--
+-- Name: COLUMN flavor_limits.part; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.part IS 'the part of the model whose column it lacks a value of (what field): constraints; NULL otherwise';
+
+
+--
+-- Name: COLUMN flavor_limits.field; Type: COMMENT; Schema: cortex; Owner: sf_owner
+--
+
+COMMENT ON COLUMN cortex.flavor_limits.field IS 'the column of that part (what field): deferrable; its value is value; NULL otherwise';
 
 
 --

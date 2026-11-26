@@ -143,7 +143,7 @@ Q = {
     # a subscription's connection never with its password: anything password= is cut from it as it is read
     "subscription": ("database", "sub", """SELECT s.subname AS key, NULL AS schema, s.subname AS name, '' AS signature,
         pg_get_userbyid(s.subowner) AS owner, NULL::text[] AS acl, shobj_description(s.oid, 'pg_subscription') AS comment,
-        jsonb_build_object('connection', regexp_replace(s.subconninfo, '\s*password\s*=\s*(''[^'']*''|\S+)', '', 'gi'),
+        jsonb_build_object('connection', regexp_replace(s.subconninfo, '\\s*password\\s*=\\s*(''[^'']*''|\\S+)', '', 'gi'),
           'publications', to_jsonb(s.subpublications), 'enabled', s.subenabled, 'binary', s.subbinary, 'slot_name', s.subslotname::text,
           'synchronous_commit', s.subsynccommit, 'stream', s.substream::text, 'two_phase', s.subtwophasestate::text,
           'disable_on_error', s.subdisableonerr) AS opts, '{}'::jsonb AS refs
