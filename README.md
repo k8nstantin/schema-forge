@@ -101,12 +101,15 @@ You choose a schema's database first, and everything follows it. SchemaForge is 
   operations that change them, its rules, its SQL, and reading it in from a dump, definition files or the live
   database all belong to its **engine**: one Rust crate per database, its versions inside it.
 
-Every engine stores its data in **one shared layout** (keys, checks, indexes, partitioning, defaults, identity…) and
-**declares its own options** as data, so no engine grows a storage of its own. Engines share nothing with each other
-but that interface: a problem in one is found in that one and never breaks another. People **add onto** an engine
-with add-ons (PostGIS types, a company's conventions) without forking it. A **conformance kit** checks every engine,
-and **CI checks the architecture itself**: a database named outside its engine, or one engine depending on another,
-fails the build. **Adding a database needs no change to the core.** Every decision and why:
+The **cortex** is thin: it holds only what every database shares (designs, their history, and the namespaces,
+tables, columns, indexes, keys and dependencies the canvas and the agent read). Everything else is the **plugin's**,
+in its own schema `engine_<engine>`, as typed columns with checks and foreign keys: no JSON options, no table of
+declarations. Every id is a **UUIDv7** made with its row. **Managed services are subsets of their engine's plugin:** the MySQL
+plugin carries Percona Server, Cloud SQL, Amazon RDS and Amazon Aurora; the PostgreSQL plugin carries Cloud SQL, Amazon
+RDS, Amazon Aurora and AlloyDB, each holding only what the service refuses, limits or adds. Spanner and CockroachDB
+are plugins of their own. Plugins share nothing with each other but the
+cortex: a problem in one is found in that one and never breaks another. **Adding a database needs no change to the
+core.** Every decision and why:
 [docs/engines.xml](https://k8nstantin.github.io/schema-forge/doc-engines.html); how to write one: [docs/writing-an-engine.xml](https://k8nstantin.github.io/schema-forge/doc-writing-an-engine.html).
 
 ## How it works
@@ -141,7 +144,6 @@ The prototype's MCP tools, which the product keeps:
 **Read the design**, with its diagrams, every table and every decision:
 [Start here](https://k8nstantin.github.io/schema-forge/start.html) ·
 [Engines](https://k8nstantin.github.io/schema-forge/engines.html) (every database a plugin; Iceberg; converting both ways) ·
-[The database](https://k8nstantin.github.io/schema-forge/database.html) ·
 [The owner template](https://k8nstantin.github.io/schema-forge/template.html) (how an engine or a feature adds its tables) ·
 [The build spec](https://k8nstantin.github.io/schema-forge/build-spec.html) (how coding agents build it). Every page is generated from the repository
 ([docs/pages/](docs/pages/)).
@@ -166,10 +168,10 @@ its relationships (what reads and writes what, what a change would reach), its m
 by meaning) and its problems (each a finding with its evidence). Ask in plain words, on the canvas or through your agent.
 
 The database is **designed first and locked**, so coding agents fall into it instead of drifting from it
-([the Database page](docs/pages/database.html), [docs/store.xml](https://k8nstantin.github.io/schema-forge/doc-store.html)):
+([docs/store.xml](https://k8nstantin.github.io/schema-forge/doc-store.html)):
 
-- **Every owner in its own namespace.** `cortex` is what every engine shares (objects, columns, constraints, indexes,
-  dependencies, the log); each engine brings `engine_<id>` (`engine_mysql.tables`); each future feature brings its own
+- **Every owner in its own namespace.** `cortex` is thin: what every engine shares (objects, columns, keys, indexes,
+  dependencies, the log), every id a UUIDv7; each engine and managed service brings `engine_<id>` (`engine_mysql.tables`); each future feature brings its own
   (`insight`, `semantic`, `rules`, `pipelines`). Nothing reaches into another owner's tables.
 - **The database enforces it.** Every reference is a foreign key, every value typed and checked, every column documented
   in the database itself. A rule a foreign key cannot state is a view of the rows breaking it, which PostgreSQL turns into
@@ -187,19 +189,23 @@ pull request, which a coding agent builds from and nothing else.
 
 ## Where it stands
 
-**The prototype is done.** Everything in [See it](#see-it) runs in it: the canvas, the agent's MCP, turns and undo,
-the rules engine with hard and soft rules, exceptions, goals, compatibility and CDC packs, agent-proposed rules with
-verification, reading pg_dumps and Iceberg Spark SQL, and writing PostgreSQL and Iceberg SQL.
+**The prototype is done** (branch `prototype`): the canvas, the agent's MCP, turns and undo, the rules engine,
+reading pg_dumps and Iceberg Spark SQL, and writing PostgreSQL and Iceberg SQL.
 
-**The product is being rebuilt now**, in the open, on the design in [docs/engines.xml](https://k8nstantin.github.io/schema-forge/doc-engines.html): every
-database a plugin, Apache DataFusion at the center, the architecture checked by CI. Built so far: the model, the
-engine interface with its registry and conformance kit, the layout every engine fills, the architecture check, and
-the first engine, [MySQL](https://k8nstantin.github.io/schema-forge/doc-mysql.html): dumps, DDL and the live database read, every kind of object and
-clause, written back in a form that loads into MySQL 8.0 to 26.10. Next, in the order of
-[the build spec](specs/root.xml): the spec check, the tables interface, the registry of engines and the guard that shared code names no engine's word, MySQL's tables, MySQL's live read again (5.7 added, read by the person's choice, with the server's usage), PostgreSQL built for the store, the store, the operations, the server and the MCP, the
-canvas; and the engines: Apache Iceberg next, then PostgreSQL. Then schema management: drift against live databases,
-and migrations checked before they run. Follow it in the [Engine plugins](https://github.com/k8nstantin/schema-forge/milestone/7)
-milestone.
+**The product is being rebuilt from the spec.** On 2026-11-27 every line of code on `main` was removed, keeping
+only the spec (`specs/`, `docs/`, this site and this README). It is rebuilt in this order, one objective at a time,
+each with its own issue, ETA, branch and PR, merged before the next starts and done only when its proofs pass in CI:
+
+| # | Objective | Issue | ETA (UTC) |
+|---|---|---|---|
+| 1 | The spec and README: this order, every engine a plugin with its subsets, the thin cortex, UUIDv7 everywhere | [#138](https://github.com/k8nstantin/schema-forge/issues/138) | 2026-11-27 06:00 |
+| 2 | The thin cortex: the shared model, the install script, CI running the proofs | [#139](https://github.com/k8nstantin/schema-forge/issues/139) | 2026-11-28 06:00 |
+| 3 | The MySQL plugin: MySQL 5.7, 8.0, 8.4, 9.7, and its subsets Percona Server, Cloud SQL, RDS and Aurora | [#140](https://github.com/k8nstantin/schema-forge/issues/140) | 2026-11-30 18:00 |
+| 4 | The PostgreSQL plugin: PostgreSQL 15 to 18, and its subsets Cloud SQL, RDS, Aurora and AlloyDB | [#141](https://github.com/k8nstantin/schema-forge/issues/141) | 2026-12-03 06:00 |
+| 5 | The Spanner plugin: both dialects | [#145](https://github.com/k8nstantin/schema-forge/issues/145) | 2026-12-04 06:00 |
+| 6 | The CockroachDB plugin | [#146](https://github.com/k8nstantin/schema-forge/issues/146) | 2026-12-05 06:00 |
+
+Apache Iceberg, BigQuery, Snowflake, ClickHouse and others come after them.
 
 To try the prototype:
 

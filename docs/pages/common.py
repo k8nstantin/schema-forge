@@ -197,13 +197,13 @@ class Svg:
 
 
 # --- the look and the shared head ---------------------------------------------------------------------------------
-PAGES = [("home", "Start here"), ("engines", "Engines"), ("database", "Database"), ("template", "Owner Template"), ("build-spec", "Build Spec"), ("contribute", "Contribute")]
+PAGES = [("home", "Start here"), ("engines", "Engines"), ("template", "Owner Template"), ("build-spec", "Build Spec"), ("contribute", "Contribute")]
 
 
 def _parameters():
-    """The product's parameters, read from their seed: the one place a name or a link is written."""
-    text = open(f"{REPO}/schema/cortex/seeds/workspace_parameters.sql", encoding="utf-8").read()
-    return {k: json.loads(v.replace("''", "'")) for k, v in re.findall(r"\('([a-z_.]+)', '((?:[^']|'')*)', ", text)}
+    """The product's parameters: the one place a name or a link is written (their seed is rebuilt with the cortex, #139)."""
+    return {"product.name": "SchemaForge", "product.repository": "https://github.com/k8nstantin/schema-forge",
+            "product.site": "https://k8nstantin.github.io/schema-forge/", "product.branch": "main"}
 
 
 PARAMS = _parameters()
@@ -220,7 +220,7 @@ def task_title(task):
     return f"{task.get('id')} · {task.get('name')}: {task.get('title')}"
 
 
-FILES = {"site": "index.html", "home": "start.html", "database": "database.html", "template": "template.html",
+FILES = {"site": "index.html", "home": "start.html", "template": "template.html",
          "build-spec": "build-spec.html", "engines": "engines.html", "contribute": "contribute.html"}
 
 
