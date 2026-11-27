@@ -30,7 +30,7 @@ g.band(10, 328, 1020, 112, "")
 g.text(1018, 346, "store: PostgreSQL 18, database schema_forge", "cap", "end")
 g.box("cortex", 150, 372, 220, 46, "cortex", "plugs, history, model", cls="pri", href="#store")
 g.box("emysql", 410, 372, 220, 46, "engine_mysql", "MySQL's own, 24 tables", cls="pri", href="#store")
-g.box("ui", 670, 372, 200, 46, "ui", "the canvas's state (o7)", cls="pri", href="#store")
+g.box("ui", 670, 372, 200, 46, "ui", "canvas state: #158 the canvas", cls="pri", href="#store")
 for a, b in [("canvas", "serve"), ("agent", "mcp"), ("serve", "core"), ("mcp", "core"), ("core", "store"), ("core", "engines"),
              ("store", "cortex"), ("query", "cortex"), ("engines", "emysql")]:
     g.arrow(a, b)
