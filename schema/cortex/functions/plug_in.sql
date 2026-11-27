@@ -3,9 +3,11 @@
 -- plugin's row in cortex.plugins, its tables and its plugin_tables rows are loaded. cortex.plug_in('cortex') fits the
 -- cortex itself.
 
-CREATE FUNCTION cortex.owns_design(d uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, cortex AS $$
+-- the fence's check: is the design of the engine whose plugin's account is asking; the policy passes the asking
+-- account (current_user where the policy runs), since inside this function current_user is the cortex's owner
+CREATE FUNCTION cortex.owns_design(design uuid, asking name) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, cortex AS $$
   SELECT EXISTS (SELECT 1 FROM cortex.designs g JOIN cortex.engines e ON e.id = g.engine JOIN cortex.plugins p ON p.id = e.plugin
-                  WHERE g.id = d AND p.account = current_user)
+                  WHERE g.id = owns_design.design AND p.account = owns_design.asking)
 $$;
 
 -- every table of a plugin's namespace is registered, of a design, keyed (design, id), and extends what it says
@@ -64,7 +66,7 @@ BEGIN
     EXECUTE format('DROP POLICY IF EXISTS everyone ON %I.%I', ns, t);
     EXECUTE format('CREATE POLICY everyone ON %I.%I TO sf_service, sf_agent, sf_reader USING (true) WITH CHECK (true)', ns, t);
     EXECUTE format('DROP POLICY IF EXISTS own_engine ON %I.%I', ns, t);
-    EXECUTE format('CREATE POLICY own_engine ON %I.%I TO PUBLIC USING (cortex.owns_design(%I)) WITH CHECK (cortex.owns_design(%I))', ns, t, key, key);
+    EXECUTE format('CREATE POLICY own_engine ON %I.%I TO PUBLIC USING (cortex.owns_design(%I, current_user)) WITH CHECK (cortex.owns_design(%I, current_user))', ns, t, key, key);
   END LOOP;
 END $$;
 
@@ -93,7 +95,7 @@ BEGIN
     PERFORM cortex.fence('cortex', design_tables);
     EXECUTE 'REVOKE ALL ON ALL FUNCTIONS IN SCHEMA cortex FROM PUBLIC';
     EXECUTE 'GRANT EXECUTE ON FUNCTION cortex.undo(uuid) TO sf_service, sf_agent';
-    EXECUTE 'GRANT EXECUTE ON FUNCTION cortex.owns_design(uuid) TO sf_service, sf_agent, sf_reader';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION cortex.owns_design(uuid, name) TO sf_service, sf_agent, sf_reader';
     RETURN;
   END IF;
 
@@ -108,12 +110,12 @@ BEGIN
   EXECUTE 'GRANT INSERT, UPDATE, DELETE ON ' || (SELECT string_agg('cortex.' || m, ', ') FROM unnest(model) m) || format(' TO %I', p.account);
   EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO %I', p.namespace, p.account);
   EXECUTE format('GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO sf_service, sf_agent', p.namespace);
-  EXECUTE format('GRANT EXECUTE ON FUNCTION cortex.owns_design(uuid) TO %I', p.account);
+  EXECUTE format('GRANT EXECUTE ON FUNCTION cortex.owns_design(uuid, name) TO %I', p.account);
   PERFORM cortex.attach_history(p.namespace, tabs);
   PERFORM cortex.fence(p.namespace, tabs);
 END $$;
 
-COMMENT ON FUNCTION cortex.owns_design(uuid) IS 'true when the current account is the service account of the design''s engine''s plugin: the fence of row-level security';
+COMMENT ON FUNCTION cortex.owns_design(uuid, name) IS 'true when the current account is the service account of the design''s engine''s plugin: the fence of row-level security';
 COMMENT ON FUNCTION cortex.check_plugin(text) IS 'refuses a plugin whose namespace holds a table that is not a plug: unregistered, not of a design, not keyed (design, id), or not extending what it says';
 COMMENT ON FUNCTION cortex.attach_history(text, text[]) IS 'puts cortex.log_row on every table named, so every change of their rows is logged';
 COMMENT ON FUNCTION cortex.fence(text, text[]) IS 'row-level security on every table named: the app, the agent and the reader see every design, a plugin''s account only its engine''s';
