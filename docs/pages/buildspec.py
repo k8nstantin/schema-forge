@@ -28,20 +28,20 @@ g.text(20, 140, "nothing else is read: no earlier branch, no conversation, no pa
 read_svg = g.render()
 
 # --- the sequence and what each waits for -----------------------------------------------------------------------------
-g = Svg(1040, 150, "The tasks in their order, each waiting for the one before it to be merged.")
+g = Svg(1040, 150, "The objectives in their order, each waiting for the one before it to be merged.")
 for i, t in enumerate(seq):
     written = bool(t.get("file"))
-    g.box(t.get("id"), 16 + i * 128, 50, 112, 58, t.get("key") or t.get("id"), t.get("name"), cls="pri" if written else "band")
+    g.box(t.get("id"), 12 + i * 114, 50, 104, 58, t.get("key") or t.get("id"), t.get("name").replace(" plugin", ""), cls="pri" if written else "band")
 for t in seq:
     if t.get("depends"): g.arrow(t.get("depends"), t.get("id"))
-g.text(16, 30, "solid: its task file is written · dashed: written once its open decisions close", "lb")
+g.text(16, 30, "each an issue with its ETA, its own branch and PR, merged before the next starts (decision branch-per-plugin)", "lb")
 seq_svg = g.render()
 
 P = []; a = P.append
 a(f'''<div class="tb" role="group" aria-label="Title block">
-<div><span>Spec</span><b>root v{root.get("version")} · rules v{rules.get("version")}</b></div><div><span>Pull request</span><b><a href="%REPO%/pull/92" target="_blank" rel="noopener">#92 (draft)</a></b></div>
+<div><span>Spec</span><b>root v{root.get("version")} · rules v{rules.get("version")}</b></div><div><span>Objectives</span><b><a href="%REPO%/issues/138" target="_blank" rel="noopener">#138 to #146</a></b></div>
 <div><span>Tasks written</span><b>{len(tasks)} of {len(seq)}</b></div><div><span>Review</span><b>{len(ledger)} defects found and fixed</b></div><div><span>Date</span><b>{root.get("date")}</b></div></div>
-<h1>%PRODUCT% Build Spec <span class="draft">Draft 1</span></h1>
+<h1>%PRODUCT% Build Spec <span class="draft">The rebuild</span></h1>
 <p class="lede">What a coding agent builds each branch and pull request from: the root says where the truth is and how the work is done,
 the rules bind every task, and each task file says exactly what one build makes, how it is tested and what it may touch. Everything
 below is read from <code>specs/</code>.</p>''')
@@ -64,7 +64,7 @@ a('</dl></section>')
 a('<section id="decisions"><h2>Decisions</h2><div class="scroll"><table class="t"><thead><tr><th>Decision</th><th>Status</th><th>What</th></tr></thead><tbody>')
 for d in dec.findall("decision"):
     st = d.get("status")
-    pill = f'<span class="pill {"ok" if st == "confirmed" else "open"}">{st}{" · " + d.get("date") if st == "confirmed" else " · before " + d.get("closes-before")}</span>'
+    pill = f'<span class="pill {"ok" if st in ("confirmed", "replaced") else "open"}">{st}{" · " + d.get("date") if st in ("confirmed", "replaced") else " · before " + (d.get("closes-before") or "")}</span>'
     a(f'<tr><td><code>{e(d.get("id"))}</code></td><td>{pill}</td><td>{ticks(txt(d))}</td></tr>')
 a('</tbody></table></div></section>')
 a(f'<section id="rules"><h2>The rules <span class="path">specs/rules.xml</span></h2><p class="lede">Each binds every task; its breach names the guard that catches a break.</p><div class="rules">')

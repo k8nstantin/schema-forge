@@ -9,7 +9,8 @@ db, edges = database()
 L = links()
 
 # --- the crates, as cargo knows them ----------------------------------------------------------------------------------
-meta = json.loads(subprocess.run(["cargo", "metadata", "--format-version", "1", "--no-deps"], cwd=REPO, capture_output=True, text=True, check=True).stdout)
+meta = (json.loads(subprocess.run(["cargo", "metadata", "--format-version", "1", "--no-deps"], cwd=REPO, capture_output=True, text=True, check=True).stdout)
+        if os.path.exists(f"{REPO}/Cargo.toml") else {"packages": []})   # no crate until the objectives build them (decision code-reset)
 crates = []
 for p in meta["packages"]:
     role = (p.get("metadata") or {}).get("schema-forge", {}).get("role", "?")
@@ -58,29 +59,29 @@ g = Svg(1040, 190, "The pack is built from the repository: the schema folders an
 g.box("schema", 20, 30, 220, 50, "schema folders", "schema/, engines/*/schema", cls="pri")
 g.box("specs", 20, 110, 220, 50, "specs/", "root, rules, tasks, reviews", cls="pri")
 g.box("build", 380, 70, 200, 50, "docs/pages/build.py", "reads, never writes them")
-for i, (k, name) in enumerate([("home", "Start here"), ("database", "Database"), ("build-spec", "Build Spec")]):
+for i, (k, name) in enumerate([("home", "Start here"), ("engines", "Engines"), ("build-spec", "Build Spec")]):
     g.box(k, 720, 20 + i * 56, 200, 44, name, cls="box")
 g.arrow("schema", "build"); g.arrow("specs", "build")
-for k in ("home", "database", "build-spec"): g.arrow("build", k)
+for k in ("home", "engines", "build-spec"): g.arrow("build", k)
 pack_svg = g.render()
 
 ntab = sum(len(d["tables"]) for d in db.values())
 rows = "".join(
     f'<tr><td><code>{e(t.get("id"))}</code></td><td>{e(t.get("name"))}</td>'
     f'<td>{f"<a href=\"%REPO%/issues/{t.get(chr(107)+chr(101)+chr(121))[3:]}\" target=\"_blank\" rel=\"noopener\">{e(t.get(chr(107)+chr(101)+chr(121)))}</a>" if t.get("key") else "<span class=small>no issue yet</span>"}</td>'
-    f'<td>{"<span class=\"pill ok\">spec written · not built</span>" if t.get("file") else "<span class=\"pill open\">spec not written</span>"}</td>'
+    f'<td><span class="pill open">due {e(t.get("eta") or "")}</span></td>'
     f'<td class="small">{e(t.get("builds"))}</td></tr>' for t in seq)
 body = f"""
 <div class="tb" role="group" aria-label="Title block">
   <div><span>Product</span><b>%PRODUCT%</b></div><div><span>Repository</span><b><a href="%REPO%" target="_blank" rel="noopener">GitHub</a></b></div>
-  <div><span>Spec</span><b>Draft 1 · PR #92</b></div><div><span>Database</span><b>{ntab} tables</b></div><div><span>Date</span><b>{e(root.get("date"))}</b></div>
+  <div><span>Spec</span><b>root v{e(root.get("version"))} · the rebuild</b></div><div><span>Objectives</span><b>{len(seq)}, in order</b></div><div><span>Date</span><b>{e(root.get("date"))}</b></div>
 </div>
-<h1>%PRODUCT% <span class="draft">Draft 1</span></h1>
+<h1>%PRODUCT% <span class="draft">The rebuild</span></h1>
 <p class="lede">{e(" ".join("".join(root.find("identity").find("product").itertext()).split()))}</p>
 <div class="go">
   <a class="tile" href="{L.get('database', '#')}" target="_blank" rel="noopener"><b>Database</b><span>Every table of the cortex, the workspace and each engine: diagrams of every foreign key, then each table with its columns, keys and file.</span></a>
   <a class="tile" href="{L.get('build-spec', '#')}" target="_blank" rel="noopener"><b>Build Spec</b><span>The root, the rules, every task file a coding agent builds from, the decisions, and the review with every defect found.</span></a>
-  <a class="tile" href="%REPO%/pull/92" target="_blank" rel="noopener"><b>Pull request #92</b><span>The one branch the spec lives on while it is a draft: review it there.</span></a>
+  <a class="tile" href="%REPO%/issues/138" target="_blank" rel="noopener"><b>The objectives</b><span>Six, in order, each an issue with its ETA, its own branch and PR: #138, #139, #140, #141, #145, #146.</span></a>
 </div>
 <section id="stands"><h2>Where it stands</h2><p class="lede">The foundation is on main: the model, the engine interface with its kit, and the MySQL engine (pull request #89). Next is the sequence below, built one task at a time once the spec is merged.</p>
 <div class="scroll"><table class="t"><thead><tr><th>Task</th><th>What</th><th>Issue</th><th>State</th><th>Builds</th></tr></thead><tbody>{rows}</tbody></table></div></section>

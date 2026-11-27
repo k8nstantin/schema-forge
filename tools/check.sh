@@ -6,20 +6,19 @@ cd "$(dirname "$0")/.."
 
 step() { printf '\n== %s\n' "$*"; }
 
-step "Rust: format"
-cargo fmt --all --check
-
-step "Rust: lint"
-cargo clippy --workspace --all-targets --all-features --quiet -- -D warnings
-
-step "Rust: tests (the kit, the architecture check and the spec check among them)"
-if ! out=$(cargo test --workspace --all-features 2>&1); then
-    # Each failing test's own output, whole: what broke and where.
-    awk '/^---- .* stdout ----$/,/^failures:$/' <<<"$out" | head -150
-    grep -E '^error' <<<"$out" | head -20
-    exit 1
+# No Rust step until an objective brings a crate back (decision code-reset); each part runs when what it checks exists.
+if [ -f Cargo.toml ]; then
+    step "Rust: format, lint, tests"
+    cargo fmt --all --check
+    cargo clippy --workspace --all-targets --all-features --quiet -- -D warnings
+    cargo test --workspace --all-features --quiet
 fi
-grep -c '^test result: ok' <<<"$out" | xargs printf '%s test binaries passed\n'
+
+step "No private name in any tracked file"
+if git grep -nIiE 'core_manager|core_services|gdx_services|mq_services|sec_testdb|cr_debug|piaalcm|piaclws|GDXClients|ClientKey' -- . ':!site' ':!tools/check.sh'; then
+    echo "a private name is in a tracked file"; exit 1
+fi
+echo "none"
 
 step "XML for everything: Markdown only where a tool looks for it by name (specs/root.xml, decision xml-for-agents)"
 named='README.md CONTRIBUTING.md CODE_OF_CONDUCT.md AGENTS.md CLAUDE.md .github/copilot-instructions.md'

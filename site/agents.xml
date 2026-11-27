@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SchemaForge: the brief for coding agents, rendered from specs/brief.xml, specs/root.xml and specs/rules.xml; the one brief, as decision xml-for-agents says. -->
-<brief product="SchemaForge" repository="https://github.com/k8nstantin/schema-forge" branch="main" brief-version="1" root-version="1" date="2026-11-24">
+<brief product="SchemaForge" repository="https://github.com/k8nstantin/schema-forge" branch="main" brief-version="2" root-version="2" date="2026-11-27">
   <welcome>Welcome. You have joined SchemaForge, and the person who brought you here is about to work with you on it. This brief gives you, in order, the mission, the architecture, what is needed now and how to start; then the method, everything to read, and the rules. Take it in whole, tell your human what you understood, and the two of you can start.</welcome>
   <intro>You were pointed here to understand SchemaForge or to help someone contribute to it. Read this brief whole, then the files it lists in the order given, then report back to your human before you change anything. Everything here is read from the repository (https://github.com/k8nstantin/schema-forge, branch main); the files are the authority, this brief only orders them.</intro>
   <if-task-file>Stop reading this brief. A task file (specs/tasks/*.xml) is a complete instruction: follow its start element exactly. You may be in any session: build from the files alone, read whole in the method's order, and take nothing said earlier as authority. Nothing here adds to or overrides it.</if-task-file>
@@ -22,8 +22,6 @@
     <ready about="Written, and every task it depends on built. Anyone may build it; the best build is merged.">
     </ready>
     <queued about="Written, and waiting for the tasks before it: read it, and build it once they are merged.">
-      <task id="t05" name="mysql live" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-121-mysql-live.xml"/>
-      <task id="t06" name="postgres" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/t06-postgres.xml"/>
     </queued>
     <design about="Waiting for a design session with the maintainer: bring your view to Discussions.">
       <decision id="operation-kinds" closes-before="t08"/>
@@ -36,14 +34,12 @@
       <decision id="api-contract" closes-before="t09"/>
     </design>
     <ahead about="Not written yet: the work after the queued tasks, each written as a task file once its decisions close. A feature you want to build may be here.">
-      <task id="t02" name="tables interface">Not written yet: a schema as the rows of the locked design (the cortex and its engine's tables) and back, with no database. Its first version, written against the cortex before the design session of 2026-11-25, was removed with that design; lab/repo_store.py proves the design carries every object of two production schemas.</task>
-      <task id="t03" name="registry">Not written yet: the registry of the engines SchemaForge ships (MySQL), and the guard that shared code names no engine's word.</task>
-      <task id="t04" name="mysql tables">Not written yet: MySQL's rows of the locked design, every option a typed column, read from SHOW CREATE and information_schema as lab/repo_store.py does, and every statement written back byte for byte from them on every version from 5.7.</task>
-      <task id="t07" name="store">Not written yet: the store over the bundled PostgreSQL (the one database, schema_forge, every design rows of it, versions and seeds, a schema read in as one import turn with its log and read back the same, the saved connections). Written once t06 is merged, on its programs, by the decisions postgresql-bundled to parameters-not-code, and schema-dump (each live database compared with schema/dump when opened and every day).</task>
-      <task id="t08" name="operations">Not written yet: every change as an operation of its turn, undo and reject by the inverses the log records.</task>
-      <task id="t09" name="server">Not written yet: the server over the store, its API written first, the MCP's tools among it.</task>
-      <task id="t10" name="canvas">Not written yet: the canvas over the server, every flow a browser test on every engine; among them the read screen (decision read-screen).</task>
-      <task id="t11" name="steward">Not written yet: the XML instruction for an agent that runs on a schedule, reviews and QAs every open pull request against its task file, its gates and the rules, merges what passes, records each build's lesson, and starts the next build of the sequence.</task>
+      <task id="o1" name="spec and readme">Objective 1 of 6, due 2026-11-27 06:00 UTC: the engine order, every engine a plugin with its subsets, the thin cortex, UUIDv7 everywhere; all code removed. Issue #138.</task>
+      <task id="o2" name="thin cortex">Objective 2 of 6, due 2026-11-28 06:00 UTC: the shared model only, UUIDv7 everywhere, the install script, CI running the proofs. Issue #139.</task>
+      <task id="o3" name="mysql plugin">Objective 3 of 6, due 2026-11-30 18:00 UTC: MySQL 5.7 to 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora, typed, proven in containers. Issue #140.</task>
+      <task id="o4" name="postgresql plugin">Objective 4 of 6, due 2026-12-03 06:00 UTC: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB, typed, proven in containers. Issue #141.</task>
+      <task id="o5" name="spanner plugin">Objective 5 of 6, due 2026-12-04 06:00 UTC: Spanner, both dialects, proven on the emulator. Issue #145.</task>
+      <task id="o6" name="cockroachdb plugin">Objective 6 of 6, due 2026-12-05 06:00 UTC: CockroachDB, a subset of PostgreSQL with its own features. Issue #146.</task>
     </ahead>
     <issues href="https://github.com/k8nstantin/schema-forge/issues">Smaller work, fixes and questions are issues: https://github.com/k8nstantin/schema-forge/issues, and the ones labelled good first issue are the place to begin.</issues>
   </wanted>
@@ -95,17 +91,12 @@
       <file path="docs/connections.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/connections.xml">connections: what an engine declares, profiles without secrets, the five test steps</file>
     </group>
     <group n="4" name="the task files, in the order they are built">
-      <file path="specs/tasks/SF-93-spec-check.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-93-spec-check.xml">t01 · spec check: every spec file and owner folder checked, and loaded on PostgreSQL 18 (SF-93). The spec check, in Rust: every spec file has its shape, every quote is verbatim, every path exists; every owner's folder (the cortex, the workspace, every engine, every feature, the owner template) has its shape: table files in its namespace with their comments in the database, rules, seeds, migrations; and every folder loads on PostgreSQL 18, its versions giving exactly its files. Its mutation tests plant each defect and prove the check names it.</file>
-      <file>t02 · tables interface: a schema as rows of the locked design and back, with no database (SF-94). Not written yet: a schema as the rows of the locked design (the cortex and its engine's tables) and back, with no database. Its first version, written against the cortex before the design session of 2026-11-25, was removed with that design; lab/repo_store.py proves the design carries every object of two production schemas.</file>
-      <file>t03 · registry: the registry of shipped engines, and shared code proved to name no engine's word (SF-95). Not written yet: the registry of the engines SchemaForge ships (MySQL), and the guard that shared code names no engine's word.</file>
-      <file>t04 · mysql tables: every MySQL option kept in engine_mysql's tables, and read back (SF-96). Not written yet: MySQL's rows of the locked design, every option a typed column, read from SHOW CREATE and information_schema as lab/repo_store.py does, and every statement written back byte for byte from them on every version from 5.7.</file>
-      <file path="specs/tasks/SF-121-mysql-live.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/SF-121-mysql-live.xml">t05 · mysql live: every MySQL from 5.7 read live, version first and gently: the chosen definitions (SF-121). MySQL's live read, again: 5.7 among its versions, asked the 5.7 way; the server's version first, then only what that version has (its catalog sources, declared as data); read gently; only the kinds and objects the person chose (decision read-scope); definitions only, as 1.0 reads (decision definitions-first); every step reported for the read screen; the connection test naming the grants missing for this version.</file>
-      <file path="specs/tasks/t06-postgres.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/tasks/t06-postgres.xml">t06 · postgres: PostgreSQL 18 with pgvector, built by our CI for five platforms. PostgreSQL 18 with pgvector, built by the project's CI from the official source for every platform it ships on, published as release assets, pinned by a manifest of checksums; the fetch tool every release, developer and test uses, refusing anything whose checksum differs.</file>
-      <file>t07 · store: the workspace kept in the bundled PostgreSQL, every import logged (SF-97). Not written yet: the store over the bundled PostgreSQL (the one database, schema_forge, every design rows of it, versions and seeds, a schema read in as one import turn with its log and read back the same, the saved connections). Written once t06 is merged, on its programs, by the decisions postgresql-bundled to parameters-not-code, and schema-dump (each live database compared with schema/dump when opened and every day).</file>
-      <file>t08 · operations: every change an operation of its turn, undone by its inverse. Not written yet: every change as an operation of its turn, undo and reject by the inverses the log records.</file>
-      <file>t09 · server: the server over the store: its API and the MCP's tools. Not written yet: the server over the store, its API written first, the MCP's tools among it.</file>
-      <file>t10 · canvas: the canvas over the server, every flow tested in a browser. Not written yet: the canvas over the server, every flow a browser test on every engine; among them the read screen (decision read-screen).</file>
-      <file>t11 · steward: the agent that reviews, merges the best build and starts the next. Not written yet: the XML instruction for an agent that runs on a schedule, reviews and QAs every open pull request against its task file, its gates and the rules, merges what passes, records each build's lesson, and starts the next build of the sequence.</file>
+      <file>o1 · spec and readme: the engine order, every engine a plugin with its subsets, the thin cortex, UUIDv7 everywhere; all code removed (SF-138). Objective 1 of 6, due 2026-11-27 06:00 UTC: the engine order, every engine a plugin with its subsets, the thin cortex, UUIDv7 everywhere; all code removed. Issue #138.</file>
+      <file>o2 · thin cortex: the shared model only, UUIDv7 everywhere, the install script, CI running the proofs (SF-139). Objective 2 of 6, due 2026-11-28 06:00 UTC: the shared model only, UUIDv7 everywhere, the install script, CI running the proofs. Issue #139.</file>
+      <file>o3 · mysql plugin: MySQL 5.7 to 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora, typed, proven in containers (SF-140). Objective 3 of 6, due 2026-11-30 18:00 UTC: MySQL 5.7 to 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora, typed, proven in containers. Issue #140.</file>
+      <file>o4 · postgresql plugin: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB, typed, proven in containers (SF-141). Objective 4 of 6, due 2026-12-03 06:00 UTC: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB, typed, proven in containers. Issue #141.</file>
+      <file>o5 · spanner plugin: Spanner, both dialects, proven on the emulator (SF-145). Objective 5 of 6, due 2026-12-04 06:00 UTC: Spanner, both dialects, proven on the emulator. Issue #145.</file>
+      <file>o6 · cockroachdb plugin: CockroachDB, a subset of PostgreSQL with its own features (SF-146). Objective 6 of 6, due 2026-12-05 06:00 UTC: CockroachDB, a subset of PostgreSQL with its own features. Issue #146.</file>
     </group>
     <group n="5" name="the guides, one for each kind of contribution, read when you take one up">
       <file path="specs/guides/engine.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/guides/engine.xml">a coding agent whose human wants SchemaForge to support a new database</file>
@@ -117,12 +108,12 @@
       <file path="docs/cdc.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/cdc.xml"/>
       <file path="docs/live-mysql.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/live-mysql.xml"/>
       <file path="docs/market.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/market.xml"/>
+      <file path="docs/mysql.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/mysql.xml"/>
       <file path="docs/perspectives.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/perspectives.xml"/>
       <file path="docs/rules.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/rules.xml"/>
       <file path="docs/store.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/store.xml"/>
       <file path="docs/versions.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/versions.xml"/>
       <file path="docs/writing-an-engine.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/docs/writing-an-engine.xml"/>
-      <file path="engines/mysql/README.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/engines/mysql/README.xml"/>
     </group>
     <group n="8" name="the code as merged, when you need it">
       <file path="crates/" href="https://github.com/k8nstantin/schema-forge/tree/main/crates"/>
@@ -133,8 +124,6 @@
   <database>Every table is a file of an owner's folder, one CREATE TABLE each, every column commented, its comments also in the database. Read a folder's files to know its tables; the owner template explains the shapes.
     <folder path="schema/cortex/" href="https://github.com/k8nstantin/schema-forge/tree/main/schema/cortex"/>
     <folder path="schema/ui/" href="https://github.com/k8nstantin/schema-forge/tree/main/schema/ui"/>
-    <folder path="engines/mysql/schema/" href="https://github.com/k8nstantin/schema-forge/tree/main/engines/mysql/schema"/>
-    <folder path="engines/postgresql/schema/" href="https://github.com/k8nstantin/schema-forge/tree/main/engines/postgresql/schema"/>
   </database>
   <open>
     <decision id="operation-kinds" closes-before="t08">The operation kinds (add_table, rename_column and the rest), what each changes and how the agent calls it.</decision>

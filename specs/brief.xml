@@ -6,7 +6,7 @@
   parameters of schema/cortex/seeds/workspace_parameters.sql, filled in when it is rendered.
   Parts: welcome, agent-file, page-note, page-agent, intro, prompt, if-task-file, architecture, method, ways, wanted, first-steps, start, read, database, helping.
 -->
-<brief product="SchemaForge" version="1" date="2026-11-24">
+<brief product="SchemaForge" version="2" date="2026-11-27">
 
   <welcome>Welcome. You have joined %PRODUCT%, and the person who brought you here is about to work with you on it. This brief gives you, in order, the mission, the architecture, what is needed now and how to start; then the method, everything to read, and the rules. Take it in whole, tell your human what you understood, and the two of you can start.</welcome>
 

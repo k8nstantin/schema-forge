@@ -11,8 +11,8 @@ def _track(self, *a, **k):
 common.Svg.__init__ = _track
 here = os.path.dirname(os.path.abspath(__file__))
 site = os.path.join(here, "..", "..", "site")
-NAMES = ("landing", "home", "engines", "database", "template", "buildspec", "contribute")
-KEYS = {"landing": "site", "home": "home", "engines": "engines", "contribute": "contribute", "database": "database", "template": "template", "buildspec": "build-spec"}
+NAMES = ("landing", "home", "engines", "template", "buildspec", "contribute")
+KEYS = {"landing": "site", "home": "home", "engines": "engines", "contribute": "contribute", "template": "template", "buildspec": "build-spec"}
 os.makedirs(site, exist_ok=True)
 for name in NAMES:
     mod = importlib.import_module(name)
