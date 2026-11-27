@@ -83,7 +83,8 @@ BEGIN
     key := CASE WHEN ns = 'cortex' AND t = 'designs' THEN 'id' ELSE 'design' END;
     EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', ns, t);
     EXECUTE format('DROP POLICY IF EXISTS everyone ON %I.%I', ns, t);
-    EXECUTE format('CREATE POLICY everyone ON %I.%I TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true)', ns, t);
+    -- cortex_owner among them for cortex.undo, the one generic writer every engine's rows share, called by the app and the agent
+    EXECUTE format('CREATE POLICY everyone ON %I.%I TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true)', ns, t);
     EXECUTE format('DROP POLICY IF EXISTS own_engine ON %I.%I', ns, t);
     EXECUTE format('CREATE POLICY own_engine ON %I.%I TO PUBLIC USING (cortex.owns_design(%I, current_user)) WITH CHECK (cortex.owns_design(%I, current_user))', ns, t, key, key);
   END LOOP;
@@ -159,6 +160,9 @@ BEGIN
   EXECUTE format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA %I FROM PUBLIC', p.namespace);
   EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO cortex_service, cortex_agent, cortex_reader', p.namespace);
   EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO %I', p.namespace, p.account);
+  -- the cortex's owner, for cortex.undo alone (it signs in as nobody; undo runs as it for the app and the agent)
+  EXECUTE format('GRANT USAGE ON SCHEMA %I TO cortex_owner', p.namespace);
+  EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO cortex_owner', p.namespace);
   PERFORM cortex.attach_history(p.namespace, tabs);
   PERFORM cortex.fence(p.namespace, tabs);
 END $$;

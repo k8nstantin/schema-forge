@@ -9,7 +9,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from sf.fixture import in_turn, installed, new_design, turn_id  # noqa: E402
+from sf.fixture import in_turn, installed, new_design, plugin_turn, turn_id  # noqa: E402
 
 MODEL = ("namespaces", "objects", "columns", "indexes", "index_parts", "constraints", "constraint_columns", "dependencies")
 
@@ -70,6 +70,19 @@ def main():
         check(model(store, d) == empty, "restoring to before turn 1, newest first, gives the empty design back")
         seqs = store.value(f"SELECT string_agg(seq::text, ',' ORDER BY seq) FROM cortex.turns WHERE design = '{d}'")
         check(seqs == "1,2,3,4,5,6", f"turns numbered in commit order ({seqs})")
+        # a plugin's turn (its service account writes its own rows under the app's turn), undone by the app
+        store.sql(in_turn(d, b, f"INSERT INTO cortex.namespaces (design, name, position) VALUES ('{d}', 'shop', 1);"))
+        before = model(store, d)
+        plugin_turn(store, d, b, f"""
+            INSERT INTO cortex.objects (design, engine, namespace, kind, name, position)
+              SELECT '{d}', 'mysql', id, 'table', 'by_plugin', 1 FROM cortex.namespaces WHERE design = '{d}' AND name = 'shop';
+            INSERT INTO engine_mysql.tables (id, design, note) SELECT id, '{d}', 'the plugin''s' FROM cortex.objects WHERE design = '{d}' AND name = 'by_plugin';""",
+                    "engine_mysql_service")
+        pt = store.value(f"SELECT id FROM cortex.turns WHERE design = '{d}' AND state = 'committed' ORDER BY seq DESC LIMIT 1")
+        plugin_rows = store.value(f"SELECT count(*) FROM engine_mysql.tables WHERE design = '{d}'")
+        store.sql(in_turn(d, b, f"SELECT cortex.undo('{pt}');", kind="undo", parent=pt))
+        check(plugin_rows == "1" and model(store, d) == before and store.value(f"SELECT count(*) FROM engine_mysql.tables WHERE design = '{d}'") == "0",
+              "the app undoes a plugin's turn: its rows in the cortex and in the plugin's own table go, exactly")
         rc, _, err = store.sql(f"BEGIN; SET ROLE cortex_service; INSERT INTO cortex.namespaces (design, name, position) VALUES ('{d}', 'stray', 9); COMMIT;", check=False)
         check(rc != 0 and "outside an operation" in err, "a change outside an operation is refused")
         rc, _, err = store.sql(f"BEGIN; SET ROLE cortex_service; DELETE FROM cortex.row_changes; COMMIT;", check=False)

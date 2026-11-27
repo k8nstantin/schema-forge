@@ -53,6 +53,33 @@ COMMENT ON FUNCTION cortex.attach_history(ns text, tabs text[]) IS 'puts cortex.
 
 
 --
+-- Name: check_design(); Type: FUNCTION; Schema: cortex; Owner: cortex_owner
+--
+
+CREATE FUNCTION cortex.check_design() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'cortex'
+    AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM cortex.engine_flavors f WHERE f.engine = NEW.engine AND f.flavor = NEW.flavor
+              AND coalesce(f.refuses -> 'versions', '[]') ? NEW.engine_version) THEN
+    RAISE EXCEPTION '% does not run % %', (SELECT name FROM cortex.engine_flavors WHERE engine = NEW.engine AND flavor = NEW.flavor), NEW.engine, NEW.engine_version
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END $$;
+
+
+ALTER FUNCTION cortex.check_design() OWNER TO cortex_owner;
+
+--
+-- Name: FUNCTION check_design(); Type: COMMENT; Schema: cortex; Owner: cortex_owner
+--
+
+COMMENT ON FUNCTION cortex.check_design() IS 'refuses a design of a version its flavor does not run';
+
+
+--
 -- Name: check_object(); Type: FUNCTION; Schema: cortex; Owner: cortex_owner
 --
 
@@ -157,7 +184,8 @@ BEGIN
     key := CASE WHEN ns = 'cortex' AND t = 'designs' THEN 'id' ELSE 'design' END;
     EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', ns, t);
     EXECUTE format('DROP POLICY IF EXISTS everyone ON %I.%I', ns, t);
-    EXECUTE format('CREATE POLICY everyone ON %I.%I TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true)', ns, t);
+    -- cortex_owner among them for cortex.undo, the one generic writer every engine's rows share, called by the app and the agent
+    EXECUTE format('CREATE POLICY everyone ON %I.%I TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true)', ns, t);
     EXECUTE format('DROP POLICY IF EXISTS own_engine ON %I.%I', ns, t);
     EXECUTE format('CREATE POLICY own_engine ON %I.%I TO PUBLIC USING (cortex.owns_design(%I, current_user)) WITH CHECK (cortex.owns_design(%I, current_user))', ns, t, key, key);
   END LOOP;
@@ -196,6 +224,9 @@ BEGIN
   EXECUTE format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA %I FROM PUBLIC', p.namespace);
   EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO cortex_service, cortex_agent, cortex_reader', p.namespace);
   EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO %I', p.namespace, p.account);
+  -- the cortex's owner, for cortex.undo alone (it signs in as nobody; undo runs as it for the app and the agent)
+  EXECUTE format('GRANT USAGE ON SCHEMA %I TO cortex_owner', p.namespace);
+  EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO cortex_owner', p.namespace);
   PERFORM cortex.attach_history(p.namespace, tabs);
   PERFORM cortex.fence(p.namespace, tabs);
 END $$;
@@ -384,7 +415,7 @@ COMMENT ON FUNCTION cortex.plug_in(plugin text) IS 'the cortex''s side of pluggi
 --
 
 CREATE FUNCTION cortex.undo(turn uuid) RETURNS integer
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'cortex'
     AS $_$
 DECLARE
@@ -2739,6 +2770,13 @@ CREATE INDEX turns_parent ON cortex.turns USING btree (design, parent);
 
 
 --
+-- Name: designs check_design; Type: TRIGGER; Schema: cortex; Owner: cortex_owner
+--
+
+CREATE CONSTRAINT TRIGGER check_design AFTER INSERT OR UPDATE OF engine_version, flavor ON cortex.designs DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION cortex.check_design();
+
+
+--
 -- Name: objects check_object; Type: TRIGGER; Schema: cortex; Owner: cortex_owner
 --
 
@@ -3216,98 +3254,98 @@ ALTER TABLE cortex.designs ENABLE ROW LEVEL SECURITY;
 -- Name: branches everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.branches TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.branches TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: columns everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.columns TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.columns TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: constraint_columns everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.constraint_columns TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.constraint_columns TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: constraints everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.constraints TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.constraints TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: dependencies everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.dependencies TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.dependencies TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: designs everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.designs TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.designs TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: index_parts everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.index_parts TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.index_parts TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: indexes everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.indexes TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.indexes TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: locked_versions everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.locked_versions TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.locked_versions TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: namespaces everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.namespaces TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.namespaces TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: objects everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.objects TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.objects TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: operations everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.operations TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.operations TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: row_changes everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.row_changes TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.row_changes TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
 -- Name: turns everyone; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY everyone ON cortex.turns TO cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
+CREATE POLICY everyone ON cortex.turns TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true);
 
 
 --
@@ -3477,6 +3515,13 @@ REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 --
 
 REVOKE ALL ON FUNCTION cortex.attach_history(ns text, tabs text[]) FROM PUBLIC;
+
+
+--
+-- Name: FUNCTION check_design(); Type: ACL; Schema: cortex; Owner: cortex_owner
+--
+
+REVOKE ALL ON FUNCTION cortex.check_design() FROM PUBLIC;
 
 
 --

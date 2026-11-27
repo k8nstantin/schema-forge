@@ -10,7 +10,8 @@ from sf.store import Store
 # test engines: a kind that arrives in a later version (since), and a flavor that refuses a kind (refuses.kinds)
 ENGINES = {
     "mysql": {"name": "MySQL", "versions": ["5.7", "8.0", "8.4", "9.7"],
-              "flavors": {"mysql": ("MySQL", {}), "percona": ("Percona Server for MySQL", {}), "aurora": ("Amazon Aurora MySQL", {"kinds": ["resource_group"]})},
+              "flavors": {"mysql": ("MySQL", {}), "percona": ("Percona Server for MySQL", {}),
+                          "aurora": ("Amazon Aurora MySQL", {"kinds": ["resource_group"], "versions": ["5.7", "8.4", "9.7"]})},
               "kinds": [("table", "Table", True, None), ("view", "View", True, None), ("procedure", "Procedure", False, None), ("trigger", "Trigger", False, None),
                         ("library", "Library", False, "9.7"), ("resource_group", "Resource group", False, "8.0")]},
     "postgresql": {"name": "PostgreSQL", "versions": ["15", "16", "17", "18"], "flavors": {"postgresql": ("PostgreSQL", {}), "alloydb": ("AlloyDB", {})},

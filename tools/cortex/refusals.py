@@ -47,6 +47,8 @@ def main():
         check(rc == 0, "a resource group on a MySQL 8.0 design is taken" + ("" if rc == 0 else f" ({err.strip()[:100]})"))
         rc, _, err = put(my80, bmy80, "function", "f")
         check(rc != 0, "a PostgreSQL kind (function) on a MySQL design is refused")
+        rc, _, err = store.sql("BEGIN; SET ROLE cortex_service; INSERT INTO cortex.designs (name, engine, engine_version, flavor) VALUES ('aurora84', 'mysql', '8.4', 'aurora'); COMMIT;", check=False)
+        check(rc != 0 and "does not run mysql 8.4" in err, "an Aurora design of MySQL 8.4 is refused (its flavor runs 8.0 alone)")
     finally:
         store.__exit__(None, None, None)
     print(f"{'pass' if not bad else 'FAIL'}  cortex refusals: {len(bad)} findings")

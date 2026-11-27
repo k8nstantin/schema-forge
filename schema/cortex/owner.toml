@@ -15,4 +15,4 @@ tables = [
   "namespaces", "objects", "columns", "indexes", "index_parts", "constraints", "constraint_columns", "dependencies",
 ]
 
-functions = ["log_row", "notify_turn", "check_object", "plug_in", "undo"]
+functions = ["log_row", "notify_turn", "check_design", "check_object", "plug_in", "undo"]
