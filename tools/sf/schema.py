@@ -6,7 +6,7 @@ import re
 import tomllib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ROLES = ("sf_owner", "sf_service", "sf_agent", "sf_reader")
+ROLES = ("cortex_owner", "cortex_service", "cortex_agent", "cortex_reader")
 
 
 def owner(folder):
@@ -48,7 +48,7 @@ def install_sql(folder):
 
 
 def cortex_sql():
-    """The whole cortex install, run as sf_owner in the one database schema_forge: its tables, functions, its own row
+    """The whole cortex install, run as cortex_owner in the one database schema_forge: its tables, functions, its own row
     among the plugins, its version, and its plug-in (grants, history, the fence)."""
     o, parts = install_sql("schema/cortex")
     parts.append(("schema/cortex/owner.toml plugin",
@@ -59,6 +59,6 @@ def cortex_sql():
     return parts
 
 
-def script(parts):
-    """One psql script of the parts, in one transaction, as sf_owner, each part labelled so a failure names its file."""
-    return "BEGIN;\nSET ROLE sf_owner;\n" + "".join(f"\\echo @@ {label}\n{sql}\n" for label, sql in parts) + "COMMIT;\n"
+def script(parts, role="cortex_owner"):
+    """One psql script of the parts, in one transaction, as the role, each part labelled so a failure names its file."""
+    return f"BEGIN;\nSET ROLE {role};\n" + "".join(f"\\echo @@ {label}\n{sql}\n" for label, sql in parts) + "COMMIT;\n"

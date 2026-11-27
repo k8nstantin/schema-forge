@@ -202,7 +202,7 @@ class Svg:
 
 
 # --- the look and the shared head ---------------------------------------------------------------------------------
-PAGES = [("home", "Start here"), ("engines", "Engines"), ("template", "Owner Template"), ("build-spec", "Build Spec"), ("contribute", "Contribute")]
+PAGES = [("home", "Start here"), ("engines", "Engines"), ("database", "Database"),("template", "Owner Template"), ("build-spec", "Build Spec"), ("contribute", "Contribute")]
 
 
 def _parameters():
@@ -225,7 +225,7 @@ def task_title(task):
     return f"{task.get('id')} · {task.get('name')}: {task.get('title')}"
 
 
-FILES = {"site": "index.html", "home": "start.html", "template": "template.html",
+FILES = {"site": "index.html", "home": "start.html", "database": "database.html","template": "template.html",
          "build-spec": "build-spec.html", "engines": "engines.html", "contribute": "contribute.html"}
 
 

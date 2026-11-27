@@ -47,6 +47,7 @@ def main():
             bad.append(f"the old SchemaForge schema is not in this checkout's history ({OLD_SCHEMA_FORGE}): fetch the full history")
         else:
             with PostgreSQL() as pg:
+                # the old schema's own roles, as its dump names them: a sample, not ours
                 pg.sql("CREATE ROLE sf_owner NOLOGIN; CREATE ROLE sf_service LOGIN; CREATE ROLE sf_agent LOGIN; CREATE ROLE sf_reader LOGIN; CREATE DATABASE schema_forge OWNER sf_owner;")
                 pg.sql(old.stdout, db="schema_forge")
                 prove(store, "the old SchemaForge schema", "postgresql", "18", "postgresql", postgresql_model(pg, "schema_forge"), bad)

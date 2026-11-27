@@ -1,9 +1,10 @@
 -- cortex.undo: undoes a committed turn by applying the inverse of each of its row changes, newest first, as the
 -- operation the session is working in (so the undo is itself logged, and can be undone); the turn is marked undone.
--- Restore and branch switch are undos of the turns since the turn wanted. It runs as the caller: grants and the fence
--- apply.
+-- Restore and branch switch are undos of the turns since the turn wanted. It runs as the cortex's owner, the one generic
+-- writer of every engine's rows (decision plugin-writes): each plugin lets it write its tables for this alone, and only
+-- the app and the agent may call it (they see every design).
 
-CREATE FUNCTION cortex.undo(turn uuid) RETURNS integer LANGUAGE plpgsql SET search_path = pg_catalog, cortex AS $$
+CREATE FUNCTION cortex.undo(turn uuid) RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, cortex AS $$
 DECLARE
   c     record;
   cols  text;

@@ -101,15 +101,38 @@ You choose a schema's database first, and everything follows it. SchemaForge is 
   operations that change them, its rules, its SQL, and reading it in from a dump, definition files or the live
   database all belong to its **engine**: one Rust crate per database, its versions inside it.
 
-The **cortex** is thin: it holds only what every database shares (designs, their history, and the namespaces,
-tables, columns, indexes, keys and dependencies the canvas and the agent read). Everything else is the **plugin's**,
-in its own schema `engine_<engine>`, as typed columns with checks and foreign keys: no JSON options, no table of
-declarations. Every id is a **UUIDv7** made with its row. **Managed services are subsets of their engine's plugin:** the MySQL
-plugin carries Percona Server, Cloud SQL, Amazon RDS and Amazon Aurora; the PostgreSQL plugin carries Cloud SQL, Amazon
-RDS, Amazon Aurora and AlloyDB, each holding only what the service refuses, limits or adds. Spanner and CockroachDB
-are plugins of their own. Plugins share nothing with each other but the
-cortex: a problem in one is found in that one and never breaks another. **Adding a database needs no change to the
-core.** Every decision and why:
+### Two engines, a dozen databases
+
+What looks like a dozen engines is two, by the design of the schema. **Two full-feature engines** are built, each
+once, across every version of its database:
+
+| Engine | Versions | Its family: subsets that fall right into it |
+|---|---|---|
+| `engine_mysql` | MySQL 5.7, 8.0, 8.4, 9.7 | Percona Server, Amazon RDS, Cloud SQL, Amazon Aurora, TiDB |
+| `engine_postgresql` | PostgreSQL 15 to 18 | Amazon RDS, Cloud SQL, Amazon Aurora, AlloyDB, Spanner, CockroachDB |
+
+The plain engine has the most features; every managed service, distribution or compatible database is a **subset**
+of it, a flavor of its plugin. A subset costs facts, not code:
+
+- **What it refuses** (a version, a kind of object, a storage engine, a privilege, an option, a name) is a declared
+  fact, each from the provider's own documentation, and the database refuses it as the design is written.
+- **What it adds** follows one rule: a new kind of object gets a typed table (TiDB's placement policies, Percona's
+  compression dictionaries); a new option on an existing object is a declared key of that row's `flavor_options`; a
+  key that points at an object, or that two flavors share, becomes a typed column.
+- **A true fork** (MariaDB) becomes an engine of its own, built from its family's engine as a template by the same rule.
+
+The two families share the cortex and its principles, never their tables: PostgreSQL's engine is its own, far larger
+design.
+
+### The schema is the core
+
+The **cortex** holds what every database shares (designs, their history, and the namespaces, tables, columns,
+indexes, keys and dependencies the canvas and the agent read) and the **plugs** every engine fits into. Everything
+else is the **plugin's**, in its own schema `engine_<engine>`, as typed columns with checks and foreign keys. Every id
+is a **UUIDv7** made with its row. Each namespace has its own two roles: `<namespace>_owner` owns it, and
+`<namespace>_service` is its service account, the only writer of its tables, fenced to its own engine's designs and
+holding only the privileges its work needs. Plugins share nothing with each other but the cortex: a problem in one is
+found in that one and never breaks another. **Adding a database needs no change to the core.** Every decision and why:
 [docs/engines.xml](https://k8nstantin.github.io/schema-forge/doc-engines.html); how to write one: [docs/writing-an-engine.xml](https://k8nstantin.github.io/schema-forge/doc-writing-an-engine.html).
 
 ## How it works
