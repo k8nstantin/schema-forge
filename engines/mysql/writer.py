@@ -2,6 +2,7 @@
 statement from facts (decision cortex-and-engine-schemas): databases, then tables (foreign key checks off while they are
 made), views in the order they use each other, routines, triggers in their order, and events, each program made in the
 session it was made in (its SQL mode, client character set, connection collation and, for an event, time zone)."""
+import json
 import re
 
 
@@ -26,6 +27,7 @@ def write(model):
             opts += f" ENCRYPTION={lit('Y' if d['encryption'] else 'N')}"
         out.append(f"CREATE DATABASE {q(name)}{opts};")
     objects = model["objects"]
+    out += server_objects(objects)
     tables = sorted((k for k, o in objects.items() if o["kind"] == "table"), key=lambda k: (bool(objects[k].get("union")), k))
     for k in tables:
         out += [f"USE {q(split_key(k)[0])};", create_table(k, objects[k])]
@@ -58,7 +60,113 @@ def write(model):
         out.append(f"SET time_zone = {lit(e['details']['time_zone'])}{d}")
         out.append(create_event(k, e) + d)
     out.append("DELIMITER ;")
+    out += accounts_sql(model)
+    # components last: one may hold accounts to rules (validate_password) the accounts, made without a password, would break
+    for k in sorted(k for k, o in objects.items() if o["kind"] == "component"):
+        out.append(f"INSTALL COMPONENT {lit(objects[k]['details']['urn'])};")
     return "\n".join(out) + "\n"
+
+
+SERVER = "@server"
+
+
+def server_objects(objects):
+    """What the server holds that a database's tables may need first: tablespaces, spatial reference systems,
+    compression dictionaries, FEDERATED servers, components, loadable functions, resource groups."""
+    out = []
+
+    def of(kind):
+        return sorted((split_key(k)[2], o) for k, o in objects.items() if o["kind"] == kind and split_key(k)[0] == SERVER)
+    for name, o in of("tablespace"):
+        d = o["details"]
+        out.append(f"CREATE TABLESPACE {q(name)} ADD DATAFILE {lit(d['file_name'])} ENGINE={d['engine']};")
+    for name, o in of("spatial_reference_system"):
+        d = o["details"]
+        s = f"CREATE SPATIAL REFERENCE SYSTEM {d['srs_id']} NAME {lit(name)}"
+        if d.get("organization"):
+            s += f" ORGANIZATION {lit(d['organization'])} IDENTIFIED BY {d['organization_coordsys_id']}"
+        s += f" DEFINITION {lit(d['definition'])}"
+        if d.get("description"):
+            s += f" DESCRIPTION {lit(d['description'])}"
+        out.append(s + ";")
+    for name, o in of("compression_dictionary"):
+        out.append(f"CREATE COMPRESSION_DICTIONARY {q(name)} ({lit(o['details']['data'])});")
+    for name, o in of("server"):
+        d = o["details"]
+        opts = [f"{w} {lit(d[f]) if f != 'port' else d[f]}" for f, w in (("host", "HOST"), ("port", "PORT"), ("socket", "SOCKET"), ("database_name", "DATABASE"),
+                                                                           ("user_name", "USER"), ("owner", "OWNER")) if d.get(f) is not None]
+        out.append(f"CREATE SERVER {q(name)} FOREIGN DATA WRAPPER {d['wrapper']} OPTIONS ({', '.join(opts)});")
+    for name, o in of("loadable_function"):
+        d = o["details"]
+        out.append(f"CREATE {'AGGREGATE ' if d['aggregate'] else ''}FUNCTION {q(name)} RETURNS {d['returns']} SONAME {lit(d['library'])};")
+    for name, o in of("resource_group"):
+        d = o["details"]
+        out.append(f"CREATE RESOURCE GROUP {q(name)} TYPE = {d['type']}" + (f" VCPU = {d['vcpus']}" if d.get("vcpus") else "")
+                   + f" THREAD_PRIORITY = {d['thread_priority']} {'ENABLE' if d['enabled'] else 'DISABLE'};")
+    return out
+
+
+def account(name):
+    user, _, host = name.rpartition("@")
+    return f"{lit(user)}@{lit(host)}"
+
+
+def accounts_sql(model):
+    """Accounts and roles (never a password: each is made with its plugin alone), then every grant and default role."""
+    out = []
+    objects = model["objects"]
+    for k in sorted(k for k, o in objects.items() if o["kind"] in ("account", "role")):
+        d = objects[k]["details"]
+        s = f"CREATE USER {account(split_key(k)[2])}"
+        if d.get("auth_plugin"):
+            s += f" IDENTIFIED WITH {lit(d['auth_plugin'])}"
+        if d["ssl_type"] == "SPECIFIED":
+            s += " REQUIRE " + " AND ".join(f"{w} {lit(d[f])}" for f, w in (("x509_issuer", "ISSUER"), ("x509_subject", "SUBJECT"), ("ssl_cipher", "CIPHER")) if d.get(f))
+        else:
+            s += f" REQUIRE {d['ssl_type']}"
+        limits = [f"{w} {d[f]}" for f, w in (("max_queries_per_hour", "MAX_QUERIES_PER_HOUR"), ("max_updates_per_hour", "MAX_UPDATES_PER_HOUR"),
+                                            ("max_connections_per_hour", "MAX_CONNECTIONS_PER_HOUR"), ("max_user_connections", "MAX_USER_CONNECTIONS")) if d[f]]
+        if limits:
+            s += " WITH " + " ".join(limits)
+        if d.get("password_expire") is not None:
+            s += " PASSWORD EXPIRE" + (f" {d['password_expire']}" if d["password_expire"] else "")
+        s += " ACCOUNT LOCK" if d["locked"] else " ACCOUNT UNLOCK"
+        for f, w in (("password_history", "PASSWORD HISTORY"), ("password_reuse_interval", "PASSWORD REUSE INTERVAL"), ("password_require_current", "PASSWORD REQUIRE CURRENT")):
+            if d.get(f) is not None:
+                s += f" {w} {d[f]}"
+        if d.get("failed_login_attempts") is not None:
+            s += f" FAILED_LOGIN_ATTEMPTS {d['failed_login_attempts']}"
+        if d.get("password_lock_time") is not None:
+            s += f" PASSWORD_LOCK_TIME {d['password_lock_time']}"
+        if d.get("attributes"):
+            s += f" ATTRIBUTE {lit(json.dumps(d['attributes']))}"
+        out.append(s + ";")
+    for g in model.get("role_grants", []):
+        out.append(f"GRANT {account(g['role'])} TO {account(g['grantee'])}{' WITH ADMIN OPTION' if g['admin_option'] else ''};")
+    groups = {}
+    for p in model.get("privileges", []):
+        if p["level"] == "global":
+            target = "*.*"
+        elif p["level"] == "database":
+            target = f"{q(p['database'])}.*"
+        elif p["level"] == "routine":
+            target = f"{p['routine_kind']} {q(p['database'])}.{q(p['object'])}"
+        else:
+            target = f"{q(p['database'])}.{q(p['object'])}"
+        groups.setdefault((p["grantee"], target, p["grant_option"]), []).append(p)
+    for (grantee, target, grant_option), ps in sorted(groups.items()):
+        cols = {}
+        for p in ps:
+            cols.setdefault(p["privilege"], []).append(p["column"])
+        privs = ", ".join(pr if c == [None] else f"{pr} ({', '.join(q(x) for x in c)})" for pr, c in cols.items())
+        out.append(f"GRANT {privs} ON {target} TO {account(grantee)}{' WITH GRANT OPTION' if grant_option else ''};")
+    defaults = {}
+    for g in model.get("role_grants", []):
+        if g["is_default"]:
+            defaults.setdefault(g["grantee"], []).append(g["role"])
+    for grantee, roles in sorted(defaults.items()):
+        out.append(f"SET DEFAULT ROLE {', '.join(account(r) for r in roles)} TO {account(grantee)};")
+    return out
 
 
 DELIMITER = "$sf_end$"
@@ -108,6 +216,10 @@ def column_sql(c):
         s += " /*!80023 INVISIBLE */"
     if c.get("comment"):
         s += f" COMMENT {lit(c['comment'])}"
+    if c.get("column_format"):
+        s += f" /*!50606 COLUMN_FORMAT {c['column_format']} */" if c["column_format"] != "COMPRESSED" else " COLUMN_FORMAT COMPRESSED"
+        if c.get("compression_dictionary"):
+            s += f" WITH COMPRESSION_DICTIONARY {q(c['compression_dictionary'])}"
     return s
 
 

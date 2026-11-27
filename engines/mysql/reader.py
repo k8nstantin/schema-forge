@@ -3,9 +3,11 @@ structure of what the server holds, the same shape the store gives back and the 
 information_schema; what only the statement records (an option written or not, an index's clauses, AUTO_INCREMENT, a
 MERGE table's tables, a tablespace) from SHOW CREATE. Every value as the server writes it.
 
-  model = {"instance": {...}, "databases": {name: {...}}, "objects": {"db|kind|name": {...}}}
+  model = {"instance": {...}, "databases": {name: {...}}, "objects": {"db|kind|name": {...}},
+           "privileges": [...], "role_grants": [...]}     (the server's own objects are keyed @server|kind|name)
 
 The server is anything with json(query) -> parsed JSON and rows(statements) -> each SHOW's fields."""
+import json
 import re
 
 SYSTEM = ("mysql", "information_schema", "performance_schema", "sys")
@@ -39,6 +41,7 @@ def read(server):
     read_routines(server, model)
     read_triggers(server, model)
     read_events(server, model)
+    read_server(server, model, major)
     # a view's uses are the tables and views of the server it reads; a name it quotes that is neither is not a dependency
     for o in model["objects"].values():
         if o["kind"] == "view":
@@ -170,7 +173,11 @@ def column(c, table_collation, create=None):
     on_update = re.search(r"on update (current_timestamp(\(\d+\))?)", extra)
     coll = c["coll"] if c["coll"] and c["coll"] != table_collation else None
     cs = c["cs"] if coll else None
-    return {"name": c["name"], "type": c["type"], "nullable": bool(c["nullable"]), "default": default if not gen else None,
+    line = next((l for l in (create or "").split("\n") if l.startswith(f"  {q(c['name'])} ")), "")
+    fmt = re.search(r"COLUMN_FORMAT (FIXED|DYNAMIC|COMPRESSED)", line)
+    dictionary = re.search(r"WITH COMPRESSION_DICTIONARY `((?:[^`]|``)*)`", line)
+    return {"column_format": fmt.group(1) if fmt else None, "compression_dictionary": dictionary.group(1).replace("``", "`") if dictionary else None,
+            "name": c["name"], "type": c["type"], "nullable": bool(c["nullable"]), "default": default if not gen else None,
             "default_is_expression": expression and not gen, "generated_expression": gen, "generated_stored": ("stored generated" in extra) if gen else None,
             "collation": coll, "character_set": cs, "on_update": on_update.group(1).upper() if on_update else None,
             "auto_increment": "auto_increment" in extra, "invisible": "invisible" in extra, "srid": c["srs"], "comment": c["comment"] or None}
@@ -378,6 +385,166 @@ def read_triggers(server, model):
             "kind": "trigger", "comment": None, "parent": key(t["db"], "table", t["table"]),
             "details": {"timing": t["timing"], "event": t["event"], "action_order": t["order"], "body": t["body"], "definer": definer(t["definer"]),
                         "sql_mode": t["mode"], "character_set_client": t["cs"], "collation_connection": t["cc"], "database_collation": t["dbc"]}}
+
+
+# --- the server's own objects ------------------------------------------------------------------------------------------
+SERVER = "@server"   # the key's namespace for what the server holds (its cortex namespace is the instance)
+# the accounts a server ships with, never a design's: root, MySQL's own (mysql.sys, mysql.session, mysql.infoschema)
+# and Percona Server's (percona.telemetry)
+SYSTEM_ACCOUNTS = "(User = 'root' OR User LIKE 'mysql.%' OR User LIKE 'percona.%')"
+# the components a server installs itself, never a design's: Percona Server's telemetry (8.0 and 8.4)
+SYSTEM_COMPONENTS = "('file://component_percona_telemetry')"
+
+
+def unquote(s):
+    """`a``b` or 'a''b' -> a`b, a'b."""
+    if s and s[0] in "`'" and s[-1] == s[0]:
+        return s[1:-1].replace(s[0] * 2, s[0]).replace("\\\\", "\\")
+    return s
+
+
+def account_details(create, user, host):
+    """An account's facts from SHOW CREATE USER, never its password or hash."""
+    plugin = re.search(r"IDENTIFIED WITH '([^']+)'", create)
+    req = re.search(r" REQUIRE (NONE|SSL|X509|(?:(?:ISSUER|SUBJECT|CIPHER) '(?:[^'\\]|\\.|'')*'\s*(?:AND\s+)?)+)", create)
+    d = {"user_name": user, "host": host, "auth_plugin": plugin.group(1) if plugin else None, "ssl_type": "NONE", "ssl_cipher": None, "x509_issuer": None,
+         "x509_subject": None, "max_queries_per_hour": 0, "max_updates_per_hour": 0, "max_connections_per_hour": 0, "max_user_connections": 0,
+         "password_expire": None, "password_history": None, "password_reuse_interval": None, "password_require_current": None,
+         "failed_login_attempts": None, "password_lock_time": None, "locked": " ACCOUNT LOCK" in create, "attributes": None}
+    if req:
+        r = req.group(1)
+        if r in ("NONE", "SSL", "X509"):
+            d["ssl_type"] = r
+        else:
+            d["ssl_type"] = "SPECIFIED"
+            for f, col in (("ISSUER", "x509_issuer"), ("SUBJECT", "x509_subject"), ("CIPHER", "ssl_cipher")):
+                m = re.search(rf"{f} '((?:[^'\\]|\\.|'')*)'", r)
+                d[col] = m.group(1).replace("''", "'") if m else None
+    for f, col in (("MAX_QUERIES_PER_HOUR", "max_queries_per_hour"), ("MAX_UPDATES_PER_HOUR", "max_updates_per_hour"),
+                   ("MAX_CONNECTIONS_PER_HOUR", "max_connections_per_hour"), ("MAX_USER_CONNECTIONS", "max_user_connections")):
+        m = re.search(rf"{f} (\d+)", create)
+        d[col] = int(m.group(1)) if m else 0
+    m = re.search(r" PASSWORD EXPIRE( DEFAULT| NEVER| INTERVAL \d+ DAY)?", create)
+    d["password_expire"] = (m.group(1) or "").strip() if m else None
+    for f, col in (("PASSWORD HISTORY", "password_history"), ("PASSWORD REUSE INTERVAL", "password_reuse_interval"), ("PASSWORD REQUIRE CURRENT", "password_require_current")):
+        m = re.search(rf" {f} (DEFAULT|OPTIONAL|\d+ DAY|\d+)", create)
+        d[col] = m.group(1) if m else None
+    m = re.search(r" FAILED_LOGIN_ATTEMPTS (\d+)", create)
+    d["failed_login_attempts"] = int(m.group(1)) if m else None
+    m = re.search(r" PASSWORD_LOCK_TIME (\d+|UNBOUNDED)", create)
+    d["password_lock_time"] = m.group(1) if m else None
+    m = re.search(r" ATTRIBUTE '((?:[^'\\]|\\.|'')*)'", create)
+    d["attributes"] = json.loads(m.group(1).replace("''", "'").replace('\\"', '"')) if m else None
+    return d
+
+
+GRANT = re.compile(r"^GRANT (.+?) ON (PROCEDURE |FUNCTION )?(\*\.\*|`(?:[^`]|``)*`\.\*|`(?:[^`]|``)*`\.`(?:[^`]|``)*`|`(?:[^`]|``)*`@`(?:[^`]|``)*`|'[^']*'@'[^']*') TO (.+?)( WITH GRANT OPTION)?$")
+ROLE_GRANT = re.compile(r"^GRANT ((?:`(?:[^`]|``)*`@`(?:[^`]|``)*`(?:,\s*)?)+) TO (.+?)( WITH ADMIN OPTION)?$")
+
+
+def privileges_of(text):
+    """'SELECT (`a`, `b`), INSERT, BACKUP_ADMIN' -> [(SELECT, a), (SELECT, b), (INSERT, None), (BACKUP_ADMIN, None)]."""
+    out, depth, cur = [], 0, ""
+    for ch in text + ",":
+        if ch == "," and depth == 0:
+            p = cur.strip()
+            m = re.match(r"^(.+?)\s*\((.*)\)$", p)
+            if m:
+                for c in m.group(2).split(","):
+                    out.append((m.group(1).strip(), unquote(c.strip())))
+            elif p:
+                out.append((p, None))
+            cur = ""
+            continue
+        depth += {"(": 1, ")": -1}.get(ch, 0)
+        cur += ch
+    return out
+
+
+def read_server(server, model, major):
+    objects = model["objects"]
+    accounts = server.json(f"SELECT JSON_ARRAYAGG(JSON_OBJECT('user', User, 'host', Host)) FROM mysql.user WHERE NOT {SYSTEM_ACCOUNTS}") or []
+    names = {}
+    if accounts:
+        creates = server.rows([f"SHOW CREATE USER {writer_q(a['user'])}@{writer_q(a['host'])}" for a in accounts])
+        for a, row in zip(accounts, creates):
+            d = account_details(row[0], a["user"], a["host"])
+            # a role: what CREATE ROLE makes, an account locked, expired and with no password
+            role = major >= (8, 0) and d["locked"] and d["password_expire"] == "" and " AS '" not in row[0]
+            name = f"{a['user']}@{a['host']}"
+            names[(a["user"], a["host"])] = name
+            objects[key(SERVER, "role" if role else "account", name)] = {"kind": "role" if role else "account", "comment": None, "details": d}
+    model["privileges"], model["role_grants"] = [], []
+    defaults = set()
+    if major >= (8, 0):
+        for r in server.json("SELECT JSON_ARRAYAGG(JSON_OBJECT('u', USER, 'h', HOST, 'ru', DEFAULT_ROLE_USER, 'rh', DEFAULT_ROLE_HOST)) FROM mysql.default_roles") or []:
+            defaults.add((r["u"], r["h"], r["ru"], r["rh"]))
+    for a in accounts:
+        for row in server.rows([f"SHOW GRANTS FOR {writer_q(a['user'])}@{writer_q(a['host'])}"]):
+            line = row[0]
+            m = ROLE_GRANT.match(line)
+            if m and " ON " not in line:
+                for rg in re.findall(r"`((?:[^`]|``)*)`@`((?:[^`]|``)*)`", m.group(1)):
+                    model["role_grants"].append({"grantee": names[(a["user"], a["host"])], "role": f"{rg[0]}@{rg[1]}", "admin_option": bool(m.group(3)),
+                                                 "is_default": (a["user"], a["host"], rg[0], rg[1]) in defaults})
+                continue
+            m = GRANT.match(line)
+            if not m:
+                raise ValueError(f"a grant the reader does not know: {line}")
+            target, routine = m.group(3), (m.group(2) or "").strip() or None
+            if target == "*.*":
+                level, db, obj = "global", None, None
+            elif "@" in target and not target.startswith("`") or re.match(r"^`[^`]*`@`", target):
+                level, db, obj = "proxy", None, None
+            else:
+                parts = re.findall(r"`((?:[^`]|``)*)`|\*", target)
+                db = parts[0].replace("``", "`")
+                obj = parts[1].replace("``", "`") if len(parts) > 1 and target.endswith("`") else None
+                level = "routine" if routine else ("table" if obj else "database")
+            for priv, col in privileges_of(m.group(1)):
+                if priv == "USAGE":
+                    continue
+                model["privileges"].append({"grantee": names[(a["user"], a["host"])], "privilege": priv, "level": "column" if col else level,
+                                            "database": db, "object": obj, "routine_kind": routine, "column": col, "grant_option": bool(m.group(5))})
+    model["privileges"].sort(key=lambda p: (p["grantee"], p["level"], p["database"] or "", p["object"] or "", p["column"] or "", p["privilege"]))
+    model["role_grants"].sort(key=lambda g: (g["grantee"], g["role"]))
+    for s in server.json("SELECT JSON_ARRAYAGG(JSON_OBJECT('name', Server_name, 'host', Host, 'db', Db, 'user', Username, 'port', Port, 'socket', Socket, "
+                         "'wrapper', Wrapper, 'owner', Owner)) FROM mysql.servers") or []:
+        objects[key(SERVER, "server", s["name"])] = {"kind": "server", "comment": None, "details": {
+            "wrapper": s["wrapper"], "host": s["host"] or None, "port": s["port"] or None, "socket": s["socket"] or None, "database_name": s["db"] or None,
+            "user_name": s["user"] or None, "owner": s["owner"] or None}}
+    for f in server.json("SELECT JSON_ARRAYAGG(JSON_OBJECT('name', name, 'ret', ret, 'dl', dl, 'type', type)) FROM mysql.func") or []:
+        objects[key(SERVER, "loadable_function", f["name"])] = {"kind": "loadable_function", "comment": None, "details": {
+            "returns": {0: "STRING", 1: "REAL", 2: "INTEGER", 4: "DECIMAL"}[f["ret"]], "aggregate": f["type"] == "aggregate", "library": f["dl"]}}
+    if major >= (8, 0):
+        for c in server.json(f"SELECT JSON_ARRAYAGG(component_urn) FROM mysql.component WHERE component_urn NOT IN {SYSTEM_COMPONENTS}") or []:
+            objects[key(SERVER, "component", c)] = {"kind": "component", "comment": None, "details": {"urn": c}}
+        for g in server.json("SELECT JSON_ARRAYAGG(JSON_OBJECT('name', RESOURCE_GROUP_NAME, 'type', RESOURCE_GROUP_TYPE, 'enabled', RESOURCE_GROUP_ENABLED, "
+                             "'vcpus', CAST(VCPU_IDS AS CHAR), 'prio', THREAD_PRIORITY)) FROM information_schema.RESOURCE_GROUPS "
+                             "WHERE RESOURCE_GROUP_NAME NOT IN ('USR_default', 'SYS_default')") or []:
+            objects[key(SERVER, "resource_group", g["name"])] = {"kind": "resource_group", "comment": None, "details": {
+                "type": g["type"], "enabled": bool(g["enabled"]), "vcpus": g["vcpus"], "thread_priority": g["prio"]}}
+        for s in server.json("SELECT JSON_ARRAYAGG(JSON_OBJECT('name', SRS_NAME, 'id', SRS_ID, 'org', ORGANIZATION, 'org_id', ORGANIZATION_COORDSYS_ID, "
+                             "'def', DEFINITION, 'desc', DESCRIPTION)) FROM information_schema.ST_SPATIAL_REFERENCE_SYSTEMS "
+                             "WHERE SRS_ID BETWEEN 32768 AND 59999999 OR SRS_ID BETWEEN 70000000 AND 1999999999 OR SRS_ID >= 2147483648") or []:
+            objects[key(SERVER, "spatial_reference_system", s["name"])] = {"kind": "spatial_reference_system", "comment": None, "details": {
+                "srs_id": s["id"], "definition": s["def"], "organization": s["org"], "organization_coordsys_id": s["org_id"], "description": s["desc"]}}
+    general = ("SELECT JSON_ARRAYAGG(JSON_OBJECT('name', t.NAME, 'file', f.FILE_NAME)) FROM information_schema.INNODB_TABLESPACES t "
+               "JOIN information_schema.FILES f ON f.TABLESPACE_NAME = t.NAME WHERE t.SPACE_TYPE = 'General' AND t.NAME <> 'mysql'") if major >= (8, 0) else \
+              ("SELECT JSON_ARRAYAGG(JSON_OBJECT('name', t.NAME, 'file', f.FILE_NAME)) FROM information_schema.INNODB_SYS_TABLESPACES t "
+               "JOIN information_schema.FILES f ON f.TABLESPACE_NAME = t.NAME WHERE t.SPACE_TYPE = 'General'")
+    for t in server.json(general) or []:
+        objects[key(SERVER, "tablespace", t["name"])] = {"kind": "tablespace", "comment": None, "details": {
+            "engine": "InnoDB", "file_name": t["file"], "file_block_size": None, "encryption": None, "autoextend_size": None, "engine_attribute": None}}
+    dict_table = "COMPRESSION_DICTIONARY" if has_table(server, "COMPRESSION_DICTIONARY") else ("XTRADB_ZIP_DICT" if has_table(server, "XTRADB_ZIP_DICT") else None)
+    if dict_table:
+        cols = ("DICT_NAME", "DICT_DATA") if dict_table == "COMPRESSION_DICTIONARY" else ("name", "zip_dict")
+        for d in server.json(f"SELECT JSON_ARRAYAGG(JSON_OBJECT('name', {cols[0]}, 'data', CAST({cols[1]} AS CHAR))) FROM information_schema.{dict_table}") or []:
+            objects[key(SERVER, "compression_dictionary", d["name"])] = {"kind": "compression_dictionary", "comment": None, "details": {"data": d["data"]}}
+
+
+def writer_q(s):
+    return "'" + s.replace("'", "''") + "'"
 
 
 def read_events(server, model):

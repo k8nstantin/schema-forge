@@ -34,6 +34,9 @@ def samples(image):
     for v in ("8.0", "8.4", "9.7"):
         if v <= version and os.path.exists(os.path.join(HERE, "samples", f"{v}.sql")):
             files.append(os.path.join(HERE, "samples", f"{v}.sql"))
+    files.append(os.path.join(HERE, "samples", "server.sql"))
+    if version >= "8.0":
+        files.append(os.path.join(HERE, "samples", "server-8.0.sql"))
     if "percona" in image and os.path.exists(os.path.join(HERE, "samples", f"percona-{version}.sql")):
         files.append(os.path.join(HERE, "samples", f"percona-{version}.sql"))
     if "--sample" in ARGS:
@@ -43,13 +46,22 @@ def samples(image):
 
 def shows(server, model):
     """Every object's SHOW CREATE, by its key."""
-    stmts, keys = [], []
+    stmts, keys, out = [], [], {}
     for k, o in sorted(model["objects"].items()):
         db, kind, name = k.split("|", 2)
+        if kind in ("account", "role"):
+            user, _, host = name.rpartition("@")
+            who = f"'{user}'@'{host}'"
+            create = server.rows([f"SHOW CREATE USER {who}"])[0][0]
+            # its password's hash is the server's alone: the reader never keeps it, the writer never writes one
+            create = re.sub(r" AS '(?:[^'\\]|\\.|'')*'", "", create)
+            out[k] = create + "\n" + "\n".join(sorted(r[0] for r in server.rows([f"SHOW GRANTS FOR {who}"])))
+            continue
+        if kind not in ("table", "view", "procedure", "function", "trigger", "event", "library"):
+            continue
         what = {"table": "TABLE", "view": "VIEW", "procedure": "PROCEDURE", "function": "FUNCTION", "trigger": "TRIGGER", "event": "EVENT", "library": "LIBRARY"}[kind]
         stmts.append(f"SHOW CREATE {what} {writer.q(db)}.{writer.q(name)}")
         keys.append(k)
-    out = {}
     for k, row in zip(keys, server.rows(stmts)):
         kind = k.split("|")[1]
         out[k] = row[{"table": 1, "view": 1, "procedure": 2, "function": 2, "trigger": 2, "event": 3, "library": 2}[kind]]

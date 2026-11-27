@@ -4,6 +4,7 @@ engine_mysql_service, under the operation of the app's turn (decision plugin-wri
   insert_sql(model, design)  -> the SQL that stores the model as a design's rows
   select_sql(design)         -> one query giving every row of the design as JSON
   model_from(rows)           -> the model again, the same shape the reader gives"""
+import json
 import secrets
 import time
 
@@ -29,6 +30,8 @@ def v(x):
         return "true" if x else "false"
     if isinstance(x, int):
         return str(x)
+    if isinstance(x, (dict, list)):
+        return "'" + json.dumps(x).replace("'", "''") + "'::jsonb"
     return "'" + str(x).replace("'", "''") + "'"
 
 
@@ -43,7 +46,7 @@ def insert_sql(model, design):
     out.append(ins("cortex.namespaces", {"id": server, "design": design, "name": "server", "position": 1}))
     out.append(ins("engine_mysql.instances", {"id": server, "design": design, "version": inst["version"], "character_set": inst["character_set"],
                                               '"collation"': inst["collation"], "lower_case_table_names": inst["lower_case_table_names"], "sql_mode": inst["sql_mode"]}))
-    dbs = {}
+    dbs = {"@server": server}   # what the server itself holds is in its namespace, the instance
     for n, (name, d) in enumerate(sorted(model["databases"].items())):
         dbs[name] = uuid7()
         out.append(ins("cortex.namespaces", {"id": dbs[name], "design": design, "parent": server, "name": name, "position": n + 1}))
@@ -67,7 +70,9 @@ def insert_sql(model, design):
                                               "nullable": c["nullable"], "default_value": c["default"], "generated_expression": c["generated_expression"],
                                               "generated_stored": c["generated_stored"], '"collation"': c["collation"], "comment": c["comment"]}))
             out.append(ins("engine_mysql.columns", {"id": cid, "design": design, "character_set": c["character_set"], "default_is_expression": c["default_is_expression"],
-                                                    "on_update": c["on_update"], "auto_increment": c["auto_increment"], "invisible": c["invisible"], "srid": c["srid"]}))
+                                                    "on_update": c["on_update"], "auto_increment": c["auto_increment"], "invisible": c["invisible"], "srid": c["srid"],
+                                                    "column_format": c.get("column_format"),
+                                                    "compression_dictionary": ids.get(f"@server|compression_dictionary|{c['compression_dictionary']}") if c.get("compression_dictionary") else None}))
     for k, o in sorted(objects.items()):
         kind = o["kind"]
         if kind == "table":
@@ -104,7 +109,33 @@ def insert_sql(model, design):
             row.update({c: d[c] for c in ("execute_at", "interval_value", "interval_field", "starts", "ends", "on_completion", "status", "body", "definer", "time_zone")})
             row.update({c: d[c] for c in PROGRAM_CONTEXT})
             out.append(ins("engine_mysql.events", row))
+        elif kind in SERVER_TABLES:
+            row = {"id": ids[k], "design": design}
+            row.update(o["details"])
+            out.append(ins(f"engine_mysql.{SERVER_TABLES[kind]}", row))
+    for g in model.get("role_grants", []):
+        out.append(ins("engine_mysql.role_grants", {"design": design, "grantee": account_id(ids, g["grantee"]), "role": account_id(ids, g["role"]),
+                                                    "admin_option": g["admin_option"], "is_default": g["is_default"]}))
+    for p in model.get("privileges", []):
+        obj = None
+        if p["level"] in ("table", "column"):
+            obj = ids.get(f"{p['database']}|table|{p['object']}") or ids.get(f"{p['database']}|view|{p['object']}")
+        elif p["level"] == "routine":
+            obj = ids.get(f"{p['database']}|{p['routine_kind'].lower()}|{p['object']}")
+        out.append(ins("engine_mysql.privileges", {"design": design, "grantee": account_id(ids, p["grantee"]), "privilege": p["privilege"], "level": p["level"],
+                                                   "database_name": p["database"], "object": obj, "object_name": p["object"], "routine_kind": p["routine_kind"],
+                                                   "column_name": p["column"], "grant_option": p["grant_option"]}))
     return "\n".join(out), len(out)
+
+
+# the server's own kinds whose details are one row of their table, column for column
+SERVER_TABLES = {"account": "accounts", "role": "accounts", "server": "servers", "loadable_function": "loadable_functions", "component": "components",
+                 "resource_group": "resource_groups", "spatial_reference_system": "spatial_reference_systems", "tablespace": "tablespaces",
+                 "compression_dictionary": "compression_dictionaries"}
+
+
+def account_id(ids, name):
+    return ids.get(f"@server|account|{name}") or ids[f"@server|role|{name}"]
 
 
 def table_rows(k, o, design, ids, cols):
@@ -161,7 +192,17 @@ def select_sql(design):
   'databases', (SELECT jsonb_agg(to_jsonb(x) || jsonb_build_object('name', n.name)) FROM engine_mysql.databases x JOIN cortex.namespaces n ON n.id = x.id WHERE x.design = {d}),
   'objects', (SELECT jsonb_agg(to_jsonb(o) || jsonb_build_object('db', n.name, 'parent_key', (SELECT pn.name || '|' || p.kind || '|' || p.name FROM cortex.objects p JOIN cortex.namespaces pn ON pn.id = p.namespace WHERE p.id = o.parent)))
               FROM cortex.objects o JOIN cortex.namespaces n ON n.id = o.namespace WHERE o.design = {d}),
-  'columns', (SELECT jsonb_agg(to_jsonb(c) || to_jsonb(m) - 'id' - 'design' ORDER BY c.object, c.position) FROM cortex.columns c JOIN engine_mysql.columns m ON m.id = c.id WHERE c.design = {d}),
+  'columns', (SELECT jsonb_agg(to_jsonb(c) || to_jsonb(m) - 'id' - 'design' || jsonb_build_object('dictionary_name', dn.name) ORDER BY c.object, c.position)
+              FROM cortex.columns c JOIN engine_mysql.columns m ON m.id = c.id LEFT JOIN cortex.objects dn ON dn.id = m.compression_dictionary WHERE c.design = {d}),
+  'server_objects', (SELECT jsonb_object_agg(o.id, x) FROM cortex.objects o, LATERAL (
+       SELECT to_jsonb(a) FROM engine_mysql.accounts a WHERE a.id = o.id UNION ALL SELECT to_jsonb(s) FROM engine_mysql.servers s WHERE s.id = o.id
+       UNION ALL SELECT to_jsonb(f) FROM engine_mysql.loadable_functions f WHERE f.id = o.id UNION ALL SELECT to_jsonb(c) FROM engine_mysql.components c WHERE c.id = o.id
+       UNION ALL SELECT to_jsonb(g) FROM engine_mysql.resource_groups g WHERE g.id = o.id UNION ALL SELECT to_jsonb(r) FROM engine_mysql.spatial_reference_systems r WHERE r.id = o.id
+       UNION ALL SELECT to_jsonb(t) FROM engine_mysql.tablespaces t WHERE t.id = o.id UNION ALL SELECT to_jsonb(k) FROM engine_mysql.compression_dictionaries k WHERE k.id = o.id) l(x)
+     WHERE o.design = {d}),
+  'role_grants', (SELECT jsonb_agg(to_jsonb(g) || jsonb_build_object('grantee_name', a.name, 'role_name', r.name))
+                  FROM engine_mysql.role_grants g JOIN cortex.objects a ON a.id = g.grantee JOIN cortex.objects r ON r.id = g.role WHERE g.design = {d}),
+  'privileges', (SELECT jsonb_agg(to_jsonb(p) || jsonb_build_object('grantee_name', a.name)) FROM engine_mysql.privileges p JOIN cortex.objects a ON a.id = p.grantee WHERE p.design = {d}),
   'tables', (SELECT jsonb_agg(to_jsonb(t)) FROM engine_mysql.tables t WHERE t.design = {d}),
   'indexes', (SELECT jsonb_agg(to_jsonb(i) || to_jsonb(m) - 'id' - 'design' || jsonb_build_object('id', i.id) ORDER BY i.object, i.position) FROM cortex.indexes i JOIN engine_mysql.indexes m ON m.id = i.id WHERE i.design = {d}),
   'index_parts', (SELECT jsonb_agg(to_jsonb(p) || jsonb_build_object('column_name', c.name, 'prefix', x.prefix_length) ORDER BY p."index", p.position)
@@ -190,8 +231,9 @@ def model_from(r):
                            for d in r["databases"] or []},
              "objects": {}}
     by_id, objects = {}, model["objects"]
+    server_ns = inst["id"]
     for o in r["objects"] or []:
-        k = f"{o['db']}|{o['kind']}|{o['name']}"
+        k = f"{'@server' if o['namespace'] == server_ns else o['db']}|{o['kind']}|{o['name']}"
         by_id[o["id"]] = k
         entry = {"kind": o["kind"], "comment": o["comment"]}
         if o["kind"] == "table":
@@ -204,9 +246,12 @@ def model_from(r):
             entry["details"] = None
         elif o["kind"] == "trigger":
             entry["parent"] = o["parent_key"]
+        elif o["kind"] in SERVER_TABLES:
+            entry["details"] = {f: x for f, x in (r["server_objects"] or {}).get(o["id"], {}).items() if f not in ("id", "design")}
         objects[k] = entry
     for c in r["columns"] or []:
         objects[by_id[c["object"]]]["columns"].append({
+            "column_format": c["column_format"], "compression_dictionary": c["dictionary_name"],
             "name": c["name"], "type": c["type"], "nullable": c["nullable"], "default": c["default_value"], "default_is_expression": c["default_is_expression"],
             "generated_expression": c["generated_expression"], "generated_stored": c["generated_stored"], "collation": c["collation"],
             "character_set": c["character_set"], "on_update": c["on_update"], "auto_increment": c["auto_increment"], "invisible": c["invisible"],
@@ -270,4 +315,10 @@ def model_from(r):
     for x in r["events"] or []:
         objects[by_id[x["id"]]]["details"] = {f: x[f] for f in ("execute_at", "interval_value", "interval_field", "starts", "ends", "on_completion", "status",
                                                                  "body", "definer", "time_zone") + PROGRAM_CONTEXT}
+    model["role_grants"] = sorted(({"grantee": g["grantee_name"], "role": g["role_name"], "admin_option": g["admin_option"], "is_default": g["is_default"]}
+                                   for g in r["role_grants"] or []), key=lambda g: (g["grantee"], g["role"]))
+    model["privileges"] = sorted(({"grantee": p["grantee_name"], "privilege": p["privilege"], "level": p["level"], "database": p["database_name"],
+                                   "object": p["object_name"], "routine_kind": p["routine_kind"], "column": p["column_name"], "grant_option": p["grant_option"]}
+                                  for p in r["privileges"] or []),
+                                 key=lambda p: (p["grantee"], p["level"], p["database"] or "", p["object"] or "", p["column"] or "", p["privilege"]))
     return model
