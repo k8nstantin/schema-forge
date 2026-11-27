@@ -1,0 +1,73 @@
+"""Source servers for the tools, each in a Docker container made for one run and dropped after it: a MySQL (or
+Percona) server and a PostgreSQL server, a schema loaded into each from a file, and JSON read back from their catalogs."""
+import json
+import os
+import time
+
+from sf.store import Failed, docker
+
+
+class MySQL:
+    def __init__(self, image="mysql:8.0", name="sf-mysql", options=()):
+        self.image, self.name, self.options = image, f"{name}-{os.getpid()}", list(options)
+
+    def __enter__(self):
+        r = docker("run", "-d", "--name", self.name, "-e", "MYSQL_ALLOW_EMPTY_PASSWORD=1", "-e", "MYSQL_ROOT_HOST=%", self.image,
+                   "--log-bin-trust-function-creators=1", *self.options)
+        if r.returncode:
+            raise SystemExit(f"docker run {self.image}: {r.stderr.strip()}")
+        # the image first runs a bootstrap server with networking off, then restarts: wait for the real one, on 3306
+        for _ in range(600):
+            logs = docker("logs", self.name)
+            ready = [l for l in (logs.stdout + logs.stderr).splitlines() if "ready for connections" in l and "port: 3306" in l]
+            if ready and docker("exec", self.name, "mysql", "-uroot", "-N", "-e", "SELECT 1").returncode == 0:
+                return self
+            time.sleep(0.5)
+        self.__exit__()
+        raise SystemExit(f"{self.image} did not answer within five minutes")
+
+    def __exit__(self, *exc):
+        docker("rm", "-f", "-v", self.name)
+
+    def load(self, path):
+        r = docker("exec", "-i", self.name, "mysql", "-uroot", stdin=open(path, encoding="utf-8", errors="replace").read())
+        if r.returncode:
+            raise Failed(f"loading {os.path.basename(path)} into {self.image}: {r.stderr.strip()[:300]}")
+
+    def json(self, query):
+        r = docker("exec", "-i", self.name, "mysql", "-uroot", "-N", "-B", "--raw", "-e", query)
+        if r.returncode:
+            raise Failed(f"{self.image}: {r.stderr.strip()[:300]}")
+        out = r.stdout.strip()
+        return json.loads(out) if out and out != "NULL" else []
+
+
+class PostgreSQL:
+    def __init__(self, image="postgres:18-alpine", name="sf-postgresql"):
+        self.image, self.name = image, f"{name}-{os.getpid()}"
+
+    def __enter__(self):
+        r = docker("run", "-d", "--name", self.name, "-e", "POSTGRES_HOST_AUTH_METHOD=trust", self.image)
+        if r.returncode:
+            raise SystemExit(f"docker run {self.image}: {r.stderr.strip()}")
+        for _ in range(240):
+            logs = docker("logs", self.name)
+            if "PostgreSQL init process complete" in logs.stdout + logs.stderr and \
+                    docker("exec", self.name, "psql", "-U", "postgres", "-c", "SELECT 1").returncode == 0:
+                return self
+            time.sleep(0.25)
+        self.__exit__()
+        raise SystemExit(f"{self.image} did not answer within a minute")
+
+    def __exit__(self, *exc):
+        docker("rm", "-f", "-v", self.name)
+
+    def sql(self, text, db="postgres"):
+        r = docker("exec", "-i", self.name, "psql", "-U", "postgres", "-d", db, "-v", "ON_ERROR_STOP=1", "-q", "-At", "-X", stdin=text)
+        if r.returncode:
+            raise Failed(f"{self.image}: {r.stderr.strip()[:300]}")
+        return r.stdout
+
+    def json(self, query, db="postgres"):
+        out = self.sql(f"SELECT coalesce(json_agg(x), '[]') FROM ({query}) x;", db).strip()
+        return json.loads(out)

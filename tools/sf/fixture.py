@@ -1,0 +1,79 @@
+"""What the cortex tools test on: the cortex installed in a fresh store, and two engines plugged in the way a plugin
+is (its row, its namespace, its own service account, its versions, flavors and kinds, cortex.plug_in), each with no
+tables of its own yet; and helpers to work as an account inside a turn, as the app and the agent do."""
+from sf.schema import cortex_sql, script
+from sf.store import Store
+
+ENGINES = {
+    "mysql": {"name": "MySQL", "versions": ["5.7", "8.0", "8.4", "9.7"], "flavors": {"mysql": "MySQL", "percona": "Percona Server for MySQL", "aurora": "Amazon Aurora MySQL"},
+              "kinds": [("table", "Table", True), ("view", "View", True), ("procedure", "Procedure", False), ("trigger", "Trigger", False)]},
+    "postgresql": {"name": "PostgreSQL", "versions": ["15", "16", "17", "18"], "flavors": {"postgresql": "PostgreSQL", "alloydb": "AlloyDB"},
+                   "kinds": [("table", "Table", True), ("view", "View", True), ("function", "Function", False), ("sequence", "Sequence", False)]},
+}
+
+
+def plug_engine(store, engine):
+    """An engine plugged in as a plugin is: its account made by the installer, then as sf_owner its namespace, its rows
+    in the plugs, cortex.plug_in."""
+    e = ENGINES[engine]
+    store.sql(f"CREATE ROLE sf_{engine} LOGIN;")
+    rows = [f"CREATE SCHEMA engine_{engine};",
+            f"INSERT INTO cortex.plugins (id, kind, namespace, name, version, requires_cortex, account) VALUES ('{engine}', 'engine', 'engine_{engine}', '{e['name']}', 1, 1, 'sf_{engine}');",
+            f"INSERT INTO cortex.schema_migrations (plugin, version) VALUES ('{engine}', 1);",
+            f"INSERT INTO cortex.engines (id, plugin, name) VALUES ('{engine}', '{engine}', '{e['name']}');"]
+    rows += [f"INSERT INTO cortex.engine_versions (id, engine, version, name, position) VALUES ('{engine}/{v}', '{engine}', '{v}', '{e['name']} {v}', {i + 1});"
+             for i, v in enumerate(e["versions"])]
+    rows += [f"INSERT INTO cortex.engine_flavors (id, engine, flavor, name) VALUES ('{engine}/{f}', '{engine}', '{f}', '{n}');" for f, n in e["flavors"].items()]
+    rows += [f"INSERT INTO cortex.object_kinds (id, engine, kind, name, has_columns, position) VALUES ('{engine}/{k}', '{engine}', '{k}', '{n}', {str(c).lower()}, {i + 1});"
+             for i, (k, n, c) in enumerate(e["kinds"])]
+    rows.append(f"SELECT cortex.plug_in('{engine}');")
+    store.sql("BEGIN;\nSET ROLE sf_owner;\n" + "\n".join(rows) + "\nCOMMIT;\n")
+
+
+def installed(name):
+    """A store with the cortex installed and both engines plugged in."""
+    store = Store(name).__enter__()
+    try:
+        store.sql(script(cortex_sql()))
+        for engine in ENGINES:
+            plug_engine(store, engine)
+    except BaseException:
+        store.__exit__(None, None, None)
+        raise
+    return store
+
+
+def as_role(role, body):
+    """A transaction as an account: the body's SQL between BEGIN and COMMIT."""
+    return f"BEGIN;\nSET ROLE {role};\n{body}\nCOMMIT;\n"
+
+
+def new_design(store, name, engine, version, flavor, role="sf_service"):
+    """A design and its main branch, made as the app makes them; returns (design, branch)."""
+    out = store.sql(as_role(role, f"""
+        INSERT INTO cortex.designs (name, engine, engine_version, flavor) VALUES ('{name}', '{engine}', '{version}', '{flavor}') RETURNING id;
+        INSERT INTO cortex.branches (design, name) SELECT id, 'main' FROM cortex.designs WHERE name = '{name}' RETURNING id;"""))[1].split()
+    return out[0], out[1]
+
+
+def in_turn(design, branch, body, kind="edit", author="tool", parent=None, op_kind="edit", role="sf_service"):
+    """SQL that opens a turn and one operation, sets the session's operation, runs the body, and commits the turn;
+    it prints the turn's id first."""
+    par = f"'{parent}'" if parent else "NULL"
+    return as_role(role, f"""
+        WITH t AS (INSERT INTO cortex.turns (design, branch, parent, kind, author) VALUES ('{design}', '{branch}', {par}, '{kind}', '{author}') RETURNING id)
+        SELECT set_config('sf.turn', id::text, true) FROM t;
+        SELECT current_setting('sf.turn');
+        WITH o AS (INSERT INTO cortex.operations (design, turn, position, kind, summary)
+                   VALUES ('{design}', current_setting('sf.turn')::uuid, 1, '{op_kind}', '{op_kind} by {author}') RETURNING id)
+        SELECT set_config('schema_forge.operation', id::text, true) FROM o;
+        {body}
+        UPDATE cortex.turns SET state = 'committed', ended_at = now() WHERE id = current_setting('sf.turn')::uuid;""")
+
+
+def turn_id(output):
+    """The turn's id from in_turn's output: the first line that is a UUID."""
+    for line in output.split():
+        if len(line) == 36 and line.count("-") == 4:
+            return line
+    raise ValueError(f"no turn id in {output!r}")

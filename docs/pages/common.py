@@ -56,9 +56,14 @@ def table_files(folder):
                     "check": chk.group(1) if chk else None, "comment": (c.group(4) or "").strip()})
             elif in_table and l.strip().startswith("FOREIGN KEY (design, "):
                 # a reference within the design: (design, column) -> (design, id); drawn as the column's own
-                fk = re.match(r'FOREIGN KEY \(design, "?(\w+)"?\) REFERENCES ([\w.]+) \(design, id\)(?: ON DELETE (CASCADE|SET NULL))?', l.strip())
-                col = next(c for c in cols if c["name"] == fk.group(1))
-                col.update({"ref": fk.group(2), "ref_col": "id", "on_delete": fk.group(3)})
+                fk = re.match(r'FOREIGN KEY \(design, "?(\w+)"?\) REFERENCES ([\w.]+) \(design, id\)(?: ON DELETE (CASCADE|SET NULL|RESTRICT))?', l.strip())
+                if fk:
+                    col = next(c for c in cols if c["name"] == fk.group(1))
+                    col.update({"ref": fk.group(2), "ref_col": "id", "on_delete": fk.group(3)})
+                else:
+                    constraints.append(l.split("--")[0].strip().rstrip(","))
+            elif in_table and l.strip().startswith("FOREIGN KEY"):
+                constraints.append(l.split("--")[0].strip().rstrip(","))
             elif in_table and l.strip().startswith(("UNIQUE", "CHECK")):
                 constraints.append(l.split("--")[0].strip().rstrip(","))
             elif l.startswith("CREATE") and "INDEX" in l:

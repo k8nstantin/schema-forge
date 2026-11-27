@@ -13,6 +13,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      # The one command (specs/rules.xml one-check), the same here as on every developer's machine. Each objective
-      # adds its container proofs to it (decision branch-per-plugin).
-      - run: tools/check.sh
+      # The one command (specs/rules.xml one-check), the same here as on every developer's machine.
+      - run: python3 tools/check.py
+
+  cortex:
+    runs-on: ubuntu-latest
+    steps:
+      # the full history: tools/cortex/samples.py reads the old SchemaForge schema from it
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: docker pull -q postgres:18-alpine
+      # every proof of the cortex, each in fresh PostgreSQL 18 containers (the private MySQL sample is not here)
+      - run: python3 tools/cortex/all.py

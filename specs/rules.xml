@@ -78,7 +78,7 @@
 
   <rule id="one-check">
     <from>the operator, 2026-11-23</from>
-    <text>tools/check.sh is the one command every change passes, the same locally and in CI: formatting, lint, every test (the kit, the architecture check and the spec check among them). Nothing is done until it passes; its last line is in the PR.</text>
+    <text>python3 tools/check.py is the one command every change passes, the same locally and in CI: no private name, XML for everything, the site as its sources render it, and, where a crate exists, formatting, lint and every test. Each objective's container proofs are its own tool (tools/cortex/all.py), run by CI beside it. Every check is a tool in the repository, never an ad-hoc command or a shell script. Nothing is done until they pass; their last lines are in the PR.</text>
     <breach>CI; the gates of every task</breach>
   </rule>
 
