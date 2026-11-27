@@ -29,3 +29,18 @@ jobs:
       - run: docker pull -q postgres:18-alpine
       # every proof of the cortex, each in fresh PostgreSQL 18 containers (the private MySQL sample is not here)
       - run: python3 tools/cortex/all.py
+
+  engine-mysql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          for image in postgres:18-alpine mysql:5.7 mysql:8.0 mysql:8.4 mysql:9.7 percona/percona-server:5.7 percona/percona-server:8.0 percona/percona-server:8.4; do
+            docker pull -q "$image"
+          done
+      # engine_mysql plugged in; the round trip through the store on every server; the flavors (the old MySQL schemas
+      # are private and not here)
+      - run: python3 tools/mysql/all.py

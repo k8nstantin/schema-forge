@@ -16,10 +16,10 @@ from sf.schema import cortex_sql, script  # noqa: E402
 from sf.store import Store  # noqa: E402
 
 
-def round_trip_store(model, image):
-    """(the model read back from the store, the number of rows written)."""
+def round_trip_store(model, image, flavor=None):
+    """(the model read back from the store, the number of rows written); a design of the flavor named, or the image's."""
     version = re.search(r":(\d+\.\d+)", image).group(1)
-    flavor = "percona" if "percona" in image else "mysql"
+    flavor = flavor or ("percona" if "percona" in image else "mysql")
     with Store("sf-mysql-store") as store:
         store.sql(script(cortex_sql()))
         plug_folder(store, "engines/mysql")
