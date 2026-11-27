@@ -14,8 +14,9 @@ design, and nothing lands unchecked. The agent designs through **MCP** (the prot
 work with tools); the architect watches every change land on a live canvas, steers it, or edits by hand. Every change,
 the agent's and the architect's, is checked against **rules**: the team's design standards, written down once.
 
-> **Status:** being built in the open, every database a plugin. The MySQL engine works today: it reads dumps, DDL
-> and live servers, and writes back SQL that loads into MySQL 8.0 to 26.10. Apache Iceberg is next, then PostgreSQL. A
+> **Status:** being built in the open, every database a plugin. The cortex and `engine_mysql` work today: every object
+> of MySQL 5.7 to 9.7 and Percona Server read from a live server, stored and written back identically. The app (store and
+> core, server and MCP, canvas) is next, then PostgreSQL. A
 > working prototype proved the whole loop (tag [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype));
 > the design is on [the site](https://k8nstantin.github.io/schema-forge/).
 
@@ -129,7 +130,7 @@ flowchart LR
     alloy[AlloyDB] --> pg
     spanner[Spanner] --> pg
     crdb[CockroachDB] --> pg
-    pg[["engine_postgresql<br/>PostgreSQL 15 to 18<br/>next"]]
+    pg[["engine_postgresql<br/>PostgreSQL 15 to 18<br/>after the app"]]
   end
   my --> cortex[(the cortex<br/>what every engine shares)]
   pg --> cortex
@@ -286,10 +287,15 @@ each with its own issue, ETA, branch and PR, merged before the next starts and d
 |---|---|---|---|---|
 | 1 | The spec and README: this order, every engine a plugin, UUIDv7 everywhere | [#138](https://github.com/k8nstantin/schema-forge/issues/138) | 2026-11-27 06:00 | merged ([#147](https://github.com/k8nstantin/schema-forge/pull/147)) |
 | 2 | The cortex from scratch: the plugs every engine fits into, history, the shared model, each tested by a tool | [#139](https://github.com/k8nstantin/schema-forge/issues/139) | 2026-11-28 06:00 | merged ([#148](https://github.com/k8nstantin/schema-forge/pull/148)) |
-| 3 | `engine_mysql`: MySQL 5.7, 8.0, 8.4, 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora | [#140](https://github.com/k8nstantin/schema-forge/issues/140) | 2026-11-30 18:00 | merged ([#149](https://github.com/k8nstantin/schema-forge/pull/149), [#151](https://github.com/k8nstantin/schema-forge/pull/151), [#152](https://github.com/k8nstantin/schema-forge/pull/152)) |
-| 4 | `engine_postgresql`: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB | [#141](https://github.com/k8nstantin/schema-forge/issues/141) | 2026-12-03 06:00 | next |
-| 5 | Spanner, a subset of the PostgreSQL family | [#145](https://github.com/k8nstantin/schema-forge/issues/145) | 2026-12-04 06:00 | after #141 |
-| 6 | CockroachDB, a subset of the PostgreSQL family | [#146](https://github.com/k8nstantin/schema-forge/issues/146) | 2026-12-05 06:00 | after #145 |
+| 3 | `engine_mysql`: MySQL 5.7, 8.0, 8.4, 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora | [#140](https://github.com/k8nstantin/schema-forge/issues/140) | 2026-11-27 18:00 | merged ([#149](https://github.com/k8nstantin/schema-forge/pull/149), [#151](https://github.com/k8nstantin/schema-forge/pull/151), [#152](https://github.com/k8nstantin/schema-forge/pull/152)) |
+| 4 | The app's store and core in Rust: turns, undo, the turn bell, `schema-forge check` | [#155](https://github.com/k8nstantin/schema-forge/issues/155) | 2026-11-29 06:00 | next |
+| 5 | The `Engine` trait, and `engine_mysql` in Rust (the Python kept as its oracle); import and write | [#156](https://github.com/k8nstantin/schema-forge/issues/156) | 2026-12-01 06:00 | after #155 |
+| 6 | The server: HTTP API, MCP for agents, read-only SQL on Apache DataFusion | [#157](https://github.com/k8nstantin/schema-forge/issues/157) | 2026-12-03 06:00 | after #156 |
+| 7 | The `ui` schema and the React and TypeScript canvas | [#158](https://github.com/k8nstantin/schema-forge/issues/158) | 2026-12-05 06:00 | after #157 |
+| 8 | Editing on the canvas: a complete product on its first engine | [#159](https://github.com/k8nstantin/schema-forge/issues/159) | 2026-12-07 06:00 | after #158 |
+| 9 | `engine_postgresql`: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB | [#141](https://github.com/k8nstantin/schema-forge/issues/141) | 2026-12-10 06:00 | after #159 |
+| 10 | Spanner, a subset of the PostgreSQL family | [#145](https://github.com/k8nstantin/schema-forge/issues/145) | 2026-12-11 18:00 | after #141 |
+| 11 | CockroachDB, a subset of the PostgreSQL family | [#146](https://github.com/k8nstantin/schema-forge/issues/146) | 2026-12-13 06:00 | after #145 |
 
 The same state, read from the spec and checked against GitHub on every pull request: [Where it stands](https://k8nstantin.github.io/schema-forge/start.html#stands).
 
