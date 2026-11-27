@@ -1,0 +1,18 @@
+# The cortex: what every engine shares, and the plugs every engine fits into (issue #139, decision
+# cortex-and-engine-schemas). Its files load in this order; every column's trailing comment becomes its comment in the
+# database, every file's first line its table's.
+id = "cortex"
+kind = "core"
+namespace = "cortex"
+version = 1
+
+tables = [
+  # the plugs: what is installed, and what each plugin declares
+  "plugins", "plugin_tables", "engines", "engine_versions", "engine_flavors", "object_kinds", "schema_migrations",
+  # the designs and their history
+  "designs", "branches", "turns", "operations", "row_changes", "locked_versions",
+  # the model every engine shares
+  "namespaces", "objects", "columns", "indexes", "index_parts", "constraints", "constraint_columns", "dependencies",
+]
+
+functions = ["log_row", "notify_turn", "plug_in", "undo"]
