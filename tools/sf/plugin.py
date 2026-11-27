@@ -6,7 +6,33 @@ belongs to: the same here, in the tests, and in tools/local/plug_in.py.
   3. <ns>_owner makes its tables and functions, and lets cortex_owner see its namespace (USAGE), to check it
   4. cortex_owner loads its seeds (engine, versions, flavors, kinds, plugin_tables), then cortex.plug_in
   5. <ns>_owner runs cortex.fit_plugin: its grants, history and fence"""
-from sf.schema import script
+import os
+import tomllib
+
+from sf.schema import ROOT, comments, script
+
+
+def package(folder):
+    """A plugin's package (engines/<engine>): its card, its tables (each with its comments in the database) and
+    functions as its owner makes them, and its seeds as cortex_owner loads them."""
+    card = tomllib.load(open(os.path.join(ROOT, folder, "owner.toml"), "rb"))
+    ns, tables = card["namespace"], []
+    for t in card["tables"]:
+        path = f"{folder}/schema/{t}.sql"
+        text = open(os.path.join(ROOT, path), encoding="utf-8").read()
+        tables += [(path, text), (path + " comments", "\n".join(comments(ns, t, text)))]
+    for f in card.get("functions", []):
+        path = f"{folder}/schema/functions/{f}.sql"
+        tables.append((path, open(os.path.join(ROOT, path), encoding="utf-8").read()))
+    seeds = [(f"{folder}/seeds/{s}.sql", open(os.path.join(ROOT, folder, "seeds", f"{s}.sql"), encoding="utf-8").read()) for s in card.get("seeds", [])]
+    return card, tables, seeds
+
+
+def plug_folder(store, folder, password=None):
+    """Plugs the plugin of a package folder into the store, the five steps; returns its card."""
+    card, tables, seeds = package(folder)
+    plug(store, card["id"], card["kind"], card["namespace"], card["name"], card["version"], card["requires_cortex"], tables, seeds, password)
+    return card
 
 
 def plug(store, plugin, kind, namespace, name, version, requires_cortex, tables, seeds, password=None):

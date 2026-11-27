@@ -318,7 +318,7 @@ BEGIN
   SELECT * INTO STRICT p FROM cortex.plugins WHERE id = plugin;
   EXECUTE format('GRANT USAGE ON SCHEMA cortex TO %I', p.namespace || '_owner');
   EXECUTE format('GRANT SELECT ON cortex.plugins, cortex.plugin_tables TO %I', p.namespace || '_owner');
-  EXECUTE format('GRANT REFERENCES ON cortex.designs, cortex.namespaces, cortex.objects, cortex.columns, cortex.indexes, cortex.index_parts, cortex.constraints TO %I',
+  EXECUTE format('GRANT REFERENCES ON cortex.designs, cortex.namespaces, cortex.objects, cortex.columns, cortex.indexes, cortex.index_parts, cortex.constraints, cortex.constraint_columns TO %I',
                  p.namespace || '_owner');
   EXECUTE format('GRANT EXECUTE ON FUNCTION cortex.log_row(), cortex.owns_design(uuid, name), cortex.attach_history(text, text[]), cortex.fence(text, text[]), cortex.fit_plugin(text) TO %I',
                  p.namespace || '_owner');
@@ -1755,7 +1755,7 @@ CREATE TABLE cortex.plugin_tables (
     extends text,
     comment text NOT NULL,
     CONSTRAINT plugin_tables_comment_check CHECK ((length(comment) >= 1)),
-    CONSTRAINT plugin_tables_extends_check CHECK ((extends = ANY (ARRAY['namespaces'::text, 'objects'::text, 'columns'::text, 'indexes'::text, 'constraints'::text]))),
+    CONSTRAINT plugin_tables_extends_check CHECK ((extends = ANY (ARRAY['namespaces'::text, 'objects'::text, 'columns'::text, 'indexes'::text, 'index_parts'::text, 'constraints'::text, 'constraint_columns'::text]))),
     CONSTRAINT plugin_tables_name_check CHECK ((name ~ '^[a-z][a-z0-9_]*$'::text))
 );
 

@@ -1,0 +1,24 @@
+# The MySQL plugin (#140; decisions plugin-package, database-roles, plugin-writes): every object of MySQL 5.7, 8.0, 8.4
+# and 9.7, and of its subsets Percona Server, Amazon RDS, Cloud SQL and Amazon Aurora, each a flavor declared in its
+# seeds. Its tables load in this order, as engine_mysql_owner; every column's trailing comment becomes its comment in the
+# database, every file's first line its table's. Its service account, engine_mysql_service, is the only writer of them.
+id = "mysql"
+kind = "engine"
+namespace = "engine_mysql"
+name = "MySQL"
+version = 1
+requires_cortex = 1
+
+tables = [
+  # the server and its databases (namespaces)
+  "instances", "databases",
+  # what a database holds
+  "tables", "columns", "indexes", "index_parts", "partitionings", "partitions",
+  "views", "routines", "routine_parameters", "triggers", "events",
+  # what the server holds
+  "tablespaces", "spatial_reference_systems", "libraries", "accounts", "role_grants", "privileges",
+  "servers", "resource_groups", "components", "loadable_functions", "compression_dictionaries",
+]
+
+functions = ["check_flavor"]
+seeds = ["engine"]
