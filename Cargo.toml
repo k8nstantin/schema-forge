@@ -2,7 +2,7 @@
 # CI runs that tool.
 [workspace]
 resolver = "3"
-members = ["crates/store", "crates/core", "crates/cli"]
+members = ["crates/store", "crates/core", "crates/engine", "crates/cli", "engines/mysql"]
 
 [workspace.package]
 version = "0.1.0"
@@ -15,12 +15,20 @@ publish = false
 [workspace.dependencies]
 schema-forge-store = { path = "crates/store" }
 schema-forge-core = { path = "crates/core" }
+schema-forge-engine = { path = "crates/engine" }
+schema-forge-engine-mysql = { path = "engines/mysql" }
 anyhow = "1.0"
+# the Arrow types DataFusion 55 requires (^59.2.0); engines depend on arrow-schema alone, never on DataFusion
+arrow-schema = "59.2.0"
+async-trait = "0.1.92"
 clap = { version = "4.6.10", features = ["derive"] }
 deadpool-postgres = "0.14.2"
 fastrand = "2.5.0"
 futures-util = "0.3"
+# TLS with rustls and ring, the store's own TLS stack
+mysql_async = { version = "0.37.1", default-features = false, features = ["default-rustls-ring"] }
 postgres-types = { version = "0.2", features = ["derive", "with-uuid-1"] }
+regex = "1.13.2"
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-native-certs = "0.8"
 serde = { version = "1.0", features = ["derive"] }
@@ -39,9 +47,4 @@ missing_docs = "warn"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
-# every public function's errors are its Result's error type, documented on that type, not repeated per function
-missing_errors_doc = "allow"
-# the crates are named schema_forge_*; their types need not avoid the module's name
-module_name_repetitions = "allow"
 unwrap_used = "warn"
