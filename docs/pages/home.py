@@ -1,5 +1,5 @@
-"""Start here: what the product is, how the pack and a build fit together, the crates as cargo knows them, and where
-each task of the sequence stands."""
+"""Start here: what the product is, how the pack and a build fit together, the repository and the tools that prove each
+part, and where each objective of the sequence stands."""
 import json, os, subprocess, xml.etree.ElementTree as ET
 from common import REPO, Svg, database, e, links, page
 
@@ -8,36 +8,23 @@ seq = root.find("sequence").findall("task")
 db, edges = database()
 L = links()
 
-# --- the crates, as cargo knows them ----------------------------------------------------------------------------------
-meta = (json.loads(subprocess.run(["cargo", "metadata", "--format-version", "1", "--no-deps"], cwd=REPO, capture_output=True, text=True, check=True).stdout)
-        if os.path.exists(f"{REPO}/Cargo.toml") else {"packages": []})   # no crate until the objectives build them (decision code-reset)
-crates = []
-for p in meta["packages"]:
-    role = (p.get("metadata") or {}).get("schema-forge", {}).get("role", "?")
-    crates.append((role, p["name"], os.path.relpath(os.path.dirname(p["manifest_path"]), REPO)))
-planned = [(t.get("builds"), t.get("id"), t.get("key")) for t in seq]
-ROLES = [("model", "the skeleton every engine shares"), ("interface", "the engine interface, the layout, the kit"),
-         ("engine", "one crate per database"), ("registry", "the engines shipped"), ("app", "the store, the server, the command line"),
-         ("tool", "checks of the code itself")]
-shown = set()
-g = Svg(1040, 60 + 64 * len(ROLES), "The crates of the workspace by role, as cargo metadata gives them, and the ones the sequence builds.")
-y = 20
-for role, says in ROLES:
-    have = sorted(n for r, n, d in crates if r == role)
-    g.text(20, y + 26, role, "cap"); g.text(20, y + 42, says, "lb")
-    x = 300
-    for n in have:
-        w = 22 + 7.6 * len(n); g.box(n, x, y + 8, w, 36, n, cls="pri"); x += w + 12
-    for b, tid, key in planned:
-        for path in (b or "").split():
-            if path in shown: continue
-            want = {"engine": path.startswith("engines/") and path.count("/") == 1, "registry": path == "crates/engines",
-                    "app": path in ("crates/store", "crates/serve"), "tool": path == "tools/specs"}.get(role, False)
-            if want:
-                shown.add(path); nm = f"{path}  ({key or tid})"; w = 22 + 7.6 * len(nm)
-                g.box(nm, x, y + 8, w, 36, nm, cls="band"); x += w + 12
-    y += 64
-g.text(20, y + 20, "filled: on main today · dashed: built by the task named · an app asks the registry, never one engine (tools/architecture)", "lb")
+# --- the repository: what is built, and the tools that prove each part; every box opens its folder ----------------------
+from common import REPO_URL  # noqa: E402
+TREE = f"{REPO_URL}/tree/main"
+g = Svg(1040, 400, "The repository: the cortex and each engine plugin as schema files, the tools that prove each part, and the spec they all fall into.")
+g.band(10, 10, 500, 250, "what is built: the database")
+g.band(530, 10, 500, 250, "what proves it: a tool for every check")
+parts = [("cortex", 40, 50, "schema/cortex", "21 tables, the plugs", "pri"), ("mysql", 40, 150, "engines/mysql", "24 tables, reader, writer", "eng"),
+         ("tc", 560, 40, "tools/cortex", "load, ids, dump, history", "lg"), ("tm", 560, 110, "tools/mysql", "round trip, flavors", "lg"),
+         ("tsf", 560, 180, "tools/sf", "store, servers, plug-in", "lg"),
+         ("specs", 40, 300, "specs", "root, rules, brief", "box"), ("docs", 300, 300, "docs", "designs and this site", "box"),
+         ("ci", 560, 300, ".github/workflows", "CI runs every tool", "box"), ("check", 800, 300, "tools/check.py", "the repo check", "box")]
+for k, x, y, t, s, c in parts:
+    g.box(k, x, y, 220, 56, t, s, cls=c, href=f"{TREE}/{t}")
+g.arrow("tc", "cortex", "proves")
+g.arrow("tm", "mysql", "proves")
+g.arrow("mysql", "cortex", "plugs into", lx=-58)
+g.containers = set()
 crates_svg = g.render()
 
 # --- how a build happens -----------------------------------------------------------------------------------------
@@ -86,7 +73,7 @@ body = f"""
 <section id="stands"><h2>Where it stands</h2><p class="lede">The foundation is on main: the model, the engine interface with its kit, and the MySQL engine (pull request #89). Next is the sequence below, built one task at a time once the spec is merged.</p>
 <div class="scroll"><table class="t"><thead><tr><th>Task</th><th>What</th><th>Issue</th><th>State</th><th>Builds</th></tr></thead><tbody>{rows}</tbody></table></div></section>
 <section id="flow"><h2>How a build happens</h2><figure>{flow_svg}<figcaption>The method of specs/root.xml, end to end. A build reads only the merged code and the spec; whatever they do not say is a stop, never a guess.</figcaption></figure></section>
-<section id="crates"><h2>The crates</h2><figure>{crates_svg}<figcaption>Read from cargo metadata, each crate's declared role; tools/architecture fails the build when a crate depends the wrong way or names a database outside its engine.</figcaption></figure></section>
+<section id="crates"><h2>The repository</h2><figure>{crates_svg}<figcaption>Every box opens its folder. Every check is a tool in the repository, never an ad-hoc command, and CI runs them all on every pull request.</figcaption></figure></section>
 <section id="pack"><h2>This pack</h2><figure>{pack_svg}<figcaption>Nothing on these pages is typed by hand but prose: every table, column, rule, task and defect is read from the files. A change is made in the repository and the pages built again.</figcaption></figure></section>
 """
 CSS = """
@@ -94,5 +81,5 @@ CSS = """
 .tile{display:flex;flex-direction:column;gap:4px;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:14px 16px;text-decoration:none;color:var(--ink)}
 .tile:hover{border-color:var(--accent)}.tile b{font:700 21px var(--head)}.tile span{font-size:14px;color:var(--ink2)}
 """
-sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("stands", "Where it stands"), ("flow", "How a build happens"), ("crates", "The crates"), ("pack", "This pack")])
+sub = " ".join(f'<a href="#{k}">{v}</a>' for k, v in [("stands", "Where it stands"), ("flow", "How a build happens"), ("crates", "The repository"), ("pack", "This pack")])
 HTML = page("home", "%PRODUCT%", CSS, body, sub)
