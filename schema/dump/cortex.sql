@@ -318,13 +318,14 @@ BEGIN
     RETURN;
   END IF;
   PERFORM cortex.check_plugin(plugin);
-  -- its service account: reads the declarations and its engine's designs; writes the model, turns and operations for them
+  -- its service account, the least its work needs (importing a live server into a design, writing a design back):
+  -- reads its declarations and its engine's designs; reads and writes the model of them; adds its operations to the
+  -- turn the app opened. Nothing of turns, branches, locked versions, the plugs or the log: the app opens and ends
+  -- turns; foreign keys into what it cannot read are checked by the database as the tables' owner.
   EXECUTE format('GRANT USAGE ON SCHEMA cortex TO %I', p.account);
-  EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA cortex TO %I', p.account);
-  EXECUTE format('REVOKE SELECT ON cortex.row_changes FROM %I', p.account);
-  EXECUTE format('GRANT INSERT, UPDATE ON cortex.turns TO %I', p.account);
-  EXECUTE format('GRANT INSERT ON cortex.operations TO %I', p.account);
-  EXECUTE 'GRANT INSERT, UPDATE, DELETE ON ' || (SELECT string_agg('cortex.' || m, ', ') FROM unnest(model) m) || format(' TO %I', p.account);
+  EXECUTE format('GRANT SELECT ON cortex.engines, cortex.engine_versions, cortex.engine_flavors, cortex.object_kinds, cortex.designs TO %I', p.account);
+  EXECUTE format('GRANT SELECT, INSERT ON cortex.operations TO %I', p.account);
+  EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON ' || (SELECT string_agg('cortex.' || m, ', ') FROM unnest(model) m) || format(' TO %I', p.account);
   EXECUTE format('GRANT EXECUTE ON FUNCTION cortex.owns_design(uuid, name) TO %I', p.account);
 END $$;
 

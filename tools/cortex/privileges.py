@@ -15,7 +15,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from sf.fixture import in_turn, installed, new_design  # noqa: E402
+from sf.fixture import in_turn, installed, new_design, plugin_turn  # noqa: E402
 
 DECLARED = ("plugins", "plugin_tables", "engines", "engine_versions", "engine_flavors", "object_kinds", "schema_migrations")
 MODEL = ("namespaces", "objects", "columns", "indexes", "index_parts", "constraints", "constraint_columns", "dependencies")
@@ -24,9 +24,18 @@ ACCOUNTS = ("cortex_service", "cortex_agent", "cortex_reader") + ENGINE_ACCOUNTS
 OWNERS = ("cortex_owner", "engine_mysql_owner", "engine_postgresql_owner")
 
 
+PLUGIN_READS = ("engines", "engine_versions", "engine_flavors", "object_kinds", "designs")
+
+
 def policy(account, table):
-    """The privileges the policy gives an account on a cortex table."""
+    """The privileges the policy gives an account on a cortex table: the least each one's work needs."""
     engine = account in ENGINE_ACCOUNTS
+    if engine:
+        # a plugin's service account: its declarations and designs to read, the model to read and write, its operations
+        # to add to the app's turn; nothing else
+        if table in MODEL:
+            return {"SELECT", "INSERT", "UPDATE", "DELETE"}
+        return {"SELECT"} if table in PLUGIN_READS else {"SELECT", "INSERT"} if table == "operations" else set()
     if table in DECLARED or account == "cortex_reader":
         return {"SELECT"}
     if table in MODEL:
@@ -34,11 +43,11 @@ def policy(account, table):
     return {
         "designs": {"cortex_service": {"SELECT", "INSERT", "UPDATE", "DELETE"}},
         "branches": {"cortex_service": {"SELECT", "INSERT", "UPDATE", "DELETE"}},
-        "turns": {"cortex_service": {"SELECT", "INSERT", "UPDATE"}, "cortex_agent": {"SELECT", "INSERT", "UPDATE"}, "engine": {"SELECT", "INSERT", "UPDATE"}},
-        "operations": {"cortex_service": {"SELECT", "INSERT"}, "cortex_agent": {"SELECT", "INSERT"}, "engine": {"SELECT", "INSERT"}},
-        "row_changes": {"cortex_service": {"SELECT"}, "cortex_agent": {"SELECT"}, "engine": set()},
+        "turns": {"cortex_service": {"SELECT", "INSERT", "UPDATE"}, "cortex_agent": {"SELECT", "INSERT", "UPDATE"}},
+        "operations": {"cortex_service": {"SELECT", "INSERT"}, "cortex_agent": {"SELECT", "INSERT"}},
+        "row_changes": {"cortex_service": {"SELECT"}, "cortex_agent": {"SELECT"}},
         "locked_versions": {"cortex_service": {"SELECT", "INSERT"}},
-    }[table].get("engine" if engine else account, {"SELECT"})
+    }[table].get(account, {"SELECT"})
 
 
 FUNCTIONS = {"cortex_service": {"cortex.owns_design(uuid,name)", "cortex.undo(uuid)"}, "cortex_agent": {"cortex.owns_design(uuid,name)", "cortex.undo(uuid)"},
@@ -98,27 +107,31 @@ def main():
             seen = store.value(f"BEGIN; SET ROLE {acct}; SELECT string_agg(name, ' ') FROM cortex.designs; COMMIT;")
             check(seen == ("shop_mysql" if acct == "engine_mysql_service" else "shop_pg"), f"{acct} sees its own engine's design only ({seen})")
             ob = mb if own == m else pb
-            rc, _, _ = store.sql(in_turn(own, ob, f"INSERT INTO cortex.namespaces (design, name, position) VALUES ('{own}', 'mine', 2);", role=acct), check=False)
-            check(rc == 0, f"{acct} writes its own engine's design")
+            rc, _, err = plugin_turn(store, own, ob, f"INSERT INTO cortex.namespaces (design, name, position) VALUES ('{own}', 'mine', 2);", acct, check=False)
+            check(rc == 0, f"{acct} writes its own engine's design, in the app's turn" + ("" if rc == 0 else f" ({err.strip()[:120]})"))
             xb = pb if other == p else mb
-            rc, _, err = store.sql(in_turn(other, xb, f"INSERT INTO cortex.namespaces (design, name, position) VALUES ('{other}', 'theirs', 3);", role=acct), check=False)
+            rc, _, err = plugin_turn(store, other, xb, f"INSERT INTO cortex.namespaces (design, name, position) VALUES ('{other}', 'theirs', 3);", acct, check=False)
             check(rc != 0, f"{acct} may not write the other engine's design")
+            rc, _, _ = store.sql(in_turn(own, ob, "SELECT 1;", role=acct), check=False)
+            check(rc != 0, f"{acct} may not open or end a turn: the app does")
             n = store.value(f"BEGIN; SET ROLE {acct}; SELECT count(*) FROM cortex.namespaces WHERE design = '{other}'; COMMIT;")
             check(n == "0", f"{acct} reads none of the other engine's rows ({n})")
         for a in ("cortex_service", "cortex_agent", "cortex_reader"):
             seen = store.value(f"BEGIN; SET ROLE {a}; SELECT count(*) FROM cortex.designs; COMMIT;")
             check(seen == "2", f"{a} sees every design ({seen} of 2)")
         print("== each plugin's namespace: written by its own service account alone (no cross-engine writes)")
-        obj = lambda d, b, name, role: in_turn(d, b, f"""
+        body = lambda d, name, role: f"""
             INSERT INTO cortex.objects (design, engine, namespace, kind, name, position)
-              SELECT '{d}', engine, n.id, 'table', '{name}', 9 FROM cortex.namespaces n JOIN cortex.designs g ON g.id = n.design WHERE n.design = '{d}' AND n.name IN ('shop', 'public');
+              SELECT '{d}', g.engine, n.id, 'table', '{name}', 9 FROM cortex.namespaces n JOIN cortex.designs g ON g.id = n.design WHERE n.design = '{d}' AND n.name IN ('shop', 'public');
             INSERT INTO {'engine_mysql' if d == m else 'engine_postgresql'}.tables (id, design, note)
-              SELECT id, '{d}', 'by {role}' FROM cortex.objects WHERE design = '{d}' AND name = '{name}';""", role=role)
-        rc, _, err = store.sql(obj(m, mb, "orders", "engine_mysql_service"), check=False)
+              SELECT id, '{d}', 'by {role}' FROM cortex.objects WHERE design = '{d}' AND name = '{name}';"""
+        rc, _, err = plugin_turn(store, m, mb, body(m, "orders", "engine_mysql_service"), "engine_mysql_service", check=False)
         check(rc == 0, "engine_mysql_service writes engine_mysql for a MySQL design" + ("" if rc == 0 else f" ({err.strip()[:120]})"))
-        for role in ("cortex_service", "cortex_agent", "engine_postgresql_service"):
-            rc, _, _ = store.sql(obj(m, mb, f"by_{role}", role), check=False)
+        for role in ("cortex_service", "cortex_agent"):
+            rc, _, _ = store.sql(in_turn(m, mb, body(m, f"by_{role}", role), role=role), check=False)
             check(rc != 0, f"{role} may not write engine_mysql")
+        rc, _, _ = plugin_turn(store, m, mb, body(m, "by_pg", "engine_postgresql_service"), "engine_postgresql_service", check=False)
+        check(rc != 0, "engine_postgresql_service may not write engine_mysql")
         for role in ("cortex_service", "cortex_agent", "cortex_reader"):
             n = store.value(f"BEGIN; SET ROLE {role}; SELECT count(*) FROM engine_mysql.tables; COMMIT;")
             check(n == "1", f"{role} reads engine_mysql ({n} of 1 rows)")

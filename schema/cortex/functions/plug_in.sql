@@ -7,9 +7,10 @@
 --   cortex_service (app) reads everything; writes designs, branches and the model; opens, ends and numbers turns,
 --                        adds operations; locks versions; never writes the log, the plugs or any plugin's tables
 --   cortex_agent         as cortex_service, but reads designs, branches and locked versions only
---   <plugin>_service     reads the declarations and its own engine's designs; writes the model and its own namespace's
---                        rows for its own engine's designs only (row-level security); opens and ends turns, adds
---                        operations; the only writer of its namespace (decision plugin-writes)
+--   <plugin>_service     the least its work needs: reads its declarations and its own engine's designs; reads and
+--                        writes the model and its own namespace's rows for its own engine's designs only (row-level
+--                        security); adds its operations to the turn the app opened; nothing of turns, branches,
+--                        locked versions, the plugs or the log; the only writer of its namespace (decision plugin-writes)
 --   <plugin>_owner       owns its namespace and runs its migrations; may reference the cortex tables its own extend,
 --                        nothing else of the cortex
 --   the log (cortex.row_changes) is written only by cortex.log_row; nobody rewrites it
@@ -129,13 +130,14 @@ BEGIN
     RETURN;
   END IF;
   PERFORM cortex.check_plugin(plugin);
-  -- its service account: reads the declarations and its engine's designs; writes the model, turns and operations for them
+  -- its service account, the least its work needs (importing a live server into a design, writing a design back):
+  -- reads its declarations and its engine's designs; reads and writes the model of them; adds its operations to the
+  -- turn the app opened. Nothing of turns, branches, locked versions, the plugs or the log: the app opens and ends
+  -- turns; foreign keys into what it cannot read are checked by the database as the tables' owner.
   EXECUTE format('GRANT USAGE ON SCHEMA cortex TO %I', p.account);
-  EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA cortex TO %I', p.account);
-  EXECUTE format('REVOKE SELECT ON cortex.row_changes FROM %I', p.account);
-  EXECUTE format('GRANT INSERT, UPDATE ON cortex.turns TO %I', p.account);
-  EXECUTE format('GRANT INSERT ON cortex.operations TO %I', p.account);
-  EXECUTE 'GRANT INSERT, UPDATE, DELETE ON ' || (SELECT string_agg('cortex.' || m, ', ') FROM unnest(model) m) || format(' TO %I', p.account);
+  EXECUTE format('GRANT SELECT ON cortex.engines, cortex.engine_versions, cortex.engine_flavors, cortex.object_kinds, cortex.designs TO %I', p.account);
+  EXECUTE format('GRANT SELECT, INSERT ON cortex.operations TO %I', p.account);
+  EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON ' || (SELECT string_agg('cortex.' || m, ', ') FROM unnest(model) m) || format(' TO %I', p.account);
   EXECUTE format('GRANT EXECUTE ON FUNCTION cortex.owns_design(uuid, name) TO %I', p.account);
 END $$;
 

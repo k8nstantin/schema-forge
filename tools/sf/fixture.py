@@ -74,6 +74,21 @@ def in_turn(design, branch, body, kind="edit", author="tool", parent=None, op_ki
         UPDATE cortex.turns SET state = 'committed', ended_at = now() WHERE id = current_setting('sf.turn')::uuid;""")
 
 
+def plugin_turn(store, design, branch, body, plugin_role, op_kind="import", check=True):
+    """The real way a plugin works: the app opens a turn; the plugin, as its own service account, adds its operation
+    to it and writes under it; the app commits the turn. Returns the plugin's (exit, stdout, stderr); the turn is
+    committed when the plugin's work went in, rejected when it did not."""
+    t = store.sql(as_role("cortex_service", f"INSERT INTO cortex.turns (design, branch, kind, author) VALUES ('{design}', '{branch}', '{op_kind}', 'app') RETURNING id;"))[1].split()[0]
+    r = store.sql(as_role(plugin_role, f"""
+        WITH o AS (INSERT INTO cortex.operations (design, turn, position, kind, summary)
+                   VALUES ('{design}', '{t}', 1, '{op_kind}', '{op_kind} by {plugin_role}') RETURNING id)
+        SELECT set_config('schema_forge.operation', id::text, true) FROM o;
+        {body}"""), check=check)
+    state = "'committed', ended_at = now()" if r[0] == 0 else "'rejected', ended_at = now()"
+    store.sql(as_role("cortex_service", f"UPDATE cortex.turns SET state = {state} WHERE id = '{t}';"))
+    return r
+
+
 def turn_id(output):
     """The turn's id from in_turn's output: the first line that is a UUID."""
     for line in output.split():
