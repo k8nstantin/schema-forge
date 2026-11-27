@@ -35,6 +35,25 @@ def plug_folder(store, folder, password=None):
     return card
 
 
+def engine_folders():
+    """Every engine package of the repository (engines/<engine> with its card), in name order."""
+    root = os.path.join(ROOT, "engines")
+    return sorted(f"engines/{d}" for d in os.listdir(root) if os.path.exists(os.path.join(root, d, "owner.toml"))) if os.path.isdir(root) else []
+
+
+def install_all(store, passwords=None):
+    """The whole schema_forge, as the installer makes it: the cortex, then every engine package plugged in. passwords
+    maps a plugin's service account to its password (a real install); without, the accounts sign in with none (a test
+    container). Returns the cards of the plugins plugged in."""
+    from sf.schema import cortex_sql
+    store.sql(script(cortex_sql()))
+    cards = []
+    for folder in engine_folders():
+        card, _, _ = package(folder)
+        cards.append(plug_folder(store, folder, (passwords or {}).get(f"{card['namespace']}_service")))
+    return cards
+
+
 def plug(store, plugin, kind, namespace, name, version, requires_cortex, tables, seeds, password=None):
     """tables: (label, SQL) parts run as the plugin's owner; seeds: (label, SQL) parts run as cortex_owner."""
     owner, service = f"{namespace}_owner", f"{namespace}_service"

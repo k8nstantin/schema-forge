@@ -27,6 +27,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: docker pull -q postgres:18-alpine
+      # the installer's test runs psql and pg_dump on the runner, as the DBA does on theirs: PostgreSQL 18's client
+      - run: sudo apt-get install -y -q postgresql-common && sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y && sudo apt-get install -y -q postgresql-client-18
       # every proof of the cortex, each in fresh PostgreSQL 18 containers (the private MySQL sample is not here)
       - run: python3 tools/cortex/all.py
 
