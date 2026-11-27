@@ -87,6 +87,16 @@ def main():
         check(rc != 0 and "outside an operation" in err, "a change outside an operation is refused")
         rc, _, err = store.sql(f"BEGIN; SET ROLE cortex_service; DELETE FROM cortex.row_changes; COMMIT;", check=False)
         check(rc != 0, "the app may not rewrite the log")
+        # deleting a whole design: its rows in the cortex and in a plugin's tables, and its log, go with it
+        plugin_turn(store, d, b, f"""
+            INSERT INTO cortex.objects (design, engine, namespace, kind, name, position)
+              SELECT '{d}', 'mysql', id, 'table', 'to_go', 2 FROM cortex.namespaces WHERE design = '{d}' AND name = 'shop';
+            INSERT INTO engine_mysql.tables (id, design, note) SELECT id, '{d}', 'goes with its design' FROM cortex.objects WHERE design = '{d}' AND name = 'to_go';""",
+                    "engine_mysql_service")
+        rc, _, err = store.sql(f"BEGIN; SET ROLE cortex_service; DELETE FROM cortex.designs WHERE id = '{d}'; COMMIT;", check=False)
+        left = store.value(f"SELECT (SELECT count(*) FROM cortex.designs WHERE id = '{d}') + (SELECT count(*) FROM cortex.objects WHERE design = '{d}') "
+                           f"+ (SELECT count(*) FROM engine_mysql.tables WHERE design = '{d}') + (SELECT count(*) FROM cortex.row_changes WHERE design = '{d}')")
+        check(rc == 0 and left == "0", "the app deletes a whole design: its rows in the cortex and the plugin's tables, and its log, all go" + ("" if rc == 0 else f" ({err.strip()[:160]})"))
     finally:
         store.__exit__(None, None, None)
     print(f"{'pass' if not bad else 'FAIL'}  cortex history: {len(bad)} findings")

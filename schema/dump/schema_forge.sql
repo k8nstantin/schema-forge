@@ -263,6 +263,9 @@ DECLARE
   old_row jsonb := CASE WHEN TG_OP <> 'INSERT' THEN to_jsonb(OLD) END;
   new_row jsonb := CASE WHEN TG_OP <> 'DELETE' THEN to_jsonb(NEW) END;
 BEGIN
+  IF TG_OP = 'DELETE' AND NOT EXISTS (SELECT 1 FROM cortex.designs WHERE id = (old_row ->> 'design')::uuid) THEN
+    RETURN NULL;   -- its design is being deleted: the design's whole log goes with it
+  END IF;
   IF op IS NULL THEN
     RAISE EXCEPTION 'a change to %.% outside an operation: set schema_forge.operation first', TG_TABLE_SCHEMA, TG_TABLE_NAME
       USING ERRCODE = 'insufficient_privilege';
