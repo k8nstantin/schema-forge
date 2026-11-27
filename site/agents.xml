@@ -124,6 +124,7 @@
   <database>Every table is a file of an owner's folder, one CREATE TABLE each, every column commented, its comments also in the database. Read a folder's files to know its tables; the owner template explains the shapes.
     <folder path="schema/cortex/" href="https://github.com/k8nstantin/schema-forge/tree/main/schema/cortex"/>
     <folder path="schema/ui/" href="https://github.com/k8nstantin/schema-forge/tree/main/schema/ui"/>
+    <folder path="engines/mysql/schema/" href="https://github.com/k8nstantin/schema-forge/tree/main/engines/mysql/schema"/>
   </database>
   <open>
     <decision id="operation-kinds" closes-before="t08">The operation kinds (add_table, rename_column and the rest), what each changes and how the agent calls it.</decision>
