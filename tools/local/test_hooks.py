@@ -20,7 +20,7 @@ GATE_CASES = [
     ("python3 tools/local/proof.py --pg 18", "allow"),
     ("git status --short && gh pr list", "allow"),
     ("ls schema | grep sql", "allow"),
-    ("git checkout -q -b cortex-optimal", "allow"),
+    ("git checkout -q -b cortex", "allow"),
     ('git commit -q -m "SF-1 a; b (c) | d && e" && tools/check.sh 2>&1 | tail -2', "allow"),
     ('git commit -m "x" && docker ps', "deny"),
     ("docker ps", "deny"),
