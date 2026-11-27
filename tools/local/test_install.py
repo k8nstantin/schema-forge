@@ -6,7 +6,8 @@ password, holding an earlier install (the old schema_forge and its sf_ roles), a
   2. run by a user who is not a superuser, it stops and changes nothing
   3. with --fresh it drops the old install, installs the cortex and every engine, and locks in: 0 findings
   4. with --fresh again, the same: 0 findings
-  and the accounts file is mode 600, with a password for every service account
+  and the accounts file is mode 600, with a password for every service account; and tools/local/qa.py, run on the
+  installed database, passes every probe
 
   python3 tools/local/test_install.py
 """
@@ -91,6 +92,11 @@ def main():
                   f"the accounts file is mode {mode}, with {len(names)} service accounts' passwords")
             old_roles = psql("SELECT count(*) FROM pg_roles WHERE rolname LIKE 'sf\\_%';").stdout.strip()
             check(old_roles == "0", f"the earlier install's sf_ roles are gone ({old_roles} left)")
+            # the QA the DBA runs on an install, run on this one: every role, grant and behavior, and the lock after it
+            out = subprocess.run([sys.executable, os.path.join(HERE, "qa.py"), "--port", port, "--accounts-file", accounts], capture_output=True, text=True)
+            last = (out.stdout.strip().splitlines() or ["(nothing)"])[-1]
+            passed = len(re.findall(r"^  pass ", out.stdout, re.M))
+            check(out.returncode == 0 and last.startswith("pass"), f"tools/local/qa.py on the installed database: {passed} probes passed; {last}", out.stdout[-3000:] + out.stderr[-1000:])
     finally:
         docker("rm", "-f", "-v", name)
     print(f"{'pass' if not bad else 'FAIL'}  install: {len(bad)} findings")

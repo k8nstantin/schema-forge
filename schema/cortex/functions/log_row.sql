@@ -2,6 +2,8 @@
 -- updated or deleted, it writes the row's change to cortex.row_changes under the operation the session is working in
 -- (the setting schema_forge.operation, set by whoever runs the operation). A change made outside an operation is
 -- refused: every change belongs to a turn. It runs as the cortex's owner, so no account writes the log itself.
+-- One exception: a row deleted because its design is deleted (the cascade from cortex.designs) is not logged, since the
+-- design's whole log goes with it; only the app may delete a design.
 
 CREATE FUNCTION cortex.log_row() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, cortex AS $$
 DECLARE
@@ -9,6 +11,9 @@ DECLARE
   old_row jsonb := CASE WHEN TG_OP <> 'INSERT' THEN to_jsonb(OLD) END;
   new_row jsonb := CASE WHEN TG_OP <> 'DELETE' THEN to_jsonb(NEW) END;
 BEGIN
+  IF TG_OP = 'DELETE' AND NOT EXISTS (SELECT 1 FROM cortex.designs WHERE id = (old_row ->> 'design')::uuid) THEN
+    RETURN NULL;   -- its design is being deleted: the design's whole log goes with it
+  END IF;
   IF op IS NULL THEN
     RAISE EXCEPTION 'a change to %.% outside an operation: set schema_forge.operation first', TG_TABLE_SCHEMA, TG_TABLE_NAME
       USING ERRCODE = 'insufficient_privilege';
