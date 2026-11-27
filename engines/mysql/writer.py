@@ -35,26 +35,42 @@ def write(model):
     out.append("SET FOREIGN_KEY_CHECKS = 1;")
     for k in view_order(objects):
         out += [f"USE {q(split_key(k)[0])};"] + program_session(objects[k]["details"]) + [create_view(k, objects[k])]
-    out.append("DELIMITER $$")
+    # programs: a delimiter no body holds (a JavaScript body is quoted with $$)
+    d = DELIMITER
+    out.append(f"DELIMITER {d}")
+    for k in sorted(k for k, o in objects.items() if o["kind"] == "library"):
+        out += [f"USE {q(split_key(k)[0])}{d}", f"SET sql_mode = {lit(objects[k]['details']['sql_mode'])}{d}", create_library(k, objects[k]) + d]
     for k in sorted(k for k, o in objects.items() if o["kind"] in ("procedure", "function")):
-        out += [f"USE {q(split_key(k)[0])}$$"] + [s.rstrip(";") + "$$" for s in program_session(objects[k]["details"], with_mode=True)]
-        out.append(create_routine(k, objects[k]) + "$$")
+        out += [f"USE {q(split_key(k)[0])}{d}"] + [s.rstrip(";") + d for s in program_session(objects[k]["details"], with_mode=True)]
+        out.append(create_routine(k, objects[k]) + d)
     triggers = sorted((k for k, o in objects.items() if o["kind"] == "trigger"),
                       key=lambda k: (objects[k]["parent"], objects[k]["details"]["timing"], objects[k]["details"]["event"], objects[k]["details"]["action_order"]))
     previous = {}
     for k in triggers:
         t = objects[k]
         group = (t["parent"], t["details"]["timing"], t["details"]["event"])
-        out += [f"USE {q(split_key(k)[0])}$$"] + [s.rstrip(";") + "$$" for s in program_session(t["details"], with_mode=True)]
-        out.append(create_trigger(k, t, previous.get(group)) + "$$")
+        out += [f"USE {q(split_key(k)[0])}{d}"] + [s.rstrip(";") + d for s in program_session(t["details"], with_mode=True)]
+        out.append(create_trigger(k, t, previous.get(group)) + d)
         previous[group] = split_key(k)[2]
     for k in sorted(k for k, o in objects.items() if o["kind"] == "event"):
         e = objects[k]
-        out += [f"USE {q(split_key(k)[0])}$$"] + [s.rstrip(";") + "$$" for s in program_session(e["details"], with_mode=True)]
-        out.append(f"SET time_zone = {lit(e['details']['time_zone'])}$$")
-        out.append(create_event(k, e) + "$$")
+        out += [f"USE {q(split_key(k)[0])}{d}"] + [s.rstrip(";") + d for s in program_session(e["details"], with_mode=True)]
+        out.append(f"SET time_zone = {lit(e['details']['time_zone'])}{d}")
+        out.append(create_event(k, e) + d)
     out.append("DELIMITER ;")
     return "\n".join(out) + "\n"
+
+
+DELIMITER = "$sf_end$"
+
+
+def create_library(k, o):
+    db, _, name = split_key(k)
+    d = o["details"]
+    s = f"CREATE LIBRARY {q(db)}.{q(name)}"
+    if o.get("comment"):
+        s += f" COMMENT {lit(o['comment'])}"
+    return s + f" LANGUAGE {d['language']} AS $${d['source']}$$"
 
 
 def charset(collation):
@@ -236,7 +252,15 @@ def create_routine(k, o):
         s += f" RETURNS {d['returns']}"
     if o.get("comment"):
         s += f"\n    COMMENT {lit(o['comment'])}"
-    s += f"\n    {'DETERMINISTIC' if d['deterministic'] else 'NOT DETERMINISTIC'}\n    {d['data_access']}\n    SQL SECURITY {d['security']}"
+    if d.get("language", "SQL") != "SQL":
+        s += f"\n    LANGUAGE {d['language']}"
+    # each characteristic written where it is not the default (the server writes none of the defaults back)
+    if d["deterministic"]:
+        s += "\n    DETERMINISTIC"
+    if d["data_access"] != "CONTAINS SQL":
+        s += f"\n    {d['data_access']}"
+    if d["security"] != "DEFINER":
+        s += f"\n    SQL SECURITY {d['security']}"
     return s + "\n" + d["body"]
 
 

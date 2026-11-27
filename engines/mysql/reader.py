@@ -35,6 +35,7 @@ def read(server):
             model["databases"][d["name"]]["read_only"] = "READ ONLY=1" in (d["opt"] or "")
     read_tables(server, model, major)
     read_views(server, model)
+    read_libraries(server, model)
     read_routines(server, model)
     read_triggers(server, model)
     read_events(server, model)
@@ -289,9 +290,30 @@ def definer(d):
     return f"{q(user)}@{q(host)}"
 
 
+def has_table(server, table):
+    return bool(server.json(f"SELECT JSON_ARRAYAGG(1) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = '{table}'"))
+
+
+def read_libraries(server, model):
+    """JavaScript libraries (9.7): the source between AS $$ and $$, as the server holds it."""
+    if not has_table(server, "LIBRARIES"):
+        return
+    for lib in server.json(f"""SELECT JSON_ARRAYAGG(JSON_OBJECT('db', LIBRARY_SCHEMA, 'name', LIBRARY_NAME, 'source', LIBRARY_DEFINITION, 'language', LANGUAGE,
+            'mode', SQL_MODE, 'comment', LIBRARY_COMMENT)) FROM information_schema.LIBRARIES WHERE LIBRARY_SCHEMA NOT IN {SYS_LIST}""") or []:
+        model["objects"][key(lib["db"], "library", lib["name"])] = {
+            "kind": "library", "comment": lib["comment"] or None, "details": {"language": lib["language"], "source": lib["source"], "sql_mode": lib["mode"]}}
+
+
 def read_routines(server, model):
+    lang = "COALESCE(EXTERNAL_LANGUAGE, 'SQL')" if server.json("SELECT JSON_ARRAYAGG(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = 'information_schema' "
+                                                               "AND TABLE_NAME = 'ROUTINES' AND COLUMN_NAME = 'EXTERNAL_LANGUAGE'") else "'SQL'"
+    uses = {}
+    if has_table(server, "ROUTINE_LIBRARIES"):
+        for u in server.json(f"""SELECT JSON_ARRAYAGG(JSON_OBJECT('db', ROUTINE_SCHEMA, 'name', ROUTINE_NAME, 'type', ROUTINE_TYPE, 'ldb', LIBRARY_SCHEMA, 'lib', LIBRARY_NAME))
+                FROM information_schema.ROUTINE_LIBRARIES WHERE ROUTINE_SCHEMA NOT IN {SYS_LIST}""") or []:
+            uses.setdefault(key(u["db"], u["type"].lower(), u["name"]), []).append([u["ldb"], u["lib"]])
     routines = server.json(f"""SELECT JSON_ARRAYAGG(JSON_OBJECT('db', ROUTINE_SCHEMA, 'name', ROUTINE_NAME, 'type', ROUTINE_TYPE, 'det', IS_DETERMINISTIC = 'YES',
-        'access', SQL_DATA_ACCESS, 'security', SECURITY_TYPE, 'definer', DEFINER, 'mode', SQL_MODE, 'comment', ROUTINE_COMMENT,
+        'lang', {lang}, 'access', SQL_DATA_ACCESS, 'security', SECURITY_TYPE, 'definer', DEFINER, 'mode', SQL_MODE, 'comment', ROUTINE_COMMENT,
         'cs', CHARACTER_SET_CLIENT, 'cc', COLLATION_CONNECTION, 'dbc', DATABASE_COLLATION)) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA NOT IN {SYS_LIST}""") or []
     creates = server.rows([f"SHOW CREATE {r['type']} {q(r['db'])}.{q(r['name'])}" for r in routines])
     for r, row in zip(routines, creates):
@@ -315,11 +337,13 @@ def read_routines(server, model):
         while n < len(lines) and re.match(r"^    (DETERMINISTIC|NOT DETERMINISTIC|CONTAINS SQL|NO SQL|READS SQL DATA|MODIFIES SQL DATA|SQL SECURITY \w+|COMMENT '|LANGUAGE \w+)", lines[n]):
             n += 1
         body = "\n".join(lines[n:])
-        model["objects"][key(r["db"], r["type"].lower(), r["name"])] = {
+        k = key(r["db"], r["type"].lower(), r["name"])
+        model["objects"][k] = {  # its USING (...) of libraries, where it has one, is part of its body as the server writes it
             "kind": r["type"].lower(), "comment": r["comment"] or None,
             "details": {"returns": returns, "deterministic": bool(r["det"]), "data_access": r["access"], "security": r["security"], "definer": definer(r["definer"]),
-                        "body": body, "sql_mode": r["mode"], "character_set_client": r["cs"], "collation_connection": r["cc"], "database_collation": r["dbc"]},
-            "parameters": params(params_text, r["type"])}
+                        "language": r["lang"], "body": body, "sql_mode": r["mode"], "character_set_client": r["cs"], "collation_connection": r["cc"],
+                        "database_collation": r["dbc"]},
+            "parameters": params(params_text, r["type"]), "libraries": sorted(uses.get(k, []))}
 
 
 def params(text, kind):

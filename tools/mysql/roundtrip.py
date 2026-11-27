@@ -46,13 +46,13 @@ def shows(server, model):
     stmts, keys = [], []
     for k, o in sorted(model["objects"].items()):
         db, kind, name = k.split("|", 2)
-        what = {"table": "TABLE", "view": "VIEW", "procedure": "PROCEDURE", "function": "FUNCTION", "trigger": "TRIGGER", "event": "EVENT"}[kind]
+        what = {"table": "TABLE", "view": "VIEW", "procedure": "PROCEDURE", "function": "FUNCTION", "trigger": "TRIGGER", "event": "EVENT", "library": "LIBRARY"}[kind]
         stmts.append(f"SHOW CREATE {what} {writer.q(db)}.{writer.q(name)}")
         keys.append(k)
     out = {}
     for k, row in zip(keys, server.rows(stmts)):
         kind = k.split("|")[1]
-        out[k] = row[{"table": 1, "view": 1, "procedure": 2, "function": 2, "trigger": 2, "event": 3}[kind]]
+        out[k] = row[{"table": 1, "view": 1, "procedure": 2, "function": 2, "trigger": 2, "event": 3, "library": 2}[kind]]
     return out
 
 

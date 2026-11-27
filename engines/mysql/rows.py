@@ -83,11 +83,16 @@ def insert_sql(model, design):
         elif kind in ("procedure", "function"):
             d = o["details"]
             row = {"id": ids[k], "design": design, "returns": d["returns"], "deterministic": d["deterministic"], "data_access": d["data_access"],
-                   "security": d["security"], "definer": d["definer"], "body": d["body"]}
+                   "security": d["security"], "definer": d["definer"], "language": d["language"], "body": d["body"]}
             row.update({c: d[c] for c in PROGRAM_CONTEXT})
             out.append(ins("engine_mysql.routines", row))
             for p, prm in enumerate(o.get("parameters", [])):
                 out.append(ins("engine_mysql.routine_parameters", {"design": design, "routine": ids[k], "position": p + 1, "mode": prm["mode"], "name": prm["name"], "type": prm["type"]}))
+            for p, lib in enumerate(o.get("libraries", [])):
+                out.append(ins("cortex.dependencies", {"design": design, "object": ids[k], "uses": ids[f"{lib[0]}|library|{lib[1]}"], '"as"': "library", "position": p + 1}))
+        elif kind == "library":
+            d = o["details"]
+            out.append(ins("engine_mysql.libraries", {"id": ids[k], "design": design, "language": d["language"], "source": d["source"], "sql_mode": d["sql_mode"]}))
         elif kind == "trigger":
             d = o["details"]
             row = {"id": ids[k], "design": design, "timing": d["timing"], "event": d["event"], "action_order": d["action_order"], "body": d["body"], "definer": d["definer"]}
@@ -171,6 +176,7 @@ def select_sql(design):
   'partitions', (SELECT jsonb_agg(to_jsonb(p) ORDER BY p.partitioning, p.parent NULLS FIRST, p.position) FROM engine_mysql.partitions p WHERE p.design = {d}),
   'views', (SELECT jsonb_agg(to_jsonb(x)) FROM engine_mysql.views x WHERE x.design = {d}),
   'routines', (SELECT jsonb_agg(to_jsonb(x)) FROM engine_mysql.routines x WHERE x.design = {d}),
+  'libraries', (SELECT jsonb_agg(to_jsonb(x)) FROM engine_mysql.libraries x WHERE x.design = {d}),
   'parameters', (SELECT jsonb_agg(to_jsonb(x) ORDER BY x.routine, x.position) FROM engine_mysql.routine_parameters x WHERE x.design = {d}),
   'triggers', (SELECT jsonb_agg(to_jsonb(x)) FROM engine_mysql.triggers x WHERE x.design = {d}),
   'events', (SELECT jsonb_agg(to_jsonb(x)) FROM engine_mysql.events x WHERE x.design = {d}))"""
@@ -193,7 +199,9 @@ def model_from(r):
         elif o["kind"] == "view":
             entry.update({"columns": [], "details": None, "uses": []})
         elif o["kind"] in ("procedure", "function"):
-            entry.update({"details": None, "parameters": []})
+            entry.update({"details": None, "parameters": [], "libraries": []})
+        elif o["kind"] == "library":
+            entry["details"] = None
         elif o["kind"] == "trigger":
             entry["parent"] = o["parent_key"]
         objects[k] = entry
@@ -228,6 +236,8 @@ def model_from(r):
             o["union"].append(x["uses_key"].split("|", 1)[1])
         elif x["as"] == "reads":
             o["uses"].append(x["uses_key"].split("|", 1))
+        elif x["as"] == "library":
+            o["libraries"].append(x["uses_key"].split("|", 1))
     for o in objects.values():
         if o["kind"] == "view":
             o["uses"].sort()
@@ -247,7 +257,12 @@ def model_from(r):
     for x in r["views"] or []:
         objects[by_id[x["id"]]]["details"] = {f: x[f] for f in ("definition", "algorithm", "definer", "security", "check_option", "character_set_client", "collation_connection")}
     for x in r["routines"] or []:
-        objects[by_id[x["id"]]]["details"] = {f: x[f] for f in ("returns", "deterministic", "data_access", "security", "definer", "body") + PROGRAM_CONTEXT}
+        objects[by_id[x["id"]]]["details"] = {f: x[f] for f in ("returns", "deterministic", "data_access", "security", "definer", "language", "body") + PROGRAM_CONTEXT}
+    for x in r["libraries"] or []:
+        objects[by_id[x["id"]]]["details"] = {f: x[f] for f in ("language", "source", "sql_mode")}
+    for o in objects.values():
+        if "libraries" in o:
+            o["libraries"].sort()
     for x in r["parameters"] or []:
         objects[by_id[x["routine"]]]["parameters"].append({"mode": x["mode"], "name": x["name"], "type": x["type"]})
     for x in r["triggers"] or []:
