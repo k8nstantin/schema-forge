@@ -15,8 +15,8 @@ work with tools); the architect watches every change land on a live canvas, stee
 the agent's and the architect's, is checked against **rules**: the team's design standards, written down once.
 
 > **Status:** being built in the open, every database a plugin. The cortex and `engine_mysql` work today: every object
-> of MySQL 5.7 to 9.7 and Percona Server read from a live server, stored and written back identically. The app (store and
-> core, server and MCP, canvas) is next, then PostgreSQL. A
+> of MySQL 5.7 to 9.7 and Percona Server read from a live server, stored and written back identically; so do the app's
+> store and core in Rust. The rest of the app (the engine interface, server and MCP, canvas) is next, then PostgreSQL. A
 > working prototype proved the whole loop (tag [`prototype`](https://github.com/k8nstantin/schema-forge/tree/prototype));
 > the design is on [the site](https://k8nstantin.github.io/schema-forge/).
 
@@ -288,8 +288,8 @@ each with its own issue, ETA, branch and PR, merged before the next starts and d
 | 1 | The spec and README: this order, every engine a plugin, UUIDv7 everywhere | [#138](https://github.com/k8nstantin/schema-forge/issues/138) | 2026-11-27 06:00 | merged ([#147](https://github.com/k8nstantin/schema-forge/pull/147)) |
 | 2 | The cortex from scratch: the plugs every engine fits into, history, the shared model, each tested by a tool | [#139](https://github.com/k8nstantin/schema-forge/issues/139) | 2026-11-28 06:00 | merged ([#148](https://github.com/k8nstantin/schema-forge/pull/148)) |
 | 3 | `engine_mysql`: MySQL 5.7, 8.0, 8.4, 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora | [#140](https://github.com/k8nstantin/schema-forge/issues/140) | 2026-11-27 18:00 | merged ([#149](https://github.com/k8nstantin/schema-forge/pull/149), [#151](https://github.com/k8nstantin/schema-forge/pull/151), [#152](https://github.com/k8nstantin/schema-forge/pull/152)) |
-| 4 | The app's store and core in Rust: turns, undo, the turn bell, `schema-forge check` | [#155](https://github.com/k8nstantin/schema-forge/issues/155) | 2026-11-29 06:00 | next |
-| 5 | The `Engine` trait, and `engine_mysql` in Rust (the Python kept as its oracle); import and write | [#156](https://github.com/k8nstantin/schema-forge/issues/156) | 2026-12-01 06:00 | after #155 |
+| 4 | The app's store and core in Rust: turns, undo, the turn bell, `schema-forge check` | [#155](https://github.com/k8nstantin/schema-forge/issues/155) | 2026-11-29 06:00 | merged ([#163](https://github.com/k8nstantin/schema-forge/pull/163)) |
+| 5 | The `Engine` trait, and `engine_mysql` in Rust (the Python kept as its oracle); import and write | [#156](https://github.com/k8nstantin/schema-forge/issues/156) | 2026-12-01 06:00 | next |
 | 6 | The server: HTTP API, MCP for agents, read-only SQL on Apache DataFusion | [#157](https://github.com/k8nstantin/schema-forge/issues/157) | 2026-12-03 06:00 | after #156 |
 | 7 | The `ui` schema and the React and TypeScript canvas | [#158](https://github.com/k8nstantin/schema-forge/issues/158) | 2026-12-05 06:00 | after #157 |
 | 8 | Editing on the canvas: a complete product on its first engine | [#159](https://github.com/k8nstantin/schema-forge/issues/159) | 2026-12-07 06:00 | after #158 |
@@ -303,6 +303,14 @@ What objective 3 proved: every object of MySQL 5.7 to 9.7 and Percona Server 5.7
 stored, written back into a fresh server and read again, identical, on all seven servers and on two private
 production schemas (2,608 and 665 objects); every fact Cloud SQL, RDS and Aurora declare refused, and what each
 allows loading into MySQL 8.0.
+
+What objective 4 proved, against a real PostgreSQL 18 store where every account signs in with its own password: a turn
+commits with its number; a design holds one open turn, and a second writer is told who holds it; an operation that
+fails midway leaves nothing; an operation's name never outlives its transaction on a pooled connection; two writers
+colliding are retried and both land; a plugin's operation lands whole as its own account; each account is refused
+what is not its work; undo, redo and restore come back exactly, across undos and restores, by the model's hash; a
+locked version holds that hash; the bell hears every commit and catches up after its connection is killed. And
+`schema-forge check` signs in as every account.
 
 Apache Iceberg, BigQuery, Snowflake, ClickHouse and others come after them.
 

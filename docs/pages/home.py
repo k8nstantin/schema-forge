@@ -68,8 +68,9 @@ body = f"""
 <section id="stands"><p class="kicker">Where it stands</p><h2>{done} of {len(seq)} objectives done{f"; next: {e(first_open.get('name'))}" if first_open else ""}.</h2>
 <p class="lede">The product is being rebuilt from its spec, one objective at a time, each its own issue and pull request. What is built today is
 the store: the cortex every engine shares, and <code>engine_mysql</code>, proven by round-tripping every object of MySQL 5.7 to 9.7 and Percona
-Server through it on every pull request. The app over it comes next (the store and core in Rust, the server with the agent's MCP, the canvas), a complete
-product on its first engine; then <code>engine_postgresql</code> and its family, each a plugin the app takes as it is.</p>
+Server through it on every pull request; and the app's store and core in Rust (turns, undo, restore, the bell, <code>schema-forge check</code>),
+proven against a real store on every pull request. The rest of the app comes next (the engine interface, the server with the agent's MCP, the
+canvas), a complete product on its first engine; then <code>engine_postgresql</code> and its family, each a plugin the app takes as it is.</p>
 <div class="scroll"><table class="t"><thead><tr><th>Objective</th><th>What</th><th>Issue</th><th>State</th></tr></thead><tbody>{rows}</tbody></table></div>
 <p class="small">Read from the spec's sequence in <a href="%REPO%/blob/main/specs/root.xml">specs/root.xml</a>; <a href="%REPO%/blob/main/tools/objectives.py">tools/objectives.py</a> checks it against the issues on every pull request.</p></section>
 
