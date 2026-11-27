@@ -20,4 +20,34 @@
     <seen>The design session of 2026-11-24, decision relational and its revision.</seen>
     <does>Every engine's data is in its own tables (root decision cortex-and-engine-schemas); the database enforces every reference (rules the-database-enforces).</does>
   </lesson>
+
+  <lesson id="python-copied-into-rust" date="2026-11-27">
+    <found>The Rust engine_mysql was started as a copy of the Python prototype: its model in the prototype's JSON shape (objects keyed by strings like "shop|table|orders", references as two-element lists, the server's own objects under a fake database "@server") and its writer reproducing the prototype's quirks (a missing value printed as None, Python's own JSON format) so the two outputs could be compared as text. Rust is a different language; the prototype only showed what the engine must do.</found>
+    <seen>Branch app-engine, commits bbcb144 and 3197f2a, never pushed; the branch deleted and started again from main the same day. The operator: "throw away and redo with the instruction not to do the same copy python shit".</seen>
+    <does>Decisions rust-is-production and python-engine-retired; specs/tasks/SF-156-engine-mysql.xml designs the engine from MySQL's catalog and the plugin's tables, in idiomatic Rust, proven by round trips on live servers and never by matching the prototype's text. Read the prototype for facts only (which catalog table gives what), never for shape.</does>
+  </lesson>
+
+  <lesson id="patched-instead-of-redone" date="2026-11-27">
+    <found>A wrong design was patched step by step (the writer rewritten, then the model offered a "fix") instead of being thrown away and designed again.</found>
+    <seen>Branch app-engine on 2026-11-27; the operator: "I do not want any fixed, clean design and performance".</seen>
+    <does>When a design is found wrong, say so, throw the work away and design again from the spec; never offer a fix on top of it.</does>
+  </lesson>
+
+  <lesson id="guessed-lists" date="2026-11-27">
+    <found>deny.toml's licence list was written from licences common in Rust, not from the dependencies: three licences no crate used were let in; CI warned.</found>
+    <seen>PR #163 (the app's store and core in Rust), commits a8ced60 to 33052fb; the operator: "don't guess and create errors".</seen>
+    <does>Nothing is written into the repository from a guess: a list, a version or a name comes from the tool that reports it (tools/app/licences.py for licences, crates.io for versions, the catalog for names), and the reply cites that output.</does>
+  </lesson>
+
+  <lesson id="style-lints-cost-hours" date="2026-11-27">
+    <found>Clippy's pedantic lints failed the build on backticks in comments, function length and similar style, costing hours of fixes that caught no bug.</found>
+    <seen>Branch app-engine on 2026-11-27.</seen>
+    <does>The workspace runs clippy's own lints with warnings failing the build, without pedantic (owner's decision).</does>
+  </lesson>
+
+  <lesson id="silent-and-unasked" date="2026-11-27">
+    <found>The agent went quiet for minutes while CI ran without saying what it waited on, and, sent to merge a pull request, opened another one with fixes nobody asked for.</found>
+    <seen>PRs #161 and #162 (the architecture page); the operator: "don't you ever disappear without telling me".</seen>
+    <does>Before every step, one line: what it is and how long it takes; after it, the result. Do what was asked, nothing more; work found on the way is reported and offered, never started unasked. Name every issue and pull request by number and short description, never a bare number.</does>
+  </lesson>
 </lessons>

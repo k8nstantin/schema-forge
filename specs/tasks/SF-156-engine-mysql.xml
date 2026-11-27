@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SchemaForge task o5, SF-156, GitHub issue #156: the Engine trait and engine_mysql in Rust. Version 1 (2026-11-27),
+  written after a first attempt was thrown away for copying the Python prototype (specs/lessons.xml
+  python-copied-into-rust). An agent reads this file in the order its start element gives. Its history is its git log.
+-->
+<task id="o5" key="SF-156" name="engine trait" version="1" date="2026-11-27" depends="o4"
+      builds="crates/engine crates/store crates/cli engines/mysql tools/app tools/mysql tools/local Cargo.toml Cargo.lock deny.toml">
+
+  <start>Pointed at this file, in any session, you build from the files alone: on a checkout of the head of main updated from origin, read them whole before you write anything, and take nothing said earlier in the session, or remembered from other work, as authority. Read whole, in this order: specs/root.xml; specs/rules.xml; specs/lessons.xml; this file; then every file under reads. Cut the branch SF-156-engine-mysql-&lt;model&gt; from the head of main. Every commit message starts with SF-156 and carries no attribution of any kind. Build the steps in their order; after each, run its gate and show the output. Push the branch and open the PR into main titled "SF-156 Objective 5 of 11: the Engine trait and engine_mysql in Rust", its body the gate table with each gate's output. Before every step, say in one line what it is and how long it takes; after it, its result. What these files do not say is a stop: ask, never guess.</start>
+
+  <piece>The app imports a live MySQL server into a design and writes a design back as SQL, through an Engine trait that core, the server and the canvas use without ever naming MySQL. engine_mysql is a plugin like any other: its Rust crate beside its schema in engines/mysql. It is designed from MySQL's catalog and the plugin's tables, in idiomatic Rust, built for speed, and proven by round trips on seven live servers. engines/mysql/*.py is the prototype: read for facts, never changed, never called, never ported.</piece>
+
+  <never>
+    <rule id="no-python-shape">Never port, mirror or reproduce the Python prototype. Read it only to learn which catalog table or statement gives which fact. Forbidden in the Rust: string keys joined with a separator (as "db|kind|name"); a pair as a two-element list or vector; a fake database or namespace name for the server's own objects (as "@server"); the text None or Python's JSON format in any output; a value that crosses the Engine trait as untyped JSON. The gate no-python-shape fails the build on each.</rule>
+    <rule id="no-guess">Nothing is written from memory or a guess: a crate's version from crates.io, a licence from tools/app/licences.py, a column's name and type from engines/mysql/schema and schema/cortex, a catalog table's columns from the MySQL server itself. Cite the source in the commit message.</rule>
+    <rule id="no-patch">If a step's design turns out wrong, stop, say so, and design it again from this file; never patch a wrong design.</rule>
+    <rule id="no-extra">Build what this file says and nothing more. Work found on the way is reported in the PR, never started.</rule>
+    <rule id="no-silence">Before every step and every wait (a build, a test, CI), one line: what it is, how long it takes; after it, its result with the output that proves it.</rule>
+  </never>
+
+  <before>Merged on main: the cortex (o2), engine_mysql's schema and seeds (o3), the store and core in Rust (o4, PR #163): crates/store (Store, Account, Accounts, Endpoint, begin_operation, Bell), crates/core (Cortex, turns, operations, undo, restore), crates/cli (schema-forge check), tools/app/all.py, tools/app/licences.py; decisions plugin-operations, operation-transaction, one-open-turn, rust-is-production, python-engine-retired, app-stack.</before>
+  <after>The server (o6, #157) imports and writes through the registry and these commands; the canvas (o7, #158) draws what import stored.</after>
+
+  <reads>
+    <file path="engines/mysql/schema/" what="the plugin's 24 tables: the import writes these rows and the write reads them; every column, type and check"/>
+    <file path="engines/mysql/seeds/engine.sql" what="the versions, flavors and object kinds engine_mysql declares"/>
+    <file path="schema/cortex/" what="the shared model tables an import writes (namespaces, objects, columns, indexes, index_parts, constraints, constraint_columns, dependencies), their keys and deferred foreign keys"/>
+    <file path="crates/store/src/lib.rs" what="Store::write and Store::read, begin_operation: every write as one SERIALIZABLE transaction retried whole"/>
+    <file path="crates/core/src/lib.rs" what="Cortex: create_design, open_turn, operate, commit"/>
+    <file path="docs/live-mysql.xml" what="the research: each version's catalog, the gentle read, the grants per version"/>
+    <file path="engines/mysql/reader.py" what="the prototype, for facts only: which catalog table or SHOW statement gives each fact, and the server quirks found (rule no-python-shape)"/>
+    <file path="tools/mysql/samples/" what="the every-object samples loaded into each server"/>
+    <file path="tools/sf/servers.py" what="how the tools start MySQL and Percona containers"/>
+  </reads>
+
+  <crates>
+    <crate name="mysql_async" version="0.37.1" features="default-features = false, default-rustls-ring" why="the MySQL driver; TLS with rustls and ring, the store's own TLS stack"/>
+    <crate name="async-trait" version="0.1.92" why="the Engine trait as a trait object in the registry"/>
+    <crate name="arrow-schema" version="59.2.0" why="each engine's types as Arrow's, the version DataFusion 55 requires; engines never depend on DataFusion"/>
+    <crate name="regex" version="1.13.2" why="the facts only SHOW CREATE gives"/>
+    <licences>deny.toml allows, by the owner's decision of 2026-11-27: Apache-2.0, MIT, ISC, BSD-3-Clause, Unicode-3.0, Zlib (foldhash, in the driver) and CDLA-Permissive-2.0 (webpki-roots, TLS to MySQL).</licences>
+  </crates>
+
+  <build>
+    <module path="Cargo.toml, deny.toml">
+      <step n="1" name="the workspace">Add crates/engine and engines/mysql to the workspace members and the crates above to workspace.dependencies. Remove clippy's pedantic group and its two allows from workspace.lints: clippy's own lints with warnings failing the build stay (lesson style-lints-cost-hours). deny.toml allows exactly the seven licences above.</step>
+    </module>
+
+    <module path="crates/store">
+      <step n="2" name="the store, from the review of #163">Endpoint gains statement_timeout: Duration (default one minute), sent to the server on every connection as the option -c statement_timeout; every connection sets TCP keepalives: idle 30 s, interval 10 s, 3 retries. Store::read rolls its transaction back when its work fails, before the connection goes back to its pool.</step>
+    </module>
+
+    <module path="crates/engine/src/lib.rs" public="Engine, Registry, Source, ImportReport, Mapped, Fidelity, EngineError">
+      <step n="3" name="the trait">
+        Source { url: String, password: String, tls: bool, connections: usize } with a Debug that never prints the password: url is mysql://user@host:port; tls requires TLS (rustls, the server's certificate checked against webpki's roots); connections is how many connections the read may open at once, at least 1. ImportReport { version: String, flavor: String, objects: usize, rows: usize, statements: usize, read: Duration, stored: Duration }: statements counts every statement sent to the store, begin_operation's among them. EngineError: Source(String), Store(StoreError), Unsupported(String).
+        trait Engine: Send + Sync, with async-trait:
+        fn id(&amp;self) -&gt; &amp;'static str (cortex.engines.id, "mysql");
+        fn namespace(&amp;self) -&gt; &amp;'static str ("engine_mysql");
+        async fn import(&amp;self, store: &amp;Store, source: &amp;Source, design: Uuid, turn: Uuid) -&gt; Result&lt;ImportReport, EngineError&gt;: reads the server first, holding no transaction in the store, then writes every row in one operation of the given open turn, as the plugin's own account (Account::Plugin(namespace)), through Store::write and begin_operation;
+        async fn write(&amp;self, store: &amp;Store, design: Uuid) -&gt; Result&lt;String, EngineError&gt;: loads the design's rows as the plugin's account through Store::read and returns the SQL;
+        fn arrow_type(&amp;self, column_type: &amp;str) -&gt; Mapped.
+        Mapped { data_type: arrow_schema::DataType, fidelity: Fidelity }; Fidelity: Exact, Approximate(String), Lost(String).
+        Registry: with(Box&lt;dyn Engine&gt;) (a second engine of one id is ignored), get(id), ids().
+        Nothing crosses the trait as untyped JSON.
+      </step>
+    </module>
+
+    <module path="engines/mysql/src/catalog.rs">
+      <step n="4" name="what MySQL holds, as MySQL lists it">One typed struct per catalog source, its fields the source's columns by their MySQL names in snake case, read with mysql_async as typed rows (never as JSON): information_schema SCHEMATA, SCHEMATA_EXTENSIONS (8.0.22 and later), TABLES (base tables), COLUMNS, STATISTICS, KEY_COLUMN_USAGE joined to REFERENTIAL_CONSTRAINTS, CHECK_CONSTRAINTS joined to TABLE_CONSTRAINTS (8.0.16 and later), PARTITIONS, VIEWS, ROUTINES, PARAMETERS, TRIGGERS, EVENTS, LIBRARIES and ROUTINE_LIBRARIES (where the server has them), INNODB_TABLESPACES (8.0) or INNODB_SYS_TABLESPACES (5.7) with FILES, ST_SPATIAL_REFERENCE_SYSTEMS (8.0, user systems only), RESOURCE_GROUPS (8.0, not the two defaults), COMPRESSION_DICTIONARY or XTRADB_ZIP_DICT (Percona); mysql.user (never root, mysql.%, percona.%), mysql.default_roles, mysql.servers, mysql.func, mysql.component (never Percona's telemetry). Every source is asked with the system databases excluded (mysql, information_schema, performance_schema, sys). Which sources a version has is decided once, from the version and a probe of information_schema.COLUMNS, never by trying and failing.</step>
+    </module>
+
+    <module path="engines/mysql/src/read.rs">
+      <step n="5" name="the read, gentle and fast">The version first (SELECT VERSION(), @@version_comment, @@character_set_server, @@collation_server, @@lower_case_table_names, @@sql_mode). The design's version is the server's major.minor (8.0.46 is 8.0); a version not in cortex.engine_versions for mysql is refused before anything else is read, the error naming the server's version and the declared ones. The flavor is percona when @@version_comment holds "Percona", mysql otherwise; a managed service's flavor (rds, aurora, cloudsql) cannot be told from the server and is only ever given by the caller. A pool of Source.connections connections, each session opened with SET SESSION TRANSACTION READ ONLY, SET SESSION lock_wait_timeout = 5 and SET SESSION max_execution_time = 10000; never USE, every statement names its database. The catalog sources of step 4 are asked at once, each one query, concurrently over the pool. SHOW CREATE TABLE, VIEW, PROCEDURE, FUNCTION and USER, and SHOW GRANTS, are asked only for what the catalog does not give (a table's AUTO_INCREMENT, TABLESPACE, UNION and INSERT_METHOD; an index's clauses; a generated column's expression as written, which 8.0's catalog escapes; a view's ALGORITHM and definition, every `&lt;its database&gt;`. qualifier outside a string removed, since read from outside its database the server qualifies every name; a routine's parameter list and body as written; an account's settings, never its password or hash), Source.connections at a time over the pool, in any order, their results placed by key. Everything on the wire is utf8mb4. The read returns a Catalog: every struct of step 4 in vectors, plus the SHOW results by object.</step>
+    </module>
+
+    <module path="engines/mysql/src/rows.rs">
+      <step n="6" name="from the catalog to the store's rows">Each object is given its UUIDv7 once (Uuid::now_v7), in a map keyed by a typed key: ObjectKey { scope: Scope, kind: Kind, name: String } where Scope is Database(String) or Server, Kind an enum of engine_mysql's 16 kinds (engines/mysql/seeds/engine.sql). Every reference (a column's table, an index's columns, a key's referenced table and columns, a view's uses, a routine's libraries, a privilege's object, a grant's role) is resolved through that map to an id; a reference to nothing in the catalog is left out for a view's uses and is an error anywhere else. The rows are built column-wise: for each destination table, one struct of vectors, one vector per column, in the table's column order. The server is namespace "server" (position 1), each database a namespace under it; the server's own objects (accounts, roles, tablespaces, servers, loadable functions, components, resource groups, spatial reference systems, compression dictionaries) are objects of the server's namespace.</step>
+      <step n="7" name="stored in one operation, one statement per table">Inside Store::write as the plugin's account, begin_operation(design, turn, "import", "imported &lt;version&gt; from &lt;host&gt;") first, then for each destination table, parents before children (namespaces, objects, columns, indexes, index_parts, constraints, constraint_columns, dependencies, then engine_mysql's tables), one statement: INSERT INTO t (c1, …, cn) SELECT u.c1, …, u.cn FROM unnest($1::type1[], …, $n::typen[]) AS u(c1, …, cn). A column bound as another type than its own is cast in the select list: a NUMERIC position bound as int4[]; a JSONB column (engine_mysql.accounts.attributes) bound as text[], its value the JSON text the server gave, and cast u.attributes::jsonb; no value crosses as serde_json::Value. A table with no rows is skipped. An import is at most one statement per destination table plus begin_operation's two, however many objects; ImportReport.statements counts them. The closure builds nothing: it binds vectors built before it, so a retry re-runs only the inserts.</step>
+    </module>
+
+    <module path="engines/mysql/src/load.rs">
+      <step n="8" name="from the store's rows to a design">As the plugin's account, one query per table of the design's rows, read as typed rows; assembled into a Design: maps by id (namespaces, objects, columns by object in position order, indexes with their parts, constraints with their columns, dependencies, and each object's engine_mysql row). No string key is built.</step>
+    </module>
+
+    <module path="engines/mysql/src/sql.rs">
+      <step n="9" name="from a design to SQL">The SQL a MySQL server of the design's version loads, in this order: SET NAMES utf8mb4, SET FOREIGN_KEY_CHECKS = 0, SET UNIQUE_CHECKS = 0, SET sql_mode = 'NO_ENGINE_SUBSTITUTION'; CREATE DATABASE each (its character set, collation, encryption); the server's objects tables need (tablespaces, spatial reference systems, compression dictionaries, servers, loadable functions, resource groups); CREATE TABLE each, a MERGE table after the tables it unites (columns, indexes, foreign and check keys, options, partitioning), each preceded by USE of its database, since a MERGE table's UNION names its tables without their database; ALTER DATABASE … READ ONLY = 1 where so; SET FOREIGN_KEY_CHECKS = 1; views in dependency order (a topological sort; a cycle is an error naming the views); then, under DELIMITER $sf_end$, libraries, routines, triggers (ordered by table, timing, event and action order, each FOLLOWS the one before it in its group) and events, each preceded by USE of its database and its session (sql_mode, character_set_client, collation_connection, and an event's time_zone); DELIMITER ;; accounts and roles (never a password), role grants, privileges grouped by grantee, target and grant option, default roles; INSTALL COMPONENT last. A value a statement needs and the design lacks is an error naming the object, never written as a placeholder.</step>
+    </module>
+
+    <module path="engines/mysql/src/types.rs">
+      <step n="10" name="MySQL's types as Arrow's">Every MySQL column type to an Arrow DataType with its fidelity: the integer types exact, unsigned to Arrow's unsigned; DECIMAL(p,s) to Decimal128(p,s) (Decimal256 above 38); FLOAT, DOUBLE exact; CHAR, VARCHAR, TEXT types to Utf8 (approximate: the length is not kept); BINARY, VARBINARY, BLOB types to Binary (approximate); DATE to Date32; DATETIME and TIMESTAMP to Timestamp (microseconds; TIMESTAMP with UTC); TIME to Time64; YEAR to Int16 (approximate); JSON to Utf8 (approximate: JSON kept as text); ENUM and SET to Utf8 (approximate: the allowed values not kept); BIT(n) to UInt64 (approximate); spatial types to Binary (lost: the geometry's type and SRID).</step>
+    </module>
+
+    <module path="engines/mysql/src/lib.rs">
+      <step n="11" name="the plugin">pub struct Mysql; impl Engine for Mysql: id "mysql", namespace "engine_mysql", import (step 5 then steps 6 and 7), write (step 8 then step 9), arrow_type (step 10).</step>
+    </module>
+
+    <module path="crates/cli/src/main.rs">
+      <step n="12" name="import and write">The binary's registry holds Mysql. schema-forge import --engine mysql --source mysql://user@host:port --design NAME [--flavor F] [--tls] [--connections N, default 4] [--password-env VAR] [--host, --port, --accounts-file as check]: reads the server's version first (step 5), creates the design with that version and the flavor read or given, opens an import turn as the app, imports, commits, and prints the ImportReport. When the import fails, the turn, which holds no operation, is rejected, so the design is never left held; the error is printed and the exit code is 1. schema-forge write --design NAME [the store's options]: prints the design's SQL. A MySQL password comes only from the environment variable named, never from an argument.</step>
+    </module>
+
+    <module path="tools/app/mysql.py">
+      <step n="13" name="the round trip, the proof">python3 tools/app/mysql.py --server mysql:5.7|mysql:8.0|mysql:8.4|mysql:9.7|percona:5.7|percona:8.0|percona:8.4 [--private FILE]. A store in a container (tools/sf/store.py, published); server A with the samples of tools/mysql/samples loaded; schema-forge import from A; schema-forge write into a fresh server B; schema-forge import from B; the two designs' rows compared table by table, every id replaced by the name path of what it points to: equal, or each difference listed. It prints the ImportReport of A and the write's time. --private FILE loads the owner's private schema instead (never committed; counts only, never names). --generated N writes into A a schema of N objects made by the tool (tables with columns, keys, foreign keys and indexes, views reading them, routines and triggers), the same every run, never committed; with it the tool fails when the import takes more than --import-limit seconds or the write more than --write-limit seconds.</step>
+    </module>
+
+
+    <tests>
+    <how>Rust tests in each crate (unit tests on values built in the test, reaching no database) and in crates/core/tests (against the store tools/app/all.py makes); the round trips by tools/app/mysql.py against MySQL and Percona servers in Docker.</how>
+    <prove step="2">a statement running past the endpoint's statement timeout is cancelled with SQLSTATE 57014; after a failed read on a pool of one connection the next read on it succeeds; every connection's configuration has the keepalives and the timeout (crates/core/tests/cortex.rs and crates/store unit tests)</prove>
+    <prove step="3">the registry finds each engine by its id once; a Source's Debug never shows its password (crates/engine unit tests)</prove>
+    <prove step="6">an object's key has a typed scope and kind; a reference to an object the catalog does not have is an error naming it (unit tests on a catalog built in the test)</prove>
+    <prove step="7">an import's ImportReport.statements is at most the number of destination tables plus two, however many objects (integration test)</prove>
+    <prove step="12">a failed import leaves its turn rejected and the design free for the next turn (integration test)</prove>
+    <prove step="9">views in a cycle are an error naming them; a function without its return type is an error; triggers on one table, timing and event follow each other in action order (unit tests)</prove>
+    <prove step="10">every MySQL type of the samples maps to an Arrow type with its fidelity (unit test)</prove>
+    <prove step="13">on each of the seven servers, the round trip's two designs are equal</prove>
+    <prove step="13">a generated schema of 2,608 objects on MySQL 8.0 is imported in under 30 seconds and written in under 5 seconds on a CI runner</prove>
+    </tests>
+  </build>
+
+  <speed>
+    <target what="import of the owner's private 2,608-object schema, read and stored">under 10 seconds</target>
+    <target what="write of that design as SQL">under 2 seconds</target>
+    <how>tools/app/mysql.py --private on the owner's machine prints both times; the PR shows them. CI holds a generated 2,608-object schema to looser bounds on its slower runners (gate speed). Set by the agent who wrote this file, for the owner to confirm before the build.</how>
+  </speed>
+
+  <gates>
+    <gate id="app" kind="docker" proves="steps 1 to 12">
+      <cmd>python3 tools/app/all.py</cmd>
+      <expect>the last line is `pass  app: N of N steps`; cargo-deny's licences ok</expect>
+    </gate>
+    <gate id="no-python-shape" kind="local" proves="rule no-python-shape">
+      <cmd>git grep -n -E '"\|"|format!\("\{\}\|\{\}|"@server"|"None"|serde_json::Value' -- crates/engine engines/mysql/src</cmd>
+      <expect>no output</expect>
+    </gate>
+    <gate id="round trips" kind="docker" proves="step 13">
+      <cmd>python3 tools/app/mysql.py --server S, for each of the seven servers</cmd>
+      <expect>each ends `pass  round trip on S: the two designs are equal`</expect>
+    </gate>
+    <gate id="speed" kind="docker" proves="the speed, held in CI">
+      <cmd>python3 tools/app/mysql.py --server mysql:8.0 --generated 2608 --import-limit 30 --write-limit 5</cmd>
+      <expect>the last line is pass</expect>
+    </gate>
+    <gate id="cortex" kind="docker" proves="nothing of the cortex changed">
+      <cmd>python3 tools/cortex/all.py</cmd>
+      <expect>`pass  cortex: 9 of 9 tools`</expect>
+    </gate>
+    <gate id="repo" kind="local" proves="the spec, the site and the checks">
+      <cmd>python3 tools/check.py</cmd>
+      <expect>`== All checks passed`</expect>
+    </gate>
+    <gate id="ci" kind="github" proves="all of the above on GitHub">
+      <cmd>the PR's checks</cmd>
+      <expect>every check passes</expect>
+    </gate>
+  </gates>
+
+  <agent-decides>The names and decomposition of private code inside the files this task owns; the structs' field order where a table's column order does not set it; the commit granularity. Nothing else: no public item, command, flag, step, table, gate or message other than these.</agent-decides>
+
+  <owns>Cargo.toml; Cargo.lock; deny.toml; crates/store/src/endpoint.rs and lib.rs (step 2); crates/core/tests/cortex.rs (step 2's tests); crates/engine/**; engines/mysql/Cargo.toml; engines/mysql/src/**; crates/cli/src/main.rs and crates/cli/Cargo.toml; tools/app/mysql.py; .github/workflows/ci.yml (the speed gate in the app job).</owns>
+  <forbid>engines/mysql/*.py (the prototype); engines/mysql/schema/**; engines/mysql/seeds/**; engines/mysql/owner.toml; schema/**; specs/**; docs/**; crates/core/src/**; every other tool; every other file.</forbid>
+
+  <done>On the branch: the Engine trait and its registry; engine_mysql in Rust, designed from MySQL's catalog and the plugin's tables; schema-forge import and write; the round trip equal on all seven servers; the speed measured and held in CI; the prototype untouched; every gate green with its output in the PR; nothing outside owns touched. The owner merges it.</done>
+</task>
