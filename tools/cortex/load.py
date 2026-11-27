@@ -30,6 +30,7 @@ def check(store):
     if nocomment:
         bad.append(f"without a comment: {nocomment}")
     fns = store.value("SELECT string_agg(proname, ' ' ORDER BY proname) FROM pg_proc WHERE pronamespace = 'cortex'::regnamespace").split()
+    # every function file's main function is there (plug_in.sql brings its helpers with it)
     lines.append(f"functions: {' '.join(fns)}")
     for f in o["functions"]:
         if f not in fns:

@@ -1,15 +1,20 @@
 """What the cortex tools test on: the cortex installed in a fresh store, and two engines plugged in the way every plugin
 is (tools/sf/plugin.py: its owner and service account, its namespace, its seeds, plug_in and fit_plugin), each with no
 tables of its own yet; and helpers to work as an account inside a turn, as the app and the agent do."""
+import json
+
 from sf.plugin import plug
 from sf.schema import cortex_sql, script
 from sf.store import Store
 
+# test engines: a kind that arrives in a later version (since), and a flavor that refuses a kind (refuses.kinds)
 ENGINES = {
-    "mysql": {"name": "MySQL", "versions": ["5.7", "8.0", "8.4", "9.7"], "flavors": {"mysql": "MySQL", "percona": "Percona Server for MySQL", "aurora": "Amazon Aurora MySQL"},
-              "kinds": [("table", "Table", True), ("view", "View", True), ("procedure", "Procedure", False), ("trigger", "Trigger", False)]},
-    "postgresql": {"name": "PostgreSQL", "versions": ["15", "16", "17", "18"], "flavors": {"postgresql": "PostgreSQL", "alloydb": "AlloyDB"},
-                   "kinds": [("table", "Table", True), ("view", "View", True), ("function", "Function", False), ("sequence", "Sequence", False)]},
+    "mysql": {"name": "MySQL", "versions": ["5.7", "8.0", "8.4", "9.7"],
+              "flavors": {"mysql": ("MySQL", {}), "percona": ("Percona Server for MySQL", {}), "aurora": ("Amazon Aurora MySQL", {"kinds": ["resource_group"]})},
+              "kinds": [("table", "Table", True, None), ("view", "View", True, None), ("procedure", "Procedure", False, None), ("trigger", "Trigger", False, None),
+                        ("library", "Library", False, "9.7"), ("resource_group", "Resource group", False, "8.0")]},
+    "postgresql": {"name": "PostgreSQL", "versions": ["15", "16", "17", "18"], "flavors": {"postgresql": ("PostgreSQL", {}), "alloydb": ("AlloyDB", {})},
+                   "kinds": [("table", "Table", True, None), ("view", "View", True, None), ("function", "Function", False, None), ("sequence", "Sequence", False, None)]},
 }
 
 
@@ -27,9 +32,10 @@ def plug_engine(store, engine):
             f"INSERT INTO cortex.plugin_tables (plugin, name, extends, comment) VALUES ('{engine}', 'tables', 'objects', 'a test table of the engine');"]
     rows += [f"INSERT INTO cortex.engine_versions (id, engine, version, name, position) VALUES ('{engine}/{v}', '{engine}', '{v}', '{e['name']} {v}', {i + 1});"
              for i, v in enumerate(e["versions"])]
-    rows += [f"INSERT INTO cortex.engine_flavors (id, engine, flavor, name) VALUES ('{engine}/{f}', '{engine}', '{f}', '{n}');" for f, n in e["flavors"].items()]
-    rows += [f"INSERT INTO cortex.object_kinds (id, engine, kind, name, has_columns, position) VALUES ('{engine}/{k}', '{engine}', '{k}', '{n}', {str(c).lower()}, {i + 1});"
-             for i, (k, n, c) in enumerate(e["kinds"])]
+    rows += [f"INSERT INTO cortex.engine_flavors (id, engine, flavor, name, refuses) VALUES ('{engine}/{f}', '{engine}', '{f}', '{n}', '{json.dumps(r)}');"
+             for f, (n, r) in e["flavors"].items()]
+    rows += [f"INSERT INTO cortex.object_kinds (id, engine, kind, name, has_columns, position, since) VALUES ('{engine}/{k}', '{engine}', '{k}', '{n}', {str(c).lower()}, {i + 1}, "
+             f"{repr(s) if s else 'NULL'});" for i, (k, n, c, s) in enumerate(e["kinds"])]
     plug(store, engine, "engine", ns, e["name"], 1, 1, [table], [(f"{engine} seeds", "\n".join(rows))])
 
 

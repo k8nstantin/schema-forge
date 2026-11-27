@@ -53,6 +53,46 @@ COMMENT ON FUNCTION cortex.attach_history(ns text, tabs text[]) IS 'puts cortex.
 
 
 --
+-- Name: check_object(); Type: FUNCTION; Schema: cortex; Owner: cortex_owner
+--
+
+CREATE FUNCTION cortex.check_object() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'cortex'
+    AS $$
+DECLARE
+  bad record;
+BEGIN
+  SELECT d.engine_version, d.flavor, k.since, k."until", f.refuses INTO bad
+    FROM cortex.designs d
+    JOIN cortex.object_kinds k ON k.engine = d.engine AND k.kind = NEW.kind
+    JOIN cortex.engine_versions v ON v.engine = d.engine AND v.version = d.engine_version
+    JOIN cortex.engine_flavors f ON f.engine = d.engine AND f.flavor = d.flavor
+    LEFT JOIN cortex.engine_versions s ON s.engine = d.engine AND s.version = k.since
+    LEFT JOIN cortex.engine_versions u ON u.engine = d.engine AND u.version = k."until"
+   WHERE d.id = NEW.design
+     AND (v.position < s.position OR v.position > u.position OR coalesce(f.refuses -> 'kinds', '[]') ? NEW.kind);
+  IF FOUND THEN
+    IF bad.refuses -> 'kinds' ? NEW.kind THEN
+      RAISE EXCEPTION '% refuses a % (%)', bad.flavor, NEW.kind, NEW.name USING ERRCODE = 'check_violation';
+    END IF;
+    RAISE EXCEPTION '% % has no % (from %, until %): %', NEW.engine, bad.engine_version, NEW.kind, coalesce(bad.since, 'the first'), coalesce(bad."until", 'the last'), NEW.name
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END $$;
+
+
+ALTER FUNCTION cortex.check_object() OWNER TO cortex_owner;
+
+--
+-- Name: FUNCTION check_object(); Type: COMMENT; Schema: cortex; Owner: cortex_owner
+--
+
+COMMENT ON FUNCTION cortex.check_object() IS 'refuses an object of a kind its design''s version lacks or its design''s flavor refuses';
+
+
+--
 -- Name: check_plugin(text); Type: FUNCTION; Schema: cortex; Owner: cortex_owner
 --
 
@@ -897,9 +937,15 @@ CREATE TABLE cortex.engine_flavors (
     engine text NOT NULL,
     flavor text NOT NULL,
     name text NOT NULL,
+    refuses jsonb DEFAULT '{}'::jsonb NOT NULL,
+    options jsonb DEFAULT '{}'::jsonb NOT NULL,
+    sources jsonb DEFAULT '[]'::jsonb NOT NULL,
     CONSTRAINT engine_flavors_check CHECK ((id = ((engine || '/'::text) || flavor))),
     CONSTRAINT engine_flavors_flavor_check CHECK ((flavor ~ '^[a-z][a-z0-9_]*$'::text)),
-    CONSTRAINT engine_flavors_name_check CHECK ((length(name) >= 1))
+    CONSTRAINT engine_flavors_name_check CHECK ((length(name) >= 1)),
+    CONSTRAINT engine_flavors_options_check CHECK ((jsonb_typeof(options) = 'object'::text)),
+    CONSTRAINT engine_flavors_refuses_check CHECK ((jsonb_typeof(refuses) = 'object'::text)),
+    CONSTRAINT engine_flavors_sources_check CHECK ((jsonb_typeof(sources) = 'array'::text))
 );
 
 
@@ -909,7 +955,7 @@ ALTER TABLE cortex.engine_flavors OWNER TO cortex_owner;
 -- Name: TABLE engine_flavors; Type: COMMENT; Schema: cortex; Owner: cortex_owner
 --
 
-COMMENT ON TABLE cortex.engine_flavors IS 'the flavors of each engine a design may be made for: the engine itself, and each fork or managed service that is a subset of it (Percona Server, Cloud SQL, RDS, Aurora, AlloyDB); what each refuses is its plugin''s.';
+COMMENT ON TABLE cortex.engine_flavors IS 'the flavors of each engine a design may be made for: the engine itself, and each fork or managed service that is a subset of it (Percona Server, Cloud SQL, RDS, Aurora, AlloyDB), with what each refuses and the options it adds, declared by its plugin and checked by it.';
 
 
 --
@@ -938,6 +984,27 @@ COMMENT ON COLUMN cortex.engine_flavors.flavor IS 'as the plugin names it; the e
 --
 
 COMMENT ON COLUMN cortex.engine_flavors.name IS 'as people say it (Amazon Aurora MySQL)';
+
+
+--
+-- Name: COLUMN engine_flavors.refuses; Type: COMMENT; Schema: cortex; Owner: cortex_owner
+--
+
+COMMENT ON COLUMN cortex.engine_flavors.refuses IS 'what a design of it may not hold, by what the plugin checks: {"engines": ["MyISAM"], "kinds": ["resource_group"], "privileges": ["SUPER"]}';
+
+
+--
+-- Name: COLUMN engine_flavors.options; Type: COMMENT; Schema: cortex; Owner: cortex_owner
+--
+
+COMMENT ON COLUMN cortex.engine_flavors.options IS 'the flavor_options keys it adds, by table, each with its JSON type: {"tables": {"compression_dictionary": "string"}}';
+
+
+--
+-- Name: COLUMN engine_flavors.sources; Type: COMMENT; Schema: cortex; Owner: cortex_owner
+--
+
+COMMENT ON COLUMN cortex.engine_flavors.sources IS 'the documentation pages its facts come from';
 
 
 --
@@ -1377,6 +1444,8 @@ CREATE TABLE cortex.object_kinds (
     has_columns boolean NOT NULL,
     details text,
     "position" numeric NOT NULL,
+    since text,
+    until text,
     details_plugin text GENERATED ALWAYS AS (
 CASE
     WHEN (details IS NULL) THEN NULL::text
@@ -1395,7 +1464,7 @@ ALTER TABLE cortex.object_kinds OWNER TO cortex_owner;
 -- Name: TABLE object_kinds; Type: COMMENT; Schema: cortex; Owner: cortex_owner
 --
 
-COMMENT ON TABLE cortex.object_kinds IS 'the kinds of object each engine has, and the plugin table that holds each kind''s details; an object of a kind its design''s engine lacks cannot be stored.';
+COMMENT ON TABLE cortex.object_kinds IS 'the kinds of object each engine has, the versions that have each, and the plugin table that holds each kind''s details; an object of a kind its design''s engine or version lacks cannot be stored.';
 
 
 --
@@ -1445,6 +1514,20 @@ COMMENT ON COLUMN cortex.object_kinds.details IS 'the plugin table that extends 
 --
 
 COMMENT ON COLUMN cortex.object_kinds."position" IS 'its place in the engine''s list of kinds';
+
+
+--
+-- Name: COLUMN object_kinds.since; Type: COMMENT; Schema: cortex; Owner: cortex_owner
+--
+
+COMMENT ON COLUMN cortex.object_kinds.since IS 'the first version of the engine that has it (9.7 for a JavaScript library); NULL for every version';
+
+
+--
+-- Name: COLUMN object_kinds.until; Type: COMMENT; Schema: cortex; Owner: cortex_owner
+--
+
+COMMENT ON COLUMN cortex.object_kinds.until IS 'the last version that has it; NULL for every later one';
 
 
 --
@@ -2656,6 +2739,13 @@ CREATE INDEX turns_parent ON cortex.turns USING btree (design, parent);
 
 
 --
+-- Name: objects check_object; Type: TRIGGER; Schema: cortex; Owner: cortex_owner
+--
+
+CREATE CONSTRAINT TRIGGER check_object AFTER INSERT OR UPDATE OF kind ON cortex.objects DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION cortex.check_object();
+
+
+--
 -- Name: columns log_row; Type: TRIGGER; Schema: cortex; Owner: cortex_owner
 --
 
@@ -2956,6 +3046,22 @@ ALTER TABLE ONLY cortex.object_kinds
 
 ALTER TABLE ONLY cortex.object_kinds
     ADD CONSTRAINT object_kinds_engine_fkey FOREIGN KEY (engine) REFERENCES cortex.engines(id) ON DELETE CASCADE;
+
+
+--
+-- Name: object_kinds object_kinds_engine_since_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: cortex_owner
+--
+
+ALTER TABLE ONLY cortex.object_kinds
+    ADD CONSTRAINT object_kinds_engine_since_fkey FOREIGN KEY (engine, since) REFERENCES cortex.engine_versions(engine, version);
+
+
+--
+-- Name: object_kinds object_kinds_engine_until_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: cortex_owner
+--
+
+ALTER TABLE ONLY cortex.object_kinds
+    ADD CONSTRAINT object_kinds_engine_until_fkey FOREIGN KEY (engine, until) REFERENCES cortex.engine_versions(engine, version);
 
 
 --
@@ -3371,6 +3477,13 @@ REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 --
 
 REVOKE ALL ON FUNCTION cortex.attach_history(ns text, tabs text[]) FROM PUBLIC;
+
+
+--
+-- Name: FUNCTION check_object(); Type: ACL; Schema: cortex; Owner: cortex_owner
+--
+
+REVOKE ALL ON FUNCTION cortex.check_object() FROM PUBLIC;
 
 
 --

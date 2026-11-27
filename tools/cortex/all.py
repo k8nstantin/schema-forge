@@ -11,7 +11,7 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = ["load", "ids", "dump", "history", "privileges", "samples", "install"]
+TOOLS = ["load", "ids", "dump", "history", "refusals", "privileges", "samples", "install"]
 
 
 def main():
