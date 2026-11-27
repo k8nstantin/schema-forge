@@ -11,7 +11,7 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = ["load", "ids", "dump", "history", "refusals", "privileges", "samples", "install"]
+TOOLS = ["load", "ids", "dump", "history", "refusals", "privileges", "samples", "lock", "install"]
 
 
 def main():
@@ -19,7 +19,8 @@ def main():
     for t in TOOLS:
         start = time.time()
         print(f"== tools/cortex/{t}.py", flush=True)
-        path = os.path.join(HERE, f"{t}.py") if t != "install" else os.path.join(os.path.dirname(HERE), "local", "test_install.py")
+        local = {"install": "test_install.py", "lock": "lock.py"}
+        path = os.path.join(os.path.dirname(HERE), "local", local[t]) if t in local else os.path.join(HERE, f"{t}.py")
         r = subprocess.run([sys.executable, path])
         results.append((t, r.returncode, time.time() - start))
     print("\n== the cortex")
