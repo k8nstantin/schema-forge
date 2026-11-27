@@ -42,6 +42,39 @@ class MySQL:
         out = r.stdout.strip()
         return json.loads(out) if out and out != "NULL" else []
 
+    def rows(self, statements):
+        """Runs SHOW statements, one line of output each; returns each one's fields, the server's escaping undone."""
+        if not statements:
+            return []
+        r = docker("exec", "-i", self.name, "mysql", "-uroot", "-N", "-B", stdin="".join(s.rstrip(";") + ";\n" for s in statements))
+        if r.returncode:
+            raise Failed(f"{self.image}: {r.stderr.strip()[:300]}")
+        out = []
+        for line in r.stdout.split("\n"):
+            if line:
+                out.append([unescape(f) for f in line.split("\t")])
+        return out
+
+    def sql(self, text):
+        r = docker("exec", "-i", self.name, "mysql", "-uroot", stdin=text)
+        if r.returncode:
+            raise Failed(f"{self.image}: {r.stderr.strip()[:400]}")
+        return r.stdout
+
+
+def unescape(field):
+    """mysql -B escapes a field's newline, tab, backslash and NUL; this undoes it."""
+    out, i = [], 0
+    while i < len(field):
+        c = field[i]
+        if c == "\\" and i + 1 < len(field):
+            out.append({"n": "\n", "t": "\t", "\\": "\\", "0": "\0"}.get(field[i + 1], field[i + 1]))
+            i += 2
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
 
 class TiDB(MySQL):
     """TiDB, standalone (its own storage in the container), spoken to over the MySQL protocol on port 4000 by a mysql
