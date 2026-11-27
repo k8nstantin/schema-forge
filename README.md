@@ -271,6 +271,30 @@ The database is **designed first and locked**, so coding agents fall into it ins
 - **Ready to be talked to.** An `insight` layer (dependencies, annotations, embeddings) lets a person or an agent
   search and question a design through the MCP, in plain words.
 
+### Constraints are the coding agent's harness
+
+SchemaForge is built with coding agents, and the schema came first: designed, reviewed and locked before the first
+line of app code. Today `schema_forge` holds 45 tables with 100 foreign keys (87 of them checked at commit), 164 CHECK
+constraints and 112 primary and unique keys (counted in [schema/dump/schema_forge.sql](schema/dump/schema_forge.sql)).
+Every line an agent writes has to fit through them. A prompt can be misread and a README skipped; a foreign key cannot.
+
+- **Half a change never lands.** A test writes a namespace, then an object of a kind its engine does not have: the
+  foreign key refuses it (SQLSTATE 23503) and the whole operation rolls back, with no namespace, no operation and no
+  log row left for the next agent to build on.
+- **No links across designs.** Every reference is `(design, column)` to `(design, id)`: an agent working on one design
+  cannot wire a row to another design's.
+- **Any order, checked at commit.** Most foreign keys are `DEFERRABLE INITIALLY DEFERRED`: an agent may write a change
+  in any order, and PostgreSQL judges it whole when it commits.
+- **No keys, no plugin.** Plugging an engine in checks that each of its tables has a foreign key to the cortex table it
+  extends; a plugin without them does not install.
+- **One writer at a time.** A unique index allows one open turn per design: a second agent is refused, and told who
+  holds the design and since when.
+- **The error is the instruction.** A refusal names the constraint and the rule it broke, which is what an agent needs
+  to fix its own work. While the store was built, the database refused the agent's own code when it asked a plugin's
+  account to read a table that account may not see: one message, one fix.
+
+Tests check what you thought of; constraints check everything, every time.
+
 The build itself is specified ahead: [specs/](specs/) holds the root, the rules and one XML task file per branch and
 pull request, which a coding agent builds from and nothing else.
 
