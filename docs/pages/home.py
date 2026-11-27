@@ -74,14 +74,14 @@ rows = "".join(
 body = f"""
 <div class="tb" role="group" aria-label="Title block">
   <div><span>Product</span><b>%PRODUCT%</b></div><div><span>Repository</span><b><a href="%REPO%" target="_blank" rel="noopener">GitHub</a></b></div>
-  <div><span>Spec</span><b>Draft 1 · PR #92</b></div><div><span>Objectives</span><b>{len(seq)}, in order</b></div><div><span>Date</span><b>{e(root.get("date"))}</b></div>
+  <div><span>Spec</span><b>root v{e(root.get("version"))} · the rebuild</b></div><div><span>Objectives</span><b>{len(seq)}, in order</b></div><div><span>Date</span><b>{e(root.get("date"))}</b></div>
 </div>
-<h1>%PRODUCT% <span class="draft">Draft 1</span></h1>
+<h1>%PRODUCT% <span class="draft">The rebuild</span></h1>
 <p class="lede">{e(" ".join("".join(root.find("identity").find("product").itertext()).split()))}</p>
 <div class="go">
   <a class="tile" href="{L.get('database', '#')}" target="_blank" rel="noopener"><b>Database</b><span>Every table of the cortex, the workspace and each engine: diagrams of every foreign key, then each table with its columns, keys and file.</span></a>
   <a class="tile" href="{L.get('build-spec', '#')}" target="_blank" rel="noopener"><b>Build Spec</b><span>The root, the rules, every task file a coding agent builds from, the decisions, and the review with every defect found.</span></a>
-  <a class="tile" href="%REPO%/pull/92" target="_blank" rel="noopener"><b>Pull request #92</b><span>The one branch the spec lives on while it is a draft: review it there.</span></a>
+  <a class="tile" href="%REPO%/issues/138" target="_blank" rel="noopener"><b>The objectives</b><span>Six, in order, each an issue with its ETA, its own branch and PR: #138, #139, #140, #141, #145, #146.</span></a>
 </div>
 <section id="stands"><h2>Where it stands</h2><p class="lede">The foundation is on main: the model, the engine interface with its kit, and the MySQL engine (pull request #89). Next is the sequence below, built one task at a time once the spec is merged.</p>
 <div class="scroll"><table class="t"><thead><tr><th>Task</th><th>What</th><th>Issue</th><th>State</th><th>Builds</th></tr></thead><tbody>{rows}</tbody></table></div></section>

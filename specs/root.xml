@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  SchemaForge: the root of the build spec. Version 1.
+  SchemaForge: the root of the build spec. Version 2 (2026-11-27: the rebuild, decision code-reset).
 
   An agent reads the merged code, this root, rules.xml, its one task file under tasks/ and the files that task file
   names, in the order the method's read step gives, and nothing else. The root says where the truth is and how the work
   is done; of the authority files and the merged code it says only what a task relies on, and leaves the rest to them.
   Parts: identity, authority, method, sequence, decisions.
 -->
-<root product="SchemaForge" version="1" date="2026-11-24">
+<root product="SchemaForge" version="2" date="2026-11-27">
 
   <identity>
     <product>An open-source, intelligent, multi-engine schema design and management tool, where a coding agent and an architect work on the same live design through MCP, and nothing lands unchecked: a schema designed from scratch, reverse-engineered from a database, converted from one engine to another, its intelligence stored with it. Every database is an engine plugin; at the centre stands the database SchemaForge keeps its work in: one PostgreSQL database, schema_forge, in the PostgreSQL 18 bundled with the app, every design rows of it under its UUIDv7, holding the cortex every engine shares and each engine's own tables, each owner in its own namespace, designed before any of it is built and locked so every build falls into it.</product>
