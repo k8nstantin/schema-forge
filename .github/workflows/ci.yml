@@ -37,10 +37,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: |
-          for image in postgres:18-alpine mysql:5.7 mysql:8.0 mysql:8.4 mysql:9.7 percona/percona-server:5.7 percona/percona-server:8.0 percona/percona-server:8.4; do
-            docker pull -q "$image"
-          done
+      # each server image is pulled by the tool that first runs it;
       # engine_mysql plugged in; the round trip through the store on every server; the flavors (the old MySQL schemas
       # are private and not here)
       - run: python3 tools/mysql/all.py
