@@ -9,7 +9,7 @@ tried through the account itself, on a fresh install.
   All three: no attribute past LOGIN (no superuser, createdb, createrole, replication, bypassrls), a member of no role,
   connect to schema_forge alone, no temporary tables, execute cortex.misfits alone, read no password, touch no server file.
 
-  python3 lab/least_privilege_test.py --port 54399 --accounts-file FILE --root-password PASSWORD
+  python3 lab/least_privilege_test.py [--port 5432] [--accounts-file FILE] [--root-password PASSWORD]
 """
 import os
 import re
@@ -18,10 +18,10 @@ import sys
 
 PSQL = "/opt/homebrew/opt/postgresql@18/bin/psql"
 ARGS = sys.argv[1:]
-PORT = ARGS[ARGS.index("--port") + 1]
-ROOT = ARGS[ARGS.index("--root-password") + 1]
+PORT = ARGS[ARGS.index("--port") + 1] if "--port" in ARGS else "5432"
+ROOT = ARGS[ARGS.index("--root-password") + 1] if "--root-password" in ARGS else None   # without it, the catalog is read as sf_reader
 SECRET = {}
-for line in open(os.path.expanduser(ARGS[ARGS.index("--accounts-file") + 1])):
+for line in open(os.path.expanduser(ARGS[ARGS.index("--accounts-file") + 1] if "--accounts-file" in ARGS else "~/schema-forge-lab-private/local-accounts.env")):
     m = re.match(r"^\s*(?:export\s+)?([A-Z_]+)=(.*)$", line.strip())
     if m:
         SECRET[m.group(1)] = m.group(2).strip("'\"")
@@ -43,7 +43,9 @@ def q(user, password, db, sql):
 
 
 def root(sql, db="schema_forge"):
-    ok, out, err = q("postgres", ROOT, db, sql)
+    # what is read here (pg_roles, pg_auth_members, has_*_privilege) any role may read: sf_reader does, where no
+    # superuser's password is given
+    ok, out, err = q("postgres", ROOT, db, sql) if ROOT else q("sf_reader", SECRET["SF_READER_PASSWORD"], "schema_forge", sql)
     if not ok:
         raise SystemExit(f"as the superuser: {err}")
     return out
@@ -78,7 +80,7 @@ def main():
         check(attrs == "falsefalsefalsefalsefalse" and login == "true" and member == "0",
               f"{name}: LOGIN alone (no superuser, createdb, createrole, replication, bypassrls), a member of no role")
     print("== the databases each may reach")
-    dbs = root("SELECT string_agg(datname, ' ') FROM pg_database WHERE datallowconn", "postgres").split()
+    dbs = root("SELECT string_agg(datname, ' ') FROM pg_database WHERE datallowconn").split()
     for role in ROLES:
         reach = [d for d in dbs if q(role, SECRET[f"{role.upper()}_PASSWORD"], d, "SELECT 1")[0]]
         check(reach == ["schema_forge"], f"{role} connects to schema_forge alone (reaches: {', '.join(reach)})")
