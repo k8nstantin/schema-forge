@@ -23,4 +23,6 @@ CREATE TABLE cortex.turns (
 );
 
 CREATE INDEX turns_branch ON cortex.turns (design, branch);
+-- one open turn per design, held by the database (decision one-open-turn): a second writer is refused, not interleaved
+CREATE UNIQUE INDEX turns_one_open ON cortex.turns (design) WHERE state = 'open';
 CREATE INDEX turns_parent ON cortex.turns (design, parent);

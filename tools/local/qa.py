@@ -127,7 +127,7 @@ def main():
         check(not wrong, f"{s}: {len(cortex_tables)} cortex and {len(mysql_tables)} engine_mysql tables as the policy gives them", "; ".join(wrong[:4]))
         fns = set(value(f"SELECT coalesce(string_agg(p.oid::regprocedure::text, ' '), '') FROM pg_proc p WHERE p.pronamespace IN ('cortex'::regnamespace, "
                         f"'engine_mysql'::regnamespace) AND has_function_privilege('{s}', p.oid, 'EXECUTE')").split())
-        want = P.FUNCTIONS.get(s, {"cortex.owns_design(uuid,name)"})
+        want = P.FUNCTIONS.get(s, {"cortex.designs_of(name)"})
         check(fns == want, f"{s}: executes {sorted(fns)}", f"wants {sorted(want)}")
 
     print("== 3. behavior, tried as each account (in a QA design, deleted at the end)")

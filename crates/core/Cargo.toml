@@ -1,0 +1,24 @@
+[package]
+name = "schema-forge-core"
+description = "The core: designs, branches, turns, operations, undo, restore and locked versions, on the cortex's own functions."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+schema-forge-store.workspace = true
+postgres-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

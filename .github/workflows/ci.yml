@@ -13,6 +13,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # the toolchain rust-toolchain.toml pins: tools/check.py formats, lints and builds the app with it
+      - run: rustup toolchain install && rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
       # The one command (specs/rules.xml one-check), the same here as on every developer's machine.
       - run: python3 tools/check.py
       # the objectives' state in the spec, against the issues and pull requests on GitHub
@@ -35,6 +38,23 @@ jobs:
       - run: sudo apt-get install -y -q postgresql-common && sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y && sudo apt-get install -y -q postgresql-client-18
       # every proof of the cortex, each in fresh PostgreSQL 18 containers (the private MySQL sample is not here)
       - run: python3 tools/cortex/all.py
+
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # the toolchain rust-toolchain.toml pins, with rustfmt and clippy
+      - run: rustup toolchain install && rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - run: docker pull -q postgres:18-alpine
+      # format, lint, licences and advisories, build; a store in a container; every test against it; schema-forge check
+      - run: python3 tools/app/all.py
 
   engine-mysql:
     runs-on: ubuntu-latest

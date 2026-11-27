@@ -1,0 +1,5 @@
+# The one toolchain the app is built and tested with, here and in CI (decision app-stack).
+[toolchain]
+channel = "1.95.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

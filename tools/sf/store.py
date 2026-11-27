@@ -16,15 +16,26 @@ class Failed(Exception):
 
 
 class Store:
-    def __init__(self, name="sf-tool"):
+    """published: the store also listens on a free port of 127.0.0.1 (self.port), where every account signs in with
+    its password (scram-sha-256), as on a real server; psql inside the container stays trusted, for the tools."""
+
+    def __init__(self, name="sf-tool", published=False):
         self.name = f"{name}-{os.getpid()}"
+        self.published, self.port = published, None
 
     def __enter__(self):
         if docker("info").returncode:
             raise SystemExit("docker is not running")
-        r = docker("run", "-d", "--name", self.name, "-e", "POSTGRES_HOST_AUTH_METHOD=trust", IMAGE)
+        if self.published:
+            import secrets
+            args = ["-p", "127.0.0.1::5432", "-e", "POSTGRES_HOST_AUTH_METHOD=scram-sha-256", "-e", f"POSTGRES_PASSWORD={secrets.token_urlsafe(24)}"]
+        else:
+            args = ["-e", "POSTGRES_HOST_AUTH_METHOD=trust"]
+        r = docker("run", "-d", "--name", self.name, *args, IMAGE)
         if r.returncode:
             raise SystemExit(f"docker run {IMAGE}: {r.stderr.strip()}")
+        if self.published:
+            self.port = docker("port", self.name, "5432/tcp").stdout.strip().splitlines()[0].rsplit(":", 1)[1]
         for _ in range(240):
             logs = docker("logs", self.name)
             if "PostgreSQL init process complete" in logs.stdout + logs.stderr and self.sql("SELECT 1", db="postgres", check=False)[0] == 0:

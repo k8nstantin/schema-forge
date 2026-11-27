@@ -1,0 +1,4 @@
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+# proper names the docs use as words, not code (".." keeps clippy's own list)
+doc-valid-idents = ["PostgreSQL", "MySQL", "UUIDv7", "DataFusion", "SchemaForge", "TypeScript", ".."]

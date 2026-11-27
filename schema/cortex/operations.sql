@@ -6,9 +6,12 @@ CREATE TABLE cortex.operations (
   position  INTEGER NOT NULL CHECK (position >= 1),                                                          -- its place in the turn: 1, 2, 3
   kind      TEXT NOT NULL CHECK (kind ~ '^[a-z][a-z0-9_]*$'),                                                -- what it is, as the agent and the canvas name it (add_table)
   summary   TEXT NOT NULL CHECK (length(summary) >= 1),                                                      -- what it did, for people (added table orders)
+  undoes    UUID,                                                                                            -- the turn it undid, for an undo; written by cortex.undo, NULL otherwise
   UNIQUE (design, id),
   UNIQUE (turn, position),
-  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+  FOREIGN KEY (design, turn) REFERENCES cortex.turns (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  FOREIGN KEY (design, undoes) REFERENCES cortex.turns (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
 );
 
 CREATE INDEX operations_turn ON cortex.operations (design, turn);
+CREATE INDEX operations_undoes ON cortex.operations (design, undoes);
