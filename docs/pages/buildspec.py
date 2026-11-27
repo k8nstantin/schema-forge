@@ -39,7 +39,7 @@ seq_svg = g.render()
 
 P = []; a = P.append
 a(f'''<div class="tb" role="group" aria-label="Title block">
-<div><span>Spec</span><b>root v{root.get("version")} · rules v{rules.get("version")}</b></div><div><span>Objectives</span><b><a href="%REPO%/issues/138" target="_blank" rel="noopener">#138 to #159</a></b></div>
+<div><span>Spec</span><b>root v{root.get("version")} · rules v{rules.get("version")}</b></div><div><span>Objectives</span><b><a href="#sequence">{len(seq)} objectives</a></b></div>
 <div><span>Tasks written</span><b>{len(tasks)} of {len(seq)}</b></div><div><span>Review</span><b>{len(ledger)} defects found and fixed</b></div><div><span>Date</span><b>{root.get("date")}</b></div></div>
 <h1>%PRODUCT% Build Spec <span class="draft">The rebuild</span></h1>
 <p class="lede">What a coding agent builds each branch and pull request from: the root says where the truth is and how the work is done,
