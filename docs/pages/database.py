@@ -63,12 +63,42 @@ CSS = """.tbl{background:var(--surface);border:1px solid var(--line);border-radi
 .cols td,.cols th,.roles td,.roles th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
 .toc{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}"""
 
+HOW = [
+    ("The schema is the application's core",
+     "Everything SchemaForge knows of a design is rows of one database, schema_forge: no design is a database, a namespace or "
+     "a table of its own. The canvas, the agent, the importer and the writer all read and write the same rows, so what one "
+     "shows is what the others act on."),
+    ("The database keeps it consistent, not the code",
+     "Every reference is a foreign key, every value typed and checked, every column documented in the database itself. Every "
+     "table of a design carries its design, and every reference within it is (design, column) to (design, id): no row can point "
+     "into another design. A change the rules forbid is refused at commit, whoever wrote it: the app, the agent or a plugin."),
+    ("Every id a UUIDv7",
+     "Made with its row, kept when the part is renamed, never made from a name; ids sort in the order they were made. No id "
+     "counter anywhere."),
+    ("History for free, for every engine",
+     "One trigger logs every row change of the cortex and of every plugin under the operation of a turn, before and after. "
+     "Undo, restore and branch switch are the same for every engine; a change outside a turn is refused; nobody rewrites the log."),
+    ("Engines plug in, and cannot break each other",
+     "Each plugin brings its own namespace, owner and service account, and is plugged in by five checked steps: a table that is "
+     "not a plug is refused. Its service account is the only writer of its tables, sees only its own engine's designs (row-level "
+     "security), and holds only the privileges its work needs: no cross-engine writes, ever."),
+    ("Two engines, a dozen databases",
+     "engine_mysql and engine_postgresql are each built once across every version of their database; every managed service and "
+     "compatible database falls into its family as a flavor: what it refuses is a declared fact, what it adds a typed table or a "
+     "declared option. What looks very complex is solved by the design of the schema."),
+    ("Proven, not claimed",
+     "Every property above is a tool in the repository, run on every pull request: the cortex loads, its ids, its dump, its history, "
+     "its refusals, its privileges; each engine round-trips every object of every version through the store, identical."),
+]
+how = "".join(f'<article class="tbl"><h3>{e(t)}</h3><p>{e(s)}</p></article>' for t, s in HOW)
+
 body = f"""
 <header class="hero"><p class="eyebrow">The database</p><h1>One database, <code>schema_forge</code>.</h1>
 <p class="lede">The cortex holds what every engine shares and the plugs every engine fits into; each engine is a plugin with its own
 namespace, its own owner and its own service account, the only writer of its tables. Every id is a UUIDv7. Every table below is
 read from its file; every column's comment is its comment in the database. {total} tables.</p>
-<div class="toc">{"".join(toc)}</div></header>
+<div class="toc"><a href="#how">How it works</a>{"".join(toc)}</div></header>
+<section id="how"><p class="kicker">How it works, and why</p><h2>The schema is the core of the application, and the database keeps it consistent.</h2>{how}</section>
 {"".join(sections)}
 """
 
