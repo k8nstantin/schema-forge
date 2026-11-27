@@ -50,9 +50,9 @@ def policy(account, table):
     }[table].get(account, {"SELECT"})
 
 
-FUNCTIONS = {"cortex_service": {"cortex.owns_design(uuid,name)", "cortex.undo(uuid)"}, "cortex_agent": {"cortex.owns_design(uuid,name)", "cortex.undo(uuid)"},
-             "cortex_reader": {"cortex.owns_design(uuid,name)"}, "engine_mysql_service": {"cortex.owns_design(uuid,name)"},
-             "engine_postgresql_service": {"cortex.owns_design(uuid,name)"}}
+FUNCTIONS = {"cortex_service": {"cortex.designs_of(name)", "cortex.undo(uuid)"}, "cortex_agent": {"cortex.designs_of(name)", "cortex.undo(uuid)"},
+             "cortex_reader": {"cortex.designs_of(name)"}, "engine_mysql_service": {"cortex.designs_of(name)"},
+             "engine_postgresql_service": {"cortex.designs_of(name)"}}
 
 
 def main():
@@ -119,6 +119,11 @@ def main():
         for a in ("cortex_service", "cortex_agent", "cortex_reader"):
             seen = store.value(f"BEGIN; SET ROLE {a}; SELECT count(*) FROM cortex.designs; COMMIT;")
             check(seen == "2", f"{a} sees every design ({seen} of 2)")
+        # the fence is worked out once per statement (decision fence-per-statement): the plan reads the fence's set once,
+        # as a hashed subplan, an init plan or a semi-join, never a function call for every row
+        plan = store.sql("BEGIN; SET ROLE engine_mysql_service; EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM cortex.objects; COMMIT;")[1]
+        once = "designs_of" in plan and any(w in plan for w in ("hashed SubPlan", "InitPlan", "Semi Join"))
+        check(once, "the fence is worked out once per statement, not for every row" + ("" if once else f": {' / '.join(l.strip() for l in plan.splitlines())}"))
         print("== each plugin's namespace: written by its own service account alone (no cross-engine writes)")
         body = lambda d, name, role: f"""
             INSERT INTO cortex.objects (design, engine, namespace, kind, name, position)

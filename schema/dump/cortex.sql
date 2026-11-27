@@ -169,6 +169,28 @@ COMMENT ON FUNCTION cortex.check_plugin(plugin text) IS 'refuses a plugin whose 
 
 
 --
+-- Name: designs_of(name); Type: FUNCTION; Schema: cortex; Owner: cortex_owner
+--
+
+CREATE FUNCTION cortex.designs_of(asking name) RETURNS SETOF uuid
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'cortex'
+    AS $$
+  SELECT g.id FROM cortex.designs g JOIN cortex.engines e ON e.id = g.engine JOIN cortex.plugins p ON p.id = e.plugin
+   WHERE p.account = designs_of.asking
+$$;
+
+
+ALTER FUNCTION cortex.designs_of(asking name) OWNER TO cortex_owner;
+
+--
+-- Name: FUNCTION designs_of(asking name); Type: COMMENT; Schema: cortex; Owner: cortex_owner
+--
+
+COMMENT ON FUNCTION cortex.designs_of(asking name) IS 'the designs of the engine whose plugin''s service account is asking: the fence of row-level security, worked out once per statement';
+
+
+--
 -- Name: fence(text, text[]); Type: FUNCTION; Schema: cortex; Owner: cortex_owner
 --
 
@@ -187,7 +209,7 @@ BEGIN
     -- cortex_owner among them for cortex.undo, the one generic writer every engine's rows share, called by the app and the agent
     EXECUTE format('CREATE POLICY everyone ON %I.%I TO cortex_owner, cortex_service, cortex_agent, cortex_reader USING (true) WITH CHECK (true)', ns, t);
     EXECUTE format('DROP POLICY IF EXISTS own_engine ON %I.%I', ns, t);
-    EXECUTE format('CREATE POLICY own_engine ON %I.%I TO PUBLIC USING (cortex.owns_design(%I, current_user)) WITH CHECK (cortex.owns_design(%I, current_user))', ns, t, key, key);
+    EXECUTE format('CREATE POLICY own_engine ON %I.%I TO PUBLIC USING (%I IN (SELECT cortex.designs_of(current_user))) WITH CHECK (%I IN (SELECT cortex.designs_of(current_user)))', ns, t, key, key);
   END LOOP;
 END $$;
 
@@ -323,7 +345,7 @@ BEGIN
   EXECUTE format('GRANT SELECT ON cortex.plugins, cortex.plugin_tables TO %I', p.namespace || '_owner');
   EXECUTE format('GRANT REFERENCES ON cortex.designs, cortex.namespaces, cortex.objects, cortex.columns, cortex.indexes, cortex.index_parts, cortex.constraints, cortex.constraint_columns TO %I',
                  p.namespace || '_owner');
-  EXECUTE format('GRANT EXECUTE ON FUNCTION cortex.log_row(), cortex.owns_design(uuid, name), cortex.attach_history(text, text[]), cortex.fence(text, text[]), cortex.fit_plugin(text) TO %I',
+  EXECUTE format('GRANT EXECUTE ON FUNCTION cortex.log_row(), cortex.designs_of(name), cortex.attach_history(text, text[]), cortex.fence(text, text[]), cortex.fit_plugin(text) TO %I',
                  p.namespace || '_owner');
 END $$;
 
@@ -335,28 +357,6 @@ ALTER FUNCTION cortex.open_to(plugin text) OWNER TO cortex_owner;
 --
 
 COMMENT ON FUNCTION cortex.open_to(plugin text) IS 'what a plugin''s owner needs of the cortex to build on it: to see it and to reference the tables its own extend';
-
-
---
--- Name: owns_design(uuid, name); Type: FUNCTION; Schema: cortex; Owner: cortex_owner
---
-
-CREATE FUNCTION cortex.owns_design(design uuid, asking name) RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'pg_catalog', 'cortex'
-    AS $$
-  SELECT EXISTS (SELECT 1 FROM cortex.designs g JOIN cortex.engines e ON e.id = g.engine JOIN cortex.plugins p ON p.id = e.plugin
-                  WHERE g.id = owns_design.design AND p.account = owns_design.asking)
-$$;
-
-
-ALTER FUNCTION cortex.owns_design(design uuid, asking name) OWNER TO cortex_owner;
-
---
--- Name: FUNCTION owns_design(design uuid, asking name); Type: COMMENT; Schema: cortex; Owner: cortex_owner
---
-
-COMMENT ON FUNCTION cortex.owns_design(design uuid, asking name) IS 'true when the asking account is the service account of the design''s engine''s plugin: the fence of row-level security';
 
 
 --
@@ -388,7 +388,7 @@ BEGIN
     PERFORM cortex.fence('cortex', design_tables);
     EXECUTE 'REVOKE ALL ON ALL FUNCTIONS IN SCHEMA cortex FROM PUBLIC';
     EXECUTE 'GRANT EXECUTE ON FUNCTION cortex.undo(uuid) TO cortex_service, cortex_agent';
-    EXECUTE 'GRANT EXECUTE ON FUNCTION cortex.owns_design(uuid, name) TO cortex_service, cortex_agent, cortex_reader';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION cortex.designs_of(name) TO cortex_service, cortex_agent, cortex_reader';
     RETURN;
   END IF;
   PERFORM cortex.check_plugin(plugin);
@@ -400,7 +400,7 @@ BEGIN
   EXECUTE format('GRANT SELECT ON cortex.engines, cortex.engine_versions, cortex.engine_flavors, cortex.object_kinds, cortex.designs TO %I', p.account);
   EXECUTE format('GRANT SELECT, INSERT ON cortex.operations TO %I', p.account);
   EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON ' || (SELECT string_agg('cortex.' || m, ', ') FROM unnest(model) m) || format(' TO %I', p.account);
-  EXECUTE format('GRANT EXECUTE ON FUNCTION cortex.owns_design(uuid, name) TO %I', p.account);
+  EXECUTE format('GRANT EXECUTE ON FUNCTION cortex.designs_of(name) TO %I', p.account);
 END $$;
 
 
@@ -422,12 +422,16 @@ CREATE FUNCTION cortex.undo(turn uuid) RETURNS integer
     SET search_path TO 'pg_catalog', 'cortex'
     AS $_$
 DECLARE
+  op    uuid := nullif(current_setting('schema_forge.operation', true), '')::uuid;
   c     record;
   cols  text;
   n     integer := 0;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM cortex.turns WHERE id = undo.turn AND state = 'committed') THEN
     RAISE EXCEPTION 'undo: turn % is not a committed turn', undo.turn;
+  END IF;
+  IF op IS NULL THEN
+    RAISE EXCEPTION 'undo: outside an operation: set schema_forge.operation first' USING ERRCODE = 'insufficient_privilege';
   END IF;
   FOR c IN SELECT r.* FROM cortex.row_changes r JOIN cortex.operations o ON o.id = r.operation
             WHERE o.turn = undo.turn ORDER BY r.id DESC LOOP
@@ -443,7 +447,11 @@ BEGIN
     END IF;
     n := n + 1;
   END LOOP;
+  -- the turns this turn had undone are in effect again
+  UPDATE cortex.turns SET state = 'committed'
+   WHERE state = 'undone' AND id IN (SELECT o.undoes FROM cortex.operations o WHERE o.turn = undo.turn AND o.undoes IS NOT NULL);
   UPDATE cortex.turns SET state = 'undone' WHERE id = undo.turn;
+  UPDATE cortex.operations SET undoes = undo.turn WHERE id = op;
   RETURN n;
 END $_$;
 
@@ -454,7 +462,7 @@ ALTER FUNCTION cortex.undo(turn uuid) OWNER TO cortex_owner;
 -- Name: FUNCTION undo(turn uuid); Type: COMMENT; Schema: cortex; Owner: cortex_owner
 --
 
-COMMENT ON FUNCTION cortex.undo(turn uuid) IS 'undoes a committed turn: the inverse of each of its row changes, newest first, logged under the current operation; marks the turn undone';
+COMMENT ON FUNCTION cortex.undo(turn uuid) IS 'undoes a committed turn: the inverse of each of its row changes, newest first, logged under the current operation, which records the turn undone; marks it undone, and the turns it had undone committed again';
 
 
 SET default_tablespace = '';
@@ -1699,6 +1707,7 @@ CREATE TABLE cortex.operations (
     "position" integer NOT NULL,
     kind text NOT NULL,
     summary text NOT NULL,
+    undoes uuid,
     CONSTRAINT operations_id_check CHECK ((uuid_extract_version(id) = 7)),
     CONSTRAINT operations_kind_check CHECK ((kind ~ '^[a-z][a-z0-9_]*$'::text)),
     CONSTRAINT operations_position_check CHECK (("position" >= 1)),
@@ -1755,6 +1764,13 @@ COMMENT ON COLUMN cortex.operations.kind IS 'what it is, as the agent and the ca
 --
 
 COMMENT ON COLUMN cortex.operations.summary IS 'what it did, for people (added table orders)';
+
+
+--
+-- Name: COLUMN operations.undoes; Type: COMMENT; Schema: cortex; Owner: cortex_owner
+--
+
+COMMENT ON COLUMN cortex.operations.undoes IS 'the turn it undid, for an undo; written by cortex.undo, NULL otherwise';
 
 
 --
@@ -2754,6 +2770,13 @@ CREATE INDEX operations_turn ON cortex.operations USING btree (design, turn);
 
 
 --
+-- Name: operations_undoes; Type: INDEX; Schema: cortex; Owner: cortex_owner
+--
+
+CREATE INDEX operations_undoes ON cortex.operations USING btree (design, undoes);
+
+
+--
 -- Name: row_changes_operation; Type: INDEX; Schema: cortex; Owner: cortex_owner
 --
 
@@ -2772,6 +2795,13 @@ CREATE INDEX row_changes_row ON cortex.row_changes USING btree (design, row_id);
 --
 
 CREATE INDEX turns_branch ON cortex.turns USING btree (design, branch);
+
+
+--
+-- Name: turns_one_open; Type: INDEX; Schema: cortex; Owner: cortex_owner
+--
+
+CREATE UNIQUE INDEX turns_one_open ON cortex.turns USING btree (design) WHERE (state = 'open'::text);
 
 
 --
@@ -3171,6 +3201,14 @@ ALTER TABLE ONLY cortex.operations
 
 
 --
+-- Name: operations operations_design_undoes_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: cortex_owner
+--
+
+ALTER TABLE ONLY cortex.operations
+    ADD CONSTRAINT operations_design_undoes_fkey FOREIGN KEY (design, undoes) REFERENCES cortex.turns(design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: plugin_tables plugin_tables_plugin_fkey; Type: FK CONSTRAINT; Schema: cortex; Owner: cortex_owner
 --
 
@@ -3400,98 +3438,98 @@ ALTER TABLE cortex.operations ENABLE ROW LEVEL SECURITY;
 -- Name: branches own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.branches USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.branches USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: columns own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.columns USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.columns USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: constraint_columns own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.constraint_columns USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.constraint_columns USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: constraints own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.constraints USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.constraints USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: dependencies own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.dependencies USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.dependencies USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: designs own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.designs USING (cortex.owns_design(id, CURRENT_USER)) WITH CHECK (cortex.owns_design(id, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.designs USING ((id IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((id IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: index_parts own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.index_parts USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.index_parts USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: indexes own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.indexes USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.indexes USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: locked_versions own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.locked_versions USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.locked_versions USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: namespaces own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.namespaces USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.namespaces USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: objects own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.objects USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.objects USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: operations own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.operations USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.operations USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: row_changes own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.row_changes USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.row_changes USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
 -- Name: turns own_engine; Type: POLICY; Schema: cortex; Owner: cortex_owner
 --
 
-CREATE POLICY own_engine ON cortex.turns USING (cortex.owns_design(design, CURRENT_USER)) WITH CHECK (cortex.owns_design(design, CURRENT_USER));
+CREATE POLICY own_engine ON cortex.turns USING ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of))) WITH CHECK ((design IN ( SELECT cortex.designs_of(CURRENT_USER) AS designs_of)));
 
 
 --
@@ -3551,6 +3589,16 @@ REVOKE ALL ON FUNCTION cortex.check_plugin(plugin text) FROM PUBLIC;
 
 
 --
+-- Name: FUNCTION designs_of(asking name); Type: ACL; Schema: cortex; Owner: cortex_owner
+--
+
+REVOKE ALL ON FUNCTION cortex.designs_of(asking name) FROM PUBLIC;
+GRANT ALL ON FUNCTION cortex.designs_of(asking name) TO cortex_service;
+GRANT ALL ON FUNCTION cortex.designs_of(asking name) TO cortex_agent;
+GRANT ALL ON FUNCTION cortex.designs_of(asking name) TO cortex_reader;
+
+
+--
 -- Name: FUNCTION fence(ns text, tabs text[]); Type: ACL; Schema: cortex; Owner: cortex_owner
 --
 
@@ -3583,16 +3631,6 @@ REVOKE ALL ON FUNCTION cortex.notify_turn() FROM PUBLIC;
 --
 
 REVOKE ALL ON FUNCTION cortex.open_to(plugin text) FROM PUBLIC;
-
-
---
--- Name: FUNCTION owns_design(design uuid, asking name); Type: ACL; Schema: cortex; Owner: cortex_owner
---
-
-REVOKE ALL ON FUNCTION cortex.owns_design(design uuid, asking name) FROM PUBLIC;
-GRANT ALL ON FUNCTION cortex.owns_design(design uuid, asking name) TO cortex_service;
-GRANT ALL ON FUNCTION cortex.owns_design(design uuid, asking name) TO cortex_agent;
-GRANT ALL ON FUNCTION cortex.owns_design(design uuid, asking name) TO cortex_reader;
 
 
 --
