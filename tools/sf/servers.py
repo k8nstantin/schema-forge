@@ -17,9 +17,10 @@ class MySQL:
         if r.returncode:
             raise SystemExit(f"docker run {self.image}: {r.stderr.strip()}")
         # the image first runs a bootstrap server with networking off, then restarts: wait for the real one, on 3306
-        for _ in range(600):
-            logs = docker("logs", self.name)
-            ready = [l for l in (logs.stdout + logs.stderr).splitlines() if "ready for connections" in l and "port: 3306" in l]
+        # 8.0 and later write both on one line; 5.7 writes the port on the line after "ready for connections"
+        for _ in range(900):
+            text = "\n".join((lambda l: l.stdout + l.stderr)(docker("logs", self.name)).splitlines())
+            ready = "ready for connections" in text and "port: 3306" in text
             if ready and docker("exec", self.name, "mysql", "-uroot", "-N", "-e", "SELECT 1").returncode == 0:
                 return self
             time.sleep(0.5)
@@ -36,6 +37,44 @@ class MySQL:
 
     def json(self, query):
         r = docker("exec", "-i", self.name, "mysql", "-uroot", "-N", "-B", "--raw", "-e", query)
+        if r.returncode:
+            raise Failed(f"{self.image}: {r.stderr.strip()[:300]}")
+        out = r.stdout.strip()
+        return json.loads(out) if out and out != "NULL" else []
+
+
+class TiDB(MySQL):
+    """TiDB, standalone (its own storage in the container), spoken to over the MySQL protocol on port 4000 by a mysql
+    client in a second container sharing its network: the TiDB image carries no client."""
+
+    CLIENT = "mysql:8.4"
+
+    def __init__(self, image="pingcap/tidb:v8.5.4", name="sf-tidb"):
+        super().__init__(image, name)
+
+    def __enter__(self):
+        r = docker("run", "-d", "--name", self.name, self.image)
+        if r.returncode:
+            raise SystemExit(f"docker run {self.image}: {r.stderr.strip()}")
+        for _ in range(240):
+            if self._client("SELECT 1").returncode == 0:
+                return self
+            time.sleep(0.5)
+        self.__exit__()
+        raise SystemExit(f"{self.image} did not answer within two minutes")
+
+    def _client(self, query, stdin=None):
+        args = ["run", "--rm", "-i", "--network", f"container:{self.name}", "--entrypoint", "mysql", self.CLIENT,
+                "-h127.0.0.1", "-P4000", "-uroot", "-N", "-B", "--raw"]
+        return docker(*args, *(["-e", query] if query else []), stdin=stdin)
+
+    def load(self, path):
+        r = self._client(None, stdin=open(path, encoding="utf-8", errors="replace").read())
+        if r.returncode:
+            raise Failed(f"loading {os.path.basename(path)} into {self.image}: {r.stderr.strip()[:300]}")
+
+    def json(self, query):
+        r = self._client(query)
         if r.returncode:
             raise Failed(f"{self.image}: {r.stderr.strip()[:300]}")
         out = r.stdout.strip()
