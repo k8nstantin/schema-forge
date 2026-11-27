@@ -61,9 +61,11 @@ def main():
         with tempfile.TemporaryDirectory() as tmp:
             accounts = os.path.join(tmp, "accounts.env")
 
-            def install(*extra, user="postgres", pw=password):
+            def install(*extra, user="postgres", pw=password, answer=""):
+                # the confirmation is typed at the prompt, as the DBA types it; never given by SF_CONFIRM here
+                env = {k: v for k, v in os.environ.items() if k != "SF_CONFIRM"}
                 return subprocess.run([sys.executable, os.path.join(HERE, "install.py"), "--port", port, "--user", user, "--accounts-file", accounts, *extra],
-                                      capture_output=True, text=True, env=dict(os.environ, SF_ROOT_PASSWORD=pw, SF_CONFIRM="DROP"))
+                                      input=answer, capture_output=True, text=True, env=dict(env, SF_ROOT_PASSWORD=pw))
             out = install()
             made = psql("SELECT count(*) FROM pg_roles WHERE rolname LIKE 'cortex%' OR rolname LIKE 'engine%';").stdout.strip()
             old = psql("SELECT count(*) FROM pg_database WHERE datname = 'schema_forge';").stdout.strip()
@@ -72,8 +74,12 @@ def main():
             out = install(user="not_super", pw="not-super-1")
             check(out.returncode != 0 and "not a superuser" in out.stdout + out.stderr, "run by a user who is not a superuser: stops, changes nothing",
                   out.stdout + out.stderr)
-            for run in ("with --fresh, over the earlier install", "with --fresh again"):
-                out = install("--fresh")
+            out = install("--fresh", answer="no\n")
+            old = psql("SELECT count(*) FROM pg_database WHERE datname = 'schema_forge';").stdout.strip()
+            check(out.returncode != 0 and "nothing dropped" in out.stdout + out.stderr and old == "1",
+                  "with --fresh, answering no at the prompt: drops nothing", out.stdout + out.stderr)
+            for run, answer in (("with --fresh over the earlier install, typing drop at the prompt", "drop\n"), ("with --fresh again, typing DROP", "DROP\n")):
+                out = install("--fresh", answer=answer)
                 last = (out.stdout.strip().splitlines() or ["(nothing)"])[-1]
                 check(out.returncode == 0 and last.startswith("pass") and "pass  locked in" in out.stdout, f"{run}: {last}", out.stdout + out.stderr)
             for line in out.stdout.splitlines():

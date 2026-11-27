@@ -6,7 +6,7 @@ checking the installed database is exactly the one the tools tested.
   1. asks the superuser's password (never stored, never printed); checks the server is PostgreSQL 18 and the user a
      superuser; stops before changing anything if schema_forge or any of its roles already exist, unless --fresh
   2. --fresh: drops schema_forge and every role an install made (cortex_*, engine_*_owner, engine_*_service, and the
-     sf_ roles of the schema before the rebuild), after you type DROP
+     sf_ roles of the schema before the rebuild), after you type drop (in any case)
   3. makes the roles: cortex_owner and each engine's <namespace>_owner (no login), and the service accounts
      cortex_service, cortex_agent, cortex_reader and each engine's <namespace>_service, each with a strong random
      password written only to the accounts file (mode 600), never printed
@@ -89,7 +89,8 @@ def main():
                          f"({', '.join(roles) or 'none'}): run with --fresh to drop them first: nothing changed")
     if "--fresh" in ARGS and (roles or there):
         print(f"--fresh drops {'the database schema_forge' if there else 'no database'} and {len(roles)} roles ({', '.join(roles) or 'none'}).")
-        if os.environ.get("SF_CONFIRM") != "DROP" and input("type DROP to go on: ").strip() != "DROP":
+        # drop, DROP or Drop: any case; anything else drops nothing
+        if os.environ.get("SF_CONFIRM", "").upper() != "DROP" and input("type drop to go on: ").strip().upper() != "DROP":
             raise SystemExit("nothing dropped")
         db.sql("DROP DATABASE IF EXISTS schema_forge WITH (FORCE);", db="postgres")
         for r in roles:
