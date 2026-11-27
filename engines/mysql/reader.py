@@ -38,6 +38,10 @@ def read(server):
     read_routines(server, model)
     read_triggers(server, model)
     read_events(server, model)
+    # a view's uses are the tables and views of the server it reads; a name it quotes that is neither is not a dependency
+    for o in model["objects"].values():
+        if o["kind"] == "view":
+            o["uses"] = [u for u in o["uses"] if key(u[0], "table", u[1]) in model["objects"] or key(u[0], "view", u[1]) in model["objects"]]
     return model
 
 
@@ -277,8 +281,7 @@ def read_views(server, model):
         o = model["objects"].setdefault(k, {"kind": "view", "columns": []})
         o.update({"comment": None, "details": {"definition": definition, "algorithm": alg.group(1) if alg else "UNDEFINED", "definer": definer(v["definer"]),
                                                "security": v["security"], "check_option": check, "character_set_client": v["cs"], "collation_connection": v["cc"]},
-                  "uses": sorted(set(re.findall(r"`([^`]+)`\.`([^`]+)`", definition)))})
-        o["uses"] = [list(u) for u in o["uses"] if key(u[0], "table", u[1]) in model["objects"] or key(u[0], "view", u[1]) in model["objects"] or True]
+                  "uses": [list(u) for u in sorted(set(re.findall(r"`([^`]+)`\.`([^`]+)`", definition)))]})
 
 
 def definer(d):

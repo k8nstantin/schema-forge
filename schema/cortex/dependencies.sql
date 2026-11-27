@@ -4,7 +4,8 @@ CREATE TABLE cortex.dependencies (
   design  UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,    -- the design
   object  UUID NOT NULL,                                                                                   -- the object that uses
   uses    UUID NOT NULL,                                                                                   -- the object used
-  "as"    TEXT NOT NULL CHECK ("as" ~ '^[a-z][a-z0-9_]*$'),                                                -- the part it plays, as the engine names it (reads, calls, function, type)
+  "as"      TEXT NOT NULL CHECK ("as" ~ '^[a-z][a-z0-9_]*$'),                                              -- the part it plays, as the engine names it (reads, calls, function, type, union)
+  position  INTEGER NOT NULL DEFAULT 1 CHECK (position >= 1),                                              -- its place among the object's dependencies of the same part, where their order means something (a MERGE table's tables); 1 where it does not
   UNIQUE (design, id),
   UNIQUE (object, uses, "as") DEFERRABLE INITIALLY DEFERRED,
   CHECK (object <> uses),

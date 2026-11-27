@@ -834,9 +834,11 @@ CREATE TABLE cortex.dependencies (
     object uuid NOT NULL,
     uses uuid NOT NULL,
     "as" text NOT NULL,
+    "position" integer DEFAULT 1 NOT NULL,
     CONSTRAINT dependencies_as_check CHECK (("as" ~ '^[a-z][a-z0-9_]*$'::text)),
     CONSTRAINT dependencies_check CHECK ((object <> uses)),
-    CONSTRAINT dependencies_id_check CHECK ((uuid_extract_version(id) = 7))
+    CONSTRAINT dependencies_id_check CHECK ((uuid_extract_version(id) = 7)),
+    CONSTRAINT dependencies_position_check CHECK (("position" >= 1))
 );
 
 
@@ -881,7 +883,14 @@ COMMENT ON COLUMN cortex.dependencies.uses IS 'the object used';
 -- Name: COLUMN dependencies."as"; Type: COMMENT; Schema: cortex; Owner: cortex_owner
 --
 
-COMMENT ON COLUMN cortex.dependencies."as" IS 'the part it plays, as the engine names it (reads, calls, function, type)';
+COMMENT ON COLUMN cortex.dependencies."as" IS 'the part it plays, as the engine names it (reads, calls, function, type, union)';
+
+
+--
+-- Name: COLUMN dependencies."position"; Type: COMMENT; Schema: cortex; Owner: cortex_owner
+--
+
+COMMENT ON COLUMN cortex.dependencies."position" IS 'its place among the object''s dependencies of the same part, where their order means something (a MERGE table''s tables); 1 where it does not';
 
 
 --

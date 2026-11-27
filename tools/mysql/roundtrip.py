@@ -12,6 +12,7 @@
 """
 import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -55,6 +56,15 @@ def shows(server, model):
     return out
 
 
+def trigger_header_typed(text):
+    """MySQL 5.7 keeps a trigger's CREATE statement as it was typed (its quoting and line breaks, FOLLOWS dropped); 8.0
+    and later write it themselves. On 5.7 the header is compared with its typing undone: quotes and database qualifiers
+    dropped, spacing collapsed. The body after FOR EACH ROW is still compared byte for byte."""
+    head, sep, body = text.partition("FOR EACH ROW")
+    head = re.sub(r"`[^`]*`\.", "", head).replace("`", "")
+    return " ".join(head.split()) + sep + " " + body.lstrip(" \n")
+
+
 def differences(a, b, path="", limit=12, out=None):
     out = [] if out is None else out
     if len(out) >= limit:
@@ -87,7 +97,7 @@ def main():
         kinds[o["kind"]] = kinds.get(o["kind"], 0) + 1
     print(f"  read from A: {len(model_a['databases'])} databases, " + ", ".join(f"{n} {k}s" for k, n in sorted(kinds.items())))
     if "--store" in ARGS:
-        from store import round_trip_store  # noqa: E402
+        from stored import round_trip_store  # noqa: E402
         stored, rows = round_trip_store(model_a, IMAGE)
         diff = differences(model_a, stored)
         print(f"  {'pass' if not diff else 'FAIL'}  stored by engine_mysql_service in an app's turn ({rows} rows) and read back" + ("" if not diff else ": differs"))
@@ -114,6 +124,12 @@ def main():
         print(f"    differs  {d}")
     if diff:
         bad.append("the model")
+    if IMAGE.endswith(":5.7"):
+        typed = [k for k in show_a if k.split("|")[1] == "trigger"]
+        for k in typed:
+            show_a[k], show_b[k] = trigger_header_typed(show_a[k]), trigger_header_typed(show_b.get(k) or "")
+        if typed:
+            print(f"  note  5.7 keeps a trigger's statement as typed: {len(typed)} triggers compared with the header's typing undone, the body exact")
     same = [k for k in show_a if show_a[k] == show_b.get(k)]
     print(f"  {'pass' if len(same) == len(show_a) else 'FAIL'}  SHOW CREATE identical for {len(same)} of {len(show_a)} objects")
     for k in [k for k in show_a if show_a[k] != show_b.get(k)][:6]:
