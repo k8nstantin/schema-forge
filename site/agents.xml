@@ -26,6 +26,7 @@
     </queued>
     <design about="Waiting for a design session with the maintainer: bring your view to Discussions.">
       <decision id="operation-kinds" closes-before="t08"/>
+      <decision id="mcp-schema" closes-before="the MCP over HTTP"/>
       <decision id="rules-tables" closes-before="t08"/>
       <decision id="pipelines-tables" closes-before="t09"/>
       <decision id="insight-layer" closes-before="t09"/>
@@ -137,6 +138,7 @@
   </database>
   <open>
     <decision id="operation-kinds" closes-before="t08">The operation kinds (add_table, rename_column and the rest), what each changes and how the agent calls it.</decision>
+    <decision id="mcp-schema" closes-before="the MCP over HTTP">When the MCP is served over HTTP, a schema of its own, mcp, plugged in like ui with mcp_owner and mcp_service, holding only what the cortex has no place for: the clients allowed to connect (token hashes, never tokens; scopes; revocation) and an audit of every tool call, reads and refusals included. Never design data: what an agent changes stays in the cortex's turns, operations and log; sessions stay in the server's memory. Over stdio (decision mcp-stdio) it needs none.</decision>
     <decision id="rules-tables" closes-before="t08">The tables of the rules: their links on the hierarchy, groups, exceptions, packs and findings (docs/rules.xml), as their own owner and namespace in schema_forge; the integrity rules on ice in lab/on-ice/rules return with them, each checking only the designs a commit changed.</decision>
     <decision id="pipelines-tables" closes-before="t09">The tables of a CDC pipeline between two schemas, by their stable ids.</decision>
     <decision id="insight-layer" closes-before="t09">What is worked out about the model, kept apart from it in a feature owner insight, so a person or an agent can search and question a design through the MCP: the links between objects, derived from their bodies, never typed: one row per fact a body states about another object (calls, reads, writes, on, references, creates, drops, alters, foreign key, or unresolved), with the object it names when it resolves, the line and the statement it was read from as evidence, and for a name built while it runs the pattern of its fixed parts, so one fact can name every table it can reach; walked both ways for impact (2.0, decision definitions-first); cards composed mechanically from the model; annotations an agent writes, with the model and the input hash; embeddings (pgvector, HNSW) of cards and annotations, searched together with full-text and exact names and every hit confirmed against the model. Kept fresh from the log: an accepted turn's row_changes name the objects whose rows are redone. Rebuilt, never logged or migrated. The MCP's read tools: search (finds candidates), object (one object whole), impact (the walk), sql (every count and list, as a read-only role). The embedding model is the decision embedding-models. A semantic layer (business terms, measures) is authored, so it is its own owner, logged by turns; its embeddings are insight's.</decision>
