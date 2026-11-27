@@ -92,7 +92,7 @@ for t in seq:
       f'<p class="done"><span class="lab">Done</span>{ticks(txt(x.find("done")))}</p></article>')
 a('</section>')
 runtiles = "".join(f'<div><b>{runs.get(str(i), 0)}</b><span>run {i}{" · everything" if i == 1 else " · from the run before"}</span></div>' for i in (1, 2, 3)) + '<div><b>0</b><span>run 4 · clean</span></div>'
-a(f'<section id="review"><h2>The review <span class="path">{LEDGER}</span></h2><p class="lede">Every defect, recorded with its evidence and fix as it was found, then fixed; each run read what the one before changed. The fourth pass was clean.</p>'
+a(f'<section id="review"><h2>The review of the earlier draft <span class="path">{LEDGER}</span></h2><p class="lede">A record, dated 2026-11-24, of the review of the spec\'s earlier draft (the Rust crates the rebuild of 2026-11-27 removed, decision code-reset): every defect, recorded with its evidence and fix as it was found, then fixed; each run read what the one before changed. The fourth pass was clean.</p>'
   f'<div class="runs">{runtiles}</div><div class="scroll"><table class="t ledger"><thead><tr><th>#</th><th>Run</th><th>Class</th><th>Where</th><th>Defect</th><th>Fix</th></tr></thead><tbody>')
 for r in ledger:
     a(f'<tr><td>{r["n"]}</td><td>{r["run"]}</td><td><span class="pill">{e(r["class"])}</span></td><td class="small"><code>{e(r["where"])}</code></td><td>{ticks(r["what"])}</td><td class="small">{ticks(r["fix"])}</td></tr>')
