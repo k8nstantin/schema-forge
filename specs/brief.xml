@@ -92,7 +92,7 @@
     <group name="the guides, one for each kind of contribution, read when you take one up" source="guides"/>
     <group name="the lessons" path="specs/lessons.xml">what each build taught</group>
     <group name="the design for people, read after the authority and never instead of it" source="docs"/>
-    <group name="the code as merged, when you need it" paths="crates/ engines/ tools/"/>
+    <group name="the code as merged, when you need it" paths="schema/ engines/ tools/"/>
   </read>
 
   <database>Every table is a file of an owner's folder, one CREATE TABLE each, every column commented, its comments also in the database. Read a folder's files to know its tables; the owner template explains the shapes.</database>

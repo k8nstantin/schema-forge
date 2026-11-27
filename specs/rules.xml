@@ -54,7 +54,7 @@
 
   <rule id="engine-neutral-shared-code">
     <from>the operator, 2026-11-23: "this is not acceptable and create a harness to stop you"</from>
-    <text>Shared code shows what an engine declares and never assumes one: no engine's connection field, kind, option, table or column is named in it. Every test of shared code runs on every engine of the registry, and the kit checks the interface on its own made-up example engine (crates/engine/tests/example); what each engine is tested on is data.</text>
+    <text>Shared code shows what an engine declares and never assumes one: no engine's connection field, kind, option, table or column is named in it. Every check of the cortex runs on the test engines of tools/sf/fixture.py, plugged in the way every plugin is; what each engine is tested on is data (its samples and seeds).</text>
     <breach>the architecture check's vocabulary guard (built by t03): every engine's field keys, kind ids, option keys, table and column names, read from what each declares, refused in shared code; the tests of shared code, run on every engine</breach>
   </rule>
 
