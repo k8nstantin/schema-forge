@@ -16,12 +16,12 @@ GATE = os.path.join(HOOKS, "schema-forge-tools-only.py")
 CLAIMS = os.path.join(HOOKS, "schema-forge-no-false-claims.py")
 
 GATE_CASES = [
-    ("tools/check.sh", "allow"),
+    ("python3 tools/check.py", "allow"),
     ("python3 tools/local/proof.py --pg 18", "allow"),
     ("git status --short && gh pr list", "allow"),
     ("ls schema | grep sql", "allow"),
     ("git checkout -q -b cortex", "allow"),
-    ('git commit -q -m "SF-1 a; b (c) | d && e" && tools/check.sh 2>&1 | tail -2', "allow"),
+    ('git commit -q -m "SF-1 a; b (c) | d && e" && python3 tools/check.py 2>&1 | tail -2', "allow"),
     ('git commit -m "x" && docker ps', "deny"),
     ("docker ps", "deny"),
     ("python3 -c 'print(1)'", "deny"),

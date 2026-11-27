@@ -100,7 +100,7 @@
     <do>Report what you understood first, in your own words, and ask your human what they want to do.</do>
     <do>Start from an issue (%REPO%/issues, good first issue for a start) or a question in Discussions (%REPO%/discussions). Larger work is agreed with the maintainer before code, often as a task file.</do>
     <do>Never change specs/, an owner's folder (schema/, engines/*/schema, features/), owner.toml or postgres/manifest.toml: they change only in a design session with the maintainer.</do>
-    <do>One issue, one branch, one pull request; tools/check.sh passes before you push (it needs Docker).</do>
+    <do>One issue, one branch, one pull request; python3 tools/check.py and the objective's own tools (tools/cortex/all.py) pass before you push (they need Docker).</do>
     <do>No attribution of any kind in commits or pull requests: your human is the author, and answers for every line.</do>
     <do>Ask your human before you open an issue, push, comment or open a pull request: those speak for them.</do>
   </helping>

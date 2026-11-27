@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Builds the site (site/), AGENTS.md, CLAUDE.md and the Copilot instructions from the spec and the owners' folders,
-with docs/pages/build.py; tools/check.sh then checks they are committed as built.
+with docs/pages/build.py; tools/check.py then checks they are committed as built.
 
   python3 tools/build_site.py
 """

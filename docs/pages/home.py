@@ -44,7 +44,7 @@ crates_svg = g.render()
 g = Svg(1040, 210, "From a design session to a merged build: the spec and the issue, a new session pointed at the task file, its branch, its gates, its pull request, the operator's merge.")
 steps = [("design", "design session", "spec, reviewed"), ("issue", "GitHub issue", "SF-<n>"),
          ("kick", "a new session", "one line: its file"), ("branch", "its branch", "SF-<n>-…-<model>"),
-         ("gates", "its gates", "check.sh, its own"), ("pr", "pull request", "gates, hand-off"),
+         ("gates", "its gates", "check.py, its tools"), ("pr", "pull request", "gates, hand-off"),
          ("merge", "the operator", "reviews, merges")]
 for i, (k, t, s) in enumerate(steps):
     g.box(k, 12 + i * 147, 70, 130, 54, t, s, cls="pri" if k in ("kick", "merge") else "box")

@@ -97,7 +97,7 @@ We follow a [code of conduct](CODE_OF_CONDUCT.md): be kind, be patient, assume g
   change only through a design session with the maintainer, as a new version that adds
   ([the owner template](https://k8nstantin.github.io/schema-forge/doc-owner-template.html) shows how). A pull request that needs a table changed says so,
   and the design is settled first.
-- **Every pull request passes `tools/check.sh`**: format, clippy and every test, including the **architecture check**
+- **Every pull request passes `python3 tools/check.py`** and its objective's own tools (`python3 tools/cortex/all.py`): format, clippy and every test, including the **architecture check**
   (`tools/architecture`), which fails the build when a crate depends the wrong way, a database is named outside its
   engine, or engines share code. CI runs it, and `main` accepts a merge only when it passes and the maintainer has
   approved.
