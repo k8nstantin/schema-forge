@@ -15,6 +15,10 @@ jobs:
           python-version: "3.12"
       # The one command (specs/rules.xml one-check), the same here as on every developer's machine.
       - run: python3 tools/check.py
+      # the objectives' state in the spec, against the issues and pull requests on GitHub
+      - run: python3 tools/objectives.py
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   cortex:
     runs-on: ubuntu-latest

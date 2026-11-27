@@ -5,11 +5,13 @@ proofs of each objective are their own tool (tools/cortex/all.py), run by CI bes
 
   python3 tools/check.py
 """
+import glob
 import os
 import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+from html.parser import HTMLParser
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PRIVATE = r"core_manager|core_services|gdx_services|mq_services|sec_testdb|cr_debug|piaalcm|piaclws|GDXClients|ClientKey"
@@ -29,6 +31,40 @@ def fail(msg):
     print(msg)
     print("\nFAIL  tools/check.py")
     sys.exit(1)
+
+
+class Page(HTMLParser):
+    """A page's ids, its links to #anchors, and its links to the site's own pages that open a new tab."""
+
+    def __init__(self):
+        super().__init__()
+        self.ids, self.anchors, self.new_tab = [], [], []
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if a.get("id"):
+            self.ids.append(a["id"])
+        href = a.get("href") or ""
+        if tag == "a" and href.startswith("#") and len(href) > 1:
+            self.anchors.append(href[1:])
+        if tag == "a" and a.get("target") == "_blank" and (href.endswith(".html") or href.startswith("#")) and not href.startswith("http"):
+            self.new_tab.append(href)
+
+
+def site_problems():
+    out = []
+    for path in sorted(glob.glob(os.path.join(ROOT, "site", "*.html"))):
+        p = Page()
+        p.feed(open(path, encoding="utf-8").read())
+        name = os.path.relpath(path, ROOT)
+        seen = set()
+        for i in p.ids:
+            if i in seen:
+                out.append(f"{name}: the id {i} is used twice")
+            seen.add(i)
+        out += [f"{name}: #{a} names no id on the page" for a in sorted(set(p.anchors)) if a not in seen]
+        out += [f"{name}: {h} opens a page of the site in a new tab" for h in sorted(set(p.new_tab))]
+    return out
 
 
 def main():
@@ -69,6 +105,12 @@ def main():
     if changed:
         fail(changed + "these differ from what specs/, the owners' folders and docs/pages render: run python3 tools/build_site.py and commit them")
     print("every generated file is current")
+
+    step("The site's pages: every id unique, every #anchor found on its page, no page of the site opened in a new tab")
+    problems = site_problems()
+    if problems:
+        fail("\n".join(problems[:20]))
+    print(f"{len(glob.glob(os.path.join(ROOT, 'site', '*.html')))} pages: none")
 
     step("All checks passed")
     return 0
