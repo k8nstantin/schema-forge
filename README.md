@@ -286,10 +286,12 @@ each with its own issue, ETA, branch and PR, merged before the next starts and d
 |---|---|---|---|---|
 | 1 | The spec and README: this order, every engine a plugin, UUIDv7 everywhere | [#138](https://github.com/k8nstantin/schema-forge/issues/138) | 2026-11-27 06:00 | merged ([#147](https://github.com/k8nstantin/schema-forge/pull/147)) |
 | 2 | The cortex from scratch: the plugs every engine fits into, history, the shared model, each tested by a tool | [#139](https://github.com/k8nstantin/schema-forge/issues/139) | 2026-11-28 06:00 | merged ([#148](https://github.com/k8nstantin/schema-forge/pull/148)) |
-| 3 | `engine_mysql`: MySQL 5.7, 8.0, 8.4, 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora | [#140](https://github.com/k8nstantin/schema-forge/issues/140) | 2026-11-30 18:00 | in review ([#149](https://github.com/k8nstantin/schema-forge/pull/149), CI green) |
+| 3 | `engine_mysql`: MySQL 5.7, 8.0, 8.4, 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora | [#140](https://github.com/k8nstantin/schema-forge/issues/140) | 2026-11-30 18:00 | merged ([#149](https://github.com/k8nstantin/schema-forge/pull/149), [#151](https://github.com/k8nstantin/schema-forge/pull/151), [#152](https://github.com/k8nstantin/schema-forge/pull/152)) |
 | 4 | `engine_postgresql`: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB | [#141](https://github.com/k8nstantin/schema-forge/issues/141) | 2026-12-03 06:00 | next |
 | 5 | Spanner, a subset of the PostgreSQL family | [#145](https://github.com/k8nstantin/schema-forge/issues/145) | 2026-12-04 06:00 | after #141 |
 | 6 | CockroachDB, a subset of the PostgreSQL family | [#146](https://github.com/k8nstantin/schema-forge/issues/146) | 2026-12-05 06:00 | after #145 |
+
+The same state, read from the spec and checked against GitHub on every pull request: [Where it stands](https://k8nstantin.github.io/schema-forge/start.html#stands).
 
 What objective 3 proved: every object of MySQL 5.7 to 9.7 and Percona Server 5.7 to 8.4 read from a live server,
 stored, written back into a fresh server and read again, identical, on all seven servers and on two private
