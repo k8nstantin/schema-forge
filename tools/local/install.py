@@ -2,10 +2,11 @@
 """Installs the cortex on a PostgreSQL 18 server (the local one by default), as its owner runs it:
 
   1. asks the superuser's password (never stored, never printed)
-  2. --fresh: drops schema_forge and every sf_ role first, after you type DROP
-  3. makes the roles: sf_owner (no login) and the service accounts sf_service, sf_agent, sf_reader, each with a strong
-     random password written only to the accounts file (mode 600), never printed
-  4. makes the one database schema_forge, closed to everyone but them, and loads the cortex into it as sf_owner
+  2. --fresh: drops schema_forge and every role it made (cortex_*, engine_*_owner and engine_*_service, and the sf_
+     roles of the schema before the rebuild) first, after you type DROP
+  3. makes the roles: cortex_owner (no login) and the service accounts cortex_service, cortex_agent, cortex_reader,
+     each with a strong random password written only to the accounts file (mode 600), never printed
+  4. makes the one database schema_forge, closed to everyone but them, and loads the cortex into it as cortex_owner
   5. checks what was installed, the way tools/cortex/load.py checks a container: every table, comment, function and
      plug; and that each service account signs in and reaches schema_forge alone
 
@@ -31,7 +32,9 @@ def arg(name, default):
 HOST, PORT, USER = arg("--host", "127.0.0.1"), arg("--port", "5432"), arg("--user", "dba")
 ACCOUNTS_FILE = os.path.expanduser(arg("--accounts-file", "~/schema-forge-lab-private/local-accounts.env"))
 PSQL = os.environ.get("PSQL") or shutil.which("psql") or "/opt/homebrew/opt/postgresql@18/bin/psql"
-SERVICE = ("sf_service", "sf_agent", "sf_reader")
+SERVICE = ("cortex_service", "cortex_agent", "cortex_reader")
+# every role an install made: the cortex's and each plugin's, named after their namespace; and the old schema's sf_ roles
+MADE = r"rolname ~ '^(cortex_(owner|service|agent|reader)|engine_[a-z0-9_]+_(owner|service)|sf_[a-z_]+)$'"
 
 
 class Local:
@@ -59,7 +62,7 @@ def main():
     if not version.startswith("18"):
         raise SystemExit(f"FAIL  the store is PostgreSQL 18; this server is {version}")
     if "--fresh" in ARGS:
-        roles = db.sql("SELECT string_agg(rolname, ' ') FROM pg_roles WHERE rolname LIKE 'sf\\_%';", db="postgres")[1].split()
+        roles = db.sql(f"SELECT string_agg(rolname, ' ') FROM pg_roles WHERE {MADE};", db="postgres")[1].split()
         there = db.sql("SELECT count(*) FROM pg_database WHERE datname = 'schema_forge';", db="postgres")[1].strip() == "1"
         print(f"--fresh drops {'the database schema_forge' if there else 'no database'} and {len(roles)} roles ({', '.join(roles) or 'none'}).")
         if os.environ.get("SF_CONFIRM") != "DROP" and input("type DROP to go on: ").strip() != "DROP":
@@ -69,20 +72,20 @@ def main():
             db.sql(f"DROP OWNED BY {r} CASCADE; DROP ROLE {r};", db="postgres")
         print(f"  dropped schema_forge and {len(roles)} roles")
     secrets_out = {r: secrets.token_urlsafe(32) for r in SERVICE}
-    db.sql("CREATE ROLE sf_owner NOLOGIN;\n" + "".join(f"CREATE ROLE {r} LOGIN PASSWORD '{p}';\n" for r, p in secrets_out.items()), db="postgres")
+    db.sql("CREATE ROLE cortex_owner NOLOGIN;\n" + "".join(f"CREATE ROLE {r} LOGIN PASSWORD '{p}';\n" for r, p in secrets_out.items()), db="postgres")
     os.makedirs(os.path.dirname(ACCOUNTS_FILE), mode=0o700, exist_ok=True)
     fd = os.open(ACCOUNTS_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         f.write("".join(f"{r.upper()}_PASSWORD={p}\n" for r, p in secrets_out.items()))
-    print(f"  made sf_owner and {', '.join(SERVICE)}; their passwords are in {ACCOUNTS_FILE} (mode 600)")
-    db.sql("CREATE DATABASE schema_forge OWNER sf_owner; REVOKE ALL ON DATABASE schema_forge FROM PUBLIC;"
-           "GRANT CONNECT ON DATABASE schema_forge TO sf_service, sf_agent, sf_reader;", db="postgres")
+    print(f"  made cortex_owner and {', '.join(SERVICE)}; their passwords are in {ACCOUNTS_FILE} (mode 600)")
+    db.sql("CREATE DATABASE schema_forge OWNER cortex_owner; REVOKE ALL ON DATABASE schema_forge FROM PUBLIC;"
+           "GRANT CONNECT ON DATABASE schema_forge TO cortex_service, cortex_agent, cortex_reader;", db="postgres")
     # the service accounts reach schema_forge alone: the default databases are closed to PUBLIC (their owners keep them)
     db.sql("REVOKE CONNECT ON DATABASE postgres, template1 FROM PUBLIC;", db="postgres")
-    print("  schema_forge is open to sf_service, sf_agent and sf_reader alone; postgres and template1 are closed to PUBLIC")
-    db.sql("REVOKE ALL ON SCHEMA public FROM PUBLIC; GRANT CREATE ON DATABASE schema_forge TO sf_owner;")
+    print("  schema_forge is open to cortex_service, cortex_agent and cortex_reader alone; postgres and template1 are closed to PUBLIC")
+    db.sql("REVOKE ALL ON SCHEMA public FROM PUBLIC; REVOKE TEMPORARY ON DATABASE schema_forge FROM PUBLIC; GRANT CREATE ON DATABASE schema_forge TO cortex_owner;")
     db.sql(script(cortex_sql()))
-    print("  loaded the cortex into schema_forge as sf_owner")
+    print("  loaded the cortex into schema_forge as cortex_owner")
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cortex"))
     from load import check  # noqa: E402
     bad, lines = check(db)

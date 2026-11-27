@@ -19,28 +19,31 @@ from sf.fixture import in_turn, installed, new_design  # noqa: E402
 
 DECLARED = ("plugins", "plugin_tables", "engines", "engine_versions", "engine_flavors", "object_kinds", "schema_migrations")
 MODEL = ("namespaces", "objects", "columns", "indexes", "index_parts", "constraints", "constraint_columns", "dependencies")
-ACCOUNTS = ("sf_service", "sf_agent", "sf_reader", "sf_mysql", "sf_postgresql")
+ENGINE_ACCOUNTS = ("engine_mysql_service", "engine_postgresql_service")
+ACCOUNTS = ("cortex_service", "cortex_agent", "cortex_reader") + ENGINE_ACCOUNTS
+OWNERS = ("cortex_owner", "engine_mysql_owner", "engine_postgresql_owner")
 
 
 def policy(account, table):
     """The privileges the policy gives an account on a cortex table."""
-    engine = account in ("sf_mysql", "sf_postgresql")
-    if table in DECLARED or account == "sf_reader":
+    engine = account in ENGINE_ACCOUNTS
+    if table in DECLARED or account == "cortex_reader":
         return {"SELECT"}
     if table in MODEL:
         return {"SELECT", "INSERT", "UPDATE", "DELETE"}
     return {
-        "designs": {"sf_service": {"SELECT", "INSERT", "UPDATE", "DELETE"}},
-        "branches": {"sf_service": {"SELECT", "INSERT", "UPDATE", "DELETE"}},
-        "turns": {"sf_service": {"SELECT", "INSERT", "UPDATE"}, "sf_agent": {"SELECT", "INSERT", "UPDATE"}, "engine": {"SELECT", "INSERT", "UPDATE"}},
-        "operations": {"sf_service": {"SELECT", "INSERT"}, "sf_agent": {"SELECT", "INSERT"}, "engine": {"SELECT", "INSERT"}},
-        "row_changes": {"sf_service": {"SELECT"}, "sf_agent": {"SELECT"}, "engine": set()},
-        "locked_versions": {"sf_service": {"SELECT", "INSERT"}},
+        "designs": {"cortex_service": {"SELECT", "INSERT", "UPDATE", "DELETE"}},
+        "branches": {"cortex_service": {"SELECT", "INSERT", "UPDATE", "DELETE"}},
+        "turns": {"cortex_service": {"SELECT", "INSERT", "UPDATE"}, "cortex_agent": {"SELECT", "INSERT", "UPDATE"}, "engine": {"SELECT", "INSERT", "UPDATE"}},
+        "operations": {"cortex_service": {"SELECT", "INSERT"}, "cortex_agent": {"SELECT", "INSERT"}, "engine": {"SELECT", "INSERT"}},
+        "row_changes": {"cortex_service": {"SELECT"}, "cortex_agent": {"SELECT"}, "engine": set()},
+        "locked_versions": {"cortex_service": {"SELECT", "INSERT"}},
     }[table].get("engine" if engine else account, {"SELECT"})
 
 
-FUNCTIONS = {"sf_service": {"cortex.owns_design(uuid,name)", "cortex.undo(uuid)"}, "sf_agent": {"cortex.owns_design(uuid,name)", "cortex.undo(uuid)"},
-             "sf_reader": {"cortex.owns_design(uuid,name)"}, "sf_mysql": {"cortex.owns_design(uuid,name)"}, "sf_postgresql": {"cortex.owns_design(uuid,name)"}}
+FUNCTIONS = {"cortex_service": {"cortex.owns_design(uuid,name)", "cortex.undo(uuid)"}, "cortex_agent": {"cortex.owns_design(uuid,name)", "cortex.undo(uuid)"},
+             "cortex_reader": {"cortex.owns_design(uuid,name)"}, "engine_mysql_service": {"cortex.owns_design(uuid,name)"},
+             "engine_postgresql_service": {"cortex.owns_design(uuid,name)"}}
 
 
 def main():
@@ -54,11 +57,15 @@ def main():
     store = installed("sf-cortex-privileges")
     try:
         print("== what each account is")
+        roles = "', '".join(ACCOUNTS + OWNERS)
         for line in store.value("SELECT string_agg(rolname || '|' || rolsuper || rolcreatedb || rolcreaterole || rolreplication || rolbypassrls || '|' || rolcanlogin "
-                                "|| '|' || (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid), E'\\n' ORDER BY rolname) FROM pg_roles r WHERE rolname LIKE 'sf\\_%'").splitlines():
+                                f"|| '|' || (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid), E'\\n' ORDER BY rolname) FROM pg_roles r WHERE rolname IN ('{roles}')").splitlines():
             name, attrs, login, member = line.split("|")
-            check(attrs == "falsefalsefalsefalsefalse" and login == ("false" if name == "sf_owner" else "true") and member == "0",
-                  f"{name}: {'no login' if name == 'sf_owner' else 'LOGIN'} alone, a member of no role")
+            owner = name in OWNERS
+            check(attrs == "falsefalsefalsefalsefalse" and login == ("false" if owner else "true") and member == "0",
+                  f"{name}: {'no login, owns its namespace' if owner else 'LOGIN'} alone, a member of no role")
+        names = store.value(f"SELECT count(*) FROM pg_roles WHERE rolname IN ('{roles}')")
+        check(names == str(len(ACCOUNTS + OWNERS)), f"every namespace's roles named after it: <namespace>_owner and <namespace>_service ({names} of {len(ACCOUNTS + OWNERS)})")
         for a in ACCOUNTS:
             dbs = store.value(f"SELECT string_agg(datname, ' ' ORDER BY datname) FROM pg_database WHERE datallowconn AND has_database_privilege('{a}', datname, 'CONNECT')")
             check(dbs == "schema_forge", f"{a} connects to schema_forge alone ({dbs})")
@@ -87,9 +94,9 @@ def main():
         p, pb = new_design(store, "shop_pg", "postgresql", "18", "alloydb")
         store.sql(in_turn(m, mb, f"INSERT INTO cortex.namespaces (design, name, position) VALUES ('{m}', 'shop', 1);"))
         store.sql(in_turn(p, pb, f"INSERT INTO cortex.namespaces (design, name, position) VALUES ('{p}', 'public', 1);"))
-        for acct, own, other in (("sf_mysql", m, p), ("sf_postgresql", p, m)):
+        for acct, own, other in (("engine_mysql_service", m, p), ("engine_postgresql_service", p, m)):
             seen = store.value(f"BEGIN; SET ROLE {acct}; SELECT string_agg(name, ' ') FROM cortex.designs; COMMIT;")
-            check(seen == ("shop_mysql" if acct == "sf_mysql" else "shop_pg"), f"{acct} sees its own engine's design only ({seen})")
+            check(seen == ("shop_mysql" if acct == "engine_mysql_service" else "shop_pg"), f"{acct} sees its own engine's design only ({seen})")
             ob = mb if own == m else pb
             rc, _, _ = store.sql(in_turn(own, ob, f"INSERT INTO cortex.namespaces (design, name, position) VALUES ('{own}', 'mine', 2);", role=acct), check=False)
             check(rc == 0, f"{acct} writes its own engine's design")
@@ -98,16 +105,42 @@ def main():
             check(rc != 0, f"{acct} may not write the other engine's design")
             n = store.value(f"BEGIN; SET ROLE {acct}; SELECT count(*) FROM cortex.namespaces WHERE design = '{other}'; COMMIT;")
             check(n == "0", f"{acct} reads none of the other engine's rows ({n})")
-        for a in ("sf_service", "sf_agent", "sf_reader"):
+        for a in ("cortex_service", "cortex_agent", "cortex_reader"):
             seen = store.value(f"BEGIN; SET ROLE {a}; SELECT count(*) FROM cortex.designs; COMMIT;")
             check(seen == "2", f"{a} sees every design ({seen} of 2)")
+        print("== each plugin's namespace: written by its own service account alone (no cross-engine writes)")
+        obj = lambda d, b, name, role: in_turn(d, b, f"""
+            INSERT INTO cortex.objects (design, engine, namespace, kind, name, position)
+              SELECT '{d}', engine, n.id, 'table', '{name}', 9 FROM cortex.namespaces n JOIN cortex.designs g ON g.id = n.design WHERE n.design = '{d}' AND n.name IN ('shop', 'public');
+            INSERT INTO {'engine_mysql' if d == m else 'engine_postgresql'}.tables (id, design, note)
+              SELECT id, '{d}', 'by {role}' FROM cortex.objects WHERE design = '{d}' AND name = '{name}';""", role=role)
+        rc, _, err = store.sql(obj(m, mb, "orders", "engine_mysql_service"), check=False)
+        check(rc == 0, "engine_mysql_service writes engine_mysql for a MySQL design" + ("" if rc == 0 else f" ({err.strip()[:120]})"))
+        for role in ("cortex_service", "cortex_agent", "engine_postgresql_service"):
+            rc, _, _ = store.sql(obj(m, mb, f"by_{role}", role), check=False)
+            check(rc != 0, f"{role} may not write engine_mysql")
+        for role in ("cortex_service", "cortex_agent", "cortex_reader"):
+            n = store.value(f"BEGIN; SET ROLE {role}; SELECT count(*) FROM engine_mysql.tables; COMMIT;")
+            check(n == "1", f"{role} reads engine_mysql ({n} of 1 rows)")
+        rc, _, _ = store.sql("BEGIN; SET ROLE engine_postgresql_service; SELECT count(*) FROM engine_mysql.tables; COMMIT;", check=False)
+        check(rc != 0, "engine_postgresql_service may not even read engine_mysql")
+        logged = store.value(f"SELECT count(*) FROM cortex.row_changes WHERE design = '{m}' AND tab = 'engine_mysql.tables'")
+        check(logged == "1", f"a plugin's row is logged like the cortex's ({logged} of 1)")
+        print("== a plugin that is not a plug is refused")
+        rc, _, err = store.sql("BEGIN; SET ROLE engine_mysql_owner; CREATE TABLE engine_mysql.stray (x int); ROLLBACK;"
+                               "BEGIN; SET ROLE engine_mysql_owner; CREATE TABLE engine_mysql.stray (x int); RESET ROLE; SET ROLE cortex_owner; SELECT cortex.plug_in('mysql'); ROLLBACK;", check=False)
+        check(rc != 0 and "not in cortex.plugin_tables" in err, "a table the plugin did not register is refused at plug-in")
+        rc, _, _ = store.sql("BEGIN; SET ROLE engine_mysql_owner; ALTER TABLE cortex.objects ADD COLUMN x int; ROLLBACK;", check=False)
+        check(rc != 0, "a plugin's owner may not change the cortex")
+        rc, _, _ = store.sql("BEGIN; SET ROLE engine_mysql_owner; DROP TABLE engine_postgresql.tables; ROLLBACK;", check=False)
+        check(rc != 0, "a plugin's owner may not touch another plugin")
         print("== what no account may do")
         tries = [("make a table", "CREATE TABLE cortex.x (id int);"), ("drop a table", "DROP TABLE cortex.namespaces;"),
                  ("change a table", "ALTER TABLE cortex.objects ADD COLUMN x int;"), ("turn the fence off", "ALTER TABLE cortex.objects DISABLE ROW LEVEL SECURITY;"),
                  ("drop the history trigger", "DROP TRIGGER log_row ON cortex.objects;"), ("plug a plugin in", "SELECT cortex.plug_in('mysql');"),
                  ("declare an engine", "INSERT INTO cortex.engines (id, plugin, name) VALUES ('x', 'mysql', 'X');"),
                  ("read the passwords", "SELECT rolpassword FROM pg_authid;"), ("read a server file", "SELECT pg_read_file('postgresql.conf');"),
-                 ("write a server file", "COPY (SELECT 1) TO '/tmp/sf_probe';"), ("make a role", "CREATE ROLE sf_x;"),
+                 ("write a server file", "COPY (SELECT 1) TO '/tmp/sf_probe';"), ("make a role", "CREATE ROLE stray_role;"),
                  ("make itself more", "ALTER ROLE CURRENT_USER CREATEDB;")]
         for a in ACCOUNTS:
             took = [w for w, sql in tries if store.sql(f"BEGIN; SET ROLE {a}; {sql} ROLLBACK;", check=False)[0] == 0]

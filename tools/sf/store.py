@@ -33,9 +33,9 @@ class Store:
         else:
             self.__exit__(None, None, None)
             raise SystemExit("the store did not answer within a minute")
-        self.sql("CREATE ROLE sf_owner NOLOGIN; CREATE ROLE sf_service LOGIN; CREATE ROLE sf_agent LOGIN; CREATE ROLE sf_reader LOGIN;"
-                 "CREATE DATABASE schema_forge OWNER sf_owner; REVOKE CONNECT ON DATABASE postgres, template1 FROM PUBLIC;", db="postgres")
-        self.sql("REVOKE ALL ON SCHEMA public FROM PUBLIC; REVOKE TEMPORARY ON DATABASE schema_forge FROM PUBLIC; GRANT CREATE ON DATABASE schema_forge TO sf_owner;")
+        self.sql("CREATE ROLE cortex_owner NOLOGIN; CREATE ROLE cortex_service LOGIN; CREATE ROLE cortex_agent LOGIN; CREATE ROLE cortex_reader LOGIN;"
+                 "CREATE DATABASE schema_forge OWNER cortex_owner; REVOKE CONNECT ON DATABASE postgres, template1 FROM PUBLIC;", db="postgres")
+        self.sql("REVOKE ALL ON SCHEMA public FROM PUBLIC; REVOKE TEMPORARY ON DATABASE schema_forge FROM PUBLIC; GRANT CREATE ON DATABASE schema_forge TO cortex_owner;")
         return self
 
     def __exit__(self, *exc):

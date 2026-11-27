@@ -1,6 +1,7 @@
-"""What the cortex tools test on: the cortex installed in a fresh store, and two engines plugged in the way a plugin
-is (its row, its namespace, its own service account, its versions, flavors and kinds, cortex.plug_in), each with no
+"""What the cortex tools test on: the cortex installed in a fresh store, and two engines plugged in the way every plugin
+is (tools/sf/plugin.py: its owner and service account, its namespace, its seeds, plug_in and fit_plugin), each with no
 tables of its own yet; and helpers to work as an account inside a turn, as the app and the agent do."""
+from sf.plugin import plug
 from sf.schema import cortex_sql, script
 from sf.store import Store
 
@@ -13,21 +14,23 @@ ENGINES = {
 
 
 def plug_engine(store, engine):
-    """An engine plugged in as a plugin is: its account made by the installer, then as sf_owner its namespace, its rows
-    in the plugs, cortex.plug_in."""
+    """A test engine with one table of its own (tables, extending cortex.objects), plugged in the way every plugin is."""
     e = ENGINES[engine]
-    store.sql(f"CREATE ROLE sf_{engine} LOGIN;")
-    rows = [f"CREATE SCHEMA engine_{engine};",
-            f"INSERT INTO cortex.plugins (id, kind, namespace, name, version, requires_cortex, account) VALUES ('{engine}', 'engine', 'engine_{engine}', '{e['name']}', 1, 1, 'sf_{engine}');",
-            f"INSERT INTO cortex.schema_migrations (plugin, version) VALUES ('{engine}', 1);",
-            f"INSERT INTO cortex.engines (id, plugin, name) VALUES ('{engine}', '{engine}', '{e['name']}');"]
+    ns = f"engine_{engine}"
+    table = (f"{ns}.tables", f"""CREATE TABLE {ns}.tables (
+        id      UUID NOT NULL PRIMARY KEY,
+        design  UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+        note    TEXT,
+        UNIQUE (design, id),
+        FOREIGN KEY (design, id) REFERENCES cortex.objects (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED);""")
+    rows = [f"INSERT INTO cortex.engines (id, plugin, name) VALUES ('{engine}', '{engine}', '{e['name']}');",
+            f"INSERT INTO cortex.plugin_tables (plugin, name, extends, comment) VALUES ('{engine}', 'tables', 'objects', 'a test table of the engine');"]
     rows += [f"INSERT INTO cortex.engine_versions (id, engine, version, name, position) VALUES ('{engine}/{v}', '{engine}', '{v}', '{e['name']} {v}', {i + 1});"
              for i, v in enumerate(e["versions"])]
     rows += [f"INSERT INTO cortex.engine_flavors (id, engine, flavor, name) VALUES ('{engine}/{f}', '{engine}', '{f}', '{n}');" for f, n in e["flavors"].items()]
     rows += [f"INSERT INTO cortex.object_kinds (id, engine, kind, name, has_columns, position) VALUES ('{engine}/{k}', '{engine}', '{k}', '{n}', {str(c).lower()}, {i + 1});"
              for i, (k, n, c) in enumerate(e["kinds"])]
-    rows.append(f"SELECT cortex.plug_in('{engine}');")
-    store.sql("BEGIN;\nSET ROLE sf_owner;\n" + "\n".join(rows) + "\nCOMMIT;\n")
+    plug(store, engine, "engine", ns, e["name"], 1, 1, [table], [(f"{engine} seeds", "\n".join(rows))])
 
 
 def installed(name):
@@ -48,7 +51,7 @@ def as_role(role, body):
     return f"BEGIN;\nSET ROLE {role};\n{body}\nCOMMIT;\n"
 
 
-def new_design(store, name, engine, version, flavor, role="sf_service"):
+def new_design(store, name, engine, version, flavor, role="cortex_service"):
     """A design and its main branch, made as the app makes them; returns (design, branch)."""
     out = store.sql(as_role(role, f"""
         INSERT INTO cortex.designs (name, engine, engine_version, flavor) VALUES ('{name}', '{engine}', '{version}', '{flavor}') RETURNING id;
@@ -56,7 +59,7 @@ def new_design(store, name, engine, version, flavor, role="sf_service"):
     return out[0], out[1]
 
 
-def in_turn(design, branch, body, kind="edit", author="tool", parent=None, op_kind="edit", role="sf_service"):
+def in_turn(design, branch, body, kind="edit", author="tool", parent=None, op_kind="edit", role="cortex_service"):
     """SQL that opens a turn and one operation, sets the session's operation, runs the body, and commits the turn;
     it prints the turn's id first."""
     par = f"'{parent}'" if parent else "NULL"

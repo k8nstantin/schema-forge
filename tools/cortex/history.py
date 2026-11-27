@@ -70,9 +70,9 @@ def main():
         check(model(store, d) == empty, "restoring to before turn 1, newest first, gives the empty design back")
         seqs = store.value(f"SELECT string_agg(seq::text, ',' ORDER BY seq) FROM cortex.turns WHERE design = '{d}'")
         check(seqs == "1,2,3,4,5,6", f"turns numbered in commit order ({seqs})")
-        rc, _, err = store.sql(f"BEGIN; SET ROLE sf_service; INSERT INTO cortex.namespaces (design, name, position) VALUES ('{d}', 'stray', 9); COMMIT;", check=False)
+        rc, _, err = store.sql(f"BEGIN; SET ROLE cortex_service; INSERT INTO cortex.namespaces (design, name, position) VALUES ('{d}', 'stray', 9); COMMIT;", check=False)
         check(rc != 0 and "outside an operation" in err, "a change outside an operation is refused")
-        rc, _, err = store.sql(f"BEGIN; SET ROLE sf_service; DELETE FROM cortex.row_changes; COMMIT;", check=False)
+        rc, _, err = store.sql(f"BEGIN; SET ROLE cortex_service; DELETE FROM cortex.row_changes; COMMIT;", check=False)
         check(rc != 0, "the app may not rewrite the log")
     finally:
         store.__exit__(None, None, None)
