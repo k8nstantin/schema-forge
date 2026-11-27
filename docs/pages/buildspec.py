@@ -30,11 +30,11 @@ read_svg = g.render()
 # --- the sequence and what each waits for -----------------------------------------------------------------------------
 g = Svg(1040, 150, "The objectives in their order, each waiting for the one before it to be merged.")
 for i, t in enumerate(seq):
-    written = bool(t.get("file"))
-    g.box(t.get("id"), 12 + i * 114, 50, 104, 58, t.get("key") or t.get("id"), t.get("name").replace(" plugin", ""), cls="pri" if written else "band")
+    written = t.get("state") == "done"
+    g.box(t.get("id"), 12 + i * 114, 50, 104, 58, t.get("key") or t.get("id"), t.get("name").replace("engine_", ""), cls="pri" if written else "band")
 for t in seq:
     if t.get("depends"): g.arrow(t.get("depends"), t.get("id"))
-g.text(16, 30, "each an issue with its ETA, its own branch and PR, merged before the next starts (decision branch-per-plugin)", "lb")
+g.text(16, 30, "solid: done (its issue closed, its pull requests merged) · dashed: still to come; each merged before the next starts", "lb")
 seq_svg = g.render()
 
 P = []; a = P.append

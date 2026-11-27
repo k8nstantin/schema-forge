@@ -195,10 +195,14 @@ class Svg:
         return out
 
     def render(self):
+        # each diagram its own marker ids: ids are unique in a page, and a page holds several diagrams
+        Svg.count = getattr(Svg, "count", 0) + 1
+        a, s = f"mka{Svg.count}", f"mks{Svg.count}"
+        parts = "".join(self.parts).replace("url(#mka)", f"url(#{a})").replace("url(#mks)", f"url(#{s})")
         return (f'<svg class="d" viewBox="0 0 {self.w} {self.h}" role="img" aria-label="{e(self.label)}">'
-                '<defs><marker id="mka" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" class="mkf"/></marker>'
-                '<marker id="mks" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" class="mkm"/></marker></defs>'
-                + "".join(self.parts) + "</svg>")
+                f'<defs><marker id="{a}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" class="mkf"/></marker>'
+                f'<marker id="{s}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" class="mkm"/></marker></defs>'
+                + parts + "</svg>")
 
 
 # --- the look and the shared head ---------------------------------------------------------------------------------

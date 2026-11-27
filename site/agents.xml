@@ -36,11 +36,11 @@
     </design>
     <ahead about="Not written yet: the work after the queued tasks, each written as a task file once its decisions close. A feature you want to build may be here.">
       <task id="o1" name="spec and readme">Objective 1 of 6, due 2026-11-27 06:00 UTC: the engine order, every engine a plugin with its subsets, the thin cortex, UUIDv7 everywhere; all code removed. Issue #138.</task>
-      <task id="o2" name="thin cortex">Objective 2 of 6, due 2026-11-28 06:00 UTC: the shared model only, UUIDv7 everywhere, the install script, CI running the proofs. Issue #139.</task>
-      <task id="o3" name="mysql plugin">Objective 3 of 6, due 2026-11-30 18:00 UTC: MySQL 5.7 to 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora, typed, proven in containers. Issue #140.</task>
-      <task id="o4" name="postgresql plugin">Objective 4 of 6, due 2026-12-03 06:00 UTC: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB, typed, proven in containers. Issue #141.</task>
-      <task id="o5" name="spanner plugin">Objective 5 of 6, due 2026-12-04 06:00 UTC: Spanner, both dialects, proven on the emulator. Issue #145.</task>
-      <task id="o6" name="cockroachdb plugin">Objective 6 of 6, due 2026-12-05 06:00 UTC: CockroachDB, a subset of PostgreSQL with its own features. Issue #146.</task>
+      <task id="o2" name="the cortex">Objective 2 of 6, due 2026-11-28 06:00 UTC: the shared model only, UUIDv7 everywhere, the install script, CI running the proofs. Issue #139.</task>
+      <task id="o3" name="engine_mysql">Objective 3 of 6, due 2026-11-30 18:00 UTC: MySQL 5.7 to 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora, typed, proven in containers. Issue #140.</task>
+      <task id="o4" name="engine_postgresql">Objective 4 of 6, due 2026-12-03 06:00 UTC: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB, typed, proven in containers. Issue #141.</task>
+      <task id="o5" name="spanner">Objective 5 of 6, due 2026-12-04 06:00 UTC: Spanner, a subset of the PostgreSQL family (decision service-plugins), both dialects, proven on the emulator. Issue #145.</task>
+      <task id="o6" name="cockroachdb">Objective 6 of 6, due 2026-12-05 06:00 UTC: CockroachDB, a subset of the PostgreSQL family (decision service-plugins) with its own features. Issue #146.</task>
     </ahead>
     <issues href="https://github.com/k8nstantin/schema-forge/issues">Smaller work, fixes and questions are issues: https://github.com/k8nstantin/schema-forge/issues, and the ones labelled good first issue are the place to begin.</issues>
   </wanted>
@@ -93,11 +93,11 @@
     </group>
     <group n="4" name="the task files, in the order they are built">
       <file>o1 · spec and readme: the engine order, every engine a plugin with its subsets, the thin cortex, UUIDv7 everywhere; all code removed (SF-138). Objective 1 of 6, due 2026-11-27 06:00 UTC: the engine order, every engine a plugin with its subsets, the thin cortex, UUIDv7 everywhere; all code removed. Issue #138.</file>
-      <file>o2 · thin cortex: the shared model only, UUIDv7 everywhere, the install script, CI running the proofs (SF-139). Objective 2 of 6, due 2026-11-28 06:00 UTC: the shared model only, UUIDv7 everywhere, the install script, CI running the proofs. Issue #139.</file>
-      <file>o3 · mysql plugin: MySQL 5.7 to 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora, typed, proven in containers (SF-140). Objective 3 of 6, due 2026-11-30 18:00 UTC: MySQL 5.7 to 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora, typed, proven in containers. Issue #140.</file>
-      <file>o4 · postgresql plugin: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB, typed, proven in containers (SF-141). Objective 4 of 6, due 2026-12-03 06:00 UTC: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB, typed, proven in containers. Issue #141.</file>
-      <file>o5 · spanner plugin: Spanner, both dialects, proven on the emulator (SF-145). Objective 5 of 6, due 2026-12-04 06:00 UTC: Spanner, both dialects, proven on the emulator. Issue #145.</file>
-      <file>o6 · cockroachdb plugin: CockroachDB, a subset of PostgreSQL with its own features (SF-146). Objective 6 of 6, due 2026-12-05 06:00 UTC: CockroachDB, a subset of PostgreSQL with its own features. Issue #146.</file>
+      <file>o2 · the cortex: the shared model only, UUIDv7 everywhere, the install script, CI running the proofs (SF-139). Objective 2 of 6, due 2026-11-28 06:00 UTC: the shared model only, UUIDv7 everywhere, the install script, CI running the proofs. Issue #139.</file>
+      <file>o3 · engine_mysql: MySQL 5.7 to 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora, typed, proven in containers (SF-140). Objective 3 of 6, due 2026-11-30 18:00 UTC: MySQL 5.7 to 9.7 and its subsets Percona Server, Cloud SQL, RDS and Aurora, typed, proven in containers. Issue #140.</file>
+      <file>o4 · engine_postgresql: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB, typed, proven in containers (SF-141). Objective 4 of 6, due 2026-12-03 06:00 UTC: PostgreSQL 15 to 18 and its subsets Cloud SQL, RDS, Aurora and AlloyDB, typed, proven in containers. Issue #141.</file>
+      <file>o5 · spanner: Spanner, a subset of the PostgreSQL family, both dialects, proven on the emulator (SF-145). Objective 5 of 6, due 2026-12-04 06:00 UTC: Spanner, a subset of the PostgreSQL family (decision service-plugins), both dialects, proven on the emulator. Issue #145.</file>
+      <file>o6 · cockroachdb: CockroachDB, a subset of the PostgreSQL family with its own features (SF-146). Objective 6 of 6, due 2026-12-05 06:00 UTC: CockroachDB, a subset of the PostgreSQL family (decision service-plugins) with its own features. Issue #146.</file>
     </group>
     <group n="5" name="the guides, one for each kind of contribution, read when you take one up">
       <file path="specs/guides/engine.xml" href="https://raw.githubusercontent.com/k8nstantin/schema-forge/main/specs/guides/engine.xml">a coding agent whose human wants SchemaForge to support a new database</file>
