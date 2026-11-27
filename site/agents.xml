@@ -26,6 +26,7 @@
     </queued>
     <design about="Waiting for a design session with the maintainer: bring your view to Discussions.">
       <decision id="operation-kinds" closes-before="o8"/>
+      <decision id="bundled-start" closes-before="after-o11"/>
       <decision id="mcp-schema" closes-before="after-o11"/>
       <decision id="rules-tables" closes-before="after-o11"/>
       <decision id="pipelines-tables" closes-before="after-o11"/>
@@ -137,6 +138,7 @@
   </database>
   <open>
     <decision id="operation-kinds" closes-before="o8">The operation kinds (add_table, rename_column and the rest), what each changes and how the agent calls it.</decision>
+    <decision id="bundled-start" closes-before="after-o11">Parked by the owner on 2026-11-27: a one-command start, the schema-forge binary running its own PostgreSQL 18 (decision postgresql-bundled) so a user needs no DBA install, no superuser and no accounts file. Not scheduled; until it is, SchemaForge is installed by a DBA with tools/local/install.py.</decision>
     <decision id="mcp-schema" closes-before="after-o11">When the MCP is served over HTTP, a schema of its own, mcp, plugged in like ui with mcp_owner and mcp_service, holding only what the cortex has no place for: the clients allowed to connect (token hashes, never tokens; scopes; revocation) and an audit of every tool call, reads and refusals included. Never design data: what an agent changes stays in the cortex's turns, operations and log; sessions stay in the server's memory. Over stdio (decision mcp-stdio) it needs none.</decision>
     <decision id="rules-tables" closes-before="after-o11">The tables of the rules: their links on the hierarchy, groups, exceptions, packs and findings (docs/rules.xml), as their own owner and namespace in schema_forge; the integrity rules on ice in lab/on-ice/rules return with them, each checking only the designs a commit changed.</decision>
     <decision id="pipelines-tables" closes-before="after-o11">The tables of a CDC pipeline between two schemas, by their stable ids.</decision>
