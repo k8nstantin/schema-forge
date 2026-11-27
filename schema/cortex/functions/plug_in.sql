@@ -92,11 +92,13 @@ BEGIN
     PERFORM cortex.attach_history('cortex', model);
     PERFORM cortex.fence('cortex', design_tables);
     EXECUTE 'REVOKE ALL ON ALL FUNCTIONS IN SCHEMA cortex FROM PUBLIC';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION cortex.undo(uuid) TO sf_service, sf_agent';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION cortex.owns_design(uuid) TO sf_service, sf_agent, sf_reader';
     RETURN;
   END IF;
 
   PERFORM cortex.check_plugin(plugin);
-  SELECT array_agg(name ORDER BY name) INTO tabs FROM cortex.plugin_tables WHERE plugin_tables.plugin = plug_in.plugin;
+  SELECT coalesce(array_agg(name ORDER BY name), '{}') INTO tabs FROM cortex.plugin_tables WHERE plugin_tables.plugin = plug_in.plugin;
   -- its own account: reads the declarations and its engine's designs; writes the model, its namespace, turns and operations for them
   EXECUTE format('GRANT USAGE ON SCHEMA cortex, %I TO %I', p.namespace, p.account);
   EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA cortex TO %I', p.account);
