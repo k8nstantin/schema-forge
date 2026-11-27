@@ -2,6 +2,7 @@
 Percona) server and a PostgreSQL server, a schema loaded into each from a file, and JSON read back from their catalogs."""
 import json
 import os
+import subprocess
 import time
 
 from sf.store import Failed, docker
@@ -31,12 +32,16 @@ class MySQL:
         docker("rm", "-f", "-v", self.name)
 
     def load(self, path):
-        r = docker("exec", "-i", self.name, "mysql", "-uroot", stdin=open(path, encoding="utf-8", errors="replace").read())
+        # the file's bytes as they are: a dump names its own character set (SET NAMES), which a decode would break
+        r = subprocess.run(["docker", "exec", "-i", self.name, "mysql", "-uroot"], input=open(path, "rb").read(), capture_output=True)
         if r.returncode:
-            raise Failed(f"loading {os.path.basename(path)} into {self.image}: {r.stderr.strip()[:300]}")
+            raise Failed(f"loading {os.path.basename(path)} into {self.image}: {r.stderr.decode('utf-8', 'replace').strip()[:300]}")
+
+    # everything the tools read or write is utf8mb4 on the wire: the server converts each value from its own character set
+    CLIENT = "--default-character-set=utf8mb4"
 
     def json(self, query):
-        r = docker("exec", "-i", self.name, "mysql", "-uroot", "-N", "-B", "--raw", "-e", query)
+        r = docker("exec", "-i", self.name, "mysql", "-uroot", self.CLIENT, "-N", "-B", "--raw", "-e", query)
         if r.returncode:
             raise Failed(f"{self.image}: {r.stderr.strip()[:300]}")
         out = r.stdout.strip()
@@ -46,7 +51,7 @@ class MySQL:
         """Runs SHOW statements, one line of output each; returns each one's fields, the server's escaping undone."""
         if not statements:
             return []
-        r = docker("exec", "-i", self.name, "mysql", "-uroot", "-N", "-B", stdin="".join(s.rstrip(";") + ";\n" for s in statements))
+        r = docker("exec", "-i", self.name, "mysql", "-uroot", self.CLIENT, "-N", "-B", stdin="".join(s.rstrip(";") + ";\n" for s in statements))
         if r.returncode:
             raise Failed(f"{self.image}: {r.stderr.strip()[:300]}")
         out = []
@@ -56,7 +61,7 @@ class MySQL:
         return out
 
     def sql(self, text):
-        r = docker("exec", "-i", self.name, "mysql", "-uroot", stdin=text)
+        r = docker("exec", "-i", self.name, "mysql", "-uroot", self.CLIENT, stdin=text)
         if r.returncode:
             raise Failed(f"{self.image}: {r.stderr.strip()[:400]}")
         return r.stdout

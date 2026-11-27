@@ -358,8 +358,8 @@ def create_view(k, o):
 def create_routine(k, o):
     db, kind, name = split_key(k)
     d = o["details"]
-    params = ", ".join(" ".join(x for x in (p.get("mode"), p["name"], p["type"]) if x) for p in o.get("parameters", []))
-    s = f"CREATE DEFINER={d['definer']} {kind.upper()} {q(db)}.{q(name)}({params})"
+    # the parameter list as written: MySQL keeps it as typed and gives it back so
+    s = f"CREATE DEFINER={d['definer']} {kind.upper()} {q(db)}.{q(name)}({d['parameter_list']})"
     if kind == "function":
         s += f" RETURNS {d['returns']}"
     if o.get("comment"):

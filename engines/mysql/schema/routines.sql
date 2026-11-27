@@ -2,6 +2,7 @@
 CREATE TABLE engine_mysql.routines (
   id                    UUID NOT NULL PRIMARY KEY,                                                                       -- its cortex object
   design                UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,    -- the design
+  parameter_list        TEXT NOT NULL DEFAULT '',                                                                        -- its parameter list exactly as written, between the parentheses: MySQL keeps it as typed (its parameters, parsed, are engine_mysql.routine_parameters)
   returns               TEXT,                                                                                            -- a function's RETURNS type, as written; NULL for a procedure
   deterministic         BOOLEAN NOT NULL DEFAULT false,                                                                  -- DETERMINISTIC
   data_access           TEXT NOT NULL DEFAULT 'CONTAINS SQL' CHECK (data_access IN ('CONTAINS SQL', 'NO SQL', 'READS SQL DATA', 'MODIFIES SQL DATA')),  -- what it does with data

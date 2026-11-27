@@ -347,7 +347,8 @@ def read_routines(server, model):
         k = key(r["db"], r["type"].lower(), r["name"])
         model["objects"][k] = {  # its USING (...) of libraries, where it has one, is part of its body as the server writes it
             "kind": r["type"].lower(), "comment": r["comment"] or None,
-            "details": {"returns": returns, "deterministic": bool(r["det"]), "data_access": r["access"], "security": r["security"], "definer": definer(r["definer"]),
+            "details": {"parameter_list": params_text, "returns": returns, "deterministic": bool(r["det"]), "data_access": r["access"],
+                        "security": r["security"], "definer": definer(r["definer"]),
                         "language": r["lang"], "body": body, "sql_mode": r["mode"], "character_set_client": r["cs"], "collation_connection": r["cc"],
                         "database_collation": r["dbc"]},
             "parameters": params(params_text, r["type"]), "libraries": sorted(uses.get(k, []))}
@@ -371,8 +372,14 @@ def params(text, kind):
         m = re.match(r"^(IN|OUT|INOUT)\s+", p, re.I) if kind == "PROCEDURE" else None
         if m:
             mode, p = m.group(1).upper(), p[m.end():]
-        name, _, typ = p.partition(" ")
-        res.append({"mode": mode, "name": name, "type": typ.strip()})
+        if p.startswith("`"):
+            end = p.index("`", 1)
+            while p[end:end + 2] == "``":
+                end = p.index("`", end + 2)
+            name, typ = p[:end + 1], p[end + 1:]
+        else:
+            name, typ = (re.split(r"\s+", p, 1) + [""])[:2]
+        res.append({"mode": mode, "name": name, "type": " ".join(typ.split())})
     return res
 
 

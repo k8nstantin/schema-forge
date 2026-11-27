@@ -87,7 +87,7 @@ def insert_sql(model, design):
                 out.append(ins("cortex.dependencies", {"design": design, "object": ids[k], "uses": used, '"as"': "reads"}))
         elif kind in ("procedure", "function"):
             d = o["details"]
-            row = {"id": ids[k], "design": design, "returns": d["returns"], "deterministic": d["deterministic"], "data_access": d["data_access"],
+            row = {"id": ids[k], "design": design, "parameter_list": d["parameter_list"], "returns": d["returns"], "deterministic": d["deterministic"], "data_access": d["data_access"],
                    "security": d["security"], "definer": d["definer"], "language": d["language"], "body": d["body"]}
             row.update({c: d[c] for c in PROGRAM_CONTEXT})
             out.append(ins("engine_mysql.routines", row))
@@ -302,7 +302,7 @@ def model_from(r):
     for x in r["views"] or []:
         objects[by_id[x["id"]]]["details"] = {f: x[f] for f in ("definition", "algorithm", "definer", "security", "check_option", "character_set_client", "collation_connection")}
     for x in r["routines"] or []:
-        objects[by_id[x["id"]]]["details"] = {f: x[f] for f in ("returns", "deterministic", "data_access", "security", "definer", "language", "body") + PROGRAM_CONTEXT}
+        objects[by_id[x["id"]]]["details"] = {f: x[f] for f in ("parameter_list", "returns", "deterministic", "data_access", "security", "definer", "language", "body") + PROGRAM_CONTEXT}
     for x in r["libraries"] or []:
         objects[by_id[x["id"]]]["details"] = {f: x[f] for f in ("language", "source", "sql_mode")}
     for o in objects.values():
