@@ -69,11 +69,10 @@ def site_problems():
 
 def main():
     if os.path.exists(os.path.join(ROOT, "Cargo.toml")):
-        step("Rust: format, lint, tests")
-        for cmd in (["cargo", "fmt", "--all", "--check"], ["cargo", "clippy", "--workspace", "--all-targets", "--all-features", "--quiet", "--", "-D", "warnings"],
-                    ["cargo", "test", "--workspace", "--all-features", "--quiet"]):
-            if subprocess.run(cmd, cwd=ROOT).returncode:
-                fail(f"{' '.join(cmd)} failed")
+        # the app's format, lint and build; its tests need a store in a container, so tools/app/all.py runs them (CI's app job)
+        step("Rust: format, lint, build (tools/app/all.py --lint)")
+        if subprocess.run([sys.executable, os.path.join(ROOT, "tools", "app", "all.py"), "--lint"], cwd=ROOT).returncode:
+            fail("tools/app/all.py --lint failed")
 
     step("No private name in any tracked file")
     hits = git("grep", "-nIiE", PRIVATE, "--", ".", ":!site", ":!tools/check.py")

@@ -432,6 +432,9 @@ CREATE FUNCTION cortex.undo(turn uuid) RETURNS integer
     AS $_$
 DECLARE
   op    uuid := nullif(current_setting('schema_forge.operation', true), '')::uuid;
+  d     uuid := (SELECT design FROM cortex.turns WHERE id = undo.turn);
+  gone  uuid[] := '{}';
+  x     record;
   c     record;
   cols  text;
   n     integer := 0;
@@ -456,11 +459,21 @@ BEGIN
     END IF;
     n := n + 1;
   END LOOP;
-  -- the turns this turn had undone are in effect again
-  UPDATE cortex.turns SET state = 'committed'
-   WHERE state = 'undone' AND id IN (SELECT o.undoes FROM cortex.operations o WHERE o.turn = undo.turn AND o.undoes IS NOT NULL);
-  UPDATE cortex.turns SET state = 'undone' WHERE id = undo.turn;
   UPDATE cortex.operations SET undoes = undo.turn WHERE id = op;
+  -- every turn's state from the undos in effect, newest first (the open turn, this undo's, is the newest)
+  FOR x IN SELECT id, state FROM cortex.turns WHERE design = d AND state IN ('open', 'committed', 'undone')
+            ORDER BY seq DESC NULLS FIRST LOOP
+    IF x.id = ANY (gone) THEN
+      IF x.state = 'committed' THEN
+        UPDATE cortex.turns SET state = 'undone' WHERE id = x.id;
+      END IF;
+    ELSE
+      IF x.state = 'undone' THEN
+        UPDATE cortex.turns SET state = 'committed' WHERE id = x.id;
+      END IF;
+      gone := gone || ARRAY(SELECT o.undoes FROM cortex.operations o WHERE o.turn = x.id AND o.undoes IS NOT NULL);
+    END IF;
+  END LOOP;
   RETURN n;
 END $_$;
 
@@ -471,7 +484,7 @@ ALTER FUNCTION cortex.undo(turn uuid) OWNER TO cortex_owner;
 -- Name: FUNCTION undo(turn uuid); Type: COMMENT; Schema: cortex; Owner: cortex_owner
 --
 
-COMMENT ON FUNCTION cortex.undo(turn uuid) IS 'undoes a committed turn: the inverse of each of its row changes, newest first, logged under the current operation, which records the turn undone; marks it undone, and the turns it had undone committed again';
+COMMENT ON FUNCTION cortex.undo(turn uuid) IS 'undoes a committed turn: the inverse of each of its row changes, newest first, logged under the current operation, which records the turn undone; then marks every turn of the design undone or committed by whether an undo in effect undid it';
 
 
 --

@@ -1,0 +1,25 @@
+[package]
+name = "schema-forge-store"
+description = "The store: schema_forge signed in to as its service accounts, every write SERIALIZABLE and retried whole, the turn bell."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+deadpool-postgres.workspace = true
+fastrand.workspace = true
+futures-util.workspace = true
+rustls.workspace = true
+rustls-native-certs.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-postgres.workspace = true
+tokio-postgres-rustls.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true
