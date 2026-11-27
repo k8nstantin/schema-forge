@@ -554,3 +554,37 @@ async fn the_bell_catches_up_after_its_connection_is_killed() {
         Ring::Committed { design: d.id.0, seq: 3 }
     );
 }
+
+#[tokio::test]
+async fn a_statement_running_past_the_timeout_is_cancelled() {
+    let mut short = endpoint();
+    short.statement_timeout = Duration::from_secs(1);
+    let store = Store::new(short, accounts()).with_pool_size(1);
+    let stuck = store
+        .read(&Account::Reader, async |tx| {
+            tx.execute("SELECT pg_sleep(5)", &[]).await?;
+            Ok(())
+        })
+        .await;
+    assert_eq!(stuck.err().as_ref().and_then(StoreError::code), Some("57014"));
+}
+
+#[tokio::test]
+async fn after_a_failed_read_on_a_pool_of_one_the_next_read_succeeds() {
+    // one connection: the second read gets the very connection the failed one used
+    let store = Store::new(endpoint(), accounts()).with_pool_size(1);
+    let failed = store
+        .read(&Account::Reader, async |tx| {
+            tx.query_one("SELECT 1 / 0", &[]).await?;
+            Ok(())
+        })
+        .await;
+    assert_eq!(failed.err().as_ref().and_then(StoreError::code), Some("22012"));
+    let next = store
+        .read(&Account::Reader, async |tx| {
+            Ok(tx.query_one("SELECT 41 + 1", &[]).await?.get::<_, i32>(0))
+        })
+        .await
+        .unwrap();
+    assert_eq!(next, 42);
+}

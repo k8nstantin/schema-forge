@@ -191,7 +191,8 @@ impl Store {
     }
 
     /// Runs `work` in one REPEATABLE READ, READ ONLY transaction as `account`: one consistent snapshot, never a
-    /// serialization failure.
+    /// serialization failure. When `work` fails the transaction is rolled back before the connection goes back to its
+    /// pool, so the next caller never finds it inside an aborted transaction.
     pub async fn read<T>(
         &self,
         account: &Account,
@@ -204,9 +205,16 @@ impl Store {
             .read_only(true)
             .start()
             .await?;
-        let value = work(&tx).await?;
-        tx.commit().await?;
-        Ok(value)
+        match work(&tx).await {
+            Ok(value) => {
+                tx.commit().await?;
+                Ok(value)
+            }
+            Err(e) => {
+                let _ = tx.rollback().await;
+                Err(e)
+            }
+        }
     }
 }
 
