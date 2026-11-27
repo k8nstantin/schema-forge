@@ -26,7 +26,8 @@ g.box("query", 40, 246, 200, 46, "query", "DataFusion, read-only", cls="eng", hr
 g.box("store", 290, 246, 200, 46, "store", "pools, retries, bell", cls="eng", href="#app")
 g.box("core", 540, 246, 200, 46, "core", "turns, operations, undo", cls="eng", href="#app")
 g.box("engines", 790, 246, 200, 46, "engines", "engine_mysql, then more", cls="eng", href="#app")
-g.band(10, 328, 1020, 112, "store: PostgreSQL 18, database schema_forge")
+g.band(10, 328, 1020, 112, "")
+g.text(1018, 346, "store: PostgreSQL 18, database schema_forge", "cap", "end")
 g.box("cortex", 150, 372, 220, 46, "cortex", "plugs, history, model", cls="pri", href="#store")
 g.box("emysql", 410, 372, 220, 46, "engine_mysql", "MySQL's own, 24 tables", cls="pri", href="#store")
 g.box("ui", 670, 372, 200, 46, "ui", "the canvas's state (o7)", cls="pri", href="#store")
@@ -272,8 +273,16 @@ WHY = [
      "Shared workspace lints, the toolchain pinned, clippy warnings failing the build, versions pinned exactly where a crate "
      "moves fast (rmcp releases weekly).", ("ms-rust", "cargo-ws", "crates"), "built in o4"),
 ]
+def state(s):
+    """'built in o4' as the objective's issue, its number and its name, never a bare id."""
+    for oid in sorted(seq, key=len, reverse=True):
+        if s.endswith(f" {oid}"):
+            return e(s[: -len(oid)]) + issue(oid)
+    return e(s)
+
+
 why_rows = "".join(
-    f'<tr><td><b>{e(c)}</b><br><span class="small">{e(w)}</span></td><td>{ev} {cite(*k)}</td><td class="small">{e(s)}</td></tr>'
+    f'<tr><td><b>{e(c)}</b><br><span class="small">{e(w)}</span></td><td>{ev} {cite(*k)}</td><td class="small">{state(s)}</td></tr>'
     for c, w, ev, k, s in WHY)
 sources = "".join(f'<li id="src-{k}"><a href="{e(u)}" target="_blank" rel="noopener">{e(t)}</a></li>' for k, (t, u) in SRC.items())
 
