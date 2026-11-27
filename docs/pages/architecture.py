@@ -241,37 +241,37 @@ WHY = [
      "Two writers can never together break a rule each alone keeps.",
      "PostgreSQL's own guidance: retry serialization failures unconditionally, deadlocks too, and re-run the whole transaction "
      "including the logic that chose what to write. So the store takes an operation as a function it can run again, never a "
-     "list of statements.", ("pg-serial",), "built in o4"),
+     "list of statements.", ("pg-serial",), "built and tested in o4"),
     ("LISTEN/NOTIFY as the bell, once per committed turn",
      "Every open canvas and agent learns of a change at once, with no polling.",
      "A commit that notifies takes a global lock; one measured system stalled near 2,900 notifying commits a second. The bell "
      "rings once per committed turn, never per row or operation, far below that. Notifications are not durable, so the "
      "numbers in each one let a reader see a gap and read what it missed; one listening connection per process.",
-     ("dbos", "notifier"), "built in o4"),
+     ("dbos", "notifier"), "built and tested in o4"),
     ("Row-level security fencing each plugin to its own engine's designs",
      "No cross-engine writes, held by the database whatever the code does.",
      "A policy that calls a function for every row is the commonest cost of row-level security. Changed by this research: the "
      "fence becomes one uncorrelated subquery, the designs of the asking account, worked out once per statement, on the "
      "indexed design column. Owners bypass their own policies, which is safe here only because owners never sign in.",
-     ("rls-perf", "rls-foot"), "changed: built in o4"),
+     ("rls-perf", "rls-foot"), "changed: built and tested in o4"),
     ("The MCP over stdio, as the agent's child process",
      "No network port to guard for the agent's tools.",
      "The MCP project's guidance: a stdio server shares the agent's trust domain, so give it only its own narrowly scoped "
      "credential. Changed by this research: <code>schema-forge mcp</code> reads only <code>cortex_agent</code>'s credential, "
-     "never the whole accounts file.", ("mcp-local",), "changed: built in o6"),
+     "never the whole accounts file.", ("mcp-local",), "changed: to be built in o6"),
     ("The canvas's API on 127.0.0.1",
      "The canvas talks to its own server on the same machine.",
      "Binding to 127.0.0.1 is not an authentication boundary: a web page can reach it through the browser (DNS rebinding). "
      "Changed by this research: <code>serve</code> checks every request's Origin and a token made at each launch, on the API "
-     "and the websocket.", ("mcp-local", "owasp-mcp"), "changed: built in o6"),
+     "and the websocket.", ("mcp-local", "owasp-mcp"), "changed: to be built in o6"),
     ("Apache DataFusion for reading, signed in as cortex_reader",
      "SQL over designs and live servers (drift, impact) without writing a query engine.",
      "Custom table providers are DataFusion's supported way to expose another system's tables. Pinned to release 55, which the "
-     "community MySQL and PostgreSQL providers support; the newest, 56, is days old.", ("df-tp", "crates"), "built in o6"),
+     "community MySQL and PostgreSQL providers support; the newest, 56, is days old.", ("df-tp", "crates"), "to be built in o6"),
     ("One Rust workspace: crates with one job each, engines behind a trait",
      "An engine never breaks another; a new engine changes nothing in core or UI.",
      "Shared workspace lints, the toolchain pinned, clippy warnings failing the build, versions pinned exactly where a crate "
-     "moves fast (rmcp releases weekly).", ("ms-rust", "cargo-ws", "crates"), "built in o4"),
+     "moves fast (rmcp releases weekly).", ("ms-rust", "cargo-ws", "crates"), "built and tested in o4"),
 ]
 def state(s):
     """'built in o4' as the objective's issue, its number and its name, never a bare id."""
