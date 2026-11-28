@@ -8,5 +8,17 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[dependencies]
+schema-forge-engine.workspace = true
+schema-forge-store.workspace = true
+arrow-schema.workspace = true
+async-trait.workspace = true
+futures-util.workspace = true
+mysql_async.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+
 [lints]
 workspace = true
