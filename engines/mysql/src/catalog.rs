@@ -53,6 +53,7 @@ impl Capabilities {
     }
 
     /// Capabilities from (schema, table, column) triples, for a test.
+    #[cfg(test)]
     #[must_use]
     pub fn of(columns: &[(&str, &str, &str)]) -> Capabilities {
         Capabilities {
@@ -988,7 +989,8 @@ async fn fetch_foreign_keys(pool: &Pool) -> Result<Vec<ForeignKeyColumn>, Engine
          k.REFERENCED_COLUMN_NAME AS referenced_column_name, r.UPDATE_RULE AS update_rule, r.DELETE_RULE AS delete_rule \
          FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r \
          ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME \
-         AND r.TABLE_NAME = k.TABLE_NAME WHERE k.TABLE_SCHEMA NOT IN {SYSTEM} \
+         AND r.TABLE_NAME = k.TABLE_NAME \
+         WHERE k.REFERENCED_TABLE_NAME IS NOT NULL AND k.TABLE_SCHEMA NOT IN {SYSTEM} \
          ORDER BY k.TABLE_SCHEMA, k.TABLE_NAME, k.CONSTRAINT_NAME, k.ORDINAL_POSITION"
     );
     fetch(pool, "KEY_COLUMN_USAGE", &sql, |mut c| {
@@ -1353,8 +1355,10 @@ async fn fetch_grants(
     let sql = format!(
         "SELECT GRANTEE AS grantee, {schema} AS table_schema, {name} AS table_name, {column} AS column_name, \
          PRIVILEGE_TYPE AS privilege_type, (IS_GRANTABLE = 'YES') AS is_grantable \
-         FROM information_schema.{table} ORDER BY GRANTEE, PRIVILEGE_TYPE"
+         FROM information_schema.{table}"
     );
+    // No ORDER BY: the server's own order is the order its grants list a privilege's columns in, as granted (5.7, live:
+    // SELECT (name, email) comes back name, email; sorted, it was written back email, name, and SHOW GRANTS differed).
     let rows = fetch(pool, table, &sql, |mut c| {
         Ok(GrantRow {
             grantee: c.text("grantee")?,

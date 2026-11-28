@@ -253,10 +253,30 @@ async fn import_design(
     match engine.import(cortex.store(), source, design.id.0, turn.id.0).await {
         Ok(report) => {
             let summary = format!("imported {} {} objects", report.version, report.objects);
-            let seq = cortex
-                .commit(&by, &turn, Some(&summary))
-                .await
-                .context("committing the import turn")?;
+            // The turn holds the import's operation, so it cannot be rejected: commit it, a lost connection tried
+            // again, and if it still cannot be committed remove the design this command made, never leaving it held.
+            let mut committed = cortex.commit(&by, &turn, Some(&summary)).await;
+            for attempt in 1..3 {
+                if committed.is_ok() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(500 * attempt)).await;
+                committed = cortex.commit(&by, &turn, Some(&summary)).await;
+            }
+            let seq = match committed {
+                Ok(seq) => seq,
+                Err(failure) => {
+                    let removed = cortex.delete_design(design.id).await;
+                    let failure = anyhow::Error::new(failure).context("committing the import turn");
+                    return Err(match removed {
+                        Ok(()) => failure.context(format!("the design {name} it made was removed")),
+                        Err(e) => failure.context(format!(
+                            "and the design {name} ({}) could not be removed, its turn {} still open: {e}",
+                            design.id, turn.id
+                        )),
+                    });
+                }
+            };
             Ok(Imported {
                 design: design.id,
                 turn: seq,

@@ -2,16 +2,17 @@
 //! Its schema (engines/mysql/schema) holds what only MySQL has beside the cortex; this crate reads a live server's
 //! catalogs, stores what it read as a design's rows and loads them back, and writes a design as SQL.
 
-pub mod build;
-pub mod catalog;
-pub mod keys;
-pub mod load;
-pub mod read;
-pub mod rows;
-pub mod show;
-pub mod sql;
-pub mod store;
-pub mod types;
+// Only the plugin is public: everything else is the plugin's own, reached through the Engine trait.
+mod build;
+mod catalog;
+mod keys;
+mod load;
+mod read;
+mod rows;
+mod show;
+mod sql;
+mod store;
+mod types;
 
 use async_trait::async_trait;
 use schema_forge_engine::{Engine, EngineError, ImportReport, Mapped, Probe, Source};

@@ -73,7 +73,8 @@ impl Kind {
         }
     }
 
-    /// The kind of a name `cortex.objects.kind` holds.
+    /// The kind of a name `cortex.objects.kind` holds (its test proves every kind's name reads back as the kind).
+    #[cfg(test)]
     #[must_use]
     pub fn parse(name: &str) -> Option<Kind> {
         Some(match name {

@@ -397,8 +397,17 @@ impl<'a> Builder<'a> {
                 cc.name.push(c.column_name.clone());
                 cc.r#type.push(c.column_type.clone());
                 cc.nullable.push(c.is_nullable);
-                cc.default_value
-                    .push(if generated { None } else { c.column_default.clone() });
+                // an expression default as SHOW CREATE TABLE writes it, since 8.0's catalog escapes its quotes; any other
+                // default (a literal, CURRENT_TIMESTAMP, a binary default's hex) as the catalog gives it
+                let default = if generated {
+                    None
+                } else if default_is_expression && let Some(written) = shown.and_then(|s| s.default_expression.clone())
+                {
+                    Some(written)
+                } else {
+                    c.column_default.clone()
+                };
+                cc.default_value.push(default);
                 cc.generated_expression.push(expression);
                 cc.generated_stored.push(generated.then_some(stored));
                 cc.comment.push(some(&c.column_comment));
@@ -633,13 +642,21 @@ impl<'a> Builder<'a> {
                         "a constraint SHOW CREATE TABLE lists",
                     ));
                 }
+                // the expression as SHOW CREATE TABLE writes it: 8.0's CHECK_CLAUSE escapes its quotes
+                let key = ObjectKey::in_database(database, Kind::Table, table);
+                let expression = self
+                    .table_show(&key)?
+                    .checks
+                    .get(&c.constraint_name)
+                    .cloned()
+                    .ok_or_else(|| missing(what(&c.constraint_name), "its expression in SHOW CREATE TABLE"))?;
                 next_constraint += 1;
                 self.push_constraint(
                     owner,
                     next_constraint,
                     Some(c.constraint_name.clone()),
                     "check",
-                    Some(c.check_clause.clone()),
+                    Some(expression),
                     (None, None, None),
                 );
                 // a check can be declared and not enforced
@@ -734,8 +751,9 @@ impl<'a> Builder<'a> {
             let key = ObjectKey::in_database(&t.table_schema, Kind::Table, &t.table_name);
             let union = self.table_show(&key)?.options.union.clone();
             let owner = self.id("a table", &key)?;
-            for (n, name) in union.iter().enumerate() {
-                let target = ObjectKey::in_database(&t.table_schema, Kind::Table, name);
+            for (n, united) in union.iter().enumerate() {
+                let database = united.database.as_deref().unwrap_or(&t.table_schema);
+                let target = ObjectKey::in_database(database, Kind::Table, &united.name);
                 let uses = self.id(format!("the MERGE table {key}"), &target)?;
                 self.push_dependency(owner, uses, "union", n + 1);
             }
@@ -787,7 +805,8 @@ impl<'a> Builder<'a> {
                              make a server for it with CREATE SERVER and name it"
                         )))
                     } else {
-                        Ok(c.split('/').next().unwrap_or(c).to_string())
+                        // `server` or `server/remote_table`, kept whole: the remote table is part of where it points
+                        Ok(c.to_string())
                     }
                 })
                 .transpose()?;
@@ -901,7 +920,14 @@ impl<'a> Builder<'a> {
                             None,
                             (id, int32(p.partition_ordinal_position, &key)?, &p.partition_name),
                             partition_values(&p.partition_method, p.partition_description.as_deref()),
-                            some(&p.partition_comment),
+                            // a subpartitioned table's rows are its subpartitions: named one by one, each says its own
+                            // comment and the partition has none (live, 8.0: p_old/s_old_b gives s_old_b's); counted
+                            // (SUBPARTITIONS n), every row repeats the partition's
+                            if p.subpartition_name.is_some() && show.subpartitions_listed {
+                                None
+                            } else {
+                                some(&p.partition_comment)
+                            },
                             own,
                         );
                         id
@@ -914,7 +940,11 @@ impl<'a> Builder<'a> {
                         Some(partition_id),
                         (Uuid::now_v7(), int32(at, &key)?, name),
                         None,
-                        None,
+                        if show.subpartitions_listed {
+                            some(&p.partition_comment)
+                        } else {
+                            None
+                        },
                         own,
                     );
                 }

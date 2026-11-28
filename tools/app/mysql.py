@@ -26,7 +26,9 @@
                    --write-limit seconds (the comparison is left to the samples)
 """
 import collections
+import contextlib
 import json
+import re
 import os
 import secrets
 import shutil
@@ -101,9 +103,12 @@ def sample_files(image):
     for v in ("8.0", "8.4", "9.7"):
         if v <= version and os.path.exists(os.path.join(SAMPLES, f"{v}.sql")):
             files.append(os.path.join(SAMPLES, f"{v}.sql"))
+    # what the review of PR #169 found no sample proved (this tool's alone; the frozen prototype is not asked)
+    files.append(os.path.join(SAMPLES, "found.sql"))
     files.append(os.path.join(SAMPLES, "server.sql"))
     if version >= "8.0":
         files.append(os.path.join(SAMPLES, "server-8.0.sql"))
+        files.append(os.path.join(SAMPLES, "found-8.0.sql"))
     if "percona" in image and os.path.exists(os.path.join(SAMPLES, f"percona-{version}.sql")):
         files.append(os.path.join(SAMPLES, f"percona-{version}.sql"))
     return files
@@ -305,6 +310,90 @@ def compare(a, b, private):
     return total
 
 
+def design_objects(store, design):
+    """Every object of a design as (kind, database, name): what the servers are asked for their DDL. A server object
+    (account, role) has the server's namespace for its database."""
+    out = store.sql(f"SELECT o.kind, n.name, o.name FROM cortex.objects o JOIN cortex.namespaces n ON n.id = o.namespace "
+                    f"WHERE o.design = '{design}' ORDER BY o.kind, n.name, o.name;")[1]
+    return [tuple(line.split("|", 2)) for line in out.splitlines() if line]
+
+
+# the statement that gives each kind's DDL, and the column of its row that holds it
+SHOW = {"table": ("TABLE", 1), "view": ("VIEW", 1), "procedure": ("PROCEDURE", 2), "function": ("FUNCTION", 2),
+        "trigger": ("TRIGGER", 2), "event": ("EVENT", 3), "library": ("LIBRARY", 2)}
+
+
+def q(name):
+    return "`" + name.replace("`", "``") + "`"
+
+
+def ddl(server, objects, databases):
+    """Every object's DDL as the server writes it, by (kind, database, name); accounts and roles with their grants, sorted;
+    each database's CREATE DATABASE."""
+    found = {}
+    statements, keys = [], []
+    for kind, database, name in objects:
+        if kind in SHOW:
+            statements.append(f"SHOW CREATE {SHOW[kind][0]} {q(database)}.{q(name)}")
+            keys.append((kind, database, name))
+    for key, row in zip(keys, server.rows(statements)):
+        found[key] = row[SHOW[key[0]][1]]
+    for kind, database, name in objects:
+        if kind in ("account", "role"):
+            user, _, host = name.rpartition("@")
+            who = "'" + user.replace("'", "''") + "'@'" + host.replace("'", "''") + "'"
+            create = server.rows([f"SHOW CREATE USER {who}"])[0][0]
+            grants = sorted(column_set(r[0]) for r in server.rows([f"SHOW GRANTS FOR {who}"]))
+            found[(kind, database, name)] = create + "\n" + "\n".join(grants)
+    for database in databases:
+        found[("database", database, database)] = server.rows([f"SHOW CREATE DATABASE {q(database)}"])[0][1]
+    return found
+
+
+def column_set(grant):
+    """A grant with each privilege's column list in name order. 5.7 prints a grant's columns in its own hash order, which
+    no order of writing reproduces (live, 2026-11-28: SELECT (name, email), UPDATE (name) prints SELECT (email, name),
+    and SELECT (email, name), UPDATE (name) prints SELECT (name, email)); the columns granted are the same set."""
+    return re.sub(r"\(([^()]*)\)", lambda m: "(" + ", ".join(sorted(c.strip() for c in m.group(1).split(","))) + ")", grant)
+
+
+def typed_trigger(text):
+    """5.7 keeps a trigger's CREATE as it was typed (its quoting and line breaks; FOLLOWS dropped), 8.0 and later write it
+    themselves: on 5.7 the header before FOR EACH ROW is compared with its typing undone, the body byte for byte."""
+    head, sep, body = text.partition("FOR EACH ROW")
+    head = re.sub(r"`[^`]*`\.", "", head).replace("`", "")
+    head = re.sub(r"\s+FOLLOWS\s+\S+\s*$", " ", head)
+    return " ".join(head.split()) + sep + " " + body.lstrip(" \n")
+
+
+def design_databases(store, design):
+    """The databases of a design: its namespaces under the server's."""
+    out = store.sql(f"SELECT name FROM cortex.namespaces WHERE design = '{design}' AND parent IS NOT NULL ORDER BY name;")[1]
+    return [line for line in out.splitlines() if line]
+
+
+def compare_ddl(a, b, objects, databases, private):
+    """Every object's DDL on server A against server B, which the written SQL made: a fact the import lost is missing
+    from both designs, never from server A. Prints each difference (a count only, for a private schema); returns how many."""
+    left, right = ddl(a, objects, databases), ddl(b, objects, databases)
+    five_seven = SERVER.split(":")[1].startswith("5.7")
+    different = []
+    for key in sorted(left):
+        x, y = left[key], right.get(key)
+        if five_seven and key[0] == "trigger" and y is not None:
+            x, y = typed_trigger(x), typed_trigger(y)
+        if x != y:
+            different.append((key, x, y))
+    print(f"  {'pass' if not different else 'FAIL'}  SHOW CREATE identical on A and B for {len(left) - len(different)} of {len(left)} objects")
+    by_kind = collections.Counter(key[0] for key, _, _ in different)
+    for kind, n in sorted(by_kind.items()):
+        print(f"        {kind}: {n} differ")
+    if not private:
+        for (kind, database, name), x, y in different[:12]:
+            print(f"        {kind} {database}.{name}:\n          A {x!r:.400}\n          B {y!r:.400}")
+    return len(different)
+
+
 def never_filled(store, design):
     """Per table, every column NULL or its default in every row of the design that the task does not list as unfilled."""
     lines = []
@@ -362,16 +451,16 @@ def main():
     what = "a private schema" if PRIVATE or SOURCE else (f"a generated schema of {GENERATED} objects" if GENERATED else "the every-object samples")
     print(f"== {SERVER}: {what}", flush=True)
     store, folder, accounts = install_store()
+    private = bool(PRIVATE or SOURCE)
     try:
         binary = Binary(binary_path, store, accounts)
-        if SOURCE:
-            password = open(os.path.expanduser(PASSWORD_FILE)).read().strip() if PASSWORD_FILE else ""
-            out, took_import = binary.import_url(SOURCE, "rt_a", password)
-            print(f"  import from the running server ({took_import:.2f} s wall):\n{report_lines(out)}")
-            sql, took_write = binary.write("rt_a")
-            print(f"  write of the design ({took_write:.2f} s wall, {len(sql.splitlines())} lines of SQL)")
-        else:
-            with Published(SERVER, name="sf-rt-a") as a:
+        with contextlib.ExitStack() as servers:
+            # A stays up until B is read, so every object's DDL can be compared server against server
+            a = None if SOURCE else servers.enter_context(Published(SERVER, name="sf-rt-a"))
+            if SOURCE:
+                password = open(os.path.expanduser(PASSWORD_FILE)).read().strip() if PASSWORD_FILE else ""
+                out, took_import = binary.import_url(SOURCE, "rt_a", password)
+            else:
                 if PRIVATE:
                     a.load(PRIVATE)
                 elif GENERATED:
@@ -383,30 +472,35 @@ def main():
                     for f in sample_files(SERVER):
                         a.load(f)
                 out, took_import = binary.import_from(a, "rt_a")
-                print(f"  import from A ({took_import:.2f} s wall):\n{report_lines(out)}")
-                sql, took_write = binary.write("rt_a")
-                print(f"  write of the design ({took_write:.2f} s wall, {len(sql.splitlines())} lines of SQL)")
-        failed = False
-        if GENERATED:
-            objects = int(next(l.split()[1] for l in out.splitlines() if l.strip().startswith("objects")))
-            if objects != GENERATED:
-                print(f"  FAIL  the design holds {objects} objects, {GENERATED} were generated")
-                failed = True
-        if not GENERATED:
-            with Published(SERVER, name="sf-rt-b") as b:
+            print(f"  import from A ({took_import:.2f} s wall):\n{report_lines(out)}")
+            sql, took_write = binary.write("rt_a")
+            print(f"  write of the design ({took_write:.2f} s wall, {len(sql.splitlines())} lines of SQL)")
+            failed = False
+            if GENERATED:
+                objects = int(next(l.split()[1] for l in out.splitlines() if l.strip().startswith("objects")))
+                if objects != GENERATED:
+                    print(f"  FAIL  the design holds {objects} objects, {GENERATED} were generated")
+                    failed = True
+            else:
+                b = servers.enter_context(Published(SERVER, name="sf-rt-b"))
                 try:
                     b.sql(sql)
                 except Failed as e:
-                    print(f"  FAIL  loading the written SQL into B: {e}")
+                    print(f"  FAIL  loading the written SQL into B: {e if not private else 'refused (counts only)'}")
                     return 1
-                _, took_b = binary.import_from(b, "rt_b")
-            differences = compare(read_design(store, design_id(store, "rt_a")), read_design(store, design_id(store, "rt_b")), bool(PRIVATE or SOURCE))
-            for line in never_filled(store, design_id(store, "rt_a")) if not (PRIVATE or SOURCE) else []:
-                print(line)
-            if differences:
-                print(f"FAIL  round trip on {SERVER}: {differences} differences")
-                return 1
-            print(f"pass  round trip on {SERVER}: the two designs are equal")
+                binary.import_from(b, "rt_b")
+                design_a = design_id(store, "rt_a")
+                differences = compare(read_design(store, design_a), read_design(store, design_id(store, "rt_b")), private)
+                for line in never_filled(store, design_a) if not private else []:
+                    print(line)
+                if a is None:
+                    print("  note  the source is a running server this tool did not start: its DDL is not compared")
+                else:
+                    differences += compare_ddl(a, b, design_objects(store, design_a), design_databases(store, design_a), private)
+                if differences:
+                    print(f"FAIL  round trip on {SERVER}: {differences} differences")
+                    return 1
+                print(f"pass  round trip on {SERVER}: the two designs are equal")
         if IMPORT_LIMIT or WRITE_LIMIT:
             for label, took, limit in (("import", took_import, IMPORT_LIMIT), ("write", took_write, WRITE_LIMIT)):
                 if limit and took > limit:

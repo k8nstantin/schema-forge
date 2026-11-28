@@ -21,6 +21,27 @@ fn lacks(object: &str, what: &str) -> EngineError {
     EngineError::Unsupported(format!("{object}: the design has no {what}, which its statement needs"))
 }
 
+/// A string literal read under a program's own `sql_mode`: with `NO_BACKSLASH_ESCAPES` a backslash is itself, so only
+/// quotes are doubled; otherwise backslashes are doubled too.
+fn literal_in(value: &str, sql_mode: &str) -> String {
+    if sql_mode.split(',').any(|mode| mode.trim() == "NO_BACKSLASH_ESCAPES") {
+        format!("'{}'", value.replace('\'', "''"))
+    } else {
+        lit(value)
+    }
+}
+
+/// Whether a column type holds bytes rather than characters.
+fn is_binary(column_type: &str) -> bool {
+    let lower = column_type.to_lowercase();
+    lower.starts_with("binary") || lower.starts_with("varbinary") || lower.ends_with("blob")
+}
+
+/// A `0x` hex literal: `0x` and one or more hex digits.
+fn is_hex_literal(text: &str) -> bool {
+    text.len() > 2 && text.starts_with("0x") && text[2..].chars().all(|c| c.is_ascii_hexdigit())
+}
+
 /// The row of an id in a table's map, or an error naming what was looked for.
 fn place(map: &ById, id: Uuid, object: &str, what: &str) -> Result<usize, EngineError> {
     map.get(&id).copied().ok_or_else(|| lacks(object, what))
@@ -137,14 +158,19 @@ impl<'a> Writer<'a> {
         self.databases()?;
         self.server_objects()?;
         self.tables()?;
-        self.read_only_databases()?;
         self.line("SET FOREIGN_KEY_CHECKS = 1;");
+        // Routines before the views: CREATE VIEW checks that every function a view calls exists, while a routine's body
+        // is not checked until it runs, so a routine may name a view made after it.
+        self.routines()?;
         self.views()?;
-        self.programs()?;
+        self.triggers_and_events()?;
         self.accounts()?;
         self.role_grants()?;
         self.privileges()?;
         self.components()?;
+        // Last: a read-only database refuses every CREATE in it, views and programs among them.
+        self.read_only_databases()?;
+        self.line("SET UNIQUE_CHECKS = 1;");
         Ok(())
     }
 
@@ -392,6 +418,9 @@ impl<'a> Writer<'a> {
                         s.push_str(&format!(" DEFAULT ({default})"));
                     }
                 } else if t.r#type[c].to_lowercase().starts_with("bit") && default.starts_with("b'") {
+                    s.push_str(&format!(" DEFAULT {default}"));
+                } else if is_binary(&t.r#type[c]) && is_hex_literal(default) {
+                    // 8.0 gives a binary column's default as the hex of its bytes (0x6162 for 'ab'), written back as hex
                     s.push_str(&format!(" DEFAULT {default}"));
                 } else {
                     s.push_str(&format!(" DEFAULT {}", lit(default)));
@@ -820,6 +849,8 @@ impl<'a> Writer<'a> {
             self.statement(&session);
             self.statement(&s);
         }
+        // Each view was read under its own client character set; what follows is read as the script began.
+        self.line("SET NAMES utf8mb4;");
         Ok(())
     }
 
@@ -835,31 +866,38 @@ impl<'a> Writer<'a> {
         self.statement(&s);
     }
 
-    fn programs(&mut self) -> Result<(), EngineError> {
+    /// Opens a section of programs: their bodies hold semicolons, and a JavaScript body is quoted with `$$`.
+    fn open_programs(&mut self) {
+        self.line(&format!("DELIMITER {END}"));
+        self.end = END;
+    }
+
+    /// Closes it: every program set its own session, and what follows is read as the script began.
+    fn close_programs(&mut self) {
+        self.end = ";";
+        self.line("DELIMITER ;");
+        self.line("SET NAMES utf8mb4;");
+        self.line("SET sql_mode = 'NO_ENGINE_SUBSTITUTION';");
+    }
+
+    /// Libraries, procedures and functions.
+    fn routines(&mut self) -> Result<(), EngineError> {
         let libraries = self.of_kind("library");
         let procedures = self.of_kind("procedure");
         let functions = self.of_kind("function");
-        let triggers = self.triggers_in_order()?;
-        let events = self.of_kind("event");
-        if libraries.is_empty()
-            && procedures.is_empty()
-            && functions.is_empty()
-            && triggers.is_empty()
-            && events.is_empty()
-        {
+        if libraries.is_empty() && procedures.is_empty() && functions.is_empty() {
             return Ok(());
         }
-        self.line(&format!("DELIMITER {END}"));
-        self.end = END;
+        self.open_programs();
         for o in libraries {
             let at = self.engine_row(&self.d.maps.library, o, "library row")?;
             let t = &self.r.libraries;
             let use_database = format!("USE {}", q(self.database_of(o)));
             self.statement(&use_database);
             self.session(&t.sql_mode[at], None);
-            let comment = self.r.objects.comment[o]
-                .as_ref()
-                .map_or(String::new(), |c| format!(" COMMENT {}", lit(c)));
+            let comment = self.r.objects.comment[o].as_ref().map_or(String::new(), |c| {
+                format!(" COMMENT {}", literal_in(c, &t.sql_mode[at]))
+            });
             let s = format!(
                 "CREATE LIBRARY {} LANGUAGE {}{comment} AS $${}$$",
                 q(self.name_of(o)),
@@ -880,6 +918,18 @@ impl<'a> Writer<'a> {
             );
             self.statement(&s);
         }
+        self.close_programs();
+        Ok(())
+    }
+
+    /// Triggers, in their order, and events.
+    fn triggers_and_events(&mut self) -> Result<(), EngineError> {
+        let triggers = self.triggers_in_order()?;
+        let events = self.of_kind("event");
+        if triggers.is_empty() && events.is_empty() {
+            return Ok(());
+        }
+        self.open_programs();
         for (o, follows) in triggers {
             let s = self.trigger(o, follows)?;
             let use_database = format!("USE {}", q(self.database_of(o)));
@@ -901,16 +951,12 @@ impl<'a> Writer<'a> {
                 &t.sql_mode[at],
                 Some((&t.character_set_client[at], &t.collation_connection[at])),
             );
-            let zone = format!("SET time_zone = {}", lit(&t.time_zone[at]));
+            let zone = format!("SET time_zone = {}", literal_in(&t.time_zone[at], &t.sql_mode[at]));
             self.statement(&zone);
             let s = self.event(o)?;
             self.statement(&s);
         }
-        self.end = ";";
-        self.line("DELIMITER ;");
-        // The programs' own sessions end here: what follows (accounts, their hashes, grants) is read as the script began.
-        self.line("SET NAMES utf8mb4;");
-        self.line("SET sql_mode = 'NO_ENGINE_SUBSTITUTION';");
+        self.close_programs();
         Ok(())
     }
 
@@ -942,7 +988,7 @@ impl<'a> Writer<'a> {
         s.push_str(&format!("\n    {}", t.data_access[at]));
         s.push_str(&format!("\n    SQL SECURITY {}", t.security[at]));
         if let Some(comment) = &self.r.objects.comment[o] {
-            s.push_str(&format!("\n    COMMENT {}", lit(comment)));
+            s.push_str(&format!("\n    COMMENT {}", literal_in(comment, &t.sql_mode[at])));
         }
         s.push('\n');
         s.push_str(&t.body[at]);
@@ -1046,7 +1092,7 @@ impl<'a> Writer<'a> {
             t.status[at]
         );
         if let Some(comment) = &self.r.objects.comment[o] {
-            s.push_str(&format!(" COMMENT {}", lit(comment)));
+            s.push_str(&format!(" COMMENT {}", literal_in(comment, &t.sql_mode[at])));
         }
         s.push_str(&format!(" DO {}", t.body[at]));
         Ok(s)
@@ -1081,8 +1127,10 @@ impl<'a> Writer<'a> {
                         "authentication plugin, which a password's hash needs",
                     ));
                 }
-                let hex = hash.len() > 2 && hash.starts_with("0x") && hash[2..].chars().all(|c| c.is_ascii_hexdigit());
-                s.push_str(&format!(" AS {}", if hex { hash.clone() } else { lit(hash) }));
+                s.push_str(&format!(
+                    " AS {}",
+                    if is_hex_literal(hash) { hash.clone() } else { lit(hash) }
+                ));
             }
             match t.ssl_type[at].as_deref() {
                 Some("SSL") => s.push_str(" REQUIRE SSL"),
@@ -1452,11 +1500,7 @@ pub(crate) mod tests {
 
         fn design(self) -> Design {
             let maps = Maps::of(&self.rows);
-            Design {
-                id: self.design,
-                rows: self.rows,
-                maps,
-            }
+            Design { rows: self.rows, maps }
         }
     }
 
@@ -1515,10 +1559,37 @@ pub(crate) mod tests {
         assert!(!sql.contains("`after` AFTER INSERT ON `t` FOR EACH ROW FOLLOWS"));
         assert!(sql.contains("DELIMITER $sf_end$"));
         assert!(
-            sql.trim_end()
-                .ends_with("DELIMITER ;\nSET NAMES utf8mb4;\nSET sql_mode = 'NO_ENGINE_SUBSTITUTION';"),
+            sql.contains("DELIMITER ;\nSET NAMES utf8mb4;\nSET sql_mode = 'NO_ENGINE_SUBSTITUTION';"),
             "the programs' sessions end with the delimiter"
         );
+    }
+
+    #[test]
+    fn a_view_comes_after_the_functions_it_may_call_and_a_read_only_database_is_closed_last() {
+        let mut f = Fixture::new();
+        f.table("t");
+        f.routine("function", "spent", Some("int"));
+        f.view("v", &[]);
+        f.rows.databases.read_only[0] = Some(true);
+        let sql = write(&f.design()).unwrap();
+        let function = sql.find("FUNCTION `spent`").unwrap();
+        let view = sql.find("VIEW `v`").unwrap();
+        let read_only = sql.find("ALTER DATABASE `shop` READ ONLY = 1").unwrap();
+        assert!(function < view, "CREATE VIEW checks the functions it calls exist");
+        assert!(view < read_only && sql.find("TABLE `t`").unwrap() < read_only);
+        assert!(
+            sql[read_only..].lines().skip(1).all(|l| !l.starts_with("CREATE")),
+            "nothing is created after it"
+        );
+    }
+
+    #[test]
+    fn a_literal_under_no_backslash_escapes_keeps_its_backslashes_single() {
+        assert_eq!(
+            literal_in("C:\\tmp 'x'", "NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES"),
+            "'C:\\tmp ''x'''"
+        );
+        assert_eq!(literal_in("C:\\tmp", "STRICT_TRANS_TABLES"), "'C:\\\\tmp'");
     }
 
     #[test]

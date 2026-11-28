@@ -29,10 +29,6 @@ pub struct Maps {
     pub object: ById,
     /// A column.
     pub column: ById,
-    /// A constraint.
-    pub constraint: ById,
-    /// An index.
-    pub index: ById,
     /// The columns of an object, by the object's id.
     pub columns_of: Children,
     /// The indexes of an object.
@@ -45,8 +41,6 @@ pub struct Maps {
     pub constraint_columns_of: Children,
     /// What an object uses, by the object's id.
     pub dependencies_of: Children,
-    /// The objects of a namespace, by the namespace's id.
-    pub objects_of: Children,
     /// The engine row of a table, by the object's id.
     pub table: ById,
     /// The engine row of a database (a namespace), by the namespace's id.
@@ -65,8 +59,6 @@ pub struct Maps {
     pub view: ById,
     /// The engine row of a routine, by the object's id.
     pub routine: ById,
-    /// The parameters of a routine, by the routine's id.
-    pub parameters_of: Children,
     /// The engine row of a trigger, by the object's id.
     pub trigger: ById,
     /// The engine row of an event, by the object's id.
@@ -75,10 +67,6 @@ pub struct Maps {
     pub library: ById,
     /// The engine row of an account or role, by the object's id.
     pub account: ById,
-    /// The roles granted to a grantee, by the grantee's id.
-    pub role_grants_of: Children,
-    /// The privileges granted to a grantee, by the grantee's id.
-    pub privileges_of: Children,
     /// The engine row of a federated server, by the object's id.
     pub server: ById,
     /// The engine row of a loadable function, by the object's id.
@@ -98,8 +86,6 @@ pub struct Maps {
 /// A design as the store holds it: every table's rows, and the maps by id over them.
 #[derive(Clone, Debug, Default)]
 pub struct Design {
-    /// The design's id.
-    pub id: Uuid,
     /// Every table's rows, column-wise, as loaded.
     pub rows: Rows,
     /// The maps by id.
@@ -129,19 +115,10 @@ impl Maps {
     /// Builds every map over the loaded rows.
     #[must_use]
     pub fn of(rows: &Rows) -> Maps {
-        let mut objects_of: Children = HashMap::new();
-        for (place, namespace) in rows.objects.namespace.iter().enumerate() {
-            objects_of.entry(*namespace).or_default().push(place);
-        }
-        for places in objects_of.values_mut() {
-            places.sort_by_key(|&place| (rows.objects.position[place], place));
-        }
         Maps {
             namespace: by_id(&rows.namespaces.id),
             object: by_id(&rows.objects.id),
             column: by_id(&rows.columns.id),
-            constraint: by_id(&rows.constraints.id),
-            index: by_id(&rows.indexes.id),
             columns_of: children(&rows.columns.object, Some(&rows.columns.position)),
             indexes_of: children(&rows.indexes.object, Some(&rows.indexes.position)),
             parts_of: children(&rows.index_parts.index, Some(&rows.index_parts.position)),
@@ -151,7 +128,6 @@ impl Maps {
                 Some(&rows.constraint_columns.position),
             ),
             dependencies_of: children(&rows.dependencies.object, Some(&rows.dependencies.position)),
-            objects_of,
             table: by_id(&rows.tables.id),
             database: by_id(&rows.databases.id),
             column_options: by_id(&rows.column_options.id),
@@ -161,16 +137,10 @@ impl Maps {
             partitions_of: children(&rows.partitions.partitioning, Some(&rows.partitions.position)),
             view: by_id(&rows.views.id),
             routine: by_id(&rows.routines.id),
-            parameters_of: children(
-                &rows.routine_parameters.routine,
-                Some(&rows.routine_parameters.position),
-            ),
             trigger: by_id(&rows.triggers.id),
             event: by_id(&rows.events.id),
             library: by_id(&rows.libraries.id),
             account: by_id(&rows.accounts.id),
-            role_grants_of: children(&rows.role_grants.grantee, None),
-            privileges_of: children(&rows.privileges.grantee, None),
             server: by_id(&rows.servers.id),
             loadable_function: by_id(&rows.loadable_functions.id),
             component: by_id(&rows.components.id),
@@ -230,7 +200,7 @@ pub async fn load(store: &Store, design: Uuid) -> Result<Design, StoreError> {
         })
         .await?;
     let maps = Maps::of(&rows);
-    Ok(Design { id: design, rows, maps })
+    Ok(Design { rows, maps })
 }
 
 #[cfg(test)]

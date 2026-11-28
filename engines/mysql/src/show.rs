@@ -106,10 +106,8 @@ pub(crate) fn read_string(s: &str) -> Option<(String, &str)> {
 }
 
 /// The value at the start of `s`: a name in backticks, a string, a group in parentheses, or a bare word.
-fn read_value<'a>(s: &'a str, masked: &str) -> Option<(String, &'a str)> {
+fn read_value(s: &str) -> Option<(String, &str)> {
     let s = s.trim_start();
-    let offset = masked.len() - masked.trim_start().len();
-    let _ = offset;
     if s.starts_with('`') {
         read_ident(s)
     } else if s.starts_with('\'') {
@@ -129,7 +127,7 @@ fn read_value<'a>(s: &'a str, masked: &str) -> Option<(String, &'a str)> {
 fn value_after(original: &str, masked: &str, key: &str) -> Option<String> {
     let pattern = Regex::new(&format!(r"\b{}\b\s*=?\s*", regex::escape(key))).ok()?;
     let found = pattern.find(masked)?;
-    read_value(&original[found.end()..], &masked[found.end()..]).map(|(value, _)| value)
+    read_value(&original[found.end()..]).map(|(value, _)| value)
 }
 
 static COLUMN_FORMAT: LazyLock<Regex> =
@@ -153,6 +151,8 @@ static INDEX_HEAD: LazyLock<Regex> = LazyLock::new(|| {
 pub struct ColumnShow {
     /// The expression of a generated column, as written (the catalog's copy escapes its quotes on 8.0).
     pub generated_expression: Option<String>,
+    /// An expression default, `DEFAULT (expression)`, the expression as written (8.0's catalog escapes its quotes).
+    pub default_expression: Option<String>,
     /// `COLUMN_FORMAT`.
     pub column_format: Option<String>,
     /// `STORAGE`.
@@ -190,7 +190,7 @@ pub struct TableOptions {
     /// `TABLESPACE`.
     pub tablespace: Option<String>,
     /// A MERGE table's tables, in order.
-    pub union: Vec<String>,
+    pub union: Vec<UnionTable>,
     /// `INSERT_METHOD`.
     pub insert_method: Option<String>,
     /// A FEDERATED table's `CONNECTION`.
@@ -207,6 +207,16 @@ pub struct TableOptions {
     pub secondary_engine: Option<String>,
     /// `SECONDARY_ENGINE_ATTRIBUTE`.
     pub secondary_engine_attribute: Option<String>,
+}
+
+/// A table a MERGE table unites: in the MERGE table's own database where `UNION=(...)` names it bare, in the database
+/// it names otherwise.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct UnionTable {
+    /// The database `UNION=(...)` names, if it names one.
+    pub database: Option<String>,
+    /// The table.
+    pub name: String,
 }
 
 /// What a partition's or subpartition's own clause writes, where it writes it.
@@ -239,6 +249,9 @@ pub struct TableShow {
     pub indexes: Vec<IndexShow>,
     /// Foreign keys and checks by name, in the order the statement lists them.
     pub constraints: Vec<String>,
+    /// Each check's expression as written, by its name: what is between `CHECK (` and its matching `)` (8.0's catalog
+    /// escapes the quotes of `CHECK_CLAUSE`).
+    pub checks: HashMap<String, String>,
     /// `ALGORITHM` of a KEY partitioning.
     pub key_algorithm: Option<i64>,
     /// `ALGORITHM` of a KEY subpartitioning.
@@ -267,6 +280,12 @@ pub fn parse_table(create: &str) -> TableShow {
         } else if let Some(rest) = line.trim_start().strip_prefix("CONSTRAINT ")
             && let Some((name, _)) = read_ident(rest)
         {
+            if let Some(at) = line_masked.find(" CHECK (") {
+                let open = at + " CHECK ".len();
+                if let Some(close) = matching(line_masked, open) {
+                    show.checks.insert(name.clone(), line[open + 1..close].to_string());
+                }
+            }
             show.constraints.push(name);
         }
     }
@@ -281,24 +300,57 @@ pub fn parse_table(create: &str) -> TableShow {
     show.key_algorithm = ALGORITHM.captures(partitioned).and_then(|c| c[1].parse().ok());
     show.sub_key_algorithm = SUB_ALGORITHM.captures(partitioned).and_then(|c| c[1].parse().ok());
     show.partitions_listed = partitioned.contains("(PARTITION ");
-    show.subpartitions_listed = partitioned.contains("SUBPARTITION `");
+    // a subpartition named one by one; SUBPARTITION BY and SUBPARTITIONS n are not
+    show.subpartitions_listed = partition_heads(partitioned).iter().any(|head| head.subpartition);
     show
 }
 
+/// `PARTITION p` or `SUBPARTITION s`, the name bare or in backticks (the server writes an ordinary name bare): never
+/// `PARTITION BY` or `PARTITIONS n`.
 static PARTITION_HEAD: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\b(?:SUB)?PARTITION `_*`").expect("a fixed pattern"));
+    LazyLock::new(|| Regex::new(r"\b(SUB)?PARTITION (`_*`|\w+)").expect("a fixed pattern"));
 
-/// The options each `PARTITION `p`` and `SUBPARTITION `s`` clause writes, by the partition's name.
+/// Where a partition's own clause starts, in the masked text.
+struct PartitionHead {
+    subpartition: bool,
+    /// The name's place in the text, from its first character.
+    name_at: usize,
+    /// Where the clause after the name starts.
+    end: usize,
+    start: usize,
+}
+
+fn partition_heads(masked: &str) -> Vec<PartitionHead> {
+    PARTITION_HEAD
+        .captures_iter(masked)
+        .filter_map(|c| {
+            let name = c.get(2)?;
+            (name.as_str() != "BY").then(|| PartitionHead {
+                subpartition: c.get(1).is_some(),
+                name_at: name.start(),
+                end: name.end(),
+                start: c.get(0).map_or(name.start(), |m| m.start()),
+            })
+        })
+        .collect()
+}
+
+/// The options each `PARTITION p` and `SUBPARTITION s` clause writes, by the partition's name.
 fn partition_options(text: &str, masked: &str) -> HashMap<String, PartitionShow> {
-    let heads: Vec<_> = PARTITION_HEAD.find_iter(masked).collect();
+    let heads = partition_heads(masked);
     let mut found = HashMap::new();
     for (i, head) in heads.iter().enumerate() {
-        let end = heads.get(i + 1).map_or(masked.len(), |next| next.start());
-        let Some(tick) = head.as_str().find('`') else { continue };
-        let Some((name, _)) = read_ident(&text[head.start() + tick..]) else {
-            continue;
+        let end = heads.get(i + 1).map_or(masked.len(), |next| next.start);
+        let named = &text[head.name_at..head.end];
+        let name = if named.starts_with('`') {
+            match read_ident(named) {
+                Some((name, _)) => name,
+                None => continue,
+            }
+        } else {
+            named.to_string()
         };
-        let (clause, clause_masked) = (&text[head.end()..end], &masked[head.end()..end]);
+        let (clause, clause_masked) = (&text[head.end..end], &masked[head.end..end]);
         let number = |key: &str| value_after(clause, clause_masked, key).and_then(|v| v.parse().ok());
         found.insert(
             name,
@@ -323,8 +375,13 @@ fn column(line: &str, masked: &str) -> ColumnShow {
     let dictionary = masked
         .find(" WITH COMPRESSION_DICTIONARY ")
         .and_then(|at| read_ident(&line[at + " WITH COMPRESSION_DICTIONARY ".len()..]).map(|(name, _)| name));
+    let default_expression = masked.find(" DEFAULT (").and_then(|at| {
+        let open = at + " DEFAULT ".len();
+        matching(masked, open).map(|close| line[open + 1..close].to_string())
+    });
     ColumnShow {
         generated_expression: generated,
+        default_expression,
         column_format: COLUMN_FORMAT.captures(masked).map(|c| c[1].to_string()),
         storage: STORAGE.captures(masked).map(|c| c[1].to_string()),
         compression_dictionary: dictionary,
@@ -356,6 +413,33 @@ fn index(line: &str, masked: &str, head: &regex::Captures<'_>) -> IndexShow {
     }
 }
 
+/// The tables of `UNION=(...)`, each `` `t` `` or `` `db`.`t` ``, in order; a name may hold a comma inside its backticks.
+fn union_tables(list: &str) -> Vec<UnionTable> {
+    let mut tables = Vec::new();
+    let mut rest = list.trim_start();
+    while let Some((first, after)) = read_ident(rest) {
+        let table = match after.strip_prefix('.').and_then(read_ident) {
+            Some((name, after_name)) => {
+                rest = after_name;
+                UnionTable {
+                    database: Some(first),
+                    name,
+                }
+            }
+            None => {
+                rest = after;
+                UnionTable {
+                    database: None,
+                    name: first,
+                }
+            }
+        };
+        tables.push(table);
+        rest = rest.trim_start().strip_prefix(',').unwrap_or(rest).trim_start();
+    }
+    tables
+}
+
 fn options(tail: &str, masked: &str) -> TableOptions {
     // the options are on the first line of the tail; the partitioning, if any, follows it
     let end = masked.find('\n').unwrap_or(masked.len());
@@ -364,11 +448,7 @@ fn options(tail: &str, masked: &str) -> TableOptions {
         .find("TABLESPACE ")
         .and_then(|at| read_ident(&line[at + "TABLESPACE ".len()..]).map(|(name, _)| name));
     let union = value_after(line, line_masked, "UNION")
-        .map(|list| {
-            list.split(',')
-                .filter_map(|n| read_ident(n.trim()).map(|(name, _)| name))
-                .collect()
-        })
+        .map(|list| union_tables(&list))
         .unwrap_or_default();
     TableOptions {
         auto_increment: value_after(line, line_masked, "AUTO_INCREMENT").and_then(|v| v.parse().ok()),
@@ -467,7 +547,8 @@ pub(crate) fn unqualify(query: &str, database: &str) -> String {
     let mut rest = query;
     while let Some(c) = rest.chars().next() {
         match c {
-            '`' if rest.starts_with(&qualifier) => rest = &rest[qualifier.len()..],
+            // only the first name of a dotted run qualifies: in `other`.`shop`.`id` the `shop` is a table, not the database
+            '`' if rest.starts_with(&qualifier) && !out.ends_with('.') => rest = &rest[qualifier.len()..],
             '`' => match read_ident(rest) {
                 Some((_, after)) => {
                     out.push_str(&rest[..rest.len() - after.len()]);
@@ -669,9 +750,10 @@ pub fn parse_user(create: &str) -> UserShow {
             .map(|c| c.get(1).map_or(String::new(), |m| m.as_str().trim().to_string())),
         password_history: HISTORY.captures(&masked).map(|c| c[1].to_string()),
         password_reuse_interval: REUSE.captures(&masked).map(|c| c[1].to_string()),
+        // written bare it is required, kept as an empty value like a bare PASSWORD EXPIRE
         password_require_current: REQUIRE_CURRENT
             .captures(&masked)
-            .and_then(|c| c.get(1).map(|m| m.as_str().trim().to_string())),
+            .map(|c| c.get(1).map_or(String::new(), |m| m.as_str().trim().to_string())),
         failed_login_attempts: FAILED.captures(&masked).and_then(|c| c[1].parse().ok()),
         password_lock_time: LOCK_TIME.captures(&masked).map(|c| c[1].to_string()),
         locked: masked.contains(" ACCOUNT LOCK"),
@@ -710,7 +792,23 @@ mod tests {
     fn the_options_line_gives_a_merge_tables_tables_and_a_tablespace() {
         let create = "CREATE TABLE `m` (\n  `id` int NOT NULL\n) ENGINE=MRG_MyISAM DEFAULT CHARSET=utf8mb4 INSERT_METHOD=LAST UNION=(`a`,`b``c`)";
         let options = parse_table(create).options;
-        assert_eq!(options.union, ["a", "b`c"]);
+        let bare = |name: &str| UnionTable {
+            database: None,
+            name: name.to_string(),
+        };
+        assert_eq!(options.union, [bare("a"), bare("b`c")]);
+        // a table of another database is named with it
+        let across = "CREATE TABLE `m` (\n  `id` int NOT NULL\n) ENGINE=MRG_MyISAM UNION=(`archive`.`t2019`,`t2020`)";
+        assert_eq!(
+            parse_table(across).options.union,
+            [
+                UnionTable {
+                    database: Some("archive".to_string()),
+                    name: "t2019".to_string()
+                },
+                bare("t2020")
+            ]
+        );
         assert_eq!(options.insert_method.as_deref(), Some("LAST"));
         let create = "CREATE TABLE `i` (\n  `id` int NOT NULL\n) /*!50100 TABLESPACE `ts_shop` */ ENGINE=InnoDB";
         assert_eq!(parse_table(create).options.tablespace.as_deref(), Some("ts_shop"));
@@ -735,6 +833,58 @@ mod tests {
             view.definition,
             "select `c`.`id` AS `id`,'`shop`.`x`' AS `lit` from `c` where (`c`.`status` = 'active')"
         );
+    }
+
+    /// SHOW CREATE TABLE exactly as MySQL 8.0.46 wrote it (tools/mysql/show.py --server mysql:8.0, 2026-11-28): bare
+    /// partition names, every listed subpartition with its ENGINE, a check and an expression default with strings.
+    const LIVE_8_0: &str = "CREATE TABLE `rv` (\n  `id` int NOT NULL,\n  `s` varchar(5) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT (concat(_utf8mb4'x',_utf8mb4'y')),\n  `b` binary(2) NOT NULL DEFAULT 'ab',\n  PRIMARY KEY (`id`),\n  CONSTRAINT `rv_chk` CHECK ((`s` in (_utf8mb4'a',_utf8mb4'b')))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n/*!50100 PARTITION BY RANGE (`id`)\nSUBPARTITION BY HASH (`id`)\n(PARTITION p0 VALUES LESS THAN (10)\n (SUBPARTITION s0 ENGINE = InnoDB,\n  SUBPARTITION s1 ENGINE = InnoDB),\n PARTITION p1 VALUES LESS THAN MAXVALUE\n (SUBPARTITION s2 ENGINE = InnoDB,\n  SUBPARTITION s3 ENGINE = InnoDB)) */";
+
+    #[test]
+    fn bare_partition_names_are_read_with_their_own_options() {
+        let show = parse_table(LIVE_8_0);
+        assert!(show.partitions_listed && show.subpartitions_listed);
+        let mut names: Vec<_> = show.partition_options.keys().cloned().collect();
+        names.sort();
+        assert_eq!(names, ["p0", "p1", "s0", "s1", "s2", "s3"]);
+        assert_eq!(show.partition_options["s1"].engine.as_deref(), Some("InnoDB"));
+        // SUBPARTITIONS n is a count, not a listed subpartition
+        let counted = "CREATE TABLE `s` (\n  `id` int NOT NULL\n) ENGINE=InnoDB\n/*!50100 PARTITION BY RANGE (`id`)\nSUBPARTITION BY HASH (`id`)\nSUBPARTITIONS 2\n(PARTITION p0 VALUES LESS THAN (10) ENGINE = InnoDB) */";
+        assert!(!parse_table(counted).subpartitions_listed);
+    }
+
+    #[test]
+    fn a_check_and_an_expression_default_are_read_as_written_not_as_the_catalog_escapes_them() {
+        let show = parse_table(LIVE_8_0);
+        assert_eq!(show.checks["rv_chk"], "(`s` in (_utf8mb4'a',_utf8mb4'b'))");
+        assert_eq!(
+            show.columns["s"].default_expression.as_deref(),
+            Some("concat(_utf8mb4'x',_utf8mb4'y')")
+        );
+        assert_eq!(
+            show.columns["b"].default_expression, None,
+            "a literal default is not an expression"
+        );
+    }
+
+    #[test]
+    fn only_the_first_name_of_a_dotted_run_is_its_database() {
+        let query = "select `other`.`shop`.`id` AS `id` from `other`.`shop` join `shop`.`t` on `shop`.`t`.`id` = `other`.`shop`.`id`";
+        assert_eq!(
+            unqualify(query, "shop"),
+            "select `other`.`shop`.`id` AS `id` from `other`.`shop` join `t` on `t`.`id` = `other`.`shop`.`id`"
+        );
+    }
+
+    #[test]
+    fn a_bare_password_require_current_is_kept() {
+        let user = parse_user(
+            "CREATE USER `u`@`%` IDENTIFIED WITH 'caching_sha2_password' REQUIRE NONE PASSWORD REQUIRE CURRENT",
+        );
+        assert_eq!(user.password_require_current.as_deref(), Some(""));
+        let optional = parse_user(
+            "CREATE USER `u`@`%` IDENTIFIED WITH 'caching_sha2_password' REQUIRE NONE PASSWORD REQUIRE CURRENT OPTIONAL",
+        );
+        assert_eq!(optional.password_require_current.as_deref(), Some("OPTIONAL"));
     }
 
     #[test]

@@ -45,6 +45,15 @@ macro_rules! tables {
                 self.len() == 0
             }
 
+            /// The first column whose length differs from the first column's, with both lengths: unnest pads a
+            /// shorter array with NULLs, so a table built unevenly would be stored wrong without a word.
+            #[must_use]
+            pub fn uneven(&self) -> Option<(&'static str, usize, usize)> {
+                let lengths: &[(&'static str, usize)] = &[ $( (stringify!($col), self.$col.len()) ),+ ];
+                let first = lengths[0].1;
+                lengths.iter().find(|(_, n)| *n != first).map(|(name, n)| (*name, *n, first))
+            }
+
             /// The one statement that stores every row: the vectors are bound as arrays and unnested.
             #[must_use]
             pub fn insert_sql() -> String {

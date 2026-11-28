@@ -38,12 +38,17 @@ pub struct Statement {
 }
 
 /// Every table that has rows, in the order they are stored: the cortex's parents before their children, then the
-/// engine's own tables.
-#[must_use]
-pub fn statements(rows: &Rows) -> Vec<Statement> {
+/// engine's own tables. A table whose columns differ in length is an error naming it: unnest would pad it with NULLs.
+pub fn statements(rows: &Rows) -> Result<Vec<Statement>, EngineError> {
     let mut out = Vec::new();
     macro_rules! in_order {
         ($($field:ident: $table:ty),+ $(,)?) => { $(
+            if let Some((column, n, first)) = rows.$field.uneven() {
+                return Err(EngineError::Unsupported(format!(
+                    "{} was built unevenly: its column {column} has {n} rows where the first has {first}",
+                    <$table>::TABLE
+                )));
+            }
             if !rows.$field.is_empty() {
                 out.push(Statement {
                     table: <$table>::TABLE,
@@ -88,14 +93,14 @@ pub fn statements(rows: &Rows) -> Vec<Statement> {
         tablespaces: Tablespaces,
         compression_dictionaries: CompressionDictionaries,
     }
-    out
+    Ok(out)
 }
 
 /// The statements the store is sent for rows: one for the operation, one that names it to the history trigger, and one
 /// for each table that has rows.
-#[must_use]
-pub fn statement_count(rows: &Rows) -> usize {
-    statements(rows).len() + 2
+#[cfg(test)]
+pub fn statement_count(rows: &Rows) -> Result<usize, EngineError> {
+    Ok(statements(rows)?.len() + 2)
 }
 
 /// Stores every row in one operation of the open turn, as the plugin's account. Returns how many rows and statements.
@@ -105,8 +110,8 @@ pub async fn store(
     design: Uuid,
     turn: Uuid,
     summary: String,
-) -> Result<(usize, usize), StoreError> {
-    let plan = statements(&rows);
+) -> Result<(usize, usize), EngineError> {
+    let plan = statements(&rows)?;
     let stored: usize = plan.iter().map(|s| s.rows).sum();
     let sent = plan.len() + 2;
     // The work owns what it binds, so it holds no borrow across its awaits and a retry runs only the inserts again.
@@ -114,12 +119,32 @@ pub async fn store(
         .write(&account(), async move |tx| {
             begin_operation(tx, design, turn, "import", &summary).await?;
             for statement in &plan {
-                tx.execute(statement.sql.as_str(), &(statement.params)(&rows)).await?;
+                tx.execute(statement.sql.as_str(), &(statement.params)(&rows))
+                    .await
+                    .map_err(|e| naming(StoreError::from(e), statement.table))?;
             }
             Ok(())
         })
         .await?;
     Ok((stored, sent))
+}
+
+/// A refusal of the store with the table it was storing named first; its code is kept, so a collision is still retried.
+fn naming(error: StoreError, table: &str) -> StoreError {
+    match error {
+        StoreError::Refused {
+            code,
+            message,
+            constraint,
+            detail,
+        } => StoreError::Refused {
+            code,
+            message: format!("storing {table}: {message}"),
+            constraint,
+            detail,
+        },
+        other => other,
+    }
 }
 
 /// The host of a source address, for the operation's summary: what follows the `@`, or the address without its scheme.
@@ -174,15 +199,26 @@ mod tests {
     #[test]
     fn a_design_of_any_size_costs_at_most_its_tables_and_two_statements() {
         let rows = some_rows();
-        let plan = statements(&rows);
+        let plan = statements(&rows).unwrap();
         assert_eq!(plan.len(), 1, "only the table with rows is sent");
         assert_eq!(plan[0].table, "cortex.namespaces");
         assert_eq!(plan[0].rows, 3);
         assert_eq!((plan[0].params)(&rows).len(), 6);
-        assert_eq!(statement_count(&rows), 3);
-        assert!(statement_count(&Rows::default()) == 2);
+        assert_eq!(statement_count(&rows).unwrap(), 3);
+        assert_eq!(statement_count(&Rows::default()).unwrap(), 2);
         // Never more than the 32 tables and the operation's two.
-        assert!(statement_count(&rows) <= 32 + 2);
+        assert!(statement_count(&rows).unwrap() <= 32 + 2);
+    }
+
+    #[test]
+    fn a_table_built_unevenly_is_an_error_naming_it_never_padded_with_nulls() {
+        let mut rows = some_rows();
+        rows.namespaces.comment.pop();
+        let error = statements(&rows).err().expect("an error").to_string();
+        assert!(
+            error.contains("cortex.namespaces") && error.contains("comment"),
+            "{error}"
+        );
     }
 
     fn env(name: &str) -> String {
@@ -236,7 +272,7 @@ mod tests {
         )
         .await
         .expect("the rows are stored");
-        assert_eq!(statement_count(&rows), sent);
+        assert_eq!(statement_count(&rows).unwrap(), sent);
         assert!(sent <= 32 + 2, "{sent} statements");
         assert!(sent < 300, "not a statement for each object: {sent}");
         assert_eq!(stored, rows.namespaces.len() + rows.databases.len() + 4 * 300);
@@ -271,7 +307,7 @@ mod tests {
         rows.objects.position.push(1);
         rows.objects.comment.push(None);
         rows.objects.notes.push(None);
-        let tables: Vec<_> = statements(&rows).iter().map(|s| s.table).collect();
+        let tables: Vec<_> = statements(&rows).unwrap().iter().map(|s| s.table).collect();
         assert_eq!(tables, ["cortex.namespaces", "cortex.objects"]);
     }
 

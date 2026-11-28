@@ -4366,7 +4366,7 @@ COMMENT ON COLUMN engine_mysql.tables.insert_method IS 'a MERGE table''s INSERT_
 -- Name: COLUMN tables.connection; Type: COMMENT; Schema: engine_mysql; Owner: engine_mysql_owner
 --
 
-COMMENT ON COLUMN engine_mysql.tables.connection IS 'a FEDERATED table''s CONNECTION, by server name only: a connection string is never kept, it may carry a password';
+COMMENT ON COLUMN engine_mysql.tables.connection IS 'a FEDERATED table''s CONNECTION through a server: its name, and the remote table where named (server/table); a connection string is never kept, it may carry a password';
 
 
 --
