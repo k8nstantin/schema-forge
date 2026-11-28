@@ -3,3 +3,6 @@
 //! catalogs, stores what it read as a design's rows and loads them back, and writes a design as SQL.
 
 pub mod catalog;
+pub mod keys;
+pub mod read;
+pub mod show;

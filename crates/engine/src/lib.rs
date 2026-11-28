@@ -107,8 +107,9 @@ pub trait Engine: Send + Sync {
     fn namespace(&self) -> &'static str;
 
     /// Reads what a live server is, before a design of it exists: the version and flavor to make the design for. A
-    /// version the engine does not declare is refused, naming the server's version and the declared ones.
-    async fn probe(&self, source: &Source) -> Result<Probe, EngineError>;
+    /// version the engine does not declare is refused, naming the server's version and the declared ones (read from
+    /// `cortex.engine_versions` in the store, which is why the store is given).
+    async fn probe(&self, store: &Store, source: &Source) -> Result<Probe, EngineError>;
 
     /// Reads the server first, holding no transaction in the store, then writes every row in one operation of the
     /// given open turn, as the plugin's own account, through the store's write and its operation.
@@ -176,7 +177,7 @@ mod tests {
         fn namespace(&self) -> &'static str {
             "engine_idle"
         }
-        async fn probe(&self, _: &Source) -> Result<Probe, EngineError> {
+        async fn probe(&self, _: &Store, _: &Source) -> Result<Probe, EngineError> {
             Err(EngineError::Unsupported("idle".into()))
         }
         async fn import(&self, _: &Store, _: &Source, _: Uuid, _: Uuid) -> Result<ImportReport, EngineError> {
