@@ -3,6 +3,7 @@
 //! table that has rows, parents before children. The closure builds nothing, so a retry after a collision runs only the
 //! inserts again.
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use schema_forge_engine::{EngineError, ImportReport, Source};
@@ -25,13 +26,13 @@ pub fn account() -> Account {
 }
 
 /// One statement to send: a table's rows, bound as arrays.
-pub struct Statement<'a> {
+pub struct Statement {
     /// The table, schema-qualified.
     pub table: &'static str,
     /// The `INSERT ... SELECT ... FROM unnest(...)`.
     pub sql: String,
-    /// The table's vectors, in the statement's order.
-    pub params: Vec<&'a (dyn ToSql + Sync)>,
+    /// The table's vectors of the rows, in the statement's order, bound as the statement's parameters.
+    pub params: for<'r> fn(&'r Rows) -> Vec<&'r (dyn ToSql + Sync)>,
     /// How many rows the statement stores.
     pub rows: usize,
 }
@@ -39,7 +40,7 @@ pub struct Statement<'a> {
 /// Every table that has rows, in the order they are stored: the cortex's parents before their children, then the
 /// engine's own tables.
 #[must_use]
-pub fn statements(rows: &Rows) -> Vec<Statement<'_>> {
+pub fn statements(rows: &Rows) -> Vec<Statement> {
     let mut out = Vec::new();
     macro_rules! in_order {
         ($($field:ident: $table:ty),+ $(,)?) => { $(
@@ -47,7 +48,7 @@ pub fn statements(rows: &Rows) -> Vec<Statement<'_>> {
                 out.push(Statement {
                     table: <$table>::TABLE,
                     sql: <$table>::insert_sql(),
-                    params: rows.$field.params(),
+                    params: |rows| rows.$field.params(),
                     rows: rows.$field.len(),
                 });
             }
@@ -100,19 +101,20 @@ pub fn statement_count(rows: &Rows) -> usize {
 /// Stores every row in one operation of the open turn, as the plugin's account. Returns how many rows and statements.
 pub async fn store(
     store: &Store,
-    rows: &Rows,
+    rows: Arc<Rows>,
     design: Uuid,
     turn: Uuid,
-    summary: &str,
+    summary: String,
 ) -> Result<(usize, usize), StoreError> {
-    let plan = statements(rows);
+    let plan = statements(&rows);
     let stored: usize = plan.iter().map(|s| s.rows).sum();
     let sent = plan.len() + 2;
+    // The work owns what it binds, so it holds no borrow across its awaits and a retry runs only the inserts again.
     store
-        .write(&account(), async |tx| {
-            begin_operation(tx, design, turn, "import", summary).await?;
+        .write(&account(), async move |tx| {
+            begin_operation(tx, design, turn, "import", &summary).await?;
             for statement in &plan {
-                tx.execute(statement.sql.as_str(), &statement.params).await?;
+                tx.execute(statement.sql.as_str(), &(statement.params)(&rows)).await?;
             }
             Ok(())
         })
@@ -134,15 +136,16 @@ pub async fn import(store_to: &Store, source: &Source, design: Uuid, turn: Uuid)
     // The pool is closed whatever the read said.
     let _ = pool.disconnect().await;
     let snap = read?;
-    let rows = build(&snap, design)?;
+    let rows = Arc::new(build(&snap, design)?);
     let read_took = started.elapsed();
     let summary = format!("imported {} from {}", snap.identity.full, host_of(&source.url));
     let began = Instant::now();
-    let (stored, sent) = store(store_to, &rows, design, turn, &summary).await?;
+    let objects = rows.objects.len();
+    let (stored, sent) = store(store_to, rows, design, turn, summary).await?;
     Ok(ImportReport {
         version: snap.identity.probe.version.clone(),
         flavor: snap.identity.probe.flavor.clone(),
-        objects: rows.objects.len(),
+        objects,
         rows: stored,
         statements: sent,
         read: read_took,
@@ -175,7 +178,7 @@ mod tests {
         assert_eq!(plan.len(), 1, "only the table with rows is sent");
         assert_eq!(plan[0].table, "cortex.namespaces");
         assert_eq!(plan[0].rows, 3);
-        assert_eq!(plan[0].params.len(), 6);
+        assert_eq!((plan[0].params)(&rows).len(), 6);
         assert_eq!(statement_count(&rows), 3);
         assert!(statement_count(&Rows::default()) == 2);
         // Never more than the 32 tables and the operation's two.
