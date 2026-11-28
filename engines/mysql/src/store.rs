@@ -185,6 +185,78 @@ mod tests {
         assert!(statement_count(&rows) <= 32 + 2);
     }
 
+    fn env(name: &str) -> String {
+        std::env::var(name).unwrap_or_else(|_| panic!("{name} is not set: run python3 tools/app/all.py"))
+    }
+
+    /// Against the store `tools/app/all.py` makes: an import of 300 tables is a handful of statements, and the rows
+    /// are in the design afterwards.
+    #[tokio::test]
+    async fn an_import_is_at_most_its_tables_plus_two_statements_however_many_objects() {
+        use schema_forge_core::{Cortex, NewDesign, TurnKind};
+        use schema_forge_store::{Accounts, Endpoint};
+
+        use crate::sql::tests::Fixture;
+
+        let endpoint = Endpoint::new(env("SF_TEST_HOST"), env("SF_TEST_PORT").parse().expect("SF_TEST_PORT"));
+        let accounts = Accounts::read(std::path::Path::new(&env("SF_TEST_ACCOUNTS"))).expect("the accounts file");
+        let cortex = Cortex::new(Store::new(endpoint, accounts));
+        let design = cortex
+            .create_design(&NewDesign {
+                name: format!("t_{}", Uuid::now_v7().simple()),
+                engine: "mysql".into(),
+                version: "8.0".into(),
+                flavor: "mysql".into(),
+                comment: None,
+            })
+            .await
+            .expect("a design");
+        let turn = cortex
+            .open_turn(
+                &Account::Service,
+                design.id,
+                design.main,
+                TurnKind::Import,
+                "test",
+                None,
+            )
+            .await
+            .expect("a turn");
+        let mut fixture = Fixture::of(design.id.0);
+        for n in 0..300 {
+            fixture.table(&format!("t{n}"));
+        }
+        let rows = Arc::new(fixture.rows);
+        let (stored, sent) = store(
+            cortex.store(),
+            Arc::clone(&rows),
+            design.id.0,
+            turn.id.0,
+            "imported 8.0 from test".into(),
+        )
+        .await
+        .expect("the rows are stored");
+        assert_eq!(statement_count(&rows), sent);
+        assert!(sent <= 32 + 2, "{sent} statements");
+        assert!(sent < 300, "not a statement for each object: {sent}");
+        assert_eq!(stored, rows.namespaces.len() + rows.databases.len() + 4 * 300);
+        let objects: i64 = cortex
+            .store()
+            .read(&account(), async |tx| {
+                Ok(tx
+                    .query_one("SELECT count(*) FROM cortex.objects WHERE design = $1", &[&design.id.0])
+                    .await?
+                    .get(0))
+            })
+            .await
+            .expect("a read");
+        assert_eq!(objects, 300);
+        cortex
+            .commit(&Account::Service, &turn, None)
+            .await
+            .expect("the turn commits");
+    }
+
     #[test]
     fn parents_are_stored_before_children() {
         let mut rows = some_rows();

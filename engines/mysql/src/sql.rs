@@ -1250,21 +1250,26 @@ impl<'a> Writer<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::load::Maps;
 
-    struct Fixture {
-        rows: Rows,
-        design: Uuid,
+    /// A design built in a test: a server, a database `shop`, and what a test adds to it.
+    pub(crate) struct Fixture {
+        pub(crate) rows: Rows,
+        pub(crate) design: Uuid,
         database: Uuid,
         next: i32,
     }
 
     impl Fixture {
-        fn new() -> Fixture {
+        pub(crate) fn new() -> Fixture {
+            Fixture::of(Uuid::now_v7())
+        }
+
+        /// The same, for a design that exists in a store.
+        pub(crate) fn of(design: Uuid) -> Fixture {
             let mut rows = Rows::default();
-            let design = Uuid::now_v7();
             let server = Uuid::now_v7();
             let database = Uuid::now_v7();
             for (id, parent, name, position) in [(server, None, "server", 1), (database, Some(server), "shop", 1)] {
@@ -1366,7 +1371,7 @@ mod tests {
             t.database_collation.push("utf8mb4_0900_ai_ci".to_string());
         }
 
-        fn table(&mut self, name: &str) -> Uuid {
+        pub(crate) fn table(&mut self, name: &str) -> Uuid {
             let id = self.object("table", name, None);
             let c = Uuid::now_v7();
             let t = &mut self.rows.columns;

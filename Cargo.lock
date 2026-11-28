@@ -1352,9 +1352,14 @@ name = "schema-forge"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "clap",
+ "schema-forge-core",
+ "schema-forge-engine",
+ "schema-forge-engine-mysql",
  "schema-forge-store",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -1391,6 +1396,7 @@ dependencies = [
  "futures-util",
  "mysql_async",
  "regex",
+ "schema-forge-core",
  "schema-forge-engine",
  "schema-forge-store",
  "thiserror",
