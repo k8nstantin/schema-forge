@@ -50,4 +50,52 @@
     <seen>PRs #161 and #162 (the architecture page); the operator: "don't you ever disappear without telling me".</seen>
     <does>Before every step, one line: what it is and how long it takes; after it, the result. Do what was asked, nothing more; work found on the way is reported and offered, never started unasked. Name every issue and pull request by number and short description, never a bare number.</does>
   </lesson>
+
+  <lesson id="design-against-design" date="2026-11-28">
+    <found>The first Rust build's round trip compared design A with design B, read back from the servers. A fact the import lost was missing from both, so the designs compared equal while the servers differed: seven green round trips hid partition options, named subpartitions, a FEDERATED table's remote table, a bare PASSWORD REQUIRE CURRENT and doubled backslashes, and a subpartition's comment moved onto its partition (found the moment the servers' DDL was compared).</found>
+    <seen>PR #169 (SF-156, the Engine trait and engine_mysql in Rust), its review of 2026-11-28; the owner: "correctness on the other hand is absolute the entire point".</seen>
+    <does>Every engine's round trip compares the servers themselves as well as the designs: each object's DDL as the server writes it (MySQL: SHOW CREATE and SHOW GRANTS) on the source and on the server the written SQL made, identical (decision proof-server-against-server; rules nothing-lost).</does>
+  </lesson>
+
+  <lesson id="samples-decide-proof" date="2026-11-28">
+    <found>Every blocking bug of the first Rust build was in a feature no sample used: a read-only database holding a view, a view calling a function, a check or expression default holding a string, a binary default, bare partition names, a MERGE table across databases, a unique key named like a foreign key, a program under NO_BACKSLASH_ESCAPES, accounts with password hashes. A round trip proves only what its samples contain.</found>
+    <seen>PR #169's review; tools/mysql/samples/found.sql and found-8.0.sql now hold each case.</seen>
+    <does>A task's mapping names a sample for every fact it maps and every quirk it handles; a fact no sample exercises is listed in the PR as unproven. A bug found is first a sample, then a fix.</does>
+  </lesson>
+
+  <lesson id="catalog-is-not-sql" date="2026-11-28">
+    <found>MySQL 8.0's catalog escapes the quotes of CHECK_CLAUSE and of an expression default (_utf8mb4\'a\'), gives a binary default as hex (0x6162), and SHOW CREATE TABLE writes partition names without backticks; information_schema.PARTITIONS gives each subpartition's own comment; 5.7 prints a grant's column list in its own hash order. The parsers' tests passed on SHOW CREATE text written from memory, with backticks the server never writes.</found>
+    <seen>PR #169's review, each confirmed on a live 8.0 and 5.7 with tools/mysql/show.py.</seen>
+    <does>Every format the code reads is first seen on a live server of each version (tools/mysql/show.py), and every parser test's fixture is that server's text, pasted as it came, with the server and date it came from. A DDL fragment the catalog alters is taken from the server's own DDL.</does>
+  </lesson>
+
+  <lesson id="driver-resets-the-session" date="2026-11-28">
+    <found>mysql_async's pool resets each connection when it is returned (reset_connection, on by default), which clears the session. The read's settings (read only, the lock wait, the statement cap, sql_mode, utf8mb4) were set with init, run once per connection, so they held only for each connection's first query; found because a round trip's result changed between runs.</found>
+    <seen>PR #169, commit d4909e0; mysql_async 0.37.1 src/opts/mod.rs (init runs once, setup after every reset).</seen>
+    <does>Session settings go where the driver re-applies them after every reset (mysql_async: setup), and a test proves a setting holds on a connection's second use. Every engine's task names its driver's behaviour, read from the driver's source.</does>
+  </lesson>
+
+  <lesson id="exact-means-exact" date="2026-11-28">
+    <found>The spec said an account is kept "never its password or hash", so every account was written back with an empty password: open to anyone who could reach the server. SchemaForge is a tool that can be used for migration; a migration that changes how an account signs in is not one.</found>
+    <seen>PR #169's review; the owner: "we need to export exact as it is", "the same way as mysqldump would do if I use it for migration".</seen>
+    <does>What is read lands in the store and is written back exactly as the server holds it, account hashes among it (engine_mysql.accounts.auth_string), kept in the database, never in git (decision exact-migration). A gap in the schema is closed by a schema change in a design session, never by dropping or reducing what the server holds.</does>
+  </lesson>
+
+  <lesson id="order-by-real-dependencies" date="2026-11-28">
+    <found>The task file fixed the writer's order as read-only databases before views and views before routines: a view calling a stored function, or a view or routine in a read-only database, could not load. The order was written as a list, not from what MySQL checks when each statement runs.</found>
+    <seen>PR #169's review; specs/tasks/SF-156-engine-mysql.xml step 9, version 1.</seen>
+    <does>A task's writing order is derived from what the server checks at CREATE time (MySQL: CREATE VIEW checks the functions it calls; a routine's body is checked when it runs; a read-only database refuses every CREATE), and a sample exercises each dependency.</does>
+  </lesson>
+
+  <lesson id="exit-code-hidden" date="2026-11-28">
+    <found>A commit was made and pushed while tools/check.py had failed: the command piped the check into tail, whose success hid the check's exit code.</found>
+    <seen>PR #169, commit d4909e0 (the check passed again on the committed tree, but the commit was not proven when it was made).</seen>
+    <does>A gate's exit code is read on its own, never through a pipe, before anything is committed; the PR carries each gate's exit.</does>
+  </lesson>
+
+  <lesson id="agent-without-tools" date="2026-11-28">
+    <found>The build session runs tools only (no raw docker, cargo, sed or heredocs), and the agent could not list the containers, reach a server already running, or pass a server option a schema needs, without first writing a tool; it lost time and asked the owner for what a tool should have given.</found>
+    <seen>PR #169, 2026-11-28; tools/local/containers.py and tools/app/mysql.py's --option and --source were written for it.</seen>
+    <does>A task file names the tools its agent runs and what each does (its tools element); a tool a step needs and the repository lacks is part of the task's owns, written before the step that needs it.</does>
+  </lesson>
 </lessons>

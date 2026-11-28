@@ -6,7 +6,7 @@ CREATE TABLE engine_mysql.routine_parameters (
   position  INTEGER NOT NULL CHECK (position >= 1),                                                          -- its place: 1 first
   mode      TEXT CHECK (mode IN ('IN', 'OUT', 'INOUT')),                                                     -- IN, OUT or INOUT, for a procedure's; NULL for a function's
   name      TEXT NOT NULL CHECK (length(name) >= 1),                                                         -- as written
-  type      TEXT NOT NULL CHECK (length(type) >= 1),                                                         -- its type as written (varchar(64) CHARSET utf8mb4)
+  type      TEXT NOT NULL CHECK (length(type) >= 1),                                                         -- its type as PARAMETERS.DTD_IDENTIFIER gives it (varchar(64)); the routine's parameter list as written is engine_mysql.routines.parameter_list
   UNIQUE (design, id),
   UNIQUE (routine, position) DEFERRABLE INITIALLY DEFERRED,
   FOREIGN KEY (design, routine) REFERENCES engine_mysql.routines (design, id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
