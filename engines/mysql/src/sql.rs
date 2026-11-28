@@ -672,10 +672,12 @@ impl<'a> Writer<'a> {
         let listed = self.d.maps.partitions_of.get(&t.id[at]).map_or(&[][..], Vec::as_slice);
         if let Some(count) = t.partition_count[at] {
             s.push_str(&format!("\nPARTITIONS {count}"));
-            if let Some(sub) = t.subpartition_count[at] {
-                s.push_str(&format!("\nSUBPARTITIONS {sub}"));
-            }
-        } else {
+        }
+        // Subpartitions counted rather than listed are counted whether or not the partitions are listed.
+        if let Some(sub) = t.subpartition_count[at] {
+            s.push_str(&format!("\nSUBPARTITIONS {sub}"));
+        }
+        if t.partition_count[at].is_none() {
             let p = &self.r.partitions;
             let mut subs: HashMap<Uuid, Vec<usize>> = HashMap::new();
             for &i in listed {
