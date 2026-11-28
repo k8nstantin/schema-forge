@@ -8,3 +8,4 @@ pub mod keys;
 pub mod read;
 pub mod rows;
 pub mod show;
+pub mod store;
