@@ -55,6 +55,9 @@ jobs:
       - run: docker pull -q postgres:18-alpine
       # format, lint, licences and advisories, build; a store in a container; every test against it; schema-forge check
       - run: python3 tools/app/all.py
+      # the speed (SF-156 gate speed): a generated schema of 2,608 objects on MySQL 8.0, imported in under 30 seconds and
+      # written in under 5 on this runner; the server image is pulled by the tool
+      - run: python3 tools/app/mysql.py --server mysql:8.0 --generated 2608 --import-limit 30 --write-limit 5
 
   engine-mysql:
     runs-on: ubuntu-latest

@@ -58,9 +58,17 @@ WRITE_LIMIT = float(option("--write-limit", "0"))
 # --- the servers --------------------------------------------------------------------------------------------------------------
 
 
+def image_of(server):
+    """The image of a server named as the task names it: percona:8.0 is Docker Hub's percona/percona-server:8.0."""
+    return "percona/percona-server:" + server.split(":")[1] if server.startswith("percona:") else server
+
+
 class Published(MySQL):
     """A MySQL or Percona that also listens on a free port of 127.0.0.1 (self.port), where the binary signs in as root
     (the image allows an empty root password from any host)."""
+
+    def __init__(self, server, name):
+        super().__init__(image_of(server), name)
 
     def __enter__(self):
         r = docker("run", "-d", "--name", self.name, "-p", "127.0.0.1::3306", "-e", "MYSQL_ALLOW_EMPTY_PASSWORD=1", "-e", "MYSQL_ROOT_HOST=%",
