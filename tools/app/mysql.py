@@ -14,7 +14,10 @@
   7. the ImportReport of A and the time of the write are printed
 
   python3 tools/app/mysql.py --server mysql:5.7|mysql:8.0|mysql:8.4|mysql:9.7|percona:5.7|percona:8.0|percona:8.4
-                             [--private FILE] [--generated N [--import-limit S] [--write-limit S]]
+                             [--private FILE] [--generated N [--import-limit S] [--write-limit S]] [--option OPT ...]
+                             [--source mysql://user@host:port [--password-file FILE]]
+  --source URL     read a server that is already running in place of A (the owner's production schema in its container),
+                   its password from FILE (mode 600, never committed); B is a fresh server of --server; counts only
 
   --private FILE   load the owner's private schema (never committed) in place of the samples: counts only, never a name
   --generated N    write into A a schema of N objects made here (tables with columns, keys, foreign keys and indexes,
@@ -53,6 +56,11 @@ PRIVATE = option("--private")
 GENERATED = int(option("--generated", "0"))
 IMPORT_LIMIT = float(option("--import-limit", "0"))
 WRITE_LIMIT = float(option("--write-limit", "0"))
+# a server option a schema was written for (--option --innodb-strict-mode=OFF), given to A and B alike, repeated as needed
+OPTIONS = [ARGS[i + 1] for i, a in enumerate(ARGS) if a == "--option"]
+# a server already running in place of A (the owner's production schema in its long-lived container): counts only
+SOURCE = option("--source")
+PASSWORD_FILE = option("--password-file")
 
 
 # --- the servers --------------------------------------------------------------------------------------------------------------
@@ -68,7 +76,7 @@ class Published(MySQL):
     (the image allows an empty root password from any host)."""
 
     def __init__(self, server, name):
-        super().__init__(image_of(server), name)
+        super().__init__(image_of(server), name, options=OPTIONS)
 
     def __enter__(self):
         r = docker("run", "-d", "--name", self.name, "-p", "127.0.0.1::3306", "-e", "MYSQL_ALLOW_EMPTY_PASSWORD=1", "-e", "MYSQL_ROOT_HOST=%",
@@ -158,18 +166,22 @@ class Binary:
     def __init__(self, path, store, accounts_file):
         self.path, self.base = path, ["--host", "127.0.0.1", "--port", str(store.port), "--accounts-file", accounts_file]
 
-    def run(self, *args):
+    def run(self, *args, env=None):
         """Runs the binary; returns (stdout, seconds). A failure is Failed with what the binary said."""
         start = time.monotonic()
-        r = subprocess.run([self.path, *args, *self.base], capture_output=True, text=True, cwd=ROOT)
+        r = subprocess.run([self.path, *args, *self.base], capture_output=True, text=True, cwd=ROOT, env=dict(os.environ, **(env or {})))
         took = time.monotonic() - start
         if r.returncode:
             raise Failed(f"schema-forge {args[0]}: {(r.stdout + r.stderr).strip()[:600]}")
         return r.stdout, took
 
     def import_from(self, server, design):
-        out, took = self.run("import", "--engine", "mysql", "--source", f"mysql://root@127.0.0.1:{server.port}", "--design", design)
-        return out, took
+        return self.run("import", "--engine", "mysql", "--source", f"mysql://root@127.0.0.1:{server.port}", "--design", design)
+
+    def import_url(self, url, design, password):
+        """Imports a server that is already running; its password reaches the binary only through the environment."""
+        return self.run("import", "--engine", "mysql", "--source", url, "--design", design, "--password-env", "SF_SOURCE_PASSWORD",
+                        env={"SF_SOURCE_PASSWORD": password})
 
     def write(self, design):
         return self.run("write", "--design", design)
@@ -345,28 +357,35 @@ def main():
     if not shutil.which("cargo") or not shutil.which("docker"):
         print("FAIL  cargo and docker are both needed")
         return 1
-    release = bool(GENERATED or PRIVATE)
+    release = bool(GENERATED or PRIVATE or SOURCE)
     binary_path = build_binary(release)
-    what = "a private schema" if PRIVATE else (f"a generated schema of {GENERATED} objects" if GENERATED else "the every-object samples")
+    what = "a private schema" if PRIVATE or SOURCE else (f"a generated schema of {GENERATED} objects" if GENERATED else "the every-object samples")
     print(f"== {SERVER}: {what}", flush=True)
     store, folder, accounts = install_store()
     try:
         binary = Binary(binary_path, store, accounts)
-        with Published(SERVER, name="sf-rt-a") as a:
-            if PRIVATE:
-                a.load(PRIVATE)
-            elif GENERATED:
-                path = os.path.join(folder, "generated.sql")
-                made = generated_schema(GENERATED, path)
-                print(f"  loading {made} generated objects into A ...", flush=True)
-                a.load(path)
-            else:
-                for f in sample_files(SERVER):
-                    a.load(f)
-            out, took_import = binary.import_from(a, "rt_a")
-            print(f"  import from A ({took_import:.2f} s wall):\n{report_lines(out)}")
+        if SOURCE:
+            password = open(os.path.expanduser(PASSWORD_FILE)).read().strip() if PASSWORD_FILE else ""
+            out, took_import = binary.import_url(SOURCE, "rt_a", password)
+            print(f"  import from the running server ({took_import:.2f} s wall):\n{report_lines(out)}")
             sql, took_write = binary.write("rt_a")
             print(f"  write of the design ({took_write:.2f} s wall, {len(sql.splitlines())} lines of SQL)")
+        else:
+            with Published(SERVER, name="sf-rt-a") as a:
+                if PRIVATE:
+                    a.load(PRIVATE)
+                elif GENERATED:
+                    path = os.path.join(folder, "generated.sql")
+                    made = generated_schema(GENERATED, path)
+                    print(f"  loading {made} generated objects into A ...", flush=True)
+                    a.load(path)
+                else:
+                    for f in sample_files(SERVER):
+                        a.load(f)
+                out, took_import = binary.import_from(a, "rt_a")
+                print(f"  import from A ({took_import:.2f} s wall):\n{report_lines(out)}")
+                sql, took_write = binary.write("rt_a")
+                print(f"  write of the design ({took_write:.2f} s wall, {len(sql.splitlines())} lines of SQL)")
         failed = False
         if GENERATED:
             objects = int(next(l.split()[1] for l in out.splitlines() if l.strip().startswith("objects")))
@@ -381,8 +400,8 @@ def main():
                     print(f"  FAIL  loading the written SQL into B: {e}")
                     return 1
                 _, took_b = binary.import_from(b, "rt_b")
-            differences = compare(read_design(store, design_id(store, "rt_a")), read_design(store, design_id(store, "rt_b")), bool(PRIVATE))
-            for line in never_filled(store, design_id(store, "rt_a")) if not PRIVATE else []:
+            differences = compare(read_design(store, design_id(store, "rt_a")), read_design(store, design_id(store, "rt_b")), bool(PRIVATE or SOURCE))
+            for line in never_filled(store, design_id(store, "rt_a")) if not (PRIVATE or SOURCE) else []:
                 print(line)
             if differences:
                 print(f"FAIL  round trip on {SERVER}: {differences} differences")
