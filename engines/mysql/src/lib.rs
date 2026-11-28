@@ -5,6 +5,7 @@
 pub mod build;
 pub mod catalog;
 pub mod keys;
+pub mod load;
 pub mod read;
 pub mod rows;
 pub mod show;

@@ -3,7 +3,7 @@
 //! any size is as many statements as it has tables. A column the mapping leaves unfilled is not in its struct: the
 //! table's own default fills it.
 
-use schema_forge_store::ToSql;
+use schema_forge_store::{Row, StoreError, ToSql};
 use uuid::Uuid;
 
 /// The cast a column declares, or none.
@@ -80,6 +80,34 @@ macro_rules! tables {
             #[must_use]
             pub fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
                 vec![ $( &self.$col as &(dyn ToSql + Sync) ),+ ]
+            }
+
+            /// The one query that loads a design's rows of the table, `$1` the design: a column stored under a cast is
+            /// cast back to the type it is bound as.
+            #[must_use]
+            pub fn select_sql() -> String {
+                let columns: &[(&str, &str, Option<&str>)] = &[ $( (
+                    stringify!($col).trim_start_matches("r#"),
+                    $pg,
+                    cast_of!($($cast)?),
+                ) ),+ ];
+                let selected: Vec<String> = columns
+                    .iter()
+                    .map(|(n, pg, cast)| match cast {
+                        Some(_) => format!("\"{n}\"::{pg} AS \"{n}\""),
+                        None => format!("\"{n}\""),
+                    })
+                    .collect();
+                format!("SELECT {} FROM {} WHERE design = $1 ORDER BY id", selected.join(", "), $table)
+            }
+
+            /// The rows a `select_sql` query gave, as vectors, each column read by its name.
+            pub fn from_rows(rows: &[Row]) -> Result<Self, StoreError> {
+                let mut out = Self::default();
+                for row in rows {
+                    $( out.$col.push(row.try_get::<_, $ty>(stringify!($col).trim_start_matches("r#"))?); )+
+                }
+                Ok(out)
             }
         }
     )+ };
@@ -537,6 +565,17 @@ mod tests {
         );
         assert_eq!(Namespaces::default().params().len(), 6);
         assert!(Namespaces::default().is_empty());
+    }
+
+    #[test]
+    fn one_query_loads_a_designs_rows_of_a_table_with_casts_undone() {
+        assert_eq!(
+            Namespaces::select_sql(),
+            "SELECT \"id\", \"design\", \"parent\", \"name\", \"position\"::int4 AS \"position\", \"comment\" \
+             FROM cortex.namespaces WHERE design = $1 ORDER BY id"
+        );
+        assert!(Accounts::select_sql().contains("\"attributes\"::text AS \"attributes\""));
+        assert!(Dependencies::select_sql().contains("\"as\""));
     }
 
     #[test]
