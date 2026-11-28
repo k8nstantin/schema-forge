@@ -16,6 +16,19 @@ from sf.schema import cortex_sql, script  # noqa: E402
 from sf.store import Store  # noqa: E402
 
 
+def only_what_it_wrote(back, model):
+    """The model read back, without the columns the prototype never writes that the store holds as NULL: the schema
+    grows (engine_mysql.accounts.auth_string, which the Rust engine fills), the prototype does not, and reads every
+    column. A column the prototype wrote, or one holding a value, is still compared."""
+    for key, obj in back.get("objects", {}).items():
+        written = model.get("objects", {}).get(key, {}).get("details", {})
+        details = obj.get("details")
+        if isinstance(details, dict):
+            for column in [c for c, v in details.items() if v is None and c not in written]:
+                del details[column]
+    return back
+
+
 def round_trip_store(model, image, flavor=None):
     """(the model read back from the store, the number of rows written); a design of the flavor named, or the image's."""
     version = re.search(r":(\d+\.\d+)", image).group(1)
@@ -27,4 +40,4 @@ def round_trip_store(model, image, flavor=None):
         sql, n = rows.insert_sql(model, design)
         plugin_turn(store, design, branch, sql, "engine_mysql_service")
         back = json.loads(store.sql(as_role("engine_mysql_service", rows.select_sql(design) + ";"))[1].strip())
-    return rows.model_from(back), n
+    return only_what_it_wrote(rows.model_from(back), model), n
