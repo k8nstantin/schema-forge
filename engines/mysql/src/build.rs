@@ -205,7 +205,8 @@ impl<'a> Builder<'a> {
     // --- objects -------------------------------------------------------------------------------------------------------------
 
     fn account_kind(&self, show: &UserShow) -> Kind {
-        let made_by_create_role = show.locked && show.password_expire.as_deref() == Some("") && !show.has_password;
+        let made_by_create_role =
+            show.locked && show.password_expire.as_deref() == Some("") && show.auth_string.is_none();
         if !self.five_seven && made_by_create_role {
             Kind::Role
         } else {
@@ -1137,6 +1138,7 @@ impl<'a> Builder<'a> {
             o.user_name.push(name.user.clone());
             o.host.push(name.host.clone());
             o.auth_plugin.push(show.auth_plugin.clone());
+            o.auth_string.push(show.auth_string.clone());
             o.ssl_type.push(Some(show.ssl_type.clone()));
             o.ssl_cipher.push(show.ssl_cipher.clone());
             o.x509_issuer.push(show.x509_issuer.clone());

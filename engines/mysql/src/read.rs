@@ -47,12 +47,15 @@ pub fn connect(source: &Source) -> Result<Pool, EngineError> {
     let connections = source.connections.max(1);
     let constraints = PoolConstraints::new(1, connections)
         .ok_or_else(|| EngineError::Source("the pool of connections is empty".to_string()))?;
-    let init = vec![
+    let session = vec![
         "SET SESSION TRANSACTION READ ONLY".to_string(),
         format!("SET SESSION lock_wait_timeout = {LOCK_WAIT_SECONDS}"),
         format!("SET SESSION max_execution_time = {MAX_EXECUTION_MILLIS}"),
         "SET SESSION sql_mode = ''".to_string(),
         "SET NAMES utf8mb4".to_string(),
+        // 8.0.17 and later write a binary password hash in SHOW CREATE USER as a 0x hex literal, never as raw bytes; the
+        // versioned comment is skipped by older servers, which have no binary hashes
+        "SET @schema_forge_read = 1 /*!80017 , SESSION print_identified_with_as_hex = ON */".to_string(),
     ];
     let builder = OptsBuilder::default()
         .user(Some(user))
@@ -61,7 +64,9 @@ pub fn connect(source: &Source) -> Result<Pool, EngineError> {
         .tcp_port(port)
         .prefer_socket(false)
         .ssl_opts(source.tls.then(SslOpts::default))
-        .init(init)
+        // setup, not init: the pool resets a connection each time it comes back (mysql_async's reset_connection, on by
+        // default), which clears the session; setup runs on every new connection and after every reset, init only once
+        .setup(session)
         .pool_opts(PoolOpts::default().with_constraints(constraints));
     Ok(Pool::new(Opts::from(builder)))
 }

@@ -908,6 +908,9 @@ impl<'a> Writer<'a> {
         }
         self.end = ";";
         self.line("DELIMITER ;");
+        // The programs' own sessions end here: what follows (accounts, their hashes, grants) is read as the script began.
+        self.line("SET NAMES utf8mb4;");
+        self.line("SET sql_mode = 'NO_ENGINE_SUBSTITUTION';");
         Ok(())
     }
 
@@ -1068,6 +1071,18 @@ impl<'a> Writer<'a> {
             let mut s = format!("CREATE USER {who}");
             if let Some(plugin) = &t.auth_plugin[at] {
                 s.push_str(&format!(" IDENTIFIED WITH {}", lit(plugin)));
+            }
+            // The password's hash exactly as the source kept it, so the account signs in as before: a binary hash as the
+            // 0x hex literal the server wrote, any other as a string.
+            if let Some(hash) = &t.auth_string[at] {
+                if t.auth_plugin[at].is_none() {
+                    return Err(lacks(
+                        &self.called(o),
+                        "authentication plugin, which a password's hash needs",
+                    ));
+                }
+                let hex = hash.len() > 2 && hash.starts_with("0x") && hash[2..].chars().all(|c| c.is_ascii_hexdigit());
+                s.push_str(&format!(" AS {}", if hex { hash.clone() } else { lit(hash) }));
             }
             match t.ssl_type[at].as_deref() {
                 Some("SSL") => s.push_str(" REQUIRE SSL"),
@@ -1498,7 +1513,12 @@ pub(crate) mod tests {
         assert!(sql.contains("TRIGGER `second` BEFORE INSERT ON `t` FOR EACH ROW FOLLOWS `first`"));
         assert!(!sql.contains("`first` BEFORE INSERT ON `t` FOR EACH ROW FOLLOWS"));
         assert!(!sql.contains("`after` AFTER INSERT ON `t` FOR EACH ROW FOLLOWS"));
-        assert!(sql.contains("DELIMITER $sf_end$") && sql.trim_end().ends_with("DELIMITER ;"));
+        assert!(sql.contains("DELIMITER $sf_end$"));
+        assert!(
+            sql.trim_end()
+                .ends_with("DELIMITER ;\nSET NAMES utf8mb4;\nSET sql_mode = 'NO_ENGINE_SUBSTITUTION';"),
+            "the programs' sessions end with the delimiter"
+        );
     }
 
     #[test]

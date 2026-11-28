@@ -386,6 +386,7 @@ tables! {
         user_name: String = "text",
         host: String = "text",
         auth_plugin: Option<String> = "text",
+        auth_string: Option<String> = "text",
         ssl_type: Option<String> = "text",
         ssl_cipher: Option<String> = "text",
         x509_issuer: Option<String> = "text",

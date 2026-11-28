@@ -597,8 +597,22 @@ pub struct UserShow {
     pub locked: bool,
     /// `ATTRIBUTE`, as its JSON text.
     pub attributes: Option<String>,
-    /// Whether the account has a password (an `AS` hash): what tells a role from an account.
-    pub has_password: bool,
+    /// `IDENTIFIED WITH ... AS`: the password's hash exactly as the server keeps it, the value of its quoted string or,
+    /// where the hash is binary, the `0x` hex literal the server writes; none for an account without a password.
+    pub auth_string: Option<String>,
+}
+
+/// The hash after `IDENTIFIED WITH 'plugin' AS`: a quoted string's value, or a `0x` hex literal as written.
+fn auth_string(create: &str, masked: &str) -> Option<String> {
+    let keyword = " IDENTIFIED WITH ";
+    let at = masked.find(keyword)? + keyword.len();
+    let (_, after_plugin) = read_string(&create[at..])?;
+    let value = after_plugin.strip_prefix(" AS ")?;
+    if value.starts_with('\'') {
+        return read_string(value).map(|(hash, _)| hash);
+    }
+    let literal: String = value.chars().take_while(char::is_ascii_alphanumeric).collect();
+    (literal.len() > 2 && literal.starts_with("0x")).then_some(literal)
 }
 
 static EXPIRE: LazyLock<Regex> =
@@ -662,7 +676,7 @@ pub fn parse_user(create: &str) -> UserShow {
         password_lock_time: LOCK_TIME.captures(&masked).map(|c| c[1].to_string()),
         locked: masked.contains(" ACCOUNT LOCK"),
         attributes: quoted(" ATTRIBUTE "),
-        has_password: masked.contains(" AS '"),
+        auth_string: auth_string(create, &masked),
     }
 }
 
@@ -781,12 +795,30 @@ mod tests {
         assert_eq!(user.password_expire.as_deref(), Some("INTERVAL 90 DAY"));
         assert_eq!(user.password_history.as_deref(), Some("DEFAULT"));
         assert!(!user.locked);
-        assert!(user.has_password);
+        assert_eq!(user.auth_string.as_deref(), Some("$A$005$abc"));
         assert_eq!(user.attributes.as_deref(), Some("{\"team\": \"shop\"}"));
         let role = parse_user(
             "CREATE USER `reader`@`%` IDENTIFIED WITH 'caching_sha2_password' REQUIRE NONE PASSWORD EXPIRE ACCOUNT LOCK",
         );
-        assert!(role.locked && !role.has_password);
+        assert!(role.locked && role.auth_string.is_none());
         assert_eq!(role.password_expire.as_deref(), Some(""));
+    }
+
+    #[test]
+    fn an_accounts_hash_is_kept_exactly_as_the_server_writes_it() {
+        let native = parse_user(
+            "CREATE USER `old`@`%` IDENTIFIED WITH 'mysql_native_password' AS '*6BB4837EB74329105EE4568DDA7DC67ED2CA2AD9' REQUIRE NONE",
+        );
+        assert_eq!(
+            native.auth_string.as_deref(),
+            Some("*6BB4837EB74329105EE4568DDA7DC67ED2CA2AD9")
+        );
+        let binary = parse_user(
+            "CREATE USER `app`@`%` IDENTIFIED WITH 'caching_sha2_password' AS 0x2441243030350D7A REQUIRE SSL",
+        );
+        assert_eq!(binary.auth_string.as_deref(), Some("0x2441243030350D7A"));
+        // a quote inside the hash is the server's doubled quote, kept as one
+        let quoted = parse_user("CREATE USER `q`@`%` IDENTIFIED WITH 'sha256_password' AS '$5$a''b' REQUIRE NONE");
+        assert_eq!(quoted.auth_string.as_deref(), Some("$5$a'b"));
     }
 }

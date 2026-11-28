@@ -2271,6 +2271,7 @@ CREATE TABLE engine_mysql.accounts (
     user_name text NOT NULL,
     host text NOT NULL,
     auth_plugin text,
+    auth_string text,
     ssl_type text,
     ssl_cipher text,
     x509_issuer text,
@@ -2301,7 +2302,7 @@ ALTER TABLE engine_mysql.accounts OWNER TO engine_mysql_owner;
 -- Name: TABLE accounts; Type: COMMENT; Schema: engine_mysql; Owner: engine_mysql_owner
 --
 
-COMMENT ON TABLE engine_mysql.accounts IS 'an account of the server, or a role (its kind is the cortex object''s: account or role): how it signs in, never its password or hash, and its limits and policies.';
+COMMENT ON TABLE engine_mysql.accounts IS 'an account of the server, or a role (its kind is the cortex object''s: account or role): how it signs in, its password''s hash exactly as the server keeps it (never the password), and its limits and policies.';
 
 
 --
@@ -2336,7 +2337,14 @@ COMMENT ON COLUMN engine_mysql.accounts.host IS 'the host part, as written (%)';
 -- Name: COLUMN accounts.auth_plugin; Type: COMMENT; Schema: engine_mysql; Owner: engine_mysql_owner
 --
 
-COMMENT ON COLUMN engine_mysql.accounts.auth_plugin IS 'IDENTIFIED WITH, the plugin; never the password or its hash';
+COMMENT ON COLUMN engine_mysql.accounts.auth_plugin IS 'IDENTIFIED WITH, the plugin';
+
+
+--
+-- Name: COLUMN accounts.auth_string; Type: COMMENT; Schema: engine_mysql; Owner: engine_mysql_owner
+--
+
+COMMENT ON COLUMN engine_mysql.accounts.auth_string IS 'IDENTIFIED WITH ... AS, the password''s hash exactly as the server keeps it (a 0x hex literal where it is binary), written back so the account signs in as before; NULL for an account without a password; never the password itself, which no server gives';
 
 
 --
