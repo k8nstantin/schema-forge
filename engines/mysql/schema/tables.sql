@@ -27,7 +27,7 @@ CREATE TABLE engine_mysql.tables (
   secondary_engine            TEXT,                                                                                            -- SECONDARY_ENGINE, where written
   secondary_engine_attribute  TEXT,                                                                                            -- SECONDARY_ENGINE_ATTRIBUTE, where written
   insert_method               TEXT CHECK (insert_method IN ('NO', 'FIRST', 'LAST')),                                           -- a MERGE table's INSERT_METHOD; its tables are its dependencies, in order
-  connection                  TEXT,                                                                                            -- a FEDERATED table's CONNECTION, by server name only: a connection string is never kept, it may carry a password
+  connection                  TEXT,                                                                                            -- a FEDERATED table's CONNECTION through a server: its name, and the remote table where named (server/table); a connection string is never kept, it may carry a password
   flavor_options              JSONB NOT NULL DEFAULT '{}' CHECK (jsonb_typeof(flavor_options) = 'object'),                     -- what only its flavor says of it, by the keys its flavor declares
   UNIQUE (design, id),
   CHECK (insert_method IS NULL OR engine = 'MRG_MYISAM'),

@@ -1,10 +1,11 @@
--- engine_mysql.accounts: an account of the server, or a role (its kind is the cortex object's: account or role): how it signs in, never its password or hash, and its limits and policies.
+-- engine_mysql.accounts: an account of the server, or a role (its kind is the cortex object's: account or role): how it signs in, its password's hash exactly as the server keeps it (never the password), and its limits and policies.
 CREATE TABLE engine_mysql.accounts (
   id                        UUID NOT NULL PRIMARY KEY,                                                                       -- its cortex object; its name is user@host
   design                    UUID NOT NULL REFERENCES cortex.designs (id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,    -- the design
   user_name                 TEXT NOT NULL,                                                                                   -- the user part, as written (may be empty: the anonymous account)
   host                      TEXT NOT NULL,                                                                                   -- the host part, as written (%)
-  auth_plugin               TEXT,                                                                                            -- IDENTIFIED WITH, the plugin; never the password or its hash
+  auth_plugin               TEXT,                                                                                            -- IDENTIFIED WITH, the plugin
+  auth_string               TEXT,                                                                                            -- IDENTIFIED WITH ... AS, the password's hash exactly as the server keeps it (a 0x hex literal where it is binary), written back so the account signs in as before; NULL for an account without a password; never the password itself, which no server gives
   ssl_type                  TEXT CHECK (ssl_type IN ('NONE', 'SSL', 'X509', 'SPECIFIED')),                                   -- REQUIRE
   ssl_cipher                TEXT,                                                                                            -- REQUIRE CIPHER, where written
   x509_issuer               TEXT,                                                                                            -- REQUIRE ISSUER, where written

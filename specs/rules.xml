@@ -42,8 +42,8 @@
 
   <rule id="nothing-lost">
     <from>docs/engines.xml; the MySQL engine as merged</from>
-    <text>A schema written into the store and read back is the same schema: every part, every value, every order. What the model does not describe is kept exactly as written and written back in its place. Nothing is dropped, truncated, defaulted or summarised on the way in or out.</text>
-    <breach>the kit's round trip of every sample through an engine's tables; the store's round trip of every sample of every engine</breach>
+    <text>A schema written into the store and read back is the same schema: every part, every value, every order. What the model does not describe is kept exactly as written and written back in its place. Nothing is dropped, truncated, defaulted or summarised on the way in or out. A schema read from a server and written back makes the same server: proven against the servers themselves, never only against what was stored.</text>
+    <breach>the kit's round trip of every sample through an engine's tables; the store's round trip of every sample of every engine; every engine's round trip comparing each object's DDL as the source server writes it with the server the written SQL made (lesson design-against-design)</breach>
   </rule>
 
   <rule id="log-never-edited">
