@@ -248,7 +248,8 @@ def main():
             run("cortex_service", f"UPDATE cortex.turns SET state = '{'committed' if rc == 0 else 'rejected'}', ended_at = now() WHERE id = '{t4}';")
             check(rc == 0, f"the MySQL 8.0 every-object sample stored by engine_mysql_service in the app's turn ({n} rows)", err)
             if rc == 0:
-                back = rows.model_from(json.loads(value(rows.select_sql(rt) + ";", "engine_mysql_service")))
+                from stored import only_what_it_wrote  # noqa: E402
+                back = only_what_it_wrote(rows.model_from(json.loads(value(rows.select_sql(rt) + ";", "engine_mysql_service"))), model)
                 diff = roundtrip.differences(model, back)
                 check(not diff, "read back from the installed database as engine_mysql_service: identical", "; ".join(diff[:3]))
     finally:

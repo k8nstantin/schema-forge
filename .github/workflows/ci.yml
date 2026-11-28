@@ -55,6 +55,28 @@ jobs:
       - run: docker pull -q postgres:18-alpine
       # format, lint, licences and advisories, build; a store in a container; every test against it; schema-forge check
       - run: python3 tools/app/all.py
+      # the speed (SF-156 gate speed): a generated schema of 2,608 objects on MySQL 8.0, imported in under 30 seconds and
+      # written in under 5 on this runner; the server image is pulled by the tool
+      - run: python3 tools/app/mysql.py --server mysql:8.0 --generated 2608 --import-limit 30 --write-limit 5
+
+  # the round trips (SF-156 gate round trips): on each of the seven servers the samples are imported by schema-forge,
+  # written into a fresh server, imported again, and the two designs must be equal
+  round-trip:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ["mysql:5.7", "mysql:8.0", "mysql:8.4", "mysql:9.7", "percona:5.7", "percona:8.0", "percona:8.4"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: rustup toolchain install && rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
+      - run: docker pull -q postgres:18-alpine
+      # the server image is pulled by the tool
+      - run: python3 tools/app/mysql.py --server ${{ matrix.server }}
 
   engine-mysql:
     runs-on: ubuntu-latest

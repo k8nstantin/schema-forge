@@ -30,7 +30,18 @@ pub struct Endpoint {
     pub tls: Tls,
     /// The name each connection gives the server (`pg_stat_activity.application_name`).
     pub application: String,
+    /// The longest a statement may run before the server cancels it (SQLSTATE 57014), so a stuck query never holds a
+    /// connection for ever.
+    pub statement_timeout: Duration,
 }
+
+/// After this long idle, TCP keepalives start probing a connection.
+pub const KEEPALIVE_IDLE: Duration = Duration::from_secs(30);
+/// Between two keepalive probes.
+pub const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
+/// Probes unanswered before the connection is dropped: a link that died without a reset is noticed within
+/// `KEEPALIVE_IDLE + KEEPALIVE_INTERVAL * KEEPALIVE_RETRIES`.
+pub const KEEPALIVE_RETRIES: u32 = 3;
 
 impl Endpoint {
     /// `schema_forge` on a host and port, without TLS.
@@ -42,6 +53,7 @@ impl Endpoint {
             database: "schema_forge".into(),
             tls: Tls::Disable,
             application: "schema-forge".into(),
+            statement_timeout: Duration::from_mins(1),
         }
     }
 
@@ -55,6 +67,11 @@ impl Endpoint {
             .password(password)
             .application_name(&self.application)
             .connect_timeout(Duration::from_secs(10))
+            .keepalives(true)
+            .keepalives_idle(KEEPALIVE_IDLE)
+            .keepalives_interval(KEEPALIVE_INTERVAL)
+            .keepalives_retries(KEEPALIVE_RETRIES)
+            .options(format!("-c statement_timeout={}", self.statement_timeout.as_millis()))
             .ssl_mode(match self.tls {
                 Tls::Disable => SslMode::Disable,
                 Tls::Require => SslMode::Require,
@@ -75,5 +92,22 @@ impl Endpoint {
             .with_root_certificates(roots)
             .with_no_client_auth();
         Ok(tokio_postgres_rustls::MakeRustlsConnect::new(config))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_connection_has_keepalives_and_a_statement_timeout() {
+        let mut endpoint = Endpoint::new("127.0.0.1", 5432);
+        endpoint.statement_timeout = Duration::from_millis(1500);
+        let config = endpoint.config("cortex_reader", "x");
+        assert!(config.get_keepalives());
+        assert_eq!(config.get_keepalives_idle(), KEEPALIVE_IDLE);
+        assert_eq!(config.get_keepalives_interval(), Some(KEEPALIVE_INTERVAL));
+        assert_eq!(config.get_keepalives_retries(), Some(KEEPALIVE_RETRIES));
+        assert_eq!(config.get_options(), Some("-c statement_timeout=1500"));
     }
 }

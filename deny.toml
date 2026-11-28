@@ -9,8 +9,9 @@ yanked = "deny"
 [licenses]
 version = 2
 # exactly the licences the dependencies use (tools/app/licences.py lists every crate's), decided by the owner on
-# 2026-11-27: a new licence fails the check until it is decided on, never let in by a guess
-allow = ["Apache-2.0", "MIT", "ISC", "BSD-3-Clause", "Unicode-3.0"]
+# 2026-11-27: a new licence fails the check until it is decided on, never let in by a guess. Zlib (foldhash, in the
+# MySQL driver) and CDLA-Permissive-2.0 (webpki-roots, TLS to MySQL) were added by the owner the same day.
+allow = ["Apache-2.0", "MIT", "ISC", "BSD-3-Clause", "Unicode-3.0", "Zlib", "CDLA-Permissive-2.0"]
 confidence-threshold = 0.9
 
 [bans]

@@ -13,10 +13,17 @@ name = "schema-forge"
 path = "src/main.rs"
 
 [dependencies]
+schema-forge-core.workspace = true
+schema-forge-engine.workspace = true
+schema-forge-engine-mysql.workspace = true
 schema-forge-store.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 tokio.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+async-trait.workspace = true
 
 [lints]
 workspace = true

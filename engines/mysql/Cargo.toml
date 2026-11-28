@@ -1,0 +1,27 @@
+[package]
+name = "schema-forge-engine-mysql"
+description = "engine_mysql: MySQL 5.7 to 9.7 and its flavors, read from a live server, stored as a design's rows, written as SQL."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+schema-forge-engine.workspace = true
+schema-forge-store.workspace = true
+arrow-schema.workspace = true
+async-trait.workspace = true
+futures-util.workspace = true
+mysql_async.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+schema-forge-core.workspace = true
+
+[lints]
+workspace = true
