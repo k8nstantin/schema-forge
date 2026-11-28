@@ -209,9 +209,28 @@ pub struct TableOptions {
     pub secondary_engine_attribute: Option<String>,
 }
 
+/// What a partition's or subpartition's own clause writes, where it writes it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PartitionShow {
+    /// `ENGINE`.
+    pub engine: Option<String>,
+    /// `DATA DIRECTORY`.
+    pub data_directory: Option<String>,
+    /// `INDEX DIRECTORY`.
+    pub index_directory: Option<String>,
+    /// `MAX_ROWS`.
+    pub max_rows: Option<i64>,
+    /// `MIN_ROWS`.
+    pub min_rows: Option<i64>,
+    /// `TABLESPACE`.
+    pub tablespace: Option<String>,
+}
+
 /// What `SHOW CREATE TABLE` says that the catalogs do not.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TableShow {
+    /// Each listed partition's and subpartition's own options, by name.
+    pub partition_options: HashMap<String, PartitionShow>,
     /// The table's options.
     pub options: TableOptions,
     /// Each column's, by name.
@@ -256,12 +275,44 @@ pub fn parse_table(create: &str) -> TableShow {
     let tail = &create[after..];
     let tail_masked = &masked[after..];
     show.options = options(tail, tail_masked);
-    let partitioned = &tail_masked[tail_masked.find('\n').unwrap_or(tail_masked.len())..];
+    let cut = tail_masked.find('\n').unwrap_or(tail_masked.len());
+    let partitioned = &tail_masked[cut..];
+    show.partition_options = partition_options(&tail[cut..], partitioned);
     show.key_algorithm = ALGORITHM.captures(partitioned).and_then(|c| c[1].parse().ok());
     show.sub_key_algorithm = SUB_ALGORITHM.captures(partitioned).and_then(|c| c[1].parse().ok());
     show.partitions_listed = partitioned.contains("(PARTITION ");
     show.subpartitions_listed = partitioned.contains("SUBPARTITION `");
     show
+}
+
+static PARTITION_HEAD: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\b(?:SUB)?PARTITION `_*`").expect("a fixed pattern"));
+
+/// The options each `PARTITION `p`` and `SUBPARTITION `s`` clause writes, by the partition's name.
+fn partition_options(text: &str, masked: &str) -> HashMap<String, PartitionShow> {
+    let heads: Vec<_> = PARTITION_HEAD.find_iter(masked).collect();
+    let mut found = HashMap::new();
+    for (i, head) in heads.iter().enumerate() {
+        let end = heads.get(i + 1).map_or(masked.len(), |next| next.start());
+        let Some(tick) = head.as_str().find('`') else { continue };
+        let Some((name, _)) = read_ident(&text[head.start() + tick..]) else {
+            continue;
+        };
+        let (clause, clause_masked) = (&text[head.end()..end], &masked[head.end()..end]);
+        let number = |key: &str| value_after(clause, clause_masked, key).and_then(|v| v.parse().ok());
+        found.insert(
+            name,
+            PartitionShow {
+                engine: value_after(clause, clause_masked, "ENGINE"),
+                data_directory: value_after(clause, clause_masked, "DATA DIRECTORY"),
+                index_directory: value_after(clause, clause_masked, "INDEX DIRECTORY"),
+                max_rows: number("MAX_ROWS"),
+                min_rows: number("MIN_ROWS"),
+                tablespace: value_after(clause, clause_masked, "TABLESPACE"),
+            },
+        );
+    }
+    found
 }
 
 fn column(line: &str, masked: &str) -> ColumnShow {
@@ -343,6 +394,11 @@ pub struct ViewShow {
     pub algorithm: String,
     /// The query after `AS`, without its `WITH ... CHECK OPTION`, written as from inside the view's own database.
     pub definition: String,
+    /// The `database`.`name` pairs the query names as the server wrote it, outside strings, in the order found: the
+    /// tables and views a view reads, where the server does not list them (5.7).
+    pub references: Vec<(String, String)>,
+    /// Whether it is a JSON duality view (9.7), which an import refuses.
+    pub duality: bool,
 }
 
 static VIEW_HEAD: LazyLock<Regex> =
@@ -365,8 +421,42 @@ pub fn parse_view(create: &str, database: &str) -> Result<ViewShow, String> {
         algorithm: VIEW_ALGORITHM
             .captures(create)
             .map_or_else(|| "UNDEFINED".to_string(), |c| c[1].to_string()),
+        references: qualified_pairs(&definition),
         definition: unqualify(&definition, database),
+        duality: create[..head.start()].contains("DUALITY"),
     })
+}
+
+/// Every `` `a`.`b` `` of a query outside its strings: the first two names of each dotted run of names.
+pub(crate) fn qualified_pairs(query: &str) -> Vec<(String, String)> {
+    let mut pairs = Vec::new();
+    let mut rest = query;
+    while let Some(c) = rest.chars().next() {
+        match c {
+            '`' => match read_ident(rest) {
+                Some((first, after)) => {
+                    rest = after;
+                    if let Some(second) = after.strip_prefix('.')
+                        && let Some((second, after_second)) = read_ident(second)
+                    {
+                        pairs.push((first, second));
+                        rest = after_second;
+                        // a third name after a dot is a column of the pair, not another pair
+                        while let Some(more) = rest.strip_prefix('.') {
+                            match read_ident(more) {
+                                Some((_, after_more)) => rest = after_more,
+                                None => break,
+                            }
+                        }
+                    }
+                }
+                None => break,
+            },
+            '\'' | '"' => rest = &rest[string_end(rest, c)..],
+            _ => rest = &rest[c.len_utf8()..],
+        }
+    }
+    pairs
 }
 
 /// A query with every `` `database`. `` that qualifies a name outside a string removed: read from outside its database
@@ -631,6 +721,33 @@ mod tests {
             view.definition,
             "select `c`.`id` AS `id`,'`shop`.`x`' AS `lit` from `c` where (`c`.`status` = 'active')"
         );
+    }
+
+    #[test]
+    fn each_listed_partition_says_its_own_options() {
+        let create = "CREATE TABLE `s` (\n  `id` int NOT NULL\n) ENGINE=InnoDB\n/*!50100 PARTITION BY RANGE (`id`)\nSUBPARTITION BY HASH (`id`)\n(PARTITION `p0` VALUES LESS THAN (10)\n (SUBPARTITION `p0a` ENGINE = InnoDB,\n  SUBPARTITION `p0b` MAX_ROWS = 50 ENGINE = InnoDB),\n PARTITION `p1` VALUES LESS THAN MAXVALUE\n (SUBPARTITION `p1a` ENGINE = InnoDB)) */";
+        let show = parse_table(create);
+        assert!(show.partitions_listed && show.subpartitions_listed);
+        assert_eq!(show.partition_options["p0a"].engine.as_deref(), Some("InnoDB"));
+        assert_eq!(show.partition_options["p0b"].max_rows, Some(50));
+        assert_eq!(show.partition_options.len(), 5);
+    }
+
+    #[test]
+    fn a_view_names_the_tables_it_reads_outside_its_strings() {
+        let create = "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`%` SQL SECURITY DEFINER VIEW `shop`.`v` AS select `shop`.`c`.`id` AS `id`,'`x`.`y`' AS `lit` from (`shop`.`c` join `other`.`d` on((`shop`.`c`.`id` = `other`.`d`.`c_id`)))";
+        let view = parse_view(create, "shop").unwrap();
+        let mut pairs = view.references.clone();
+        pairs.sort();
+        pairs.dedup();
+        assert_eq!(
+            pairs,
+            [
+                ("other".to_string(), "d".to_string()),
+                ("shop".to_string(), "c".to_string())
+            ]
+        );
+        assert!(!view.duality);
     }
 
     #[test]

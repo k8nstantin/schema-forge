@@ -93,16 +93,28 @@ pub struct Identity {
     pub full: String,
     /// The version and flavor a design of it is made for.
     pub probe: Probe,
+    /// `@@character_set_server`.
+    pub character_set: String,
+    /// `@@collation_server`.
+    pub collation: String,
+    /// `@@lower_case_table_names`.
+    pub lower_case_table_names: i64,
+    /// `@@sql_mode`.
+    pub sql_mode: String,
 }
 
 /// Reads the server's version and flavor.
 pub async fn identify(pool: &Pool) -> Result<Identity, EngineError> {
     let mut conn = pool.get_conn().await.map_err(source_error)?;
-    let row: Option<(String, Option<String>)> = conn
-        .query_first("SELECT @@version, @@version_comment")
+    let row: Option<(String, Option<String>, String, String, i64, String)> = conn
+        .query_first(
+            "SELECT VERSION(), @@version_comment, @@character_set_server, @@collation_server, \
+             @@lower_case_table_names, @@sql_mode",
+        )
         .await
         .map_err(source_error)?;
-    let (full, comment) = row.ok_or_else(|| EngineError::Source("the server did not say its version".to_string()))?;
+    let (full, comment, character_set, collation, lower_case_table_names, sql_mode) =
+        row.ok_or_else(|| EngineError::Source("the server did not say its version".to_string()))?;
     let version = engine_version(&full)
         .ok_or_else(|| EngineError::Source(format!("the server's version `{full}` is not a version")))?;
     Ok(Identity {
@@ -111,6 +123,10 @@ pub async fn identify(pool: &Pool) -> Result<Identity, EngineError> {
             flavor: flavor_of(&comment.unwrap_or_default()).to_string(),
         },
         full,
+        character_set,
+        collation,
+        lower_case_table_names,
+        sql_mode,
     })
 }
 

@@ -2,7 +2,9 @@
 //! Its schema (engines/mysql/schema) holds what only MySQL has beside the cortex; this crate reads a live server's
 //! catalogs, stores what it read as a design's rows and loads them back, and writes a design as SQL.
 
+pub mod build;
 pub mod catalog;
 pub mod keys;
 pub mod read;
+pub mod rows;
 pub mod show;
